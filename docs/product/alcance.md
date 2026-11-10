@@ -1,47 +1,49 @@
 # Alcance
 
-**Estado al 10/11/2026: por decidir.** El equipo todavía no eligió qué construir. Este archivo lista las ideas candidatas y lo que falta decidir. Cuando se cierre, se reemplaza por el alcance acordado y las decisiones difíciles de revertir van a `docs/adr/`.
+**Estado al 10/11/2026: en definición.** Ya están decididos el problema, la estrategia, para quién es y qué resuelve cada sistema. Falta el recorte de la demo, la identidad del alumno y cómo se simula cada sistema de origen ([preguntas-abiertas.md](preguntas-abiertas.md)).
 
-Contexto: [hackathon.md](hackathon.md) (reglas y calendario), [problema.md](problema.md) (problemas y línea base).
+Contexto: [hackathon.md](hackathon.md) (reglas y calendario), [problema.md](problema.md) (problemas y línea base de clicks).
 
-## Ideas candidatas
+## El problema
 
-Salen del research del equipo. El encaje y el costo son la estimación del análisis del repo de Nacho ([nota](../research/2026-11-10-repo-campus-nacho.md#14-cómo-encajan-las-ideas-del-research), sección 14), hecha leyendo el código sin correr la app. Ninguna está elegida ni descartada.
+> La vida académica de un alumno de la Austral está partida en sistemas que no se hablan. Para saber qué le toca tiene que revisar el SIU y el Campus y cruzar pantallas a mano. Para cursar una materia se inscribe en uno y espera que otro lo matricule en el otro. Y si se pierde un aviso, pierde un cupo, un crédito o una fecha.
 
-| Idea | Problemas que ataca | Encaje en campus | Costo estimado |
-| --- | --- | --- | --- |
-| Inicio «Mi cuatrimestre» para el celular: materias actuales, próximas entregas, avisos sin leer | A8, A9, A10 | Alto. Ya existe la lógica de «próximo paso» y la home del alumno; falta que sea de varias materias | Medio: tablas propias de materias e inscripciones y una pantalla nueva |
-| Avisos donde están los alumnos | A7, pedido docente | Alto. Hay tabla de avisos y herramienta MCP sin pantalla propia | Bajo a medio |
-| Resumen semanal con IA | A7, A11 | Alto. Claude ya está integrado; el resumen de analítica sirve de modelo | Bajo a medio |
-| Inscripción a materias o finales con cupo | A3 | Medio. Existe el patrón de reserva con cupo (función SQL `oh_book`); no existe el modelo académico | Medio a alto |
-| Cierre de actas | Cumplimiento (registros) | Medio. Hay rúbricas, CSV y patrón de borrador y publicación; falta acta inmutable y rol de bedelía | Alto |
-| Matriculación automática SIU a Moodle y rol «final pendiente» | A5, A6 | Bajo. Es un problema de Moodle; en campus solo se puede simular | Fuera de esta base |
-| Arreglos de configuración de Moodle (fechas de fin, filtros, Línea de tiempo, push, aviso de cambio de contenido marcado) | A7, A8, A9 | Ninguno. Sirven para el pitch como quick wins | No aplica |
+Es la versión vigente. Se ajusta con lo que salga de cada validación.
 
-Los códigos A1 a A11 son los de [problema.md](problema.md).
+**De dónde sale** (encuesta a 39 alumnos): cursos viejos mezclados (56%), aulas desordenadas (54%), inscripción a materias o exámenes en el SIU (54%), mal desde el celular (49%), avisos que no llegan (44%, y lo más pedido en texto libre), no ver las fechas en el inicio (36%) y no saber qué inscripción está abierta (21%). En texto libre aparecen créditos y optativas perdidos por no enterarse a tiempo o porque el SIU se cayó.
 
-Dos ideas del research no tienen fila en el análisis de encaje: «aula ordenada por defecto» (plantilla de curso y chequeo de actividades sin fecha) y el arreglo de los mensajes cortados con «…».
+**La promesa:** un solo lugar que te dice qué te toca y te avisa a tiempo.
 
-## Restricciones que pesan en la elección
+## Decisiones
 
-- **Tiempo:** tres ciclos diarios hasta el pitch del 13/11.
-- **Campus es de un solo curso y dos roles.** Cualquier idea tipo SIU (varias materias, bedelía) necesita tablas nuevas propias; el detalle está en [la nota del repo](../research/2026-11-10-repo-campus-nacho.md#13-límites-del-repo-que-condicionan-la-idea).
-- **Todo dato de SIU y Moodle va a ser sintético.** No hay acceso de administrador ni API confirmada.
-- **El zip de campus no compila tal como vino** ([campus-upstream.md](../campus-upstream.md)). Hasta que Nacho pase el repo completo, `hackai/` tiene que poder correr sin depender de `campus/`.
+- **Estrategia:** sistema propio, HackAI, construido de cero con puertos y adaptadores. SIU, Moodle y Campus Austral son sistemas de origen. Por cada capacidad, si un sistema existente la resuelve bien, HackAI la delega; si no, la resuelve el núcleo ([ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md)).
+- **Para quién:** el alumno. El lado docente se suma si conseguimos información de docentes.
+- **Campus Austral es opcional.** Si conectarlo trae problemas, lo que nos sirva de su lógica lo hacemos nosotros de cero. No le copiamos código.
+- **Diseño:** se rediseña todo con mucho foco en UX y UI, con los colores de la Austral. Lo feo y lo difícil de usar fue una de las quejas más grandes.
 
-## Qué hace falta decidir para cerrar el alcance
+## Qué resuelve cada sistema
 
-Cada punto tiene su pregunta en [preguntas-abiertas.md](preguntas-abiertas.md):
+| Capacidad | Quién la resuelve | Por qué |
+| --- | --- | --- |
+| Ver mis materias actuales, con las viejas archivadas | Núcleo | Moodle no lo resuelve (56%) |
+| Qué me toca: parciales y finales | Núcleo, con las fechas del SIU | Hoy están en el Cronograma de evaluaciones y en las mesas, ordenados por materia y no por fecha |
+| Avisos unificados y notificaciones a tiempo, incluida la apertura de inscripciones | Núcleo | Ningún sistema avisa bien (44%, y 21% no sabe qué inscripción está abierta) |
+| Inscribirse a una materia y quedar adentro de su aula | Núcleo: pide la inscripción al SIU y la matriculación a Moodle en un solo paso | Hoy son dos sistemas y la matriculación depende de otro proceso |
+| Constancias y certificados | SIU | Lo burocrático se queda donde está |
+| Notas e historia académica | SIU, mostradas desde el núcleo | Una sola fuente de verdad |
+| Material y entregas | Moodle o Campus Austral, con enlace directo | No vale la pena rehacerlo |
+| Inscripción a finales con cupo | SIU, por el mismo flujo de inscripción | Entra solo si sobra tiempo |
 
-1. Estrategia: sobre la base de campus, sobre Moodle y SIU, desde cero, o envolviendo.
-2. Qué idea se construye (una, o una principal y quick wins para el pitch).
-3. Para quién: alumno, docente o ambos.
-4. Qué es real y qué está simulado en la demo.
-5. Con qué métrica se muestra la mejora, sobre la línea base de clicks.
-6. Qué entiende Nacho por «mergeable» y cómo quiere recibir el código.
+**Por qué «qué me toca» se limita a parciales y finales:** son las fechas que el SIU ya tiene. Las de Moodle dependen de que cada docente las cargue: en el relevamiento, el Calendario del Campus tenía un solo evento en noviembre para 14 cursos. Las entregas con fecha de Moodle pueden sumarse como complemento, sin prometer que estén todas.
 
-## Cuando se decida
+## Cómo se mide
 
-1. Reemplazar este archivo por el alcance acordado: qué entra, qué queda afuera, métrica objetivo.
-2. Marcar las preguntas como decididas en [preguntas-abiertas.md](preguntas-abiertas.md).
-3. Escribir la spec de la feature en `hackai/docs/<FEATURE>.md` con el formato de `campus/docs/POST-CLASS.md`.
+Tiempo de procesos completos, hoy contra HackAI, con alumnos reales. Ejemplo: inscribirse a una materia en el SIU y quedar matriculado en su aula de Moodle, contra el mismo proceso en HackAI. En SIU y Campus reales no se confirma nada; cómo se arma una comparación real con esa regla está abierto ([preguntas-abiertas.md](preguntas-abiertas.md), #5).
+
+## Qué falta decidir
+
+1. El recorte de la demo del 13/11.
+2. Cómo se mide la comparación real sin confirmar nada en SIU y Campus.
+3. Identidad e ingreso del alumno.
+4. Cómo se simula cada sistema de origen.
+5. Qué respondemos sobre cumplimiento (#7).

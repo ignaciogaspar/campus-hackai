@@ -17,11 +17,15 @@ Aula virtual de la universidad, una instalación de Moodle 5.1 con el tema Lambd
 _Avoid_: «campus» a secas en docs y tickets: se confunde con Campus Austral y con la carpeta `campus/`.
 
 **Campus Austral (campus)**:
-El campus propio de Nacho, hecho en Next.js y Supabase para una materia del IAE (AI-Centric Management). Es el repo con el que tenemos que ser mergeables; su snapshot está en `campus/`. No es Moodle ni SIU.
+El campus propio de Nacho, hecho en Next.js y Supabase para una materia del IAE (AI-Centric Management). Para HackAI es un sistema de origen más y la referencia de su lógica; su snapshot está en `campus/`. No es Moodle ni SIU.
 _Avoid_: «el repo de Moodle»; «upstream» sin aclarar.
 
 **HackAI (hackai)**:
-Nuestra app, en `hackai/`. Mismo stack y mismas rutas que Campus Austral.
+Nuestro sistema, en `hackai/`. Unifica la vida académica del alumno: muestra y ejecuta lo que resuelven bien SIU, Moodle y Campus Austral, y resuelve por su cuenta lo que ninguno resuelve.
+
+**Sistema de origen (Source system)**:
+El sistema externo donde vive un dato o donde se completa una acción: el SIU para inscripciones, notas y constancias; Moodle o Campus Austral para el material y las entregas de una materia. HackAI lo consulta o le pide la acción, pero no lo reemplaza.
+_Avoid_: «backend», «fuente» a secas.
 
 ### Personas y roles
 

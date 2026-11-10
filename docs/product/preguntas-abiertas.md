@@ -17,22 +17,22 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** la hackathon evalúa que la estrategia esté justificada. Define también si `hackai/` es la entrega o un prototipo paralelo.
 - **Opciones:** construir sobre la base de campus (mergeable con Nacho); sobre Moodle y SIU (plugin o configuración); desde cero; envolver lo que hay (app externa que lee de ambos).
 - **Hipótesis:** el repo está armado para la primera sin cerrar las otras: `hackai/` usa el stack de campus y no depende de él.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** sistema propio construido de cero, con puertos y adaptadores. SIU, Moodle y Campus Austral entran como sistemas externos y de cada uno se toma lo que mejor resuelve. El objetivo es resolver un problema real, no sumar features. Registrada en el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md).
 
 ### 2. ¿Qué idea construimos?
 
 - **Por qué importa:** quedan tres ciclos; entra una feature acotada.
 - **Opciones:** las de la tabla de [alcance.md](alcance.md).
 - **Hipótesis:** el análisis del repo recomienda elegir entre las de encaje alto (inicio «Mi cuatrimestre», avisos, resumen semanal con IA).
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida en parte (10/11/2026)
+- **Decisión:** no se elige una feature suelta. El problema está definido y cada capacidad tiene asignado qué sistema la resuelve; las dos tablas están en [alcance.md](alcance.md). Falta el recorte de la demo.
 
 ### 3. ¿Para quién es: alumno, docente o ambos?
 
 - **Por qué importa:** define rutas (`app/campus` o `app/profesor`), con quién se valida y qué se muestra en la demo. Del lado docente hay un solo testimonio y ningún relevamiento.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** alumno. Es la única población con encuesta (39 respuestas). El lado docente se suma si conseguimos información de docentes; hasta entonces, lo único docente que tenemos es Campus Austral.
 
 ### 4. ¿Qué es real y qué está simulado en la demo?
 
@@ -44,15 +44,15 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 
 - **Por qué importa:** se evalúa resultado frente a output. La línea base de clicks está en [problema.md](problema.md).
 - **Hipótesis:** una métrica de pasos sobre una o dos tareas de la tabla (por ejemplo «ver qué vence pronto» o «leer el último aviso»), más una validación con alumnos.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida en parte (10/11/2026)
+- **Decisión:** tiempo de un proceso completo. Se cronometra cómo se hace hoy (por ejemplo, inscribirse a una materia en el SIU y después quedar matriculado en su aula de Moodle) y el mismo proceso en HackAI, para tener un tiempo de referencia contra el que mostrar la mejora. Falta definir qué procesos y cómo se mide sin confirmar nada en SIU y Campus reales.
 
 ### 6. ¿Cómo validamos cada ciclo diario?
 
 - **Por qué importa:** se evalúan iteraciones validadas y el viernes se entrega un changelog.
 - **Hipótesis:** probar cada día con 2 o 3 alumnos y anotar qué cambió. La pestaña de entrevistas del doc tiene pendientes los contactos y la encuesta.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida en parte (10/11/2026)
+- **Decisión:** cada ciclo se valida con alumnos contra lo que ya existe: la misma tarea en SIU y Campus y en lo nuestro, medida en el momento. Falta definir qué tareas, qué se mide y dónde se anota.
 
 ### 7. ¿Qué respondemos sobre cumplimiento?
 
