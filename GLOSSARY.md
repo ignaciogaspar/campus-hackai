@@ -53,6 +53,9 @@ Personal administrativo que cierra actas y administra inscripciones (bedelía, d
 Carrera o trayecto al que está vinculado un alumno (por ejemplo, Ingeniería en Informática). El SIU muestra todo según la propuesta elegida en un selector, y lista también las propuestas pasivas.
 _Avoid_: «carrera» en código; sí se puede usar en UI.
 
+**Facultad (School)**:
+Unidad académica de la universidad (Ingeniería, Ciencias Empresariales, Derecho, Comunicación, Ciencias Biomédicas). La misma materia se dicta distinto en cada facultad.
+
 **Plan de estudios (StudyPlan)**:
 Versión del conjunto de materias de una propuesta (por ejemplo, IINF Plan 2023), organizado por año, con optativas y otros requisitos, y con las correlativas de cada materia.
 _Avoid_: «plan» para hablar de un plan de trabajo o de la propuesta.
@@ -235,6 +238,24 @@ _Avoid_: «feedback» en UI.
 **Invitado (Guest)**:
 Persona sin login que responde una encuesta por QR con un nombre.
 
+### HackAI
+
+**Espacio de la materia (Subject space)**:
+Lugar de una materia en HackAI donde se comunican sus docentes y alumnos. Hay uno por materia y facultad: la misma materia en dos facultades son dos espacios. Adentro hay canales de toda la materia y canales de cada comisión. Quien se inscribe a una comisión en el SIU queda adentro.
+_Avoid_: «aula», «servidor», «curso».
+
+**Canal (Channel)**:
+Conversación con nombre dentro de un espacio de la materia, al estilo de un canal de Discord o Slack. Es de toda la materia (el material) o de una comisión (`#avisos` y `#consultas`, que dependen de su docente). Lo ven sus miembros. Reemplaza al foro de Moodle.
+_Avoid_: «foro», «chat», «grupo».
+
+**Canal externo (External channel)**:
+Plataforma de mensajería que eligió la cátedra o el docente (Discord, Slack, WhatsApp u otra) para sincronizar los canales de su materia. Las notificaciones le llegan al alumno por ahí.
+_Avoid_: «integración» a secas.
+
+**Mensaje directo (Direct message)**:
+Mensaje privado entre un alumno y un docente de su espacio. Entre alumnos no hay.
+_Avoid_: «mensaje» a secas: choca con el Mensaje del SIU y con la mensajería de Moodle.
+
 ### Este repo
 
 **Snapshot de campus (Campus snapshot)**:
@@ -245,5 +266,6 @@ El contenido de `campus/`: una copia del repo de Nacho en una fecha, sin histori
 - **Curso**: en Moodle es el espacio de una materia; en Campus Austral es la materia cargada; en el SIU no existe (hay materia y comisión). Decir siempre cuál.
 - **Entrega**: en Moodle es lo que sube el alumno; en Campus Austral nombra también la consigna.
 - **Inscripción y matriculación**: inscripción es del SIU (a cursada o a examen); matriculación es de Moodle. Que no estén conectadas es uno de los problemas del research.
+- **«Campus»** en boca del equipo puede ser el Campus Virtual (Moodle), Campus Austral o HackAI. Decir cuál.
 - **Actividad**: en el SIU es una materia o una extracurricular; en Moodle, un recurso del curso (tarea, foro); en Campus Austral, una dinámica de clase. Preferir el término específico.
 - **Nota**: la del acta (oficial, SIU), la calificación (Moodle) y la nota calculada al leer de Campus Austral son tres cosas distintas.

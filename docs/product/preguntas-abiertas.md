@@ -8,7 +8,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - Agregar preguntas nuevas al final de su bloque, sin renumerar.
 - Las preguntas para Nacho se le hacen a él; la respuesta se copia textual en **Decisión**.
 
-**Las que bloquean empezar a construir:** #2 (el recorte de la demo).
+**Las que bloquean empezar a construir:** #4 (de dónde salen los datos de SIU y Moodle).
 
 ## Bloque 1: Equipo
 
@@ -25,40 +25,40 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** quedan tres ciclos; entra una feature acotada.
 - **Opciones:** las de la tabla de [alcance.md](alcance.md).
 - **Hipótesis:** el análisis del repo recomienda elegir entre las de encaje alto (inicio «Mi cuatrimestre», avisos, resumen semanal con IA).
-- **Estado:** decidida en parte (10/11/2026)
-- **Decisión:** no se elige una feature suelta. El problema está definido y cada capacidad tiene asignado qué sistema la resuelve; las dos tablas están en [alcance.md](alcance.md). Falta el recorte de la demo.
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** no se elige una feature suelta: el problema, qué resuelve cada sistema y el recorte de la demo están en [alcance.md](alcance.md). No queda nada afuera; el alcance fija el orden en que se construye.
 
 ### 3. ¿Para quién es: alumno, docente o ambos?
 
 - **Por qué importa:** define rutas (`app/campus` o `app/profesor`), con quién se valida y qué se muestra en la demo. Del lado docente hay un solo testimonio y ningún relevamiento.
 - **Estado:** decidida (10/11/2026)
-- **Decisión:** alumno. Es la única población con encuesta (39 respuestas). El lado docente se suma si conseguimos información de docentes; hasta entonces, lo único docente que tenemos es Campus Austral.
+- **Decisión:** alumno primero. Es la única población con encuesta (39 respuestas). Del docente entra solo lo mínimo para el canal de comunicación (#11): publicar, responder y elegir su canal externo. El resto del lado docente se suma si conseguimos información de docentes.
 
 ### 4. ¿Qué es real y qué está simulado en la demo?
 
 - **Por qué importa:** el pitch tiene que decirlo. Los datos de SIU y Moodle van a ser sintéticos; falta definir si la integración se simula con un seed, un CSV o un servicio mock, y si el login es el de campus (PIN).
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida en parte (10/11/2026)
+- **Decisión:** se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. Campus Austral queda fuera de la demo. Falta definir de dónde salen los datos de SIU y Moodle: el equipo propone tomarlos de sus versiones open source.
 
 ### 5. ¿Con qué métrica mostramos la mejora?
 
 - **Por qué importa:** se evalúa resultado frente a output. La línea base de clicks está en [problema.md](problema.md).
 - **Hipótesis:** una métrica de pasos sobre una o dos tareas de la tabla (por ejemplo «ver qué vence pronto» o «leer el último aviso»), más una validación con alumnos.
 - **Estado:** decidida en parte (10/11/2026)
-- **Decisión:** tiempo de un proceso completo. Se cronometra cómo se hace hoy (por ejemplo, inscribirse a una materia en el SIU y después quedar matriculado en su aula de Moodle) y el mismo proceso en HackAI, para tener un tiempo de referencia contra el que mostrar la mejora. Falta definir qué procesos y cómo se mide sin confirmar nada en SIU y Campus reales.
+- **Decisión:** tiempo de un proceso completo. Se cronometra cómo se hace hoy (por ejemplo, inscribirse a una materia en el SIU y después quedar matriculado en su aula de Moodle) y el mismo proceso en HackAI, para tener un tiempo de referencia contra el que mostrar la mejora. Las tareas son T1 «¿qué me toca?», T2 «anotarme a algo abierto» y T3 «enterarme»; el detalle está en [alcance.md](alcance.md#cómo-se-mide).
 
 ### 6. ¿Cómo validamos cada ciclo diario?
 
 - **Por qué importa:** se evalúan iteraciones validadas y el viernes se entrega un changelog.
 - **Hipótesis:** probar cada día con 2 o 3 alumnos y anotar qué cambió. La pestaña de entrevistas del doc tiene pendientes los contactos y la encuesta.
-- **Estado:** decidida en parte (10/11/2026)
-- **Decisión:** cada ciclo se valida con alumnos contra lo que ya existe: la misma tarea en SIU y Campus y en lo nuestro, medida en el momento. Falta definir qué tareas, qué se mide y dónde se anota.
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** cada ciclo, 3 alumnos hacen las tareas de #5 en SIU y Campus con su propia cuenta y en HackAI, con cronómetro y clicks. Los resultados van a `docs/product/validaciones.md`, con los alumnos anonimizados.
 
 ### 7. ¿Qué respondemos sobre cumplimiento?
 
 - **Por qué importa:** el kickoff pide CONEAU, registros, permisos y datos mínimos ([hackathon.md](hackathon.md#cumplimiento)). Pesa más si la idea toca notas, actas o inscripciones.
-- **Estado:** abierta; depende de #2
-- **Decisión:** pendiente
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** los registros académicos siguen en el SIU; HackAI guarda mensajes y material visibles solo para el espacio o la comisión, y los mensajes directos solo para sus dos participantes; el canal externo es elección de la cátedra. Detalle en [alcance.md](alcance.md#cumplimiento).
 
 ### 8. ¿Los quick wins de configuración de Moodle van al pitch?
 
@@ -77,6 +77,21 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** si es Guaraní 3 y expone una API o vista, cambia qué se puede hacer real. Hoy es «a confirmar».
 - **Estado:** abierta
 - **Decisión:** pendiente
+
+### 11. ¿Sumamos un canal de comunicación fluida entre alumnos y docentes?
+
+- **Por qué importa:** la idea es algo del estilo de Discord o Slack, dentro o fuera de HackAI, con foco en que las notificaciones lleguen. Cambia la decisión de #3 (solo alumno), porque el docente tiene que escribir y responder, y cambia #7, porque HackAI pasaría a guardar conversaciones.
+- **Evidencia:** el docente entrevistado pidió algo «del estilo Discord o Slack». En la encuesta, los avisos y las notificaciones suman 44% y son lo más pedido en texto libre. La encuesta no preguntó por la comunicación con docentes.
+- **Hipótesis (sin validar):** el mail es poco fluido, los docentes no contestan y los alumnos no quieren escribir mails; la mayoría tiene las notificaciones de mail desactivadas.
+- **Lo que ya existe:** el Campus tiene una mensajería interna con docentes y compañeros, escondida en un cajón y sin notificaciones push; los Mensajes del SIU son solo de recepción; pedir un curso de Teams está deshabilitado por el administrador.
+- **Estado:** decidida en parte (10/11/2026)
+- **Decisión:** sí, entra a la demo y reemplaza a «Avisos» en el recorte y al foro de Moodle que nadie usa. Toma como referencia la estructura de Discord y Slack: canales fáciles de crear más mensajería interna. Cada cátedra o docente elige qué canal externo (Discord, Slack, WhatsApp u otro) quiere sincronizar con HackAI, y las notificaciones se delegan en ese canal ya conocido. La lectura de por qué no se usa lo que hay: la mensajería del Campus no avisa y está escondida; se valida con el docente entrevistado y con los alumnos del primer ciclo.
+  - **Espacio:** uno por materia y facultad, con canales de toda la materia (material y, como extra, consultas generales) y canales de cada comisión (`#avisos` y `#consultas`, que dependen de su docente). Se crea solo a partir del SIU y quien se inscribe queda adentro.
+  - **Mensajes:** las consultas y sus respuestas las ven todos los de la comisión. Hay mensajes directos entre alumno y docente; entre alumnos, no.
+  - **Sincronización de ida y vuelta** con el canal externo, material incluido: si el docente sube material a Discord (como en Laboratorio 3), aparece en HackAI, y lo que publica en HackAI aparece en el canal externo. Se arranca por un caso acotado.
+  - **Avisos de Moodle:** el adaptador de Moodle los trae a `#avisos`, para que la adopción sea gradual.
+  - **Primer caso de sincronización:** de Discord a HackAI, el material y los avisos; de HackAI a Discord, las consultas, con la respuesta de vuelta. Registrado en el [ADR 0005](../adr/0005-sincronizacion-con-canales-externos.md).
+  - **Falta:** si WhatsApp sigue afuera, ahora que el recorte no deja nada afuera.
 
 ## Bloque 2: Para Nacho
 
