@@ -1,6 +1,6 @@
 # Alcance
 
-**Estado al 10/11/2026: casi cerrado.** Están decididos el problema, la estrategia, qué resuelve cada sistema, el espacio de la materia, el recorte de la demo y cómo se mide. Falta confirmar de dónde salen los datos de SIU y Moodle y correr el research previo a la spec ([preguntas-abiertas.md](preguntas-abiertas.md)).
+**Estado al 10/11/2026: decidido.** Problema, estrategia, qué resuelve cada sistema, espacio de la materia, recorte de la demo y medición. Antes de la spec se corre el research de burocracia e integración.
 
 Contexto: [hackathon.md](hackathon.md) (reglas y calendario), [problema.md](problema.md) (problemas y línea base de clicks).
 
@@ -58,7 +58,7 @@ No queda nada afuera. Este es el orden en que se construye, para que siempre hay
 3. **Inscripción en un paso:** te inscribís y quedás en el aula y en el espacio.
 4. Notas e historia académica, constancias e inscripción a finales con cupo.
 
-**Real y simulado:** en la demo se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. Campus Austral queda fuera de la demo. De dónde salen los datos de SIU y Moodle está por confirmar ([preguntas-abiertas.md](preguntas-abiertas.md), #4).
+**Real y simulado:** en la demo se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. SIU y Moodle se simulan en tablas propias (`siu_*`, `moodle_*`) con datos sintéticos, modeladas sobre sus APIs reales; no levantamos un Moodle propio porque la máquina no lo aguanta. Campus Austral y WhatsApp quedan fuera de la demo.
 
 ## Cómo se mide
 
@@ -67,6 +67,9 @@ Procesos completos, hoy contra HackAI, con 3 alumnos por ciclo en sus propias cu
 - **T1, «¿qué me toca?»:** el próximo parcial o final y qué hay esta semana.
 - **T2, «anotarme a algo abierto»:** hasta el botón «Inscribirse» del SIU, sin apretarlo. En HackAI, el flujo completo.
 - **T3, «enterarme»:** cuánto tarda en llegar un aviso o un material nuevo. Hoy se le pregunta al alumno; en HackAI se mide en vivo, del Discord del docente al celular.
+- **T4, «encontrar la nota de mi último parcial»:** hoy puede estar en historia académica o en actuación provisoria. Se mide de punta a punta mirando.
+- **T5, «pedir una constancia de alumno regular»:** hasta el botón «Guardar» del SIU, sin apretarlo.
+- **Piloto con Laboratorio 3:** esa cátedra ya usa Discord. Si su docente acepta, se conecta un espacio de HackAI a su servidor y se mide cuánto tarda una consulta en tener respuesta. El contacto lo decide el equipo.
 
 La espera de la matriculación en Moodle se anota como dato reportado, no medido. Los resultados van a `docs/product/validaciones.md`, con los alumnos anonimizados (A1, A2…).
 

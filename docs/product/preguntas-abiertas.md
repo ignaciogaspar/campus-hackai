@@ -8,7 +8,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - Agregar preguntas nuevas al final de su bloque, sin renumerar.
 - Las preguntas para Nacho se le hacen a él; la respuesta se copia textual en **Decisión**.
 
-**Las que bloquean empezar a construir:** #4 (de dónde salen los datos de SIU y Moodle).
+**Las que bloquean empezar a construir:** ninguna. Antes de la spec se corre el research de burocracia e integración (issues de research en GitHub).
 
 ## Bloque 1: Equipo
 
@@ -37,14 +37,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 ### 4. ¿Qué es real y qué está simulado en la demo?
 
 - **Por qué importa:** el pitch tiene que decirlo. Los datos de SIU y Moodle van a ser sintéticos; falta definir si la integración se simula con un seed, un CSV o un servicio mock, y si el login es el de campus (PIN).
-- **Estado:** decidida en parte (10/11/2026)
-- **Decisión:** se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. Campus Austral queda fuera de la demo. Falta definir de dónde salen los datos de SIU y Moodle: el equipo propone tomarlos de sus versiones open source.
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. Campus Austral queda fuera de la demo. SIU y Moodle se simulan en tablas propias con datos sintéticos, modeladas sobre sus APIs reales (las confirma el research). No se levanta un Moodle propio con Docker: la máquina no lo aguanta. Campus Austral y WhatsApp quedan afuera.
 
 ### 5. ¿Con qué métrica mostramos la mejora?
 
 - **Por qué importa:** se evalúa resultado frente a output. La línea base de clicks está en [problema.md](problema.md).
 - **Hipótesis:** una métrica de pasos sobre una o dos tareas de la tabla (por ejemplo «ver qué vence pronto» o «leer el último aviso»), más una validación con alumnos.
-- **Estado:** decidida en parte (10/11/2026)
+- **Estado:** decidida (10/11/2026)
 - **Decisión:** tiempo de un proceso completo. Se cronometra cómo se hace hoy (por ejemplo, inscribirse a una materia en el SIU y después quedar matriculado en su aula de Moodle) y el mismo proceso en HackAI, para tener un tiempo de referencia contra el que mostrar la mejora. Las tareas son T1 «¿qué me toca?», T2 «anotarme a algo abierto» y T3 «enterarme»; el detalle está en [alcance.md](alcance.md#cómo-se-mide).
 
 ### 6. ¿Cómo validamos cada ciclo diario?
@@ -91,7 +91,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
   - **Sincronización de ida y vuelta** con el canal externo, material incluido: si el docente sube material a Discord (como en Laboratorio 3), aparece en HackAI, y lo que publica en HackAI aparece en el canal externo. Se arranca por un caso acotado.
   - **Avisos de Moodle:** el adaptador de Moodle los trae a `#avisos`, para que la adopción sea gradual.
   - **Primer caso de sincronización:** de Discord a HackAI, el material y los avisos; de HackAI a Discord, las consultas, con la respuesta de vuelta. Registrado en el [ADR 0005](../adr/0005-sincronizacion-con-canales-externos.md).
-  - **Falta:** si WhatsApp sigue afuera, ahora que el recorte no deja nada afuera.
+  - **WhatsApp** queda afuera de la demo.
 
 ## Bloque 2: Para Nacho
 
