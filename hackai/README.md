@@ -46,4 +46,4 @@ No las imprimas en logs ni en reportes.
 | `app/globals.css` | Estilos base provisorios, hasta que se rediseñe el sistema visual. |
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
 
-La estructura de carpetas para el núcleo, los puertos y los adaptadores se define con la skill `codebase-design` a partir de la spec (ADR 0004).
+Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
