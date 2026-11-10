@@ -1,0 +1,603 @@
+/* Vista del alumno: /s/[code], /p/[pollId], /campus/decks/[id]. Prefijo st-. */
+
+.st-pagina {
+  min-height: 100vh;
+  background: var(--fondo);
+}
+
+/* ---------- vivo (celular primero) ---------- */
+.st-vivo {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 0 48px;
+}
+.st-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--papel);
+  border-bottom: 2px solid var(--azul);
+}
+.st-cabecera-titulo {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+.st-cabecera-titulo strong {
+  font-size: 14px;
+  color: var(--tinta);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.st-cabecera-titulo .kicker {
+  font-size: 10px;
+}
+.st-escenario {
+  background: var(--navy);
+}
+.st-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--papel);
+  border-bottom: 1px solid var(--borde);
+}
+.st-nav .btn {
+  min-width: 52px;
+  min-height: 40px;
+}
+.st-nav-pos {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tinta);
+  text-align: center;
+}
+.st-nav-sigo {
+  font-weight: 500;
+  color: var(--gris);
+}
+.st-volver {
+  margin: 10px 16px 0;
+  width: calc(100% - 32px);
+  min-height: 44px;
+}
+.st-bloque {
+  margin: 14px 16px 0;
+}
+.st-vivo > .alerta.st-bloque {
+  margin-top: 12px;
+}
+
+/* ---------- marcas ---------- */
+.st-marks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.st-mark {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 4px 8px;
+  min-height: 60px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio);
+  background: var(--papel);
+  color: var(--tinta);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.st-mark-icono {
+  font-size: 18px;
+  line-height: 1;
+}
+.st-mark:hover {
+  border-color: var(--azul);
+}
+.st-mark.is-on {
+  background: var(--azul);
+  border-color: var(--azul);
+  color: #ffffff;
+}
+.st-mark--no-entendi.is-on {
+  background: var(--naranja);
+  border-color: var(--naranja);
+}
+.st-mark-cuenta {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+/* ---------- nota ---------- */
+.st-nota {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+.st-nota-cabeza {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.st-nota-cabeza h3 {
+  font-size: 14px;
+  margin: 0;
+}
+.st-nota-estado {
+  font-size: 12px;
+  color: var(--gris);
+}
+.st-nota-estado--saved {
+  color: var(--ok);
+}
+.st-nota-estado--error {
+  color: var(--error);
+}
+.st-nota-texto {
+  min-height: 90px;
+}
+.st-nota-pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.st-visibilidad .select {
+  padding: 6px 10px;
+  font-size: 13px;
+  width: auto;
+}
+.st-citas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.st-citas li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 3px solid var(--cian);
+  font-size: 14px;
+}
+.st-citas mark {
+  flex: 1 1 auto;
+}
+.st-cita-quitar {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--gris);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.st-cohorte {
+  border-top: 1px solid var(--borde);
+  padding-top: 10px;
+}
+.st-cohorte h4 {
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+.st-cohorte ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  font-size: 14px;
+}
+.st-cohorte p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+.st-cohorte-cita {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+/* ---------- encuesta ---------- */
+.st-poll {
+  display: grid;
+  gap: 10px;
+}
+.st-poll-pregunta {
+  font-size: 18px;
+  margin: 0;
+}
+.st-poll--compacta {
+  border-left: 4px solid var(--naranja);
+}
+.st-opciones {
+  display: grid;
+  gap: 8px;
+}
+.st-opciones--escala {
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+}
+.st-opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 48px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio);
+  background: var(--papel);
+  cursor: pointer;
+  font-size: 15px;
+}
+.st-opcion.is-on {
+  border-color: var(--azul);
+  background: var(--hielo);
+  font-weight: 600;
+}
+.st-opcion input {
+  accent-color: var(--azul);
+  width: 18px;
+  height: 18px;
+}
+.st-escala {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.st-escala-n {
+  min-height: 52px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: var(--radio);
+  background: var(--papel);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--azul);
+  cursor: pointer;
+}
+.st-escala-n.is-on {
+  background: var(--azul);
+  color: #ffffff;
+  border-color: var(--azul);
+}
+.st-poll-hecha {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.st-poll-hecha .alerta {
+  margin: 0;
+  width: 100%;
+}
+.st-resultados {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--borde);
+}
+.st-barra-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.st-barra-pista {
+  height: 10px;
+  background: var(--hielo);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.st-barra-relleno {
+  height: 100%;
+  background: var(--azul);
+  transition: width 0.3s ease;
+}
+.st-nube {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  color: var(--azul);
+  font-weight: 700;
+}
+.st-abiertas {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+/* ---------- overlay ---------- */
+.st-overlay {
+  margin: 14px 16px 0;
+  border-left: 4px solid var(--cian);
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.st-overlay-texto {
+  margin: 0;
+  font-size: 16px;
+}
+.st-overlay-timer {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--azul);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- tutor ---------- */
+.st-tutor {
+  display: grid;
+  gap: 8px;
+}
+.st-tutor-boton {
+  min-height: 44px;
+}
+.st-tutor-panel {
+  min-height: 60px;
+}
+
+/* ---------- ingreso y encuesta por QR ---------- */
+.st-ingreso,
+.st-encuesta {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 16px 48px;
+  display: grid;
+  gap: 18px;
+}
+.st-ingreso h1 {
+  font-size: 24px;
+  margin: 4px 0 6px;
+}
+.st-pin,
+.st-codigo {
+  font-size: 22px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.st-codigo {
+  text-transform: uppercase;
+}
+.st-ingreso-invitado {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+.st-encuesta-marca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.st-encuesta-marca img {
+  height: 36px;
+  width: auto;
+}
+.st-encuesta-pie {
+  margin: 0;
+  text-align: center;
+}
+
+/* ---------- estudio (deck fuera de clase) ---------- */
+.st-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--borde);
+}
+.st-tabs button {
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gris);
+  cursor: pointer;
+}
+.st-tabs button[aria-selected='true'] {
+  color: var(--azul);
+  border-bottom-color: var(--cian);
+}
+.st-tabs-indice {
+  margin-left: auto;
+}
+.st-estudio-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.st-estudio-main {
+  min-width: 0;
+}
+.st-estudio .st-bloque {
+  margin: 16px 0 0;
+}
+.st-indice {
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+.st-indice ol {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.st-indice-item {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: var(--tinta);
+  cursor: pointer;
+}
+.st-indice-item:hover {
+  background: var(--hielo);
+}
+.st-indice-item.is-actual {
+  border-left-color: var(--azul);
+  background: var(--hielo);
+  font-weight: 600;
+}
+.st-indice-n {
+  color: var(--gris);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.st-indice-titulo {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.st-indice-marcas {
+  display: flex;
+  gap: 2px;
+}
+.st-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--hielo);
+  color: var(--azul);
+}
+.st-chip--no-entendi {
+  background: var(--alerta-suave);
+  color: var(--naranja);
+}
+.st-chip--nota {
+  background: var(--cian);
+  color: var(--azul);
+}
+.st-misnotas {
+  display: grid;
+  gap: 14px;
+}
+.st-misnotas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.st-misnotas-lista li {
+  display: grid;
+  gap: 8px;
+}
+.st-misnotas-slide {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--tinta);
+  font-size: 15px;
+}
+.st-misnotas-slide:hover strong {
+  color: var(--azul);
+  text-decoration: underline;
+}
+.st-misnotas-cita {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--cian);
+  font-size: 14px;
+}
+.st-misnotas-cuerpo {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+@media (min-width: 861px) {
+  .st-tabs-indice {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .st-estudio-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .st-indice {
+    display: none;
+    position: static;
+    max-height: 50vh;
+  }
+  .st-indice.is-open {
+    display: block;
+  }
+}
+@media (min-width: 761px) {
+  .st-vivo {
+    padding-top: 12px;
+  }
+  .st-cabecera {
+    border-radius: var(--radio) var(--radio) 0 0;
+  }
+}
+
+/* Deck HTML (kind='html') en la vista en vivo: iframe 16:9 */
+.st-html {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.st-html iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Overlay del profesor en el celular (OverlayView variant='celular') */
+.st-overlay-vivo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.st-overlay-vivo > .btn {
+  align-self: flex-start;
+}

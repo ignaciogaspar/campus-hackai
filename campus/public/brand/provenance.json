@@ -1,0 +1,43 @@
+{
+  "observedAt": "2026-09-12",
+  "homepage": "https://www.iae.edu.ar/",
+  "stylesheet": "https://www.iae.edu.ar/wp-content/cache/autoptimize/css/autoptimize_161ef2e9b91cd829f1a161c32c3d9c5d.css",
+  "stylesheetSha256": "beda480bd8195ed2806213d369e9c6f6c5a324ccd85cfbb3a6e7c076ab81a51c",
+  "assets": [
+    {
+      "file": "logo.png",
+      "url": "https://www.iae.edu.ar/wp-content/themes/iae/img/logo.png?2",
+      "sha256": "68e68d95cb943209e0788afce43c3f6dfdfd4cbf7b8de868c4184dd64465ed40"
+    },
+    {
+      "file": "iaebox-light.png",
+      "url": "https://www.iae.edu.ar/wp-content/themes/iae/img/iaebox_light.png",
+      "sha256": "d5f8ca84a37f00fc67f8f40944b2e2ecaf488df8ab77e618ab3cb7ebf6d1ba67"
+    },
+    {
+      "file": "montserrat-300.ttf",
+      "url": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCs16Ew-.ttf",
+      "sha256": "8e33101ba7e73cd44aa39e60eb3ea3b4912bac6fe155275a2e23cf1b7f6ed315"
+    },
+    {
+      "file": "montserrat-400.ttf",
+      "url": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.ttf",
+      "sha256": "84f3d3275dfb159dd311c61828fd754a82ec31c377120518e2cd3e7d34394e96"
+    },
+    {
+      "file": "montserrat-500.ttf",
+      "url": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtZ6Ew-.ttf",
+      "sha256": "637639da93fdd9178e52662cce4bd5a59a544eb60677bb6ef9f89bc472607e5d"
+    },
+    {
+      "file": "montserrat-600.ttf",
+      "url": "https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCu170w-.ttf",
+      "sha256": "c535bb158e8cfc3c27654f73aa68a87732899e7d9b10d8496b68605a56d947a7"
+    },
+    {
+      "file": "OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/OFL.txt",
+      "sha256": "8b7141c03fa4f8d44e6345d5d4931709290f0f67875e452e95ac1fd3a027802e"
+    }
+  ]
+}

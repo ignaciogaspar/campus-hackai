@@ -1,0 +1,70 @@
+/* Vista por jornada. Prefijo: jv- */
+.jv-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.jv-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.jv-head { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 20px; align-items: start; }
+.jv-head .jornada-fecha strong { font-size: 26px; }
+.jv-head h1 { font-size: 30px; margin: 4px 0 6px; line-height: 1.15; }
+.jv-cuando { font-size: 14px; color: var(--gris); margin: 0 0 6px; }
+.jv-cuando strong { color: var(--tinta, inherit); font-weight: 600; }
+.jv-resumen { margin: 10px 0 0; font-size: 15px; max-width: 70ch; }
+.jv-pregunta { margin: 14px 0 0; padding: 10px 14px; border-left: 4px solid var(--azul); background: var(--hielo); border-radius: 0 var(--radio) var(--radio) 0; font-size: 15px; font-weight: 600; color: var(--azul); max-width: 70ch; }
+
+.jv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; margin-top: 26px; align-items: start; }
+.jv-main, .jv-side { display: grid; gap: 20px; min-width: 0; }
+.jv-bloque > h2 { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--azul); margin: 0 0 10px; }
+.jv-card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.jv-card-head h3 { margin: 0; font-size: 17px; }
+.jv-card-head form { margin: 0; }
+
+
+.jv-stats { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 13px; color: var(--gris); }
+.jv-stats strong { color: var(--azul); font-size: 15px; }
+
+.jv-act { display: grid; gap: 6px; }
+.jv-act h3 { margin: 0; font-size: 16px; }
+.jv-act p { margin: 0; font-size: 14px; }
+.jv-act-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+
+.jv-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.jv-lista li { display: grid; gap: 3px; font-size: 14px; }
+.jv-lista li + li { border-top: 1px solid var(--borde); padding-top: 10px; }
+.jv-lista .jv-sub { font-size: 12px; color: var(--gris); }
+.jv-entrega-estado { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.jv-conceptos { display: flex; flex-wrap: wrap; gap: 6px; }
+.jv-concepto { display: inline-block; padding: 4px 10px; border: 1px solid var(--borde-fuerte); border-radius: 999px; font-size: 13px; color: var(--azul); text-decoration: none; background: var(--papel); }
+.jv-concepto:hover { border-color: var(--azul); }
+
+.jv-faltan { font-size: 13px; color: var(--gris); margin: 8px 0 0; }
+
+/* índice */
+.jv-indice { display: grid; gap: 12px; }
+.jv-indice .jornada { text-decoration: none; color: inherit; }
+.jv-indice .jornada:hover { border-color: var(--azul); }
+.jv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.jv-chips .badge { white-space: normal; text-align: left; }
+
+@media (max-width: 960px) {
+  .jv-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .jv-head { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+  .jv-head h1 { font-size: 22px; }
+  .jv-head .jornada-fecha strong { font-size: 18px; }
+}
+
+/* materiales en la columna lateral: separados por línea */
+.jv-mats > li + li { border-top: 1px solid var(--borde); padding-top: 10px; }
+.jv-mats .cx-link { font-size: 14px; }
+.jv-mats .cx-mat-why { font-size: 13px; }
+.jv-lista .jv-sub { overflow-wrap: anywhere; }
+.jv-conceptos-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.jv-conceptos-lista li { font-size: 14px; line-height: 1.35; padding: 5px 0; border-bottom: 1px solid var(--borde); overflow-wrap: anywhere; }
+.jv-conceptos-lista li:last-child { border-bottom: 0; }
+.jv-conceptos-lista a { text-decoration: none; font-weight: 600; }
+.jv-conceptos-lista a:hover { text-decoration: underline; }
+
+.jv-indice .jornada[data-estado='pasada'] { opacity: .7; }
+.jv-indice .jornada[data-estado='proxima'], .jv-indice .jornada[data-estado='hoy'] { border-color: var(--azul); box-shadow: inset 4px 0 0 var(--azul); }
+.jv-extra { margin-top: 6px; color: var(--gris); }

@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockDecide v2 — IAE Business School</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gd:#2026a8;--gm:#2b33c6;--gs:#4b55d9;--gl:#eef0ff;--gl2:#f6f7ff;
+  --lm:#f2c94c;--wh:#fff;--of:#f4f5f8;--gr:#74798a;--gk:#30344a;--bk:#17192b;
+  --am:#d97706;--al:#fff7e6;--rd:#c53b47;--rl:#fff0f2;
+  --ye:#9a7200;--yl:#fff9df;--bl:#1677b8;--bll:#eaf5fc;--pu:#7a4db3;--pll:#f3edfb;
+  --sh:0 2px 12px rgba(32,38,168,.08);--shm:0 8px 28px rgba(32,38,168,.15);
+  --r:8px;--rm:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Montserrat',sans-serif;background:var(--of);color:var(--bk);font-size:13px;line-height:1.5;min-height:100vh}
+
+/* HEADER */
+.hdr{background:var(--gd);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:900;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.hbrand{display:flex;align-items:center;gap:11px}
+.hlogo{width:34px;height:34px;background:var(--lm);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--gd);flex-shrink:0}
+.htitle{font-size:15px;font-weight:800;color:var(--wh)}
+.hsub{font-size:9px;color:var(--lm);font-weight:700;letter-spacing:.9px;text-transform:uppercase}
+.hnav{display:flex;gap:3px}
+.nb{background:transparent;border:none;color:rgba(255,255,255,.65);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:600;padding:6px 13px;border-radius:20px;cursor:pointer;transition:all .15s;letter-spacing:.2px}
+.nb:hover,.nb.on{background:rgba(109,190,90,.2);color:var(--lm)}
+.hbtn{background:var(--lm);border:none;color:var(--gd);font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;padding:6px 14px;border-radius:20px;cursor:pointer;transition:background .15s}
+.hbtn:hover{background:#5aad4a}
+.hbtn.s{background:transparent;border:1px solid rgba(109,190,90,.4);color:var(--lm)}
+.hbtn.s:hover{background:rgba(109,190,90,.15)}
+
+/* TABS */
+.tab{display:none;flex-direction:column}.tab.on{display:flex}
+.page{padding:16px 18px;max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:13px}
+
+/* SECTION LABEL */
+.slbl{font-size:9px;font-weight:800;color:var(--gm);letter-spacing:1.1px;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.slbl::after{content:'';flex:1;height:1px;background:#d0e8d3}
+
+/* EXPLAIN BOX — clave para que el usuario entienda */
+.explain{background:linear-gradient(135deg,var(--gl2),#e0f0ff);border-radius:var(--r);padding:11px 14px;border-left:3px solid var(--lm);font-size:11px;color:var(--gk);line-height:1.6;margin-bottom:4px}
+.explain strong{color:var(--gm)}
+.explain-mini{font-size:10px;color:var(--gr);background:var(--gl2);border-radius:5px;padding:5px 9px;margin-top:4px;border-left:2px solid var(--lm);line-height:1.5}
+
+/* KPI GRID */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+.kpis.c4{grid-template-columns:repeat(4,1fr)}
+.kpi{background:var(--wh);border-radius:var(--r);padding:12px 13px;box-shadow:var(--sh);border-top:3px solid var(--gm)}
+.kpi.r{border-top-color:var(--rd)}.kpi.a{border-top-color:var(--am)}.kpi.l{border-top-color:var(--lm)}.kpi.b{border-top-color:var(--bl)}.kpi.p{border-top-color:var(--pu)}
+.kpi-l{font-size:9px;font-weight:700;color:var(--gr);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.kpi-v{font-size:21px;font-weight:900;color:var(--bk);line-height:1;margin-bottom:2px}
+.kpi-s{font-size:10px;color:var(--gr)}
+.kpi-d{font-size:10px;font-weight:700;margin-top:3px}
+.kpi-d.up{color:var(--rd)}.kpi-d.ok{color:var(--gm)}.kpi-d.warn{color:var(--am)}
+
+/* PANEL */
+.panel{background:var(--wh);border-radius:var(--rm);box-shadow:var(--sh);overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid #e8f0e9;gap:10px;flex-wrap:wrap}
+.ph-l{display:flex;align-items:center;gap:8px}
+.pt{font-size:12px;font-weight:800;color:var(--gk)}
+.ps{font-size:10px;color:var(--gr);margin-top:1px}
+.pb{padding:13px 15px}
+
+/* TABLE */
+.tw{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-size:11px}
+table.t th{background:var(--gl2);font-size:9px;font-weight:800;color:var(--gm);letter-spacing:.7px;text-transform:uppercase;padding:8px 11px;text-align:left;border-bottom:1.5px solid #d0e8d3;white-space:nowrap}
+table.t td{padding:8px 11px;border-bottom:1px solid #edf5ee;vertical-align:middle;color:var(--gk)}
+table.t tr:last-child td{border-bottom:none}
+table.t tr:hover td{background:#f8fbf8}
+table.t td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+table.t td.nm{font-weight:700;color:var(--bk)}
+
+/* BADGES */
+.badge{font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.bc{background:var(--rl);color:var(--rd)}
+.ba{background:var(--al);color:var(--am)}
+.bo{background:var(--gl);color:var(--gm)}
+.bs{background:var(--bll);color:var(--bl)}
+.bp{background:var(--pll);color:var(--pu)}
+
+/* COVERAGE BAR */
+.cb{display:flex;align-items:center;gap:6px}
+.ct{flex:1;height:6px;background:#e8f0e9;border-radius:3px;overflow:hidden;min-width:50px}
+.cf{height:100%;border-radius:3px;transition:width .3s}
+.cl{font-size:10px;font-weight:700;min-width:26px;text-align:right}
+
+/* INPUTS */
+.fr{display:grid;gap:9px;margin-bottom:10px}
+.fr.c4{grid-template-columns:repeat(4,1fr)}
+.fr.c3{grid-template-columns:repeat(3,1fr)}
+.fr.c2{grid-template-columns:1fr 1fr}
+.fr.c5{grid-template-columns:repeat(5,1fr)}
+.field{display:flex;flex-direction:column;gap:3px}
+.fl{font-size:10px;font-weight:700;color:var(--gk)}
+.ft{font-size:9px;color:var(--gr);font-weight:400;margin-top:1px;line-height:1.4}
+input[type=number],input[type=text],select,textarea{width:100%;padding:7px 9px;border:1.5px solid #c8deca;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:12px;color:var(--bk);background:var(--wh);outline:none;transition:border-color .15s;appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232d6a35' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:26px}
+input:focus,select:focus,textarea:focus{border-color:var(--gs);box-shadow:0 0 0 3px rgba(45,106,53,.08)}
+input[type=range]{width:100%;accent-color:var(--gm);cursor:pointer;height:4px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:6px;padding:8px 14px;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:all .15s}
+.btn.p{background:var(--gm);color:var(--wh)}.btn.p:hover{background:var(--gd)}
+.btn.s{background:transparent;color:var(--gm);border:1.5px solid var(--gm)}.btn.s:hover{background:var(--gl)}
+.btn.d{background:var(--rl);color:var(--rd);border:1.5px solid var(--rd)}.btn.d:hover{background:#f5c6c6}
+.btn.full{width:100%;justify-content:center}
+.btn.sm{padding:5px 10px;font-size:10px}
+
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;overflow-y:auto;padding:20px;align-items:flex-start;justify-content:center}
+.modal.show{display:flex}
+.modal-box{background:var(--wh);border-radius:var(--rm);max-width:580px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.3);overflow:hidden;margin-top:20px}
+.modal-hdr{background:var(--gd);padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:14px;font-weight:800;color:var(--wh)}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px}
+.modal-close:hover{color:var(--wh)}
+.modal-body{padding:18px 20px}
+.modal-foot{padding:12px 20px;border-top:1px solid #e8f0e9;display:flex;gap:8px;justify-content:flex-end}
+
+/* CHART CONTAINERS */
+.chart-box{position:relative;width:100%}
+.chart-box svg{display:block;width:100%}
+
+/* MONTECARLO */
+.mc-params{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.mc-param{background:var(--gl2);border-radius:var(--r);padding:12px;border:1px solid #d0e8d3}
+.mc-param-t{font-size:10px;font-weight:800;color:var(--gm);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.mc-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}
+.mc-r{background:var(--wh);border-radius:var(--r);padding:11px;box-shadow:var(--sh);text-align:center;border-top:3px solid}
+.mc-r-l{font-size:9px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.mc-r-v{font-size:18px;font-weight:900;color:var(--bk)}
+.mc-r-s{font-size:10px;color:var(--gr);margin-top:2px}
+
+/* ESCENARIOS */
+.esc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.esc-card{border-radius:var(--r);padding:13px;border:2px solid;transition:all .15s;cursor:pointer}
+.esc-card.opt{border-color:#27ae60;background:#f0faf2}
+.esc-card.base{border-color:var(--gm);background:var(--gl2)}
+.esc-card.pes{border-color:var(--rd);background:var(--rl)}
+.esc-label{font-size:11px;font-weight:800;margin-bottom:8px}
+.esc-card.opt .esc-label{color:#27ae60}
+.esc-card.base .esc-label{color:var(--gm)}
+.esc-card.pes .esc-label{color:var(--rd)}
+.esc-row{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+.esc-row:last-child{border-bottom:none}
+.esc-k{color:var(--gr)}.esc-v{font-weight:700;color:var(--bk)}
+
+/* RISK MATRIX */
+.risk-item{display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:1px solid #edf5ee}
+.risk-item:last-child{border-bottom:none}
+.risk-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.risk-name{flex:1;font-size:11px;font-weight:700;color:var(--bk)}
+.risk-sub{font-size:10px;color:var(--gr)}
+.risk-bar-wrap{width:120px}
+.risk-bar{height:8px;border-radius:4px;background:#e8f0e9;overflow:hidden}
+.risk-bar-fill{height:100%;border-radius:4px}
+.risk-val{font-size:11px;font-weight:800;min-width:50px;text-align:right}
+
+/* CANJE CARDS */
+.canje-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cc-card{border-radius:var(--r);border:1.5px solid #d0e8d3;padding:12px;cursor:pointer;transition:all .15s}
+.cc-card:hover{border-color:var(--gm);background:var(--gl2)}
+.cc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.cc-nombre{font-size:12px;font-weight:800;color:var(--bk)}
+.cc-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #edf5ee}
+.cc-row:last-of-type{border-bottom:none}
+.cc-k{color:var(--gr);font-weight:500}.cc-v{font-weight:700;color:var(--bk)}
+
+/* CUENTA CORRIENTE */
+.prod-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);border:1.5px solid #d0e8d3;cursor:pointer;transition:all .15s;background:var(--wh)}
+.prod-item:hover{border-color:var(--gm);background:var(--gl2)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--gm);flex-shrink:0}
+.prod-saldo{text-align:right}
+.saldo-v{font-size:14px;font-weight:900}
+.saldo-v.d{color:var(--rd)}.saldo-v.ok{color:var(--gm)}.saldo-v.n{color:var(--gr)}
+
+/* CAL */
+.cal-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:8px}
+.cal-mes{text-align:center;font-size:9px;font-weight:700;color:var(--gr);padding:3px 1px;letter-spacing:.2px}
+.cal-cell{height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:default;position:relative}
+.cal-cell .ctip{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:var(--gd);color:var(--wh);font-size:9px;padding:4px 8px;border-radius:4px;white-space:nowrap;z-index:10;pointer-events:none;min-width:120px;text-align:center}
+.cal-cell:hover .ctip{display:block}
+
+/* OC LIST */
+.oc-item{display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid #edf5ee}
+.oc-item:last-child{border-bottom:none}
+.oc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#f0f7f1}
+::-webkit-scrollbar-thumb{background:#b0d0b5;border-radius:3px}
+
+
+/* LOOK & FEEL IAE BUSINESS SCHOOL */
+body{background:#f4f5f8;color:var(--bk)}
+.hdr{height:68px;background:var(--gd);padding:0 24px;border-bottom:4px solid var(--lm);box-shadow:0 4px 18px rgba(17,21,88,.22)}
+.hbrand{gap:13px}.iae-logo{height:52px;width:auto;object-fit:contain;flex-shrink:0;background:#fff;border-radius:3px;padding:2px}
+.hlogo{width:42px;height:42px;background:#fff;color:var(--gd);border-radius:3px}
+.htitle{font-size:16px;font-weight:800;letter-spacing:.1px}.hsub{font-size:9px;color:rgba(255,255,255,.78);letter-spacing:1px}
+.nb{color:rgba(255,255,255,.8);border-radius:4px;padding:8px 12px}.nb:hover,.nb.on{background:#fff;color:var(--gd)}
+.hbtn{background:var(--lm);color:#202020;border-radius:4px}.hbtn:hover{background:#ffd965}.hbtn.s{border-color:rgba(255,255,255,.55);color:#fff;border-radius:4px}.hbtn.s:hover{background:rgba(255,255,255,.12)}
+.page{padding-top:20px}.slbl{color:var(--gm)}.slbl::after{background:#dfe2f7}
+.explain{background:#fff;border:1px solid #e2e4ef;border-left:4px solid var(--gm);box-shadow:var(--sh)}
+.explain-mini{background:var(--gl2);border-left-color:var(--gm)}
+.kpi{border-top-color:var(--gm)}.kpi.l{border-top-color:var(--lm)}
+.panel{border:1px solid #e2e4ef}.ph{border-bottom-color:#e7e8f1}.pt{color:var(--gd)}
+table.t th{background:var(--gl2);color:var(--gd);border-bottom-color:#d9dcf5}table.t td{border-bottom-color:#ececf3}table.t tr:hover td{background:#fafaff}
+input[type=number],input[type=text],select,textarea{border-color:#cfd2e6}input:focus,select:focus,textarea:focus{border-color:var(--gm);box-shadow:0 0 0 3px rgba(43,51,198,.10)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232b33c6' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")}
+.btn{border-radius:4px}.btn.p{background:var(--gm)}.btn.p:hover{background:var(--gd)}.btn.s{color:var(--gm);border-color:var(--gm)}.btn.s:hover{background:var(--gl)}
+.modal-hdr{background:var(--gd);border-bottom:4px solid var(--lm)}
+.mc-param{background:var(--gl2);border-color:#d9dcf5}.mc-param-t{color:var(--gd)}
+.cc-card,.prod-item{border-color:#d9dcf5}.cc-card:hover,.prod-item:hover{border-color:var(--gm);background:var(--gl2)}
+.avatar{background:var(--gl);color:var(--gd)}
+::-webkit-scrollbar-track{background:#f1f2f7}::-webkit-scrollbar-thumb{background:#b7bbdc}
+@media(max-width:1100px){.hdr{height:auto;min-height:68px;flex-wrap:wrap;gap:8px;padding:8px 14px}.hnav{order:3;width:100%;overflow-x:auto;padding-bottom:2px}.iae-logo{height:44px}}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hbrand">
+    <img src="https://www.iae.edu.ar/wp-content/themes/iae/img/logo.png?2" alt="IAE Business School" class="iae-logo" onerror="this.style.display='none';document.getElementById('hlogo-fallback').style.display='flex'">
+    <div id="hlogo-fallback" class="hlogo" style="display:none">IAE</div>
+    <div style="width:1px;height:28px;background:rgba(109,190,90,.3);margin:0 2px"></div>
+    <div><div class="htitle">StockDecide v2</div><div class="hsub">Inventario · Canje · Cuentas · Simulación</div></div>
+  </div>
+  <nav class="hnav">
+    <button class="nb on" onclick="ST('stock',this)">📦 Stock</button>
+    <button class="nb" onclick="ST('demanda',this)">📈 Demanda</button>
+    <button class="nb" onclick="ST('financiero',this)">💰 Financiero</button>
+    <button class="nb" onclick="ST('simulacion',this)">🎲 Simulación</button>
+    <button class="nb" onclick="ST('canje',this)">🌾 Canje</button>
+    <button class="nb" onclick="ST('cuentas',this)">👤 Cuentas</button>
+  </nav>
+  <div style="display:flex;gap:7px">
+    <button class="hbtn s" onclick="exportarDatos()">⬇ Exportar</button>
+    <button class="hbtn" onclick="abrirReporte()">📄 Reporte</button>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════ TAB STOCK -->
+<div id="tab-stock" class="tab on">
+<div class="page">
+  <div class="explain">
+    <strong>¿Para qué sirve esta pantalla?</strong> Muestra en tiempo real si tu inventario alcanza para cubrir la demanda proyectada de la campaña. La columna <em>Cobertura</em> indica cuántos días de venta tenés disponibles de cada producto. Verde = OK, naranja = pedí pronto, rojo = quiebre inminente, azul = sobrestock (capital congelado).<br>
+    <span class="explain-mini">💡 Agregá tus propios productos con el botón "+ Producto". Los datos se guardan automáticamente en el navegador y se recuperan al reabrir el archivo.</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi r"><div class="kpi-l">Quiebres &lt;15 días</div><div class="kpi-v" id="k-q">0</div><div class="kpi-s">requieren acción ya</div><div class="kpi-d up" id="k-q-d">Revisar OC</div></div>
+    <div class="kpi a"><div class="kpi-l">Capital inmovilizado</div><div class="kpi-v" id="k-cap">—</div><div class="kpi-s">en inventario actual</div><div class="kpi-d warn" id="k-cap-d">—</div></div>
+    <div class="kpi"><div class="kpi-l">Cobertura promedio</div><div class="kpi-v" id="k-cob">—</div><div class="kpi-s">días de stock</div><div class="kpi-d ok">Óptimo: 30–45 d</div></div>
+    <div class="kpi l"><div class="kpi-l">Sobrestock &gt;90 días</div><div class="kpi-v" id="k-sob">0</div><div class="kpi-s">capital congelado</div><div class="kpi-d warn">Revisar</div></div>
+    <div class="kpi b"><div class="kpi-l">Orden de compra</div><div class="kpi-v" id="k-oc">—</div><div class="kpi-s">sugerida próx. 60 d</div><div class="kpi-d ok" id="k-oc-d">Ver detalle ↓</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph">
+      <div><div class="pt">Inventario de productos</div><div class="ps">Hacé clic en una fila para editar · datos guardados automáticamente</div></div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <select id="fCat" onchange="renderStock()" style="font-size:11px;padding:5px 26px 5px 8px;width:auto"><option value="">Todas las categorías</option><option>herbicida</option><option>fungicida</option><option>insecticida</option><option>fertilizante</option><option>semilla</option><option>biologico</option></select>
+        <select id="fEst" onchange="renderStock()" style="font-size:11px;padding:5px 26px 5px 8px;width:auto"><option value="">Todos los estados</option><option>CRÍTICO</option><option>ATENCIÓN</option><option>OK</option><option>SOBRESTOCK</option></select>
+        <button class="btn p sm" onclick="abrirModalSKU(null)">+ Producto</button>
+      </div>
+    </div>
+    <div class="tw"><table class="t"><thead><tr>
+      <th>Producto</th><th>Cat.</th><th>Stock actual</th><th>Demanda 60 d</th><th>Cobertura</th><th>Estado</th><th>Compra sugerida</th><th>USD inmovilizado</th><th>Acciones</th>
+    </tr></thead><tbody id="stockBody"></tbody></table></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+    <div class="panel">
+      <div class="ph"><div class="pt">📅 Calendario de campaña</div></div>
+      <div class="pb">
+        <div class="explain-mini">Cada fila es una categoría de insumo. El color muestra la intensidad de demanda en cada mes. Rojo = pico crítico, verde claro = demanda baja. Pasá el mouse sobre cada celda para ver el detalle.</div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div style="display:flex;gap:10px;margin-top:9px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--gr)"><div style="width:10px;height:10px;border-radius:2px;background:#e8f4ea"></div>Sin demanda</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--gr)"><div style="width:10px;height:10px;border-radius:2px;background:#a8d8b0"></div>Baja</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--gr)"><div style="width:10px;height:10px;border-radius:2px;background:#3d8a47"></div>Media/Alta</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--gr)"><div style="width:10px;height:10px;border-radius:2px;background:#c0392b"></div>Pico crítico</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph">
+        <div><div class="pt">🛒 Orden de compra sugerida</div><div class="ps">Ordenada por urgencia</div></div>
+        <button class="btn s sm" onclick="exportOC()">⬇ Exportar</button>
+      </div>
+      <div id="ocList"></div>
+      <div style="padding:9px 13px;border-top:1px solid #edf5ee;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:var(--gk)">Total:</span>
+        <span style="font-size:16px;font-weight:900;color:var(--gm)" id="ocTotal">—</span>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════════ TAB DEMANDA -->
+<div id="tab-demanda" class="tab">
+<div class="page">
+  <div class="explain">
+    <strong>¿Cómo funciona la proyección de demanda?</strong> Ingresás las hectáreas de tus clientes por cultivo. El simulador aplica dosis estándar por hectárea (ej: soja necesita ~3 lt/ha de herbicida) y un factor de ajuste histórico para calcular cuánto vas a necesitar de cada categoría de insumo en la campaña. El gráfico muestra mes a mes si tu stock alcanza o si vas a quedar corto.
+    <span class="explain-mini">💡 Podés agregar clientes con el botón "+ Cliente". Las hectáreas se suman automáticamente al total proyectado.</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:13px">
+    <!-- CLIENTES -->
+    <div class="panel">
+      <div class="ph">
+        <div><div class="pt">Clientes / productores</div><div class="ps">Superficie por cultivo</div></div>
+        <button class="btn p sm" onclick="abrirModalCliente(null)">+ Cliente</button>
+      </div>
+      <div class="pb" style="padding:9px 13px">
+        <div id="clienteList"></div>
+        <div style="margin-top:10px;padding:10px;background:var(--gl2);border-radius:6px;font-size:11px;color:var(--gk)">
+          <div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:4px"><span>TOTALES</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px" id="haTotales"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARÁMETROS + RESULTADO -->
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div class="panel">
+        <div class="ph"><div class="pt">⚙️ Parámetros de proyección</div><button class="btn p sm" onclick="calcDemanda()">⚡ Calcular</button></div>
+        <div class="pb">
+          <div class="fr c3">
+            <div class="field">
+              <div class="fl">Factor histórico de ajuste</div>
+              <div class="ft">Cuánto del potencial teórico se compra realmente. 95% = zona núcleo típica.</div>
+              <select id="factorH"><option value="0.80">80% — conservador</option><option value="0.90">90% — campaña seca</option><option value="0.95" selected>95% — zona núcleo típico</option><option value="1.05">105% — campaña alta</option><option value="1.15">115% — récord</option></select>
+            </div>
+            <div class="field">
+              <div class="fl">Semanas al pico de demanda</div>
+              <div class="ft">Cuántas semanas faltan para el pico de ventas de la campaña.</div>
+              <input type="number" id="semPico" value="8" min="1" max="52">
+            </div>
+            <div class="field">
+              <div class="fl">Campaña de referencia histórica</div>
+              <div class="ft">Año base para calibrar el factor histórico.</div>
+              <select id="campRef"><option value="2024">2024/25 — cosecha récord</option><option value="2023">2023/24 — sequía severa</option><option value="2022" selected>2022/23 — campaña normal</option></select>
+            </div>
+          </div>
+          <div id="demResult"></div>
+        </div>
+      </div>
+
+      <!-- GRÁFICO DEMANDA VS STOCK -->
+      <div class="panel">
+        <div class="ph"><div class="pt">📊 Demanda proyectada vs stock disponible — por mes</div></div>
+        <div class="pb">
+          <div class="explain-mini">La línea verde es tu stock disponible a lo largo del año. La línea roja punteada es la demanda proyectada. Donde la roja supera a la verde hay riesgo de quiebre. Calculá la demanda primero para ver las curvas actualizadas.</div>
+          <div class="chart-box" style="margin-top:10px"><svg id="chartDemanda" viewBox="0 0 840 220" xmlns="http://www.w3.org/2000/svg"></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════════ TAB FINANCIERO -->
+<div id="tab-financiero" class="tab">
+<div class="page">
+  <div class="explain">
+    <strong>¿Qué analiza este módulo?</strong> Tres preguntas clave: (1) ¿Cuánto me cuesta financieramente tener ese stock parado? (2) ¿Me conviene comprar anticipado para capturar la bonificación del proveedor o el costo de financiamiento lo anula? (3) ¿Tengo capital suficiente para cubrir la campaña sin quedar sobregirado?
+  </div>
+
+  <div class="panel">
+    <div class="ph"><div class="pt">⚙️ Parámetros financieros</div></div>
+    <div class="pb">
+      <div class="fr c4">
+        <div class="field"><div class="fl">Tasa de interés mensual (%)</div><div class="ft">Tasa real que pagás por el dinero inmovilizado o financiado.</div><input type="number" id="tasaMens" value="3.2" step="0.1" oninput="calcFin()"></div>
+        <div class="field"><div class="fl">Bonificación anticipada (%)</div><div class="ft">Descuento del proveedor por pagar antes del vencimiento.</div><input type="number" id="bonAntic" value="8" step="0.5" oninput="calcFin()"></div>
+        <div class="field"><div class="fl">Bonificación por volumen (%)</div><div class="ft">Descuento adicional por alcanzar umbral de compra.</div><input type="number" id="bonVol" value="5" step="0.5" oninput="calcFin()"></div>
+        <div class="field"><div class="fl">Días de pago al proveedor</div><div class="ft">Plazo habitual de pago. Afecta el cálculo de conveniencia anticipada.</div>
+          <select id="diasPago" onchange="calcFin()"><option value="30">30 días</option><option value="60" selected>60 días</option><option value="90">90 días</option><option value="0">Contado</option></select></div>
+      </div>
+      <div class="fr c3">
+        <div class="field"><div class="fl">Capital propio disponible (USD)</div><div class="ft">Efectivo o equivalente disponible para compras.</div><input type="number" id="capPropio" value="120000" oninput="calcFin()"></div>
+        <div class="field"><div class="fl">Línea de crédito SGR / banco (USD)</div><div class="ft">Crédito disponible de sociedades de garantía o banco.</div><input type="number" id="capSGR" value="200000" oninput="calcFin()"></div>
+        <div class="field"><div class="fl">Margen bruto operativo (%)</div><div class="ft">Margen promedio sobre ventas antes de costos financieros.</div><input type="number" id="margenBruto" value="9" step="0.5" oninput="calcFin()"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+    <div class="panel"><div class="pb" id="finMetrics"></div></div>
+    <div class="panel">
+      <div class="ph"><div class="pt">Compra anticipada vs compra spot</div></div>
+      <div class="pb" id="finAntic"></div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO 2: Evolución mensual capital inmovilizado vs margen -->
+  <div class="panel">
+    <div class="ph"><div class="pt">📊 Evolución mensual — Capital inmovilizado vs Margen generado</div></div>
+    <div class="pb">
+      <div class="explain-mini">Las barras grises muestran cuánto capital tenés parado en stock cada mes. La línea verde muestra el margen que ese stock genera. Donde el costo financiero (línea roja) supera al margen (línea verde) estás perdiendo plata por tener ese inventario.</div>
+      <div class="chart-box" style="margin-top:10px"><svg id="chartFin" viewBox="0 0 840 220" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════════ TAB SIMULACIÓN -->
+<div id="tab-simulacion" class="tab">
+<div class="page">
+  <div class="explain">
+    <strong>¿Qué es la simulación de escenarios?</strong> Usamos dos métodos complementarios:<br>
+    <strong>Monte Carlo</strong>: corre 1.000 simulaciones aleatorias variando precio de granos, demanda y tasa de interés simultáneamente. Te muestra la distribución de resultados posibles: qué margen esperás en el caso más probable, cuál es el peor 10% y cuál es el mejor 10%.<br>
+    <strong>Escenarios manuales</strong>: compara tres situaciones fijas (optimista, base, pesimista) para que puedas planificar con números concretos.
+  </div>
+
+  <!-- MONTE CARLO -->
+  <div class="panel">
+    <div class="ph">
+      <div><div class="pt">🎲 Simulación Monte Carlo — 1.000 iteraciones</div><div class="ps">Variaciones aleatorias de precio, demanda y tasa simultáneamente</div></div>
+      <button class="btn p" onclick="runMC()">▶ Correr simulación</button>
+    </div>
+    <div class="pb">
+      <div class="mc-params">
+        <div class="mc-param">
+          <div class="mc-param-t">📦 Variabilidad de demanda</div>
+          <div class="field"><div class="fl">Desviación estándar (%)</div><div class="ft">Cuánto puede variar la demanda real respecto a la proyectada. 15% = variación típica en campaña normal.</div><input type="number" id="mcDemSd" value="15" min="5" max="40" step="1"></div>
+        </div>
+        <div class="mc-param">
+          <div class="mc-param-t">💲 Variabilidad de precio de granos</div>
+          <div class="field"><div class="fl">Desviación estándar (%)</div><div class="ft">Cuánto puede moverse el precio de soja/maíz. 20% = alta volatilidad típica de mercado granario argentino.</div><input type="number" id="mcPrecSd" value="20" min="5" max="50" step="1"></div>
+        </div>
+        <div class="mc-param">
+          <div class="mc-param-t">🏦 Variabilidad de tasa</div>
+          <div class="field"><div class="fl">Rango de variación (pp/mes)</div><div class="ft">Puntos porcentuales de variación posible en la tasa mensual. ±1.5pp = escenario de política monetaria incierta.</div><input type="number" id="mcTasaRng" value="1.5" min="0.5" max="5" step="0.5"></div>
+        </div>
+      </div>
+      <div class="mc-result-grid" id="mcResults" style="display:none"></div>
+      <div class="chart-box"><svg id="chartMC" viewBox="0 0 840 200" xmlns="http://www.w3.org/2000/svg"><text x="420" y="105" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="13" fill="#8a9a8c">Presioná "Correr simulación" para ver la distribución de resultados</text></svg></div>
+    </div>
+  </div>
+
+  <!-- ESCENARIOS MANUALES -->
+  <div class="panel">
+    <div class="ph"><div class="pt">📋 Escenarios manuales — Optimista / Base / Pesimista</div><button class="btn s sm" onclick="calcEsc()">Recalcular</button></div>
+    <div class="pb">
+      <div class="explain-mini" style="margin-bottom:12px">Ajustá los supuestos de cada escenario y compará los resultados de margen neto y capital requerido. Útil para presentar a banco o SGR.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-size:10px;font-weight:800;color:#27ae60;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🟢 Optimista</div>
+          <div class="fr" style="grid-template-columns:1fr;gap:6px">
+            <div class="field"><div class="fl">Demanda +%</div><input type="number" id="eOptDem" value="15" step="1"></div>
+            <div class="field"><div class="fl">Precio soja (USD/tn)</div><input type="number" id="eOptSoja" value="310" step="5"></div>
+            <div class="field"><div class="fl">Tasa mensual (%)</div><input type="number" id="eOptTasa" value="2.5" step="0.1"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔵 Base</div>
+          <div class="fr" style="grid-template-columns:1fr;gap:6px">
+            <div class="field"><div class="fl">Demanda +%</div><input type="number" id="eBaseDem" value="0" step="1"></div>
+            <div class="field"><div class="fl">Precio soja (USD/tn)</div><input type="number" id="eBaseSoja" value="268" step="5"></div>
+            <div class="field"><div class="fl">Tasa mensual (%)</div><input type="number" id="eBaseTasa" value="3.2" step="0.1"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--rd);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔴 Pesimista</div>
+          <div class="fr" style="grid-template-columns:1fr;gap:6px">
+            <div class="field"><div class="fl">Demanda +%</div><input type="number" id="ePesDem" value="-20" step="1"></div>
+            <div class="field"><div class="fl">Precio soja (USD/tn)</div><input type="number" id="ePesSoja" value="220" step="5"></div>
+            <div class="field"><div class="fl">Tasa mensual (%)</div><input type="number" id="ePesTasa" value="4.5" step="0.1"></div>
+          </div>
+        </div>
+      </div>
+      <div class="esc-grid" id="escCards"></div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO 3: RANKING SKUs por riesgo vs impacto -->
+  <div class="panel">
+    <div class="ph"><div class="pt">🎯 Ranking de SKUs — Riesgo de quiebre vs Impacto financiero</div></div>
+    <div class="pb">
+      <div class="explain-mini" style="margin-bottom:10px">Cada producto tiene dos dimensiones: probabilidad de quedarse sin stock (eje X) e impacto económico si eso pasa (eje Y, en USD). Los que están arriba a la derecha son prioridad máxima: alta probabilidad de quiebre Y alto impacto. Son los que hay que reponer primero.</div>
+      <div id="riskRanking"></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════════ TAB CANJE -->
+<div id="tab-canje" class="tab">
+<div class="page">
+  <div class="explain">
+    <strong>¿Qué es el módulo de canje?</strong> El canje agropecuario es cuando el productor paga sus insumos con granos en lugar de dinero. Este módulo muestra todos los contratos activos, cuántas toneladas fueron entregadas y cuántas quedan pendientes, y revalúa los contratos al precio actual del mercado para que sepas exactamente cuánto vale lo que te deben en granos.
+    <span class="explain-mini">💡 Actualizá los precios de granos con los de Matba-Rofex o BCR del día para ver la valuación en tiempo real.</span>
+  </div>
+  <div class="kpis c4">
+    <div class="kpi"><div class="kpi-l">Contratos activos</div><div class="kpi-v" id="kc-n">—</div><div class="kpi-s">vigentes esta campaña</div></div>
+    <div class="kpi a"><div class="kpi-l">Toneladas comprometidas</div><div class="kpi-v" id="kc-tn">—</div><div class="kpi-s">total comprometido</div></div>
+    <div class="kpi l"><div class="kpi-l">Valor a precio actual</div><div class="kpi-v" id="kc-usd">—</div><div class="kpi-s">revaluado hoy</div></div>
+    <div class="kpi b"><div class="kpi-l">Pendiente de entrega</div><div class="kpi-v" id="kc-pend">—</div><div class="kpi-s">tn aún no recibidas</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph">
+      <div><div class="pt">Contratos de canje activos</div><div class="ps">Hacé clic para editar</div></div>
+      <button class="btn p sm" onclick="abrirModalCanje(null)">+ Contrato</button>
+    </div>
+    <div class="pb"><div class="canje-grid" id="canjeGrid"></div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><div class="pt">💲 Precios de referencia (actualizables)</div></div>
+    <div class="pb">
+      <div class="fr c3">
+        <div class="field"><div class="fl">Soja (USD/tn)</div><div class="ft">Precio disponible MATBA-Rofex</div><input type="number" id="pSoja" value="268" oninput="renderCanje()"></div>
+        <div class="field"><div class="fl">Maíz (USD/tn)</div><div class="ft">Precio disponible MATBA-Rofex</div><input type="number" id="pMaiz" value="174" oninput="renderCanje()"></div>
+        <div class="field"><div class="fl">Trigo (USD/tn)</div><div class="ft">Precio disponible MATBA-Rofex</div><input type="number" id="pTrigo" value="210" oninput="renderCanje()"></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ════════════════════════════════════════════════════════ TAB CUENTAS -->
+<div id="tab-cuentas" class="tab">
+<div class="page">
+  <div class="explain">
+    <strong>¿Qué muestra este módulo?</strong> El estado de cuenta corriente de cada productor: cuánto debe, hace cuántos días está vencido, si tiene contratos de canje que respaldan la deuda. Te permite ver de un vistazo quién está en mora y cuánto representa sobre tu cartera total.
+    <span class="explain-mini">💡 Hacé clic en "Enviar estados" para notificar a todos los productores el detalle de su cuenta.</span>
+  </div>
+  <div class="kpis c4">
+    <div class="kpi r"><div class="kpi-l">Saldo deudor total</div><div class="kpi-v" id="kcc-d">—</div><div class="kpi-s">productores con deuda</div></div>
+    <div class="kpi a"><div class="kpi-l">Vencidos &gt;30 días</div><div class="kpi-v" id="kcc-m">—</div><div class="kpi-s">en mora</div></div>
+    <div class="kpi l"><div class="kpi-l">Cobrado este mes</div><div class="kpi-v" id="kcc-c">—</div><div class="kpi-s">junio 2026</div></div>
+    <div class="kpi"><div class="kpi-l">Productores activos</div><div class="kpi-v" id="kcc-n">—</div><div class="kpi-s">con cuenta abierta</div></div>
+  </div>
+  <div class="panel">
+    <div class="ph">
+      <div><div class="pt">Estado de cuentas corrientes</div></div>
+      <div style="display:flex;gap:7px">
+        <select id="filtCC" onchange="renderCC()" style="font-size:11px;padding:5px 26px 5px 8px;width:auto">
+          <option value="">Todos</option><option value="mora">En mora</option><option value="ok">Al día</option><option value="canje">Con canje</option>
+        </select>
+        <button class="btn p sm" onclick="abrirModalCliente(null)">+ Productor</button>
+        <button class="btn s sm" onclick="enviarEstados()">📲 Enviar estados</button>
+      </div>
+    </div>
+    <div class="pb" style="padding:9px 13px"><div id="ccList" style="display:flex;flex-direction:column;gap:6px"></div></div>
+  </div>
+</div></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB MANUAL                                                          -->
+
+<!-- ═══════════════════ MODALES ═══════════════════ -->
+<!-- Modal SKU -->
+<div class="modal" id="modalSKU">
+  <div class="modal-box">
+    <div class="modal-hdr"><div class="modal-title" id="mskuTitle">Agregar producto</div><button class="modal-close" onclick="cerrarModal('modalSKU')">×</button></div>
+    <div class="modal-body">
+      <div class="explain-mini" style="margin-bottom:12px">Completá los datos del producto. La <em>demanda en 60 días</em> es cuántas unidades estimás vender en los próximos 2 meses. El sistema calculará automáticamente si estás en riesgo de quiebre.</div>
+      <div class="fr c2"><div class="field"><div class="fl">Nombre del producto *</div><input type="text" id="mskuNombre" placeholder="Ej: Glifosato 48% SL"></div><div class="field"><div class="fl">Categoría *</div><select id="mskuCat"><option>herbicida</option><option>fungicida</option><option>insecticida</option><option>fertilizante</option><option>semilla</option><option>biologico</option></select></div></div>
+      <div class="fr c3"><div class="field"><div class="fl">Stock actual *</div><input type="number" id="mskuStock" value="0" min="0"></div><div class="field"><div class="fl">Unidad</div><select id="mskuUnidad"><option value="lt">Litros (lt)</option><option value="kg">Kilos (kg)</option><option value="tn">Toneladas (tn)</option><option value="u">Unidades</option></select></div><div class="field"><div class="fl">Demanda 60 días *</div><input type="number" id="mskuDem" value="0" min="0"></div></div>
+      <div class="fr c2"><div class="field"><div class="fl">Precio unitario (USD) *</div><input type="number" id="mskuPrecio" value="0" step="0.01" min="0"></div><div class="field"><div class="fl">Proveedor</div><input type="text" id="mskuProv" placeholder="Ej: Bayer, Syngenta, NOVA..."></div></div>
+      <div class="fr c2"><div class="field"><div class="fl">Bonificación del proveedor (%)</div><input type="number" id="mskuBonif" value="5" step="0.5" min="0" max="30"></div><div class="field"><div class="fl">Punto de reorden (días)</div><div class="ft">Cuántos días de cobertura mínima querés mantener</div><input type="number" id="mskuReorden" value="20" min="5" max="60"></div></div>
+      <input type="hidden" id="mskuId">
+    </div>
+    <div class="modal-foot"><button class="btn d sm" id="mskuBtnDel" style="display:none" onclick="deleteSKU()">🗑 Eliminar</button><button class="btn s sm" onclick="cerrarModal('modalSKU')">Cancelar</button><button class="btn p sm" onclick="guardarSKU()">Guardar producto</button></div>
+  </div>
+</div>
+
+<!-- Modal Cliente -->
+<div class="modal" id="modalCliente">
+  <div class="modal-box">
+    <div class="modal-hdr"><div class="modal-title" id="mcliTitle">Agregar cliente / productor</div><button class="modal-close" onclick="cerrarModal('modalCliente')">×</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="field"><div class="fl">Nombre *</div><input type="text" id="mcliNombre" placeholder="Ej: Don Héctor Ruiz"></div><div class="field"><div class="fl">Localidad</div><input type="text" id="mcliLoc" placeholder="Ej: Pergamino"></div></div>
+      <div class="fr c4">
+        <div class="field"><div class="fl">Ha soja</div><input type="number" id="mcliSoja" value="0" min="0"></div>
+        <div class="field"><div class="fl">Ha maíz</div><input type="number" id="mcliMaiz" value="0" min="0"></div>
+        <div class="field"><div class="fl">Ha trigo</div><input type="number" id="mcliTrigo" value="0" min="0"></div>
+        <div class="field"><div class="fl">Ha girasol</div><input type="number" id="mcliGirasol" value="0" min="0"></div>
+      </div>
+      <div class="fr c3">
+        <div class="field"><div class="fl">Saldo (USD, negativo=debe)</div><div class="ft">Saldo actual de cuenta corriente. Negativo = el productor debe. Positivo = tiene saldo a favor.</div><input type="number" id="mcliSaldo" value="0"></div>
+        <div class="field"><div class="fl">Días en mora (si aplica)</div><input type="number" id="mcliMora" value="0" min="0"></div>
+        <div class="field"><div class="fl">¿Tiene contrato de canje?</div><select id="mcliCanje"><option value="false">No</option><option value="true">Sí</option></select></div>
+      </div>
+      <input type="hidden" id="mcliId">
+    </div>
+    <div class="modal-foot"><button class="btn d sm" id="mcliBtnDel" style="display:none" onclick="deleteCliente()">🗑 Eliminar</button><button class="btn s sm" onclick="cerrarModal('modalCliente')">Cancelar</button><button class="btn p sm" onclick="guardarCliente()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- Modal Canje -->
+<div class="modal" id="modalCanje">
+  <div class="modal-box">
+    <div class="modal-hdr"><div class="modal-title" id="mcanjTitle">Nuevo contrato de canje</div><button class="modal-close" onclick="cerrarModal('modalCanje')">×</button></div>
+    <div class="modal-body">
+      <div class="fr c2"><div class="field"><div class="fl">Productor *</div><input type="text" id="mcanjProd" placeholder="Nombre del productor"></div><div class="field"><div class="fl">Cultivo *</div><select id="mcanjCult"><option>Soja</option><option>Maíz</option><option>Trigo</option><option>Girasol</option></select></div></div>
+      <div class="fr c3"><div class="field"><div class="fl">Toneladas totales</div><input type="number" id="mcanjTn" value="100" min="1"></div><div class="field"><div class="fl">Precio fijado (USD/tn)</div><div class="ft">Precio acordado. Si es "a fijar", poner 0.</div><input type="number" id="mcanjPrecio" value="0" min="0"></div><div class="field"><div class="fl">Tn ya entregadas</div><input type="number" id="mcanjEntregado" value="0" min="0"></div></div>
+      <div class="fr c2"><div class="field"><div class="fl">Vencimiento</div><input type="text" id="mcanjVenc" placeholder="Ej: Jun 2027"></div><div class="field"><div class="fl">Estado</div><select id="mcanjEst"><option value="pendiente">Pendiente</option><option value="a_fijar">A fijar precio</option><option value="completado">Completado</option></select></div></div>
+      <input type="hidden" id="mcanjId">
+    </div>
+    <div class="modal-foot"><button class="btn d sm" id="mcanjBtnDel" style="display:none" onclick="deleteCanje()">🗑 Eliminar</button><button class="btn s sm" onclick="cerrarModal('modalCanje')">Cancelar</button><button class="btn p sm" onclick="guardarCanje()">Guardar contrato</button></div>
+  </div>
+</div>
+
+<!-- Modal Reporte -->
+<div class="modal" id="modalRep">
+  <div class="modal-box" style="max-width:700px">
+    <div class="modal-hdr"><div class="modal-title">📄 Reporte ejecutivo — StockDecide | IAE</div><button class="modal-close" onclick="cerrarModal('modalRep')">×</button></div>
+    <div class="modal-body" id="repBody"></div>
+    <div class="modal-foot"><button class="btn p sm" onclick="window.print()">🖨️ Imprimir / PDF</button><button class="btn s sm" onclick="cerrarModal('modalRep')">Cerrar</button></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════ STORAGE
+const LS={
+  get(k){try{return JSON.parse(localStorage.getItem('sd_'+k))}catch{return null}},
+  set(k,v){localStorage.setItem('sd_'+k,JSON.stringify(v))},
+};
+
+// ═══════════════════════════════════════════════════════ DEFAULT DATA
+const DEFAULT_SKUS=[
+  {id:1,nombre:"Glifosato 48% SL",cat:"herbicida",unidad:"lt",stock:18400,dem60:22000,precio:4.2,proveedor:"Nufarm",bonif:6,reorden:20},
+  {id:2,nombre:"Atrazina 50% SC",cat:"herbicida",unidad:"lt",stock:5200,dem60:6800,precio:5.8,proveedor:"BASF",bonif:5,reorden:20},
+  {id:3,nombre:"Clorpirifos 48%",cat:"insecticida",unidad:"lt",stock:1100,dem60:3200,precio:7.4,proveedor:"Dow",bonif:4,reorden:15},
+  {id:4,nombre:"Cipermetrina 25%",cat:"insecticida",unidad:"lt",stock:980,dem60:2100,precio:9.2,proveedor:"FMC",bonif:5,reorden:15},
+  {id:5,nombre:"Trifloxistrobina+Ciproconazol",cat:"fungicida",unidad:"lt",stock:620,dem60:1400,precio:38.5,proveedor:"Bayer",bonif:7,reorden:20},
+  {id:6,nombre:"Azoxistrobina+Ciproconazol",cat:"fungicida",unidad:"lt",stock:840,dem60:1100,precio:32.0,proveedor:"Syngenta",bonif:8,reorden:20},
+  {id:7,nombre:"Tebuconazol 25% EW",cat:"fungicida",unidad:"lt",stock:1250,dem60:900,precio:18.5,proveedor:"NOVA",bonif:6,reorden:15},
+  {id:8,nombre:"UAN 32% N",cat:"fertilizante",unidad:"lt",stock:42000,dem60:35000,precio:0.48,proveedor:"YPF Agro",bonif:3,reorden:25},
+  {id:9,nombre:"Fosfato Monoamónico",cat:"fertilizante",unidad:"kg",stock:28000,dem60:45000,precio:0.72,proveedor:"Profertil",bonif:4,reorden:25},
+  {id:10,nombre:"Urea granulada",cat:"fertilizante",unidad:"kg",stock:62000,dem60:30000,precio:0.55,proveedor:"YPF Agro",bonif:4,reorden:20},
+  {id:11,nombre:"Soja RR1 Pionera",cat:"semilla",unidad:"kg",stock:8400,dem60:12000,precio:2.8,proveedor:"Pioneer",bonif:3,reorden:20},
+  {id:12,nombre:"Maíz DK7220",cat:"semilla",unidad:"kg",stock:3200,dem60:2800,precio:6.4,proveedor:"Dekalb",bonif:5,reorden:15},
+  {id:13,nombre:"Inoculante líquido soja",cat:"biologico",unidad:"lt",stock:380,dem60:820,precio:14.2,proveedor:"NOVA",bonif:10,reorden:15},
+  {id:14,nombre:"Bioestimulante húmico",cat:"biologico",unidad:"lt",stock:210,dem60:550,precio:22.0,proveedor:"NOVA",bonif:10,reorden:15},
+  {id:15,nombre:"2,4-D Amina 72%",cat:"herbicida",unidad:"lt",stock:4100,dem60:3200,precio:3.8,proveedor:"Dow",bonif:4,reorden:20},
+];
+const DEFAULT_CLIENTES=[
+  {id:1,nombre:"Campos del Sur S.A.",loc:"Venado Tuerto",soja:500,maiz:200,trigo:150,girasol:0,saldo:-68400,mora:0,canje:true},
+  {id:2,nombre:"Don Héctor Ruiz",loc:"Pergamino",soja:200,maiz:100,trigo:20,girasol:0,saldo:-28200,mora:48,canje:true},
+  {id:3,nombre:"Los Ceibos Agro",loc:"Junín",soja:300,maiz:150,trigo:90,girasol:0,saldo:-41800,mora:0,canje:true},
+  {id:4,nombre:"Estancia La Pampa",loc:"Lincoln",soja:700,maiz:300,trigo:200,girasol:0,saldo:-18500,mora:35,canje:true},
+  {id:5,nombre:"Néstor Fernández",loc:"Arrecifes",soja:120,maiz:60,trigo:0,girasol:0,saldo:0,mora:0,canje:false},
+  {id:6,nombre:"Agrop. Hermanos Díaz",loc:"Trenque Lauquen",soja:250,maiz:120,trigo:50,girasol:30,saldo:-29100,mora:0,canje:true},
+];
+const DEFAULT_CANJES=[
+  {id:1,productor:"Campos del Sur S.A.",cultivo:"Soja",tn:180,precio:265,entregado:180,venc:"Mar 2026",estado:"completado"},
+  {id:2,productor:"Don Héctor Ruiz",cultivo:"Maíz",tn:220,precio:170,entregado:100,venc:"Jun 2026",estado:"pendiente"},
+  {id:3,productor:"Los Ceibos Agro",cultivo:"Soja",tn:150,precio:0,entregado:0,venc:"Abr 2027",estado:"a_fijar"},
+  {id:4,productor:"Estancia La Pampa",cultivo:"Trigo",tn:180,precio:205,entregado:40,venc:"Feb 2027",estado:"pendiente"},
+  {id:5,productor:"Agrop. Hermanos Díaz",cultivo:"Soja",tn:112,precio:268,entregado:0,venc:"Jun 2027",estado:"a_fijar"},
+];
+
+// Cargar desde LS o usar defaults
+let SKUS=LS.get('skus')||DEFAULT_SKUS;
+let CLIENTES=LS.get('clientes')||DEFAULT_CLIENTES;
+let CANJES=LS.get('canjes')||DEFAULT_CANJES;
+let nextId={sku:Math.max(...SKUS.map(s=>s.id))+1,cli:Math.max(...CLIENTES.map(c=>c.id))+1,can:Math.max(...CANJES.map(c=>c.id))+1};
+
+function save(){LS.set('skus',SKUS);LS.set('clientes',CLIENTES);LS.set('canjes',CANJES)}
+
+// ═══════════════════════════════════════════════════════ TABS
+function ST(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.add('on');
+  btn.classList.add('on');
+  if(name==='demanda'){renderClientes();calcDemanda()}
+  if(name==='financiero'){calcFin()}
+  if(name==='simulacion'){calcEsc();renderRisk()}
+  if(name==='canje'){renderCanje()}
+  if(name==='cuentas'){renderCC()}
+}
+
+// ═══════════════════════════════════════════════════════ HELPERS
+function cob(stock,dem60){return dem60===0?999:Math.round(stock/(dem60/60))}
+function estSKU(dias,reorden){
+  if(dias<15)return{lbl:"CRÍTICO",cls:"bc"};
+  if(dias<(reorden||20))return{lbl:"ATENCIÓN",cls:"ba"};
+  if(dias>90)return{lbl:"SOBRESTOCK",cls:"bs"};
+  return{lbl:"OK",cls:"bo"};
+}
+function compSug(s){
+  const dias=cob(s.stock,s.dem60);
+  if(dias>=45)return 0;
+  return Math.max(0,Math.round(s.dem60*1.2-s.stock));
+}
+function fmt(n){return n>=1000000?'USD '+(n/1000000).toFixed(1)+'M':n>=1000?'USD '+Math.round(n/1000)+'K':'USD '+Math.round(n)}
+function fmtN(n){return n.toLocaleString('es-AR')}
+function gauss(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+
+// ═══════════════════════════════════════════════════════ STOCK
+function renderStock(){
+  const catF=document.getElementById('fCat').value;
+  const estF=document.getElementById('fEst').value;
+  const body=document.getElementById('stockBody');
+  body.innerHTML='';
+  let cap=0,quiebres=0,sobre=0,ocTot=0,cobSum=0,cobN=0;
+  SKUS.filter(s=>{
+    const dias=cob(s.stock,s.dem60);
+    const est=estSKU(dias,s.reorden);
+    return (!catF||s.cat===catF)&&(!estF||est.lbl===estF);
+  }).forEach(s=>{
+    const dias=cob(s.stock,s.dem60);
+    const est=estSKU(dias,s.reorden);
+    const capS=s.stock*s.precio;
+    cap+=capS;
+    if(dias<15)quiebres++;
+    if(dias>90)sobre++;
+    const comp=compSug(s);
+    ocTot+=comp*s.precio;
+    cobSum+=Math.min(dias,120);cobN++;
+    const pct=Math.min(100,Math.round(dias/90*100));
+    const fc=dias<15?'#c0392b':dias<(s.reorden||20)?'#e07b2a':dias>90?'#1a6fa8':'#3d8a47';
+    const tr=document.createElement('tr');
+    tr.onclick=()=>abrirModalSKU(s.id);
+    tr.innerHTML=`
+      <td class="nm">${s.nombre}<div style="font-size:9px;color:var(--gr);font-weight:500">${s.proveedor||'—'}</div></td>
+      <td><span class="badge bo" style="font-size:8px">${s.cat}</span></td>
+      <td class="n">${fmtN(s.stock)} ${s.unidad}</td>
+      <td class="n">${fmtN(s.dem60)} ${s.unidad}</td>
+      <td><div class="cb"><div class="ct"><div class="cf" style="width:${pct}%;background:${fc}"></div></div><span class="cl" style="color:${fc}">${dias>200?'∞':dias}d</span></div></td>
+      <td><span class="badge ${est.cls}">${est.lbl}</span></td>
+      <td class="n" style="color:${comp>0?'var(--rd)':'var(--gr)'}">${comp>0?fmtN(comp)+' '+s.unidad:'—'}</td>
+      <td class="n">${fmt(capS)}</td>
+      <td><button class="btn s sm" onclick="event.stopPropagation();abrirModalSKU(${s.id})">✏️</button></td>`;
+    body.appendChild(tr);
+  });
+  // KPIs
+  document.getElementById('k-q').textContent=quiebres;
+  document.getElementById('k-cap').textContent=fmt(cap);
+  document.getElementById('k-cap-d').textContent=cap>300000?'Alto — revisar sobrestock':'Dentro de rango';
+  document.getElementById('k-cob').textContent=(cobN>0?Math.round(cobSum/cobN):0)+' d';
+  document.getElementById('k-sob').textContent=sobre;
+  document.getElementById('k-oc').textContent=fmt(ocTot);
+  document.getElementById('k-oc-d').textContent=SKUS.filter(s=>compSug(s)>0).length+' SKUs a reponer';
+  renderOC();
+}
+
+function renderOC(){
+  const urgentes=SKUS.filter(s=>compSug(s)>0).map(s=>({...s,comp:compSug(s),dias:cob(s.stock,s.dem60)})).sort((a,b)=>a.dias-b.dias);
+  let tot=0;
+  document.getElementById('ocList').innerHTML=urgentes.map(s=>{
+    const u=s.dias<15?{cls:'bc',lbl:'URGENTE'}:s.dias<30?{cls:'ba',lbl:'PRONTO'}:{cls:'bo',lbl:'PLANIF.'};
+    const col=s.dias<15?'#c0392b':s.dias<30?'#e07b2a':'#3d8a47';
+    tot+=s.comp*s.precio;
+    return `<div class="oc-item"><div class="oc-dot" style="background:${col}"></div>
+      <div style="flex:1"><div style="font-size:11px;font-weight:700">${s.nombre}</div><div style="font-size:9px;color:var(--gr)">${s.proveedor||'—'} · ${s.dias}d · bonif ${s.bonif||0}%</div></div>
+      <div style="text-align:right;min-width:90px"><div style="font-size:12px;font-weight:800;color:var(--gm)">${fmtN(s.comp)} ${s.unidad}</div><div style="font-size:10px;color:var(--gk)">${fmt(s.comp*s.precio)}</div></div>
+      <span class="badge ${u.cls}" style="margin-left:6px">${u.lbl}</span></div>`;
+  }).join('');
+  document.getElementById('ocTotal').textContent=fmt(tot);
+}
+
+function renderCal(){
+  const meses=['Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun'];
+  const cats=[
+    {k:'herb',lbl:'Herbicidas',d:[0,1,2,4,5,3,2,1,1,2,3,2]},
+    {k:'fung',lbl:'Fungicidas',d:[0,0,1,2,4,5,4,3,1,0,0,0]},
+    {k:'fert',lbl:'Fertilizantes',d:[3,4,5,4,2,1,1,2,3,2,1,0]},
+    {k:'insec',lbl:'Insecticidas',d:[0,0,1,2,4,5,4,3,1,0,0,0]},
+  ];
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML=meses.map(m=>`<div class="cal-mes">${m}</div>`).join('');
+  const lvlLbl=['Sin demanda','Baja','Media','Alta','Pico alto','Pico crítico'];
+  cats.forEach(cat=>{
+    cat.d.forEach((v,i)=>{
+      const bg=v===0?'#e8f4ea':v===1?'#b8dbc0':v===2?'#78bb85':v===3?'#3d8a47':v===4?'#e07b2a':'#c0392b';
+      const tc=v>=3?'white':'transparent';
+      const cell=document.createElement('div');
+      cell.className='cal-cell';
+      cell.style.background=bg;
+      cell.style.color=tc;
+      cell.innerHTML=`${v>=3?'●':''}<span class="ctip">${cat.lbl} · ${meses[i]}<br>${lvlLbl[v]}</span>`;
+      grid.appendChild(cell);
+    });
+  });
+  // Row labels a la izq — reinsertamos con texto
+  const rows=grid.querySelectorAll('.cal-cell');
+}
+
+// ═══════════════════════════════════════════════════════ MODALES SKU
+function abrirModalSKU(id){
+  const s=id?SKUS.find(x=>x.id===id):null;
+  document.getElementById('mskuTitle').textContent=s?'Editar producto':'Agregar producto';
+  document.getElementById('mskuId').value=s?s.id:'';
+  document.getElementById('mskuNombre').value=s?s.nombre:'';
+  document.getElementById('mskuCat').value=s?s.cat:'herbicida';
+  document.getElementById('mskuStock').value=s?s.stock:0;
+  document.getElementById('mskuUnidad').value=s?s.unidad:'lt';
+  document.getElementById('mskuDem').value=s?s.dem60:0;
+  document.getElementById('mskuPrecio').value=s?s.precio:0;
+  document.getElementById('mskuProv').value=s?s.proveedor:'';
+  document.getElementById('mskuBonif').value=s?s.bonif:5;
+  document.getElementById('mskuReorden').value=s?s.reorden:20;
+  document.getElementById('mskuBtnDel').style.display=s?'':'none';
+  document.getElementById('modalSKU').classList.add('show');
+}
+function guardarSKU(){
+  const id=document.getElementById('mskuId').value;
+  const obj={
+    id:id?+id:nextId.sku++,
+    nombre:document.getElementById('mskuNombre').value.trim(),
+    cat:document.getElementById('mskuCat').value,
+    stock:+document.getElementById('mskuStock').value,
+    unidad:document.getElementById('mskuUnidad').value,
+    dem60:+document.getElementById('mskuDem').value,
+    precio:+document.getElementById('mskuPrecio').value,
+    proveedor:document.getElementById('mskuProv').value.trim(),
+    bonif:+document.getElementById('mskuBonif').value,
+    reorden:+document.getElementById('mskuReorden').value,
+  };
+  if(!obj.nombre){alert('El nombre es obligatorio');return}
+  if(id){const i=SKUS.findIndex(s=>s.id===+id);SKUS[i]=obj}else{SKUS.push(obj)}
+  save();cerrarModal('modalSKU');renderStock();renderRisk();
+}
+function deleteSKU(){
+  const id=+document.getElementById('mskuId').value;
+  if(!confirm('¿Eliminar este producto?'))return;
+  SKUS=SKUS.filter(s=>s.id!==id);save();cerrarModal('modalSKU');renderStock();renderRisk();
+}
+
+// ═══════════════════════════════════════════════════════ MODALES CLIENTE
+function abrirModalCliente(id){
+  const c=id?CLIENTES.find(x=>x.id===id):null;
+  document.getElementById('mcliTitle').textContent=c?'Editar cliente':'Agregar cliente / productor';
+  document.getElementById('mcliId').value=c?c.id:'';
+  document.getElementById('mcliNombre').value=c?c.nombre:'';
+  document.getElementById('mcliLoc').value=c?c.loc:'';
+  document.getElementById('mcliSoja').value=c?c.soja:0;
+  document.getElementById('mcliMaiz').value=c?c.maiz:0;
+  document.getElementById('mcliTrigo').value=c?c.trigo:0;
+  document.getElementById('mcliGirasol').value=c?c.girasol:0;
+  document.getElementById('mcliSaldo').value=c?c.saldo:0;
+  document.getElementById('mcliMora').value=c?c.mora:0;
+  document.getElementById('mcliCanje').value=c?String(c.canje):'false';
+  document.getElementById('mcliBtnDel').style.display=c?'':'none';
+  document.getElementById('modalCliente').classList.add('show');
+}
+function guardarCliente(){
+  const id=document.getElementById('mcliId').value;
+  const obj={
+    id:id?+id:nextId.cli++,
+    nombre:document.getElementById('mcliNombre').value.trim(),
+    loc:document.getElementById('mcliLoc').value.trim(),
+    soja:+document.getElementById('mcliSoja').value,
+    maiz:+document.getElementById('mcliMaiz').value,
+    trigo:+document.getElementById('mcliTrigo').value,
+    girasol:+document.getElementById('mcliGirasol').value,
+    saldo:+document.getElementById('mcliSaldo').value,
+    mora:+document.getElementById('mcliMora').value,
+    canje:document.getElementById('mcliCanje').value==='true',
+  };
+  if(!obj.nombre){alert('El nombre es obligatorio');return}
+  if(id){const i=CLIENTES.findIndex(c=>c.id===+id);CLIENTES[i]=obj}else{CLIENTES.push(obj)}
+  save();cerrarModal('modalCliente');renderClientes();renderCC();calcDemanda();
+}
+function deleteCliente(){
+  const id=+document.getElementById('mcliId').value;
+  if(!confirm('¿Eliminar este cliente?'))return;
+  CLIENTES=CLIENTES.filter(c=>c.id!==id);save();cerrarModal('modalCliente');renderClientes();renderCC();calcDemanda();
+}
+
+// ═══════════════════════════════════════════════════════ DEMANDA
+function renderClientes(){
+  const list=document.getElementById('clienteList');
+  list.innerHTML=CLIENTES.map(c=>{
+    const haTotal=c.soja+c.maiz+c.trigo+c.girasol;
+    const ini=(c.nombre||'?')[0].toUpperCase();
+    return `<div class="prod-item" onclick="abrirModalCliente(${c.id})" style="margin-bottom:5px">
+      <div class="avatar">${ini}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--bk)">${c.nombre}</div>
+        <div style="font-size:10px;color:var(--gr)">${c.loc||'—'} · ${fmtN(haTotal)} ha totales</div>
+        <div style="font-size:10px;color:var(--gr)">S:${c.soja} M:${c.maiz} T:${c.trigo} G:${c.girasol}</div>
+      </div>
+      <button class="btn s sm" onclick="event.stopPropagation();abrirModalCliente(${c.id})">✏️</button>
+    </div>`;
+  }).join('');
+  // Totales
+  const tot={soja:CLIENTES.reduce((a,c)=>a+c.soja,0),maiz:CLIENTES.reduce((a,c)=>a+c.maiz,0),trigo:CLIENTES.reduce((a,c)=>a+c.trigo,0),girasol:CLIENTES.reduce((a,c)=>a+c.girasol,0)};
+  document.getElementById('haTotales').innerHTML=Object.entries(tot).map(([k,v])=>`<div style="font-size:10px;color:var(--gk)"><strong style="color:var(--gm)">${k.charAt(0).toUpperCase()+k.slice(1)}</strong>: ${fmtN(v)} ha</div>`).join('');
+}
+
+const DOSIS={soja:{herbicida:2.8,fungicida:0.5,insecticida:0.3,fertilizante:120,semilla:60,biologico:0.25},maiz:{herbicida:2.2,fungicida:0.4,insecticida:0.4,fertilizante:180,semilla:20,biologico:0.15},trigo:{herbicida:1.5,fungicida:0.6,insecticida:0.2,fertilizante:160,semilla:140,biologico:0.1},girasol:{herbicida:1.8,fungicida:0.8,insecticida:0.3,fertilizante:100,semilla:5,biologico:0.1}};
+
+function calcDemanda(){
+  const factor=+document.getElementById('factorH').value;
+  const ha={soja:CLIENTES.reduce((a,c)=>a+c.soja,0),maiz:CLIENTES.reduce((a,c)=>a+c.maiz,0),trigo:CLIENTES.reduce((a,c)=>a+c.trigo,0),girasol:CLIENTES.reduce((a,c)=>a+c.girasol,0)};
+  const cats=['herbicida','fungicida','insecticida','fertilizante','semilla','biologico'];
+  const dem={};
+  cats.forEach(cat=>{
+    dem[cat]=Math.round(Object.entries(ha).reduce((a,[cult,h])=>a+h*(DOSIS[cult][cat]||0),0)*factor);
+  });
+  const stockCat={};
+  cats.forEach(cat=>{stockCat[cat]=SKUS.filter(s=>s.cat===cat).reduce((a,s)=>a+s.stock*s.precio,0)});
+  document.getElementById('demResult').innerHTML=`
+    <div style="background:var(--gl2);border-radius:8px;padding:12px;margin-top:8px;border-left:3px solid var(--lm)">
+      <div style="font-size:9px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Demanda proyectada campaña · factor ${Math.round(factor*100)}% · ${fmtN(Object.values(ha).reduce((a,b)=>a+b,0))} ha totales</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">
+        ${cats.map(cat=>`<div style="text-align:center;padding:7px;background:white;border-radius:6px;box-shadow:var(--sh)">
+          <div style="font-size:9px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">${cat}</div>
+          <div style="font-size:16px;font-weight:900;color:var(--gd)">${dem[cat]>=1000?Math.round(dem[cat]/1000)+'K':dem[cat]}</div>
+          <div style="font-size:9px;color:var(--gr)">${cat==='fertilizante'||cat==='semilla'?'kg':'lt'}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  renderChartDemanda(dem,ha,factor);
+}
+
+function renderChartDemanda(dem,ha,factor){
+  const svg=document.getElementById('chartDemanda');
+  const meses=['Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun'];
+  const demCurve=[0.05,0.10,0.15,0.35,0.80,1.0,0.65,0.35,0.15,0.10,0.08,0.05];
+  const stockCurve=[1.0,0.95,0.88,0.72,0.52,0.30,0.22,0.28,0.38,0.50,0.65,0.80];
+  const totalDem=Object.values(dem).reduce((a,b)=>a+b,0)*factor;
+  const totalStock=SKUS.reduce((a,s)=>a+s.stock,0);
+  const W=840,H=220,PL=48,PR=20,PT=16,PB=32;
+  const iW=W-PL-PR,iH=H-PT-PB;
+  const demPts=demCurve.map((v,i)=>[PL+i*(iW/11),PT+iH-v*iH*.88]);
+  const stPts=stockCurve.map((v,i)=>[PL+i*(iW/11),PT+iH-v*iH*.88]);
+  // Area fill under stock line
+  const stPath=stPts.map((p,i)=>(i===0?'M':'L')+p[0]+','+p[1]).join(' ');
+  const demPath=demPts.map((p,i)=>(i===0?'M':'L')+p[0]+','+p[1]).join(' ');
+  const gridLines=[0.25,0.5,0.75,1.0].map(v=>PT+iH-v*iH*.88);
+  svg.innerHTML=`
+    ${gridLines.map(y=>`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#e8f0e9" stroke-width="1"/>`).join('')}
+    ${meses.map((m,i)=>`<text x="${PL+i*(iW/11)}" y="${H-8}" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="9" fill="#8a9a8c" font-weight="600">${m}</text>`).join('')}
+    <path d="${stPath} L${W-PR},${PT+iH} L${PL},${PT+iH} Z" fill="rgba(45,106,53,.08)"/>
+    <path d="${stPath}" fill="none" stroke="#2d6a35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${demPath}" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7,3"/>
+    ${stPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#2d6a35"/>`).join('')}
+    ${demPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="#c0392b"/>`).join('')}
+    <rect x="${W-168}" y="${PT}" width="148" height="40" rx="5" fill="white" opacity=".9"/>
+    <line x1="${W-163}" y1="${PT+11}" x2="${W-150}" y2="${PT+11}" stroke="#2d6a35" stroke-width="2.5"/>
+    <text x="${W-145}" y="${PT+15}" font-family="Montserrat,sans-serif" font-size="9" fill="#3d4a3e" font-weight="600">Stock disponible</text>
+    <line x1="${W-163}" y1="${PT+27}" x2="${W-150}" y2="${PT+27}" stroke="#c0392b" stroke-width="2" stroke-dasharray="5,3"/>
+    <text x="${W-145}" y="${PT+31}" font-family="Montserrat,sans-serif" font-size="9" fill="#3d4a3e" font-weight="600">Demanda proyectada</text>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════ FINANCIERO
+function calcFin(){
+  const tasa=+document.getElementById('tasaMens').value/100;
+  const bonA=+document.getElementById('bonAntic').value/100;
+  const bonV=+document.getElementById('bonVol').value/100;
+  const dias=+document.getElementById('diasPago').value;
+  const capP=+document.getElementById('capPropio').value;
+  const capS=+document.getElementById('capSGR').value;
+  const mb=+document.getElementById('margenBruto').value/100;
+  const inv=SKUS.reduce((a,s)=>a+s.stock*s.precio,0);
+  const costoM=inv*tasa;
+  const costoA=costoM*12;
+  const benefAntic=inv*bonA;
+  const costAnticip=costoM*(dias/30);
+  const neto=benefAntic-costAnticip;
+  const conviene=neto>0;
+  const capDisp=capP+capS;
+  const gap=capDisp-inv;
+  const margenM=inv*mb/12;
+  const margenNeto=margenM-costoM;
+  document.getElementById('finMetrics').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:var(--gl2);border-radius:8px;padding:12px;border-left:3px solid var(--rd)">
+        <div style="font-size:9px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Costo financiero del inventario</div>
+        <div style="font-size:22px;font-weight:900;color:var(--rd)">${fmt(costoM)}/mes</div>
+        <div style="font-size:10px;color:var(--gk);margin-top:4px">${fmt(costoA)} al año · sobre inventario ${fmt(inv)}</div>
+      </div>
+      <div style="background:var(--gl2);border-radius:8px;padding:12px;border-left:3px solid ${margenNeto>0?'var(--lm)':'var(--rd)'}">
+        <div style="font-size:9px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Margen neto mensual</div>
+        <div style="font-size:22px;font-weight:900;color:${margenNeto>0?'var(--gm)':'var(--rd)'}">${fmt(margenNeto)}/mes</div>
+        <div style="font-size:10px;color:var(--gk);margin-top:4px">Bruto ${fmt(margenM)} − costo fin. ${fmt(costoM)}</div>
+      </div>
+      <div style="background:var(--gl2);border-radius:8px;padding:12px;border-left:3px solid ${gap>=0?'var(--lm)':'var(--rd)'}">
+        <div style="font-size:9px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Capital disponible vs necesario</div>
+        <div style="font-size:22px;font-weight:900;color:${gap>=0?'var(--gm)':'var(--rd)'}">${gap>=0?'+':''}${fmt(gap)}</div>
+        <div style="font-size:10px;color:var(--gk);margin-top:4px">${gap>=0?'Margen para compras anticipadas':'Necesitás línea adicional'}</div>
+      </div>
+      <div style="background:var(--gl2);border-radius:8px;padding:12px;border-left:3px solid var(--bl)">
+        <div style="font-size:9px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bonificación vol. proyectada</div>
+        <div style="font-size:22px;font-weight:900;color:var(--bl)">${fmt(inv*bonV)}</div>
+        <div style="font-size:10px;color:var(--gk);margin-top:4px">${(bonV*100).toFixed(1)}% sobre inventario · si alcanzás umbral</div>
+      </div>
+    </div>`;
+  document.getElementById('finAntic').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px">
+      <div style="background:#f0faf2;border-radius:8px;padding:12px;border:1.5px solid ${conviene?'#27ae60':'#d0e8d3'}">
+        <div style="font-size:10px;font-weight:800;color:#27ae60;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Compra anticipada</div>
+        <div style="font-size:11px;color:var(--gk);display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between"><span>Bonif. anticipada (${(bonA*100).toFixed(1)}%)</span><span style="font-weight:700;color:var(--gm)">+ ${fmt(benefAntic)}</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Costo financ. ${dias}d</span><span style="font-weight:700;color:var(--rd)">− ${fmt(costAnticip)}</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #d0e8d3;padding-top:5px;margin-top:3px;font-weight:700"><span>Neto</span><span style="color:${neto>=0?'var(--gm)':'var(--rd)'}">${neto>=0?'+':''}${fmt(neto)}</span></div>
+        </div>
+      </div>
+      <div style="background:var(--of);border-radius:8px;padding:12px;border:1.5px solid #d0e8d3">
+        <div style="font-size:10px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Compra spot (en campaña)</div>
+        <div style="font-size:11px;color:var(--gk);display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between"><span>Sin bonif. anticipada</span><span style="font-weight:700;color:var(--gr)">0</span></div>
+          <div style="display:flex;justify-content:space-between"><span>Riesgo quiebre stock</span><span style="font-weight:700;color:var(--rd)">Alto</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #d0e8d3;padding-top:5px;margin-top:3px;font-weight:700"><span>Vs anticipado</span><span style="color:var(--rd)">− ${fmt(Math.abs(neto))}</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:9px 12px;background:${conviene?'var(--gl)':'var(--rl)'};border-radius:7px;font-size:11px;font-weight:700;color:${conviene?'var(--gm)':'var(--rd)'}">
+      ${conviene?'✓ Conviene comprar anticipado. La bonificación supera el costo financiero.':'✗ No conviene anticipar. Esperá plazo habitual y negociá por volumen.'}
+    </div>`;
+  renderChartFin(tasa,mb,inv);
+}
+
+function renderChartFin(tasa,mb,inv){
+  const svg=document.getElementById('chartFin');
+  const meses=['Jul','Ago','Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun'];
+  const invCurve=[1.0,1.05,1.08,1.02,0.88,0.72,0.65,0.70,0.78,0.85,0.92,0.98];
+  const W=840,H=220,PL=60,PR=20,PT=14,PB=32,iW=W-PL-PR,iH=H-PT-PB;
+  const maxInv=inv*1.1;
+  const invBars=invCurve.map((v,i)=>({x:PL+i*(iW/12)+2,w:iW/12-4,h:(v*inv/maxInv)*iH*.85,v:v*inv}));
+  const costoLine=invCurve.map((v,i)=>({x:PL+(i+.5)*(iW/12),y:PT+iH-(v*inv*tasa/maxInv/tasa)*iH*.85*(tasa*20)}));
+  const margenLine=invCurve.map((v,i)=>({x:PL+(i+.5)*(iW/12),y:PT+iH-(v*inv*mb/12/maxInv/tasa)*iH*.85*(tasa*20)}));
+  const cl=costoLine.map((p,i)=>(i===0?'M':'L')+p.x+','+p.y).join(' ');
+  const ml=margenLine.map((p,i)=>(i===0?'M':'L')+p.x+','+p.y).join(' ');
+  svg.innerHTML=`
+    ${invBars.map(b=>`<rect x="${b.x}" y="${PT+iH-b.h}" width="${b.w}" height="${b.h}" fill="rgba(45,106,53,.15)" rx="2"/>`).join('')}
+    <path d="${cl}" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,3"/>
+    <path d="${ml}" fill="none" stroke="#2d6a35" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${meses.map((m,i)=>`<text x="${PL+(i+.5)*(iW/12)}" y="${H-8}" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="9" fill="#8a9a8c" font-weight="600">${m}</text>`).join('')}
+    <text x="12" y="${PT+iH/2}" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="9" fill="#8a9a8c" transform="rotate(-90,12,${PT+iH/2})">USD</text>
+    <rect x="${W-185}" y="${PT}" width="165" height="52" rx="5" fill="white" opacity=".9"/>
+    <rect x="${W-180}" y="${PT+9}" width="12" height="8" fill="rgba(45,106,53,.2)" rx="1"/>
+    <text x="${W-164}" y="${PT+17}" font-family="Montserrat,sans-serif" font-size="9" fill="#3d4a3e" font-weight="600">Capital inmovilizado</text>
+    <line x1="${W-180}" y1="${PT+27}" x2="${W-168}" y2="${PT+27}" stroke="#c0392b" stroke-width="2" stroke-dasharray="4,2"/>
+    <text x="${W-164}" y="${PT+31}" font-family="Montserrat,sans-serif" font-size="9" fill="#3d4a3e" font-weight="600">Costo financiero</text>
+    <line x1="${W-180}" y1="${PT+43}" x2="${W-168}" y2="${PT+43}" stroke="#2d6a35" stroke-width="2.5"/>
+    <text x="${W-164}" y="${PT+47}" font-family="Montserrat,sans-serif" font-size="9" fill="#3d4a3e" font-weight="600">Margen generado</text>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════ MONTE CARLO
+function runMC(){
+  const demSd=+document.getElementById('mcDemSd').value/100;
+  const precSd=+document.getElementById('mcPrecSd').value/100;
+  const tasaRng=+document.getElementById('mcTasaRng').value/100;
+  const tasaBase=+document.getElementById('tasaMens').value/100;
+  const mb=+document.getElementById('margenBruto').value/100;
+  const inv=SKUS.reduce((a,s)=>a+s.stock*s.precio,0);
+  const N=1000;
+  const results=[];
+  for(let i=0;i<N;i++){
+    const demFactor=1+gauss()*demSd;
+    const precFactor=1+gauss()*precSd;
+    const tasaFactor=tasaBase+(Math.random()*2-1)*tasaRng;
+    const invSim=inv*precFactor;
+    const demSim=inv*demFactor;
+    const costo=invSim*tasaFactor;
+    const margen=invSim*mb/12;
+    const neto=margen-costo;
+    results.push(neto);
+  }
+  results.sort((a,b)=>a-b);
+  const p10=results[Math.floor(N*0.10)];
+  const p50=results[Math.floor(N*0.50)];
+  const p90=results[Math.floor(N*0.90)];
+  const mean=results.reduce((a,b)=>a+b,0)/N;
+  const negPct=Math.round(results.filter(r=>r<0).length/N*100);
+  document.getElementById('mcResults').style.display='grid';
+  document.getElementById('mcResults').innerHTML=`
+    <div class="mc-r" style="border-top-color:var(--rd)"><div class="mc-r-l">Peor 10% (P10)</div><div class="mc-r-v" style="color:var(--rd);font-size:15px">${fmt(p10)}</div><div class="mc-r-s">mes</div></div>
+    <div class="mc-r" style="border-top-color:var(--gm)"><div class="mc-r-l">Caso probable (P50)</div><div class="mc-r-v" style="color:var(--gm);font-size:15px">${fmt(p50)}</div><div class="mc-r-s">mes</div></div>
+    <div class="mc-r" style="border-top-color:var(--lm)"><div class="mc-r-l">Mejor 10% (P90)</div><div class="mc-r-v" style="color:var(--lm);font-size:15px">${fmt(p90)}</div><div class="mc-r-s">mes</div></div>
+    <div class="mc-r" style="border-top-color:${negPct>30?'var(--rd)':'var(--am)'}"><div class="mc-r-l">Prob. resultado negativo</div><div class="mc-r-v" style="color:${negPct>30?'var(--rd)':'var(--am)'};font-size:22px">${negPct}%</div><div class="mc-r-s">de las 1.000 simulaciones</div></div>`;
+  // Histograma
+  const minV=results[0],maxV=results[N-1],range=maxV-minV;
+  const bins=20;const binW=range/bins;
+  const counts=new Array(bins).fill(0);
+  results.forEach(r=>{const b=Math.min(bins-1,Math.floor((r-minV)/binW));counts[b]++});
+  const maxC=Math.max(...counts);
+  const W=840,H=200,PL=50,PR=20,PT=14,PB=32,iW=W-PL-PR,iH=H-PT-PB;
+  const bw=iW/bins;
+  const zeroX=PL+(-minV/range)*iW;
+  const svg=document.getElementById('chartMC');
+  svg.innerHTML=`
+    <line x1="${PL}" y1="${PT+iH}" x2="${W-PR}" y2="${PT+iH}" stroke="#d0e8d3" stroke-width="1"/>
+    ${minV<0&&maxV>0?`<line x1="${zeroX}" y1="${PT}" x2="${zeroX}" y2="${PT+iH}" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4,3"/><text x="${zeroX}" y="${PT-3}" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="8" fill="#c0392b">0</text>`:''}
+    ${counts.map((c,i)=>{
+      const x=PL+i*bw;const h=(c/maxC)*iH*.9;
+      const binCenter=minV+(i+.5)*binW;
+      const col=binCenter<0?'#f5a0a0':binCenter<p50?'rgba(45,106,53,.4)':'rgba(45,106,53,.75)';
+      return `<rect x="${x+1}" y="${PT+iH-h}" width="${bw-2}" height="${h}" fill="${col}" rx="2"/>`;
+    }).join('')}
+    ${[p10,p50,p90].map((p,idx)=>{
+      const x=PL+((p-minV)/range)*iW;
+      const cols=['#c0392b','#2d6a35','#6dbe5a'];const lbls=['P10','P50','P90'];
+      return `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+iH}" stroke="${cols[idx]}" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <text x="${x}" y="${PT+iH+12}" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="8" fill="${cols[idx]}" font-weight="700">${lbls[idx]}</text>`;
+    }).join('')}
+    <text x="${PL+iW/2}" y="${H-2}" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="9" fill="#8a9a8c">Margen neto mensual (USD) — distribución de 1.000 simulaciones</text>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════ ESCENARIOS
+function calcEsc(){
+  const inv=SKUS.reduce((a,s)=>a+s.stock*s.precio,0);
+  const mb=+document.getElementById('margenBruto').value/100;
+  const esc=[
+    {id:'opt',lbl:'🟢 Optimista',col:'#27ae60',bg:'#f0faf2',
+     dem:+document.getElementById('eOptDem').value/100,
+     soja:+document.getElementById('eOptSoja').value,
+     tasa:+document.getElementById('eOptTasa').value/100},
+    {id:'base',lbl:'🔵 Base',col:' var(--gm)',bg:'var(--gl2)',
+     dem:+document.getElementById('eBaseDem').value/100,
+     soja:+document.getElementById('eBaseSoja').value,
+     tasa:+document.getElementById('eBaseTasa').value/100},
+    {id:'pes',lbl:'🔴 Pesimista',col:'var(--rd)',bg:'var(--rl)',
+     dem:+document.getElementById('ePesDem').value/100,
+     soja:+document.getElementById('ePesSoja').value,
+     tasa:+document.getElementById('ePesTasa').value/100},
+  ];
+  document.getElementById('escCards').innerHTML=esc.map(e=>{
+    const invAdj=inv*(1+e.dem);
+    const costoM=invAdj*e.tasa;
+    const margenM=invAdj*mb/12;
+    const neto=margenM-costoM;
+    const canjeVal=CANJES.reduce((a,c)=>{
+      const p=c.cultivo==='Soja'?e.soja:c.cultivo==='Maíz'?+document.getElementById('pMaiz').value:+document.getElementById('pTrigo').value;
+      return a+(c.tn-c.entregado)*p;
+    },0);
+    return `<div class="esc-card ${e.id}" style="background:${e.bg}">
+      <div class="esc-label">${e.lbl}</div>
+      <div class="esc-row"><span class="esc-k">Inventario ajustado</span><span class="esc-v">${fmt(invAdj)}</span></div>
+      <div class="esc-row"><span class="esc-k">Costo financiero/mes</span><span class="esc-v" style="color:var(--rd)">${fmt(costoM)}</span></div>
+      <div class="esc-row"><span class="esc-k">Margen bruto/mes</span><span class="esc-v" style="color:var(--gm)">${fmt(margenM)}</span></div>
+      <div class="esc-row"><span class="esc-k">Margen neto/mes</span><span class="esc-v" style="font-size:14px;font-weight:900;color:${neto>0?'var(--gm)':'var(--rd)'}">${fmt(neto)}</span></div>
+      <div class="esc-row"><span class="esc-k">Precio soja</span><span class="esc-v">USD ${e.soja}/tn</span></div>
+      <div class="esc-row"><span class="esc-k">Canje pend. valuado</span><span class="esc-v">${fmt(canjeVal)}</span></div>
+      <div class="esc-row"><span class="esc-k">Tasa</span><span class="esc-v">${(e.tasa*100).toFixed(1)}%/mes</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════ RISK RANKING
+function renderRisk(){
+  const items=SKUS.map(s=>{
+    const dias=cob(s.stock,s.dem60);
+    const riesgo=dias<15?0.95:dias<30?0.65:dias<45?0.35:0.10;
+    const impacto=s.dem60*s.precio;
+    return{...s,riesgo,impacto,dias};
+  }).sort((a,b)=>(b.riesgo*b.impacto)-(a.riesgo*a.impacto));
+  const maxImp=Math.max(...items.map(i=>i.impacto));
+  document.getElementById('riskRanking').innerHTML=`
+    <div style="font-size:9px;font-weight:800;color:var(--gr);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;padding:0 11px">
+      Ordenados por prioridad = riesgo × impacto. Arriba = acción inmediata.
+    </div>
+    ${items.slice(0,10).map((s,i)=>{
+      const col=s.riesgo>0.7?'#c0392b':s.riesgo>0.4?'#e07b2a':s.riesgo>0.2?'#b8860b':'#3d8a47';
+      const pct=Math.round(s.impacto/maxImp*100);
+      return `<div class="risk-item">
+        <div style="font-size:11px;font-weight:800;color:var(--gr);min-width:18px">#${i+1}</div>
+        <div class="risk-dot" style="background:${col}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="risk-name">${s.nombre}</div>
+          <div class="risk-sub">${s.cat} · ${s.dias}d cobertura · ${s.proveedor||'—'}</div>
+        </div>
+        <div class="risk-bar-wrap">
+          <div style="font-size:8px;color:var(--gr);margin-bottom:2px">Impacto económico</div>
+          <div class="risk-bar"><div class="risk-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+        </div>
+        <div class="risk-val" style="color:${col}">${Math.round(s.riesgo*100)}%</div>
+        <span class="badge ${s.riesgo>0.7?'bc':s.riesgo>0.4?'ba':s.riesgo>0.2?'bp':'bo'}">${s.riesgo>0.7?'CRÍTICO':s.riesgo>0.4?'ALTO':s.riesgo>0.2?'MEDIO':'BAJO'}</span>
+      </div>`;
+    }).join('')}`;
+}
+
+// ═══════════════════════════════════════════════════════ CANJE
+function renderCanje(){
+  const pS=+document.getElementById('pSoja').value;
+  const pM=+document.getElementById('pMaiz').value;
+  const pT=+document.getElementById('pTrigo').value;
+  const pr={Soja:pS,Maíz:pM,Trigo:pT,Girasol:pS*0.85};
+  const EST={completado:{lbl:'Completado',bg:'var(--gl)',col:'var(--gm)'},pendiente:{lbl:'Pendiente',bg:'var(--al)',col:'var(--am)'},a_fijar:{lbl:'A fijar',bg:'var(--bll)',col:'var(--bl)'}};
+  document.getElementById('canjeGrid').innerHTML=CANJES.map(c=>{
+    const est=EST[c.estado]||EST.pendiente;
+    const precio=pr[c.cultivo]||265;
+    const pend=c.tn-c.entregado;
+    const pct=Math.round(c.entregado/c.tn*100);
+    const delta=c.precio>0?precio-c.precio:null;
+    return `<div class="cc-card" onclick="abrirModalCanje(${c.id})">
+      <div class="cc-top"><div class="cc-nombre">${c.productor}</div><span class="badge" style="background:${est.bg};color:${est.col}">${est.lbl}</span></div>
+      <div class="cc-row"><span class="cc-k">Cultivo</span><span class="cc-v">${c.cultivo}</span></div>
+      <div class="cc-row"><span class="cc-k">Toneladas</span><span class="cc-v">${c.tn} tn</span></div>
+      <div class="cc-row"><span class="cc-k">Precio fijado</span><span class="cc-v">${c.precio>0?'USD '+c.precio+'/tn':'A fijar'}</span></div>
+      <div class="cc-row"><span class="cc-k">Precio actual</span><span class="cc-v" style="color:${delta!==null&&delta<0?'var(--gm)':'var(--rd)'}">USD ${precio}/tn ${delta!==null?(delta>0?'▲ +'+delta:'▼ '+delta):'—'}</span></div>
+      <div class="cc-row"><span class="cc-k">Entregado</span><span class="cc-v">${c.entregado}/${c.tn} tn (${pct}%)</span></div>
+      <div class="cc-row"><span class="cc-k">Pendiente</span><span class="cc-v" style="color:${pend>0?'var(--am)':'var(--gm)'}">${pend} tn · ${fmt(pend*precio)}</span></div>
+      <div class="cc-row"><span class="cc-k">Vencimiento</span><span class="cc-v">${c.venc}</span></div>
+      <div style="height:5px;background:#e8f0e9;border-radius:3px;margin-top:8px"><div style="height:100%;width:${pct}%;background:${pct>=100?'var(--gm)':pct>50?'var(--am)':'var(--rd)'};border-radius:3px;transition:width .4s"></div></div>
+    </div>`;
+  }).join('');
+  const totTn=CANJES.reduce((a,c)=>a+c.tn,0);
+  const pend=CANJES.reduce((a,c)=>a+(c.tn-c.entregado),0);
+  const usd=CANJES.reduce((a,c)=>a+c.tn*(pr[c.cultivo]||265),0);
+  document.getElementById('kc-n').textContent=CANJES.length;
+  document.getElementById('kc-tn').textContent=totTn+' tn';
+  document.getElementById('kc-usd').textContent=fmt(usd);
+  document.getElementById('kc-pend').textContent=pend+' tn';
+}
+
+function abrirModalCanje(id){
+  const c=id?CANJES.find(x=>x.id===id):null;
+  document.getElementById('mcanjTitle').textContent=c?'Editar contrato':'Nuevo contrato de canje';
+  document.getElementById('mcanjId').value=c?c.id:'';
+  document.getElementById('mcanjProd').value=c?c.productor:'';
+  document.getElementById('mcanjCult').value=c?c.cultivo:'Soja';
+  document.getElementById('mcanjTn').value=c?c.tn:100;
+  document.getElementById('mcanjPrecio').value=c?c.precio:0;
+  document.getElementById('mcanjEntregado').value=c?c.entregado:0;
+  document.getElementById('mcanjVenc').value=c?c.venc:'';
+  document.getElementById('mcanjEst').value=c?c.estado:'pendiente';
+  document.getElementById('mcanjBtnDel').style.display=c?'':'none';
+  document.getElementById('modalCanje').classList.add('show');
+}
+function guardarCanje(){
+  const id=document.getElementById('mcanjId').value;
+  const obj={id:id?+id:nextId.can++,productor:document.getElementById('mcanjProd').value.trim(),cultivo:document.getElementById('mcanjCult').value,tn:+document.getElementById('mcanjTn').value,precio:+document.getElementById('mcanjPrecio').value,entregado:+document.getElementById('mcanjEntregado').value,venc:document.getElementById('mcanjVenc').value,estado:document.getElementById('mcanjEst').value};
+  if(!obj.productor){alert('El productor es obligatorio');return}
+  if(id){const i=CANJES.findIndex(c=>c.id===+id);CANJES[i]=obj}else{CANJES.push(obj)}
+  save();cerrarModal('modalCanje');renderCanje();
+}
+function deleteCanje(){
+  const id=+document.getElementById('mcanjId').value;
+  if(!confirm('¿Eliminar este contrato?'))return;
+  CANJES=CANJES.filter(c=>c.id!==id);save();cerrarModal('modalCanje');renderCanje();
+}
+
+// ═══════════════════════════════════════════════════════ CUENTAS
+function renderCC(){
+  const f=document.getElementById('filtCC').value;
+  let prods=CLIENTES;
+  if(f==='mora')prods=prods.filter(p=>p.mora>0);
+  else if(f==='ok')prods=prods.filter(p=>p.saldo===0&&p.mora===0);
+  else if(f==='canje')prods=prods.filter(p=>p.canje);
+  document.getElementById('ccList').innerHTML=prods.map(c=>{
+    const ini=(c.nombre||'?')[0].toUpperCase();
+    const cls=c.saldo<0?'d':c.saldo>0?'ok':'n';
+    const moraTag=c.mora>0?`<span class="badge bc" style="margin-left:6px">MORA ${c.mora}d</span>`:'';
+    const canjeTag=c.canje?`<span class="badge bs" style="margin-left:4px">CANJE</span>`:'';
+    return `<div class="prod-item" onclick="abrirModalCliente(${c.id})">
+      <div class="avatar">${ini}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">
+          <div style="font-size:12px;font-weight:700;color:var(--bk)">${c.nombre}</div>${moraTag}${canjeTag}
+        </div>
+        <div style="font-size:10px;color:var(--gr)">${c.loc||'—'} · ${c.soja+c.maiz+c.trigo+c.girasol} ha</div>
+      </div>
+      <div class="prod-saldo">
+        <div class="saldo-v ${cls}">${c.saldo===0?'Al día':'USD '+fmtN(Math.abs(c.saldo))}</div>
+        <div style="font-size:9px;color:var(--gr)">${c.saldo<0?'Debe':'Al día'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const deu=CLIENTES.reduce((a,c)=>a+Math.abs(Math.min(0,c.saldo)),0);
+  const mora=CLIENTES.filter(p=>p.mora>0).reduce((a,c)=>a+Math.abs(c.saldo),0);
+  document.getElementById('kcc-d').textContent=fmt(deu);
+  document.getElementById('kcc-m').textContent=fmt(mora);
+  document.getElementById('kcc-c').textContent=fmt(38000);
+  document.getElementById('kcc-n').textContent=CLIENTES.length;
+}
+function enviarEstados(){const mora=CLIENTES.filter(p=>p.mora>0).map(p=>p.nombre).join(', ');alert(`Estados enviados a todos los productores.\nEn mora: ${mora||'ninguno'}\n\nEn versión completa: envío automático vía WhatsApp/Email.`)}
+
+// ═══════════════════════════════════════════════════════ MODALES UTILS
+function cerrarModal(id){document.getElementById(id).classList.remove('show')}
+window.addEventListener('click',e=>{if(e.target.classList.contains('modal'))e.target.classList.remove('show')});
+
+// ═══════════════════════════════════════════════════════ REPORTE
+function abrirReporte(){
+  const inv=SKUS.reduce((a,s)=>a+s.stock*s.precio,0);
+  const tasa=+document.getElementById('tasaMens').value/100;
+  const mb=+document.getElementById('margenBruto').value/100;
+  const deu=CLIENTES.reduce((a,c)=>a+Math.abs(Math.min(0,c.saldo)),0);
+  const pS=+document.getElementById('pSoja').value;
+  const canjeUSD=CANJES.reduce((a,c)=>a+c.tn*(c.cultivo==='Soja'?pS:c.cultivo==='Maíz'?+document.getElementById('pMaiz').value:+document.getElementById('pTrigo').value),0);
+  const now=new Date();
+  document.getElementById('repBody').innerHTML=`
+    <div style="background:linear-gradient(135deg,var(--gd),var(--gs));padding:18px 20px;margin:-18px -20px 16px;color:white">
+      <div style="font-size:16px;font-weight:900">StockDecide — Reporte Ejecutivo</div>
+      <div style="font-size:11px;color:#a8d4ac;margin-top:3px">Agronomía · Campaña 2025/26 · ${now.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+    </div>
+    ${[
+      ['Inventario',[[`SKUs activos`,SKUS.length],[`Capital inmovilizado`,fmt(inv)],[`Quiebres (<15d)`,SKUS.filter(s=>cob(s.stock,s.dem60)<15).length+' SKUs'],[`Sobrestock (>90d)`,SKUS.filter(s=>cob(s.stock,s.dem60)>90).length+' SKUs'],[`OC sugerida`,fmt(SKUS.reduce((a,s)=>a+compSug(s)*s.precio,0))]]],
+      ['Financiero',[[`Costo financiero mensual`,fmt(inv*tasa)],[`Margen bruto mensual`,fmt(inv*mb/12)],[`Margen neto mensual`,fmt(inv*mb/12-inv*tasa)],[`Tasa aplicada`,(tasa*100).toFixed(1)+'%/mes']]],
+      ['Canje',[[`Contratos activos`,CANJES.length],[`Tn comprometidas`,CANJES.reduce((a,c)=>a+c.tn,0)+' tn'],[`Valor a precio actual`,fmt(canjeUSD)],[`Pendiente de entrega`,CANJES.reduce((a,c)=>a+(c.tn-c.entregado),0)+' tn']]],
+      ['Cuentas',[[`Productores activos`,CLIENTES.length],[`Saldo deudor total`,fmt(deu)],[`En mora (>30d)`,CLIENTES.filter(p=>p.mora>0).length+' productores'],[`Con canje activo`,CLIENTES.filter(p=>p.canje).length]]],
+    ].map(([sec,rows])=>`
+      <div style="margin-bottom:14px">
+        <div style="font-size:9px;font-weight:800;color:var(--gm);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1.5px solid #d0e8d3">${sec}</div>
+        ${rows.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f7f1;font-size:11px"><span style="color:var(--gr)">${k}</span><span style="font-weight:700">${v}</span></div>`).join('')}
+      </div>`).join('')}
+    <div style="margin-top:12px;padding:11px 13px;background:var(--gl2);border-radius:8px;font-size:11px;color:var(--gk);line-height:1.65;border-left:3px solid var(--lm)">
+      <strong style="color:var(--gm)">Síntesis:</strong> Inventario de ${fmt(inv)} con costo financiero mensual de ${fmt(inv*tasa)}. ${SKUS.filter(s=>cob(s.stock,s.dem60)<15).length} SKUs en quiebre inminente. Cartera de cuentas corrientes: ${fmt(deu)} en saldo deudor. Contratos de canje valuados en ${fmt(canjeUSD)}.
+    </div>
+    <div style="margin-top:12px;font-size:9px;color:var(--gr);text-align:center">StockDecide · IAE Business School · Reporte orientativo para uso interno y presentación a financiadores.</div>`;
+  document.getElementById('modalRep').classList.add('show');
+}
+
+function exportarDatos(){
+  const d={skus:SKUS,clientes:CLIENTES,canjes:CANJES,exportado:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='StockDecide_datos.json';a.click();
+}
+function exportOC(){alert('Exportando orden de compra a Excel/PDF.\nDisponible en versión completa.')}
+
+// ═══════════════════════════════════════════════════════ INIT
+window.addEventListener('DOMContentLoaded',()=>{
+  renderStock();
+  renderCal();
+  renderClientes();
+  calcDemanda();
+  renderCanje();
+  renderCC();
+});
+</script>
+<!-- Campus Austral: registro de eventos (no cambia la lógica del simulador) -->
+<script src="/sims/campus-sdk.js"></script>
+<script src="/sims/stockdecide.campus.js"></script>
+</body>
+</html>

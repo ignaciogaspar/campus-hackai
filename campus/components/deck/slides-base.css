@@ -1,0 +1,1340 @@
+/* Portado de ../mbt/app/campus.css (sección SLIDES IAE). Sin el scope .campus,
+   sin media queries (la slide vive en un escenario fijo de 1280x720 que se
+   escala entero) y con el azul IAE #1d21a9. Los ajustes propios del campus
+   están en components/deck/deck.css. */
+/* ============================================================
+   SLIDES IAE — piel institucional del sistema de slides markdown
+   (SlideDeck.tsx). Marco de proyección 1280x720.
+
+   DE DÓNDE SALE CADA DECISIÓN
+   - Paleta y tipografía: app/globals.css (--ink #10142c, --paper
+     #ffffff, --accent #1d21a9, --accent-soft #eef0fb, --border
+     #e4e7f0, --muted) y Montserrat cargada en app/layout.tsx.
+   - Lockup y filete: components/Masthead.tsx — los dos logos sobre
+     blanco, alineados a la izquierda, con borde inferior azul.
+   - Superficie pálida #f2f2fb, azul pleno de portada, marco abierto
+     del hero y «sin carmesí»: docs/iae-brand.md (web del IAE
+     observada el 12/09/2026).
+   - Folio, banda de marca siempre blanca y contexto al pie:
+     app/campus/decks.css (marca v2 ya resuelta para BrandedSlideDeck,
+     que este archivo NO toca).
+
+   ESCALA. El contenido —lo que se lee desde el fondo del aula— no
+   baja de 20 px en el marco de 1280x720. El chrome institucional
+   (logos, rótulo de materia, jornada, folio) es orientación y no
+   lectura, así que va más chico, igual que en decks.css.
+
+   FONDO. Blanco por norma. Azul pleno #1d21a9 sólo en portada y
+   cierre; superficie pálida #f2f2fb en las slides de práctica
+   (:::manos) y de voto (:::pregunta). La banda de marca queda
+   SIEMPRE sobre blanco, como manda la regla de los logos.
+   ============================================================ */
+
+.c-deck {
+  /* tokens institucionales fijos */
+  --deck-papel: #ffffff;
+  --deck-tinta: #10142c;
+  --deck-azul: #1d21a9;
+  --deck-azul-hondo: #14178a;
+  --deck-azul-suave: #eef0fb;
+  /* Tercer registro (práctica y voto). Estaba en #f2f2fb, que es el valor de
+     la hoja del IAE, pero contra #ffffff es un escalón de 2% de luminancia:
+     en la pared no existía y el aviso de cambio de modo lo terminaba haciendo
+     la pestaña azul. #eef0fb es el --accent-soft de app/globals.css —el mismo
+     azul claro con el que el sitio del programa tiñe sus superficies— y sí se
+     lee proyectado. */
+  --deck-superficie: #eef0fb;
+  --deck-borde: #e4e7f0;
+  --deck-borde-fuerte: #c9cfe4;
+  /* Un solo gris, el --c-muted del campus (5,98:1 sobre blanco). El #6c6c6c
+     que colgaba del pie y del folio era el --muted de globals y no un token de
+     esta piel: cuarto valor sin procedencia, y el más flojo de la slide. */
+  --deck-gris: #5f6474;
+  --deck-margen: 48px;
+
+  /* roles: se reasignan enteros en el tratamiento azul pleno */
+  --deck-fondo: var(--deck-papel);
+  --deck-texto: var(--deck-tinta);
+  /* Dos roles donde antes había uno. El ARGUMENTO —lo que la sala tiene que
+     leer desde la última fila— va en tinta plena; el gris queda para kicker,
+     copete y pie, que son procedencia y orientación. #5f6474 da ~6:1 sobre
+     blanco: pasa la norma en un monitor, pero es justo el rango que se apaga
+     en un proyector de aula con luz. El criterio ya estaba aplicado en
+     :::tabla («las celdas de dato van en tinta») y acá baja parejo al resto. */
+  --deck-texto-cuerpo: var(--deck-texto);
+  --deck-texto-2: var(--deck-gris);
+  --deck-texto-3: var(--deck-gris);
+  --deck-acento: var(--deck-azul);
+  --deck-acento-2: var(--deck-azul-hondo);
+  --deck-linea: var(--deck-borde);
+  --deck-linea-fuerte: var(--deck-borde-fuerte);
+  /* Tres registros de superficie y no cuatro: papel, #f2f2fb (práctica y voto)
+     y #eef0fb (lo destacado). El #f7f8fc anterior no se distinguía del papel
+     proyectado y no está ni en globals.css ni en docs/iae-brand.md: la
+     distinción de panel la hace el filete superior, que sí se ve. */
+  --deck-panel: var(--deck-papel);
+  --deck-panel-fuerte: var(--deck-azul-suave);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  background: var(--deck-fondo);
+  color: var(--deck-texto);
+  /* `anywhere` además achica el min-content de la caja: partía columnas y
+     números a mitad de glifo («9.38 4» en una tabla de J3). `break-word` corta
+     sólo cuando la palabra de verdad no entra. */
+  overflow-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(46, 48, 146, 0.08), 0 10px 30px rgba(46, 48, 146, 0.09);
+}
+
+
+/* ---------- chrome institucional (en todas las slides) ---------- */
+
+/* Banda de marca: los dos logos sobre blanco + filete azul, igual que
+   el masthead del sitio del programa. Sobre azul pleno la banda sigue
+   siendo blanca: el logo nunca se invierte. */
+.c-deck .c-slide-marca {
+  flex: 0 0 auto;
+  /* El chrome es inviolable: se pinta sobre el contenido que sobre, nunca
+     debajo. Una slide densa se recorta; la marca del IAE no se tapa. */
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  /* El masthead del programa le da 24 px de aire arriba a los mismos logos; a
+     4 px el sello de la Austral quedaba pegado al filo del marco. */
+  padding: 8px var(--deck-margen) 8px;
+  background: var(--deck-papel);
+  /* EL filete del masthead, en AZUL. Es el gesto que hace que una foto
+     recortada se lea como IAE (components/Masthead.tsx: border-bottom 4px
+     solid var(--accent)). Acá va a 2 px y no a 4: el masthead vive una vez en
+     una página de 1200+ px de alto y acá aparece 34 veces en un marco de 720,
+     donde 4 px le ganaban al título. Lo que no se negocia es el color: en gris
+     --deck-borde la banda era un encabezado blanco genérico con dos logos. */
+  border-bottom: 2px solid var(--deck-azul);
+}
+/* Sobre azul pleno NO va filete. El de --deck-azul-hondo daba 1,3:1 contra el
+   campo #1d21a9 y era invisible; el blanco que se propuso en su lugar se pinta
+   sobre el fondo blanco de la propia banda, o sea es la banda 4 px más alta y
+   tampoco se ve (comprobado en la captura). Lo que cierra una banda blanca
+   contra un campo azul es el canto: ahí el salto ya es de 1 a 0,09 de
+   luminancia, el contraste más fuerte de toda la slide. El filete azul del
+   masthead existe porque en una página blanca ese canto no existe. */
+.c-slide--cover .c-slide-marca,
+.c-slide--cierre .c-slide-marca,
+.c-slide--big:not(:has(h1)) .c-slide-marca {
+  border-bottom: none;
+}
+.c-deck .c-slide-marca-logos {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 0 0 auto;
+}
+/* Activos con procedencia registrada (public/logos, los mismos del
+   masthead). Van de fondo y no como <img> para no repetir 34 veces un
+   alt que el rótulo de al lado ya dice. */
+.c-deck .c-slide-logo {
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+}
+/* Escala: a 38 px de alto las dos líneas del wordmark del IAE («BUSINESS
+   SCHOOL», «UNIVERSIDAD AUSTRAL») y la orla del sello de la Austral se
+   proyectaban como un borrón. El masthead da el IAE a 52 px y el sistema v2
+   (app/campus/decks.css) a 5,7cqw ≈ 73 px: 52 es el piso legible. Las
+   proporciones originales quedan intactas (1,21 y 4,90). */
+.c-deck .c-slide-logo--iae {
+  width: 46px;
+  height: 52px;
+  background-image: url('/brand/logo.png');
+}
+/* Registro institucional: la versalita Montserrat del masthead
+   (.masthead-badge y .nav-tab en app/globals.css), no monoespaciado. El
+   sistema v2 de presentaciones no tiene una sola regla mono y los quince
+   diagramas rotulan con esta misma versalita. */
+.c-deck .c-slide-marca-rotulo {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--deck-azul);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Lienzo: el contenido de siempre, en el alto que queda entre banda y pie.
+   `overflow: hidden` es la condición de la marca: sin él, una slide que no
+   entra se derrama centrada hacia arriba y se pinta ENCIMA del lockup del
+   IAE. Con él, una slide larga se recorta por abajo —visible y honesto, y
+   sigue apareciendo en desborde.txt— y el chrome queda intacto.
+   `safe center` ancla arriba justo cuando el contenido no entra; donde el
+   navegador no lo soporte queda el `center` de la línea anterior. */
+.c-deck .c-slide-lienzo {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  justify-content: safe center;
+  padding: 12px var(--deck-margen) 12px;
+}
+/* Bloque: el contenido de la slide, en una sola caja. Existe para que el
+   filete de :::quote y :::manos tome el alto del TEXTO y no el del lienzo, y
+   para poder anclar el encabezado arriba sin perder el centrado del cuerpo. */
+.c-deck .c-slide-bloque {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* Grilla estable (la del sitio del programa: masthead fijo, nav fija, sección
+   con padding constante). En los tipos con kicker + título el encabezado
+   arranca SIEMPRE a la misma altura —medido en J1, el título bailaba 93 px
+   entre slides contiguas— y el aire que sobra lo reparte el cuerpo. Los tipos
+   de afirmación (cover, cierre, big, quote) y la slide `default` —que en un
+   deck subido por un profesor puede traer tres líneas— siguen centrados. */
+/* :::split, :::diagram y las estructuradas tienen encabezado propio y muchas
+   slides seguidas: ahí el ancla arriba es lo que evita que el título baile.
+   :::manos NO estaba en esa situación: son dos o tres slides por jornada, el
+   ancla les dejaba hasta 200 px de blanco muerto entre el entregable y el pie
+   —y el entregable, que es lo que se evalúa, flotaba a media pantalla durante
+   los veinte minutos de práctica—. `safe center` centra cuando entra y se
+   comporta como flex-start cuando no, así que no se pierde el blindaje. */
+.c-slide--split .c-slide-lienzo,
+.c-slide--diagram .c-slide-lienzo,
+.c-slide-est .c-slide-lienzo {
+  justify-content: flex-start;
+}
+.c-slide--manos .c-slide-lienzo {
+  justify-content: center;
+  justify-content: safe center;
+}
+.c-slide--diagram .c-slide-bloque,
+.c-slide-est .c-slide-bloque {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.c-deck .c-slide-cuerpo {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  justify-content: safe center;
+}
+
+/* Franja de fuentes: vive FUERA del lienzo (ver SlidePieFuentes en
+   SlideDeck.tsx). Mientras estaba adentro, el `overflow: hidden` del lienzo
+   —que es lo que impide que una slide densa se derrame sobre el lockup del
+   IAE— se llevaba al corte justo la línea de evidencia. Con flex 0 entre el
+   lienzo y el pie institucional, lo que se recorta es el final del cuerpo y la
+   cita siempre se proyecta. Un solo bloque para los quince tipos: antes había
+   una regla para `.c-slide-est` y otra para :::diagram y :::manos, con dos
+   valores distintos de margen superior. */
+.c-deck .c-slide-pie {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  background: var(--deck-fondo);
+  margin: 0 var(--deck-margen);
+  padding: 9px 0 0;
+  border-top: 1px solid var(--deck-linea);
+  font-size: 20px;
+  line-height: 1.35;
+  color: var(--deck-texto-3);
+}
+.c-deck .c-slide-pie p {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.35;
+  color: inherit;
+  max-width: none;
+}
+
+/* Pie: jornada a la izquierda, folio a la derecha. Mismo blindaje que la
+   banda: se pinta sobre el contenido, nunca debajo. */
+.c-deck .c-slide-pie-inst {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  background: var(--deck-fondo);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 var(--deck-margen);
+  padding: 7px 0 10px;
+  border-top: 1px solid var(--deck-linea);
+  color: var(--deck-texto-3);
+}
+/* Con franja de fuentes arriba, el filete del pie institucional sería el
+   segundo en 40 px: manda el de las fuentes. */
+.c-deck .c-slide-pie + .c-slide-pie-inst {
+  border-top: none;
+  padding-top: 9px;
+}
+.c-deck .c-slide-pie-ctx {
+  min-width: 0;
+  line-height: 1.2;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* El folio es el único elemento del chrome con función operativa («volvé a la
+   23»), así que el número va a tamaño de lectura y en tinta plena; la barra y
+   el total quedan chicos, que son decoración. */
+.c-deck .c-slide-folio {
+  flex: 0 0 auto;
+  /* Sin contexto a la izquierda —la portada lo oculta— el folio se quedaba
+     pegado al margen izquierdo por el space-between. */
+  margin-left: auto;
+  line-height: 1.05;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--deck-texto);
+  white-space: nowrap;
+}
+.c-deck .c-slide-folio span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--deck-texto-3);
+}
+
+/* ---------- cuerpo base (también la slide `default`) ---------- */
+
+.c-deck h1,
+.c-deck h2,
+.c-deck h3 {
+  color: var(--deck-texto);
+}
+/* RITMO VERTICAL. El markdown de los decks se renderiza con los márgenes por
+   defecto del navegador: 1em arriba y abajo de cada <p>, 0,67em arriba de cada
+   <h1>, 0,83em de cada <h2>. En una slide :::split densa eso son ~160 px de
+   aire de lectura repartidos entre los párrafos, aire que un documento de
+   pantalla puede pagar y un marco de 720 px no. Acá los márgenes se declaran
+   explícitos y en escala de proyección: es lo que devuelve al marco buena
+   parte de las slides que el piso de 20 px había desbordado, sin bajar un solo
+   tipo por debajo de ese piso. */
+.c-deck h1 {
+  font-size: 34px;
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+.c-deck h2 {
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 14px 0 10px;
+}
+.c-deck h2:first-child {
+  margin-top: 0;
+}
+.c-deck h3 {
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
+  margin: 12px 0 8px;
+}
+.c-deck h3:first-child {
+  margin-top: 0;
+}
+.c-deck p,
+.c-deck li {
+  color: var(--deck-texto-cuerpo);
+  font-size: 21px;
+  line-height: 1.38;
+}
+.c-deck p {
+  margin: 0 0 12px;
+}
+.c-deck ul,
+.c-deck ol {
+  margin: 0 0 12px;
+  padding-left: 24px;
+}
+.c-deck li {
+  margin: 3px 0;
+}
+/* El último bloque de cada caja no paga margen inferior: ese aire lo reparte
+   el lienzo, no el texto. */
+.c-deck .c-slide-bloque > :last-child,
+.c-deck .c-slide-col > :last-child,
+.c-deck blockquote > :last-child {
+  margin-bottom: 0;
+}
+.c-deck li::marker {
+  color: var(--deck-acento);
+}
+.c-deck strong {
+  color: var(--deck-texto);
+  font-weight: 700;
+}
+.c-deck em {
+  color: var(--deck-texto-2);
+}
+.c-deck code {
+  background: var(--deck-panel-fuerte);
+  color: var(--deck-acento);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+.c-deck hr {
+  border: none;
+  border-top: 1px solid var(--deck-linea);
+  margin: 18px 0;
+}
+.c-deck blockquote {
+  border-left: 4px solid var(--deck-acento);
+  padding: 4px 0 4px 20px;
+  margin: 16px 0;
+}
+
+.c-slide {
+  position: relative;
+  overflow: hidden;
+}
+
+/* kicker: cinta superior común a todos los tipos, en la versalita
+   institucional. No es chrome: es la línea que carga la evidencia (fuente,
+   fecha, n del estudio), así que respeta el piso de 20 px del contenido. La
+   versalita Montserrat además mide menos que el mono que había acá, que era
+   el elemento más ancho de varias slides. */
+/* Peso 500 y tracking 0,05em: a peso 600 con 0,1em el kicker era la línea más
+   ancha del lienzo en media docena de slides de J1 —la procedencia pesaba más
+   que la afirmación—. En el sitio del programa el mismo registro
+   (.masthead-badge, .nav-tab) va a 11 px contra un h1 de 30, relación 1:3;
+   acá el piso de 20 px del contenido no se toca, así que la jerarquía de
+   mancha se recupera bajando el peso y el tracking. Medida de línea NO: un
+   `max-width` partía en dos renglones los kickers largos de J1 y cada corte
+   costaba 26 px de marco, que es exactamente lo que este archivo está
+   tratando de devolverle al contenido. */
+.c-slide-kicker {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.28;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--deck-texto-2);
+  margin-bottom: 12px;
+}
+
+/* Cambio de modo: en :::manos y :::pregunta el kicker es el control
+   rectangular de docs/iae-brand.md en su versión liviana —panel blanco sobre
+   la superficie teñida, versalita azul y filete azul de 4 px—. En azul pleno
+   con versalita blanca era el elemento más fuerte de la slide: en la 34 de J1
+   la instrucción administrativa le ganaba a la pregunta de cierre. */
+.c-slide--manos .c-slide-kicker,
+.c-slide--pregunta .c-slide-kicker {
+  align-self: flex-start;
+  max-width: 100%;
+  background: var(--deck-papel);
+  color: var(--deck-acento);
+  border-left: 4px solid var(--deck-acento);
+  padding: 7px 15px;
+  margin-bottom: 16px;
+}
+/* En :::manos el bloque ya cuelga de un filete azul: la pestaña se apoya en él
+   en vez de dibujar un segundo filete 22 px más adentro. */
+.c-slide--manos .c-slide-kicker {
+  margin-left: -22px;
+  border-left: none;
+}
+
+/* ---------- tratamiento azul pleno: portada, bisagra y cierre ----------
+   El hero del sitio del IAE es texto blanco alineado a la izquierda
+   sobre azul, con el marco abierto de la marca.
+
+   Entra también la AFIRMACIÓN SOLA: una `:::big` sin `#` título, que es una
+   slide de una sola frase y nada más. De las 40 slides `:::big` de los ocho
+   decks hay exactamente una con esa forma —J1 19, «Dejamos de elegir camino.
+   Volvemos a medir.», la bisagra de la jornada—, así que la regla puntúa el
+   ritmo en vez de inundarlo: con ella J1 pasa de 1 quiebre tonal en 34 slides
+   a 2, que es lo que el sistema declaraba y en la pared no estaba. Las 39
+   `:::big` con título son slides de argumento y siguen en papel blanco. */
+.c-slide--cover,
+.c-slide--cierre,
+.c-slide--big:not(:has(h1)) {
+  --deck-fondo: var(--deck-azul);
+  --deck-texto: #ffffff;
+  --deck-texto-2: #e0e4ff;
+  --deck-texto-3: rgba(255, 255, 255, 0.72);
+  --deck-acento: #ffffff;
+  --deck-acento-2: #ffffff;
+  --deck-linea: rgba(255, 255, 255, 0.34);
+  --deck-linea-fuerte: rgba(255, 255, 255, 0.55);
+  --deck-panel: rgba(255, 255, 255, 0.1);
+  --deck-panel-fuerte: rgba(255, 255, 255, 0.16);
+}
+/* Sobre azul pleno el pie salía a 3,4:1: el dato de orientación directamente
+   no estaba. Mismo gesto que ya se hacía con el filete de los enlaces. */
+.c-slide--cover,
+.c-slide--cierre,
+.c-slide--big:not(:has(h1)) {
+  --deck-texto-3: #d5daf5;
+}
+/* Marco abierto del hero (public/brand/iae-web-v2/iaebox-light.png), como lo
+   resolvió el sistema v2 en app/campus/decks.css: a la izquierda, a opacidad
+   plena, y ENCUADRANDO el bloque de copete. Ahí estaba la falla: el marco
+   estaba anclado al lienzo entero con top:50%, así que su alto no tenía nada
+   que ver con el del texto y se proyectaba un cuadrado vacío al lado del
+   título —leía como una imagen que no cargó—. Acá lienzo y marco comparten
+   una fila de grilla: el marco mide lo que mide el copete y lo bracketea,
+   igual que .mbt-deck-cover-copy (min-height 24cqw, background left center).
+
+   Sólo con copete: una portada sin kicker —pres-aiml-01, cualquier deck
+   subido por un profesor— traía dos líneas de texto y el marco quedaba otra
+   vez hueco. Ahí el título va a margen pleno y firma el lockup de arriba. */
+.c-slide--cover:has(.c-slide-kicker) .c-slide-lienzo {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  align-content: center;
+  column-gap: 28px;
+}
+.c-slide--cover:has(.c-slide-kicker) .c-slide-bloque {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: center;
+  padding: 18px 0;
+}
+.c-slide--cover .c-slide-lienzo::after {
+  content: '';
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 248px;
+  background: url('/brand/iaebox-light.png') no-repeat left center / contain;
+  pointer-events: none;
+}
+.c-slide--cover:not(:has(.c-slide-kicker)) .c-slide-lienzo::after {
+  content: none;
+}
+/* En la portada el kicker ya dice materia, jornada, sede y fecha: el rótulo de
+   la banda y el contexto del pie repetían dos veces lo mismo en la única slide
+   donde el chrome no orienta nada. Queda el lockup arriba y el folio abajo. */
+.c-slide--cover .c-slide-marca-rotulo,
+.c-slide--cover .c-slide-pie-ctx {
+  display: none;
+}
+
+/* ---------- cover ---------- */
+.c-slide--cover {
+  min-height: 460px;
+}
+.c-slide--cover .c-slide-kicker,
+.c-slide--cierre .c-slide-kicker,
+.c-slide--big:not(:has(h1)) .c-slide-kicker {
+  color: rgba(255, 255, 255, 0.78);
+}
+/* La medida de 17em partía en dos renglones un título que entraba en uno
+   («Perdimos por seis horas, no por precio»). Con el marco a 248 px la calle
+   del texto da 906 px: 19em es la medida que la usa entera. */
+.c-slide--cover h1 {
+  font-size: 46px;
+  line-height: 1.07;
+  letter-spacing: -0.022em;
+  margin: 0 0 18px;
+  max-width: 21em;
+}
+.c-slide--cover p {
+  font-size: 21px;
+  line-height: 1.4;
+  color: var(--deck-texto-2);
+  max-width: 34em;
+}
+
+/* ---------- big: una sola afirmación enorme ----------
+   Con título, la afirmación ES el h1 (las 15 slides `:::big` de J4 y J7 abren
+   con `#` y quedaban degradadas a título + muro de cuerpo); sin título, la
+   afirmación es el primer párrafo, como en J1 slide 19. */
+.c-slide--big h1 {
+  font-size: 40px;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  max-width: 18em;
+}
+.c-slide--big h1 strong {
+  color: var(--deck-acento);
+}
+/* Sin título la afirmación ES la slide y queda sola en pantalla varios
+   minutos (J1 19 es la de la pausa): a 40 px usaba el 62% del ancho y dejaba
+   el resto muerto. A 48 llena el marco y rompe la meseta de 34 px del deck. */
+.c-slide--big p:first-of-type {
+  font-weight: 700;
+  font-size: 54px;
+  line-height: 1.08;
+  letter-spacing: -0.024em;
+  color: var(--deck-texto);
+  max-width: 14em;
+}
+.c-slide--big p:first-of-type strong {
+  color: var(--deck-acento);
+}
+.c-slide--big p + p {
+  margin-top: 16px;
+  font-size: 20px;
+  color: var(--deck-texto-2);
+  max-width: 40em;
+}
+/* Los párrafos que siguen al título son bajada, no afirmación. La segunda
+   línea del selector existe sólo para ganarle en especificidad a
+   `p:first-of-type` de acá arriba. */
+.c-slide--big h1 ~ p,
+.c-slide--big h1 ~ p:first-of-type {
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.42;
+  letter-spacing: 0;
+  color: var(--deck-texto-2);
+  max-width: 44em;
+}
+
+/* ---------- quote ---------- */
+/* El filete cuelga del bloque de texto, no del lienzo: acompaña la medida de
+   la cita en vez de correr de borde a borde. */
+.c-slide--quote .c-slide-bloque {
+  border-left: 4px solid var(--deck-acento);
+  padding-left: 22px;
+}
+.c-slide--quote p {
+  font-weight: 600;
+  font-size: 27px;
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  color: var(--deck-texto);
+  max-width: 30em;
+}
+.c-slide-attrib {
+  margin-top: 16px;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--deck-texto-2);
+}
+
+/* ---------- split: dos columnas separadas por ||| ---------- */
+.c-slide--split .c-slide-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 40px;
+  align-items: start;
+  /* La divisoria se pinta en la grilla, no en la segunda columna: colgada de
+     la columna terminaba donde terminaba la más corta y leía como error de
+     render. Acá va centrada en la calle y a toda altura. */
+  background: linear-gradient(var(--deck-linea), var(--deck-linea)) no-repeat 50% / 1px 100%;
+}
+.c-slide--split .c-slide-col h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  color: var(--deck-acento);
+}
+.c-slide--split .c-slide-col p,
+.c-slide--split .c-slide-col li {
+  font-size: 20px;
+  line-height: 1.32;
+}
+.c-slide--split .c-slide-col li {
+  margin: 2px 0;
+}
+.c-slide--split .c-slide-col ul,
+.c-slide--split .c-slide-col ol {
+  padding-left: 20px;
+}
+
+/* ---------- diagram ----------
+   El encabezado queda arriba y el dibujo se centra en el alto que sobra.
+   Los tamaños son los mismos con `est` y sin `est`: en J4 el título de un
+   diagrama salía a 26 px, o sea MÁS CHICO que el de cualquier slide default
+   del mismo deck, y el mismo diagrama tenía dos anatomías según la jornada. */
+.c-slide--diagram h1 {
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--deck-texto);
+  margin: 0 0 10px;
+  max-width: 26em;
+}
+.c-slide--diagram p {
+  font-size: 21px;
+  line-height: 1.38;
+  color: var(--deck-texto-2);
+  max-width: 46em;
+}
+.c-slide-diagram {
+  flex: 1 1 auto;
+  min-height: 120px;
+  margin-top: 6px;
+}
+/* El tope iguala el alto máximo de viewBox que los quince diagramas se
+   autoimponen (360). Con 316 el dibujo se proyectaba entre 7% y 12% más chico
+   de lo dibujado y ningún rótulo llegaba a los 18 px, mientras se tiraban
+   ~100 px de aire a cada lado por apretar verticalmente. */
+.c-slide-diagram svg {
+  display: block;
+  width: 100%;
+  /* Toma el alto que la slide le deja, con tope en 360: el dibujo es lo único
+     que puede achicarse sin perder contenido, así que en una slide cargada se
+     proyecta un 10% más chico en vez de quedar cortado por la mitad. */
+  height: 100%;
+  max-height: 360px;
+}
+
+/* ---------- manos: bloque de práctica en aula ----------
+   Superficie pálida observada en la hoja de estilo del IAE (#f2f2fb),
+   con filete azul. Sin carmesí: docs/iae-brand.md. */
+.c-slide--manos {
+  --deck-fondo: var(--deck-superficie);
+}
+/* El filete cuelga del bloque de texto: corría el alto entero del lienzo y
+   empezaba y terminaba en blanco, como una línea suelta pegada al borde. */
+.c-slide--manos .c-slide-bloque {
+  border-left: 4px solid var(--deck-acento);
+  padding-left: 22px;
+}
+.c-slide--manos h1 {
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 12px;
+  max-width: 26em;
+}
+.c-slide--manos p,
+.c-slide--manos li {
+  font-size: 21px;
+  line-height: 1.38;
+  color: var(--deck-texto-cuerpo);
+}
+/* Cuando el taller es prosa corrida —J4 y J7 lo escriben así en sus 13 slides
+   de práctica, sin los `##` de tramo— el rótulo que el autor ya marca en
+   negrita al abrir párrafo pasa a ser un ELEMENTO: línea propia en azul de
+   marca, para que quien levanta la vista en el minuto 9 encuentre su tramo. No
+   va en versalita porque en esos decks los rótulos son oraciones enteras. La
+   negrita de énfasis, en el medio de una oración, queda en tinta como en todos
+   los demás tipos. */
+.c-slide--manos:not(:has(h2)) p > strong:first-child {
+  display: block;
+  margin-top: 10px;
+  color: var(--deck-acento);
+}
+.c-slide--manos:not(:has(h2)) p:first-of-type > strong:first-child {
+  margin-top: 0;
+}
+/* El entregable es lo que se evalúa y en la prosa quedaba enterrado a mitad de
+   párrafo, sin ningún tratamiento: va en panel blanco con filete azul, como el
+   blockquote de la variante estructurada. La convención «Entregable:» ya está
+   escrita en los ocho decks; acá sólo se la reconoce (ver SlideDeck.tsx). */
+.c-slide--manos .c-manos-entregable,
+.c-slide--manos blockquote {
+  display: block;
+  margin: 12px 0 0;
+  padding: 10px 0 10px 18px;
+  border-left: 4px solid var(--deck-acento);
+  background: var(--deck-papel);
+  color: var(--deck-texto);
+}
+
+/* ---------- cierre ---------- */
+.c-slide--cierre h1 {
+  font-size: 34px;
+  margin-bottom: 16px;
+  max-width: 30em;
+}
+/* Medida de línea: el cierre corría los 1184 px del lienzo (≈130 caracteres
+   por renglón) sobre azul pleno, que es donde el ojo más se pierde al saltar
+   de renglón. Y es la última imagen de cada jornada. */
+.c-slide--cierre p,
+.c-slide--cierre li {
+  font-size: 20px;
+  max-width: 34em;
+}
+
+/* Los quince diagramas de DeckDiagrams.tsx declaran su propio color, grosor y
+   tamaño: no leen ningún token de esta hoja. El bloque `.dg-*` que vivía acá
+   quedó huérfano y se borró —era además la única puerta por la que entraban
+   ámbar y verde, que no están ni en app/globals.css ni en docs/iae-brand.md—.
+   Lo único que la slide le impone al diagrama es el tamaño del <svg>. */
+
+/* Lectura y recorrido de las jornadas: la guía docente se filtra en el servidor. */
+/* Enlaces: azul de marca, como en todo el sitio del programa. La línea de
+   fuente es la autoridad del deck y era su texto más flojo —gris del cuerpo
+   con un punteado de 1 px a 1,8:1 de contraste, invisible proyectado—. El
+   subrayado va en el mismo color, a 1 px y separado del texto. */
+.c-deck a {
+  color: var(--deck-acento);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+/* En la franja de fuentes son cinco o seis enlaces encadenados: en azul
+   subrayado forman una cinta continua al pie que compite con el único otro
+   azul de la slide, que suele ser el dato destacado. Nadie los va a clickear
+   durante la clase: son procedencia. Quedan en el gris del pie, con el
+   subrayado en el borde institucional para que se sigan leyendo como cita. */
+.c-deck .c-slide-pie a {
+  color: inherit;
+  border-bottom-color: var(--deck-linea-fuerte);
+}
+.c-story-table { overflow-x: auto; max-width: 100%; margin: 12px 0; }
+.c-deck .c-story-table table { width: 100%; border-collapse: collapse; font-size: 20px; line-height: 1.4; color: var(--deck-texto-2); }
+.c-deck .c-story-table th, .c-deck .c-story-table td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--deck-linea); }
+.c-deck .c-story-table th { color: var(--deck-acento); font-weight: 600; }
+
+/* ============================================================
+   SLIDES ESTRUCTURADAS (cifra · tiempo · versus · pasos ·
+   matriz · tabla · pregunta)
+
+   Segunda generación del lenguaje de slides: en vez de párrafos,
+   una FORMA por tipo de contenido. Todo está pensado para el marco
+   de proyección de 1280x720 y con el contenido máximo que admite
+   cada tipo NO desborda. Nada del contenido baja de 20 px.
+
+   Los límites de autoría viven en SLIDE_LIMITS (SlideDeck.tsx) y se
+   aplican al parsear.
+   ============================================================ */
+
+/* Kicker, título, nota y pie: comunes a todos los tipos nuevos. */
+.c-slide-est .c-slide-kicker {
+  margin-bottom: 16px;
+}
+.c-slide-est .c-slide-titulo {
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  color: var(--deck-texto);
+  margin: 0 0 22px;
+  max-width: 26em;
+}
+.c-slide-est .c-slide-nota {
+  margin: 18px 0 0;
+  font-size: 21px;
+  line-height: 1.45;
+  color: var(--deck-texto-cuerpo);
+  max-width: 46em;
+}
+/* ---------- cifra: 1 número gigante, o 2/3 en fila ---------- */
+.c-slide--cifra .c-cifras {
+  display: grid;
+  gap: 0 44px;
+  align-items: start;
+}
+.c-slide--cifra .c-cifras--1 { grid-template-columns: minmax(0, 1fr); }
+.c-slide--cifra .c-cifras--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.c-slide--cifra .c-cifras--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.c-slide--cifra .c-cifra {
+  border-top: 3px solid var(--deck-linea-fuerte);
+  padding-top: 16px;
+}
+.c-slide--cifra .c-cifra.is-destacado {
+  border-top-color: var(--deck-acento);
+}
+.c-slide--cifra .c-cifra-num {
+  font-weight: 800;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  color: var(--deck-texto);
+  white-space: nowrap;
+}
+.c-slide--cifra .c-cifras--1 .c-cifra-num { font-size: 124px; }
+.c-slide--cifra .c-cifras--2 .c-cifra-num { font-size: 86px; }
+.c-slide--cifra .c-cifras--3 .c-cifra-num { font-size: 60px; }
+.c-slide--cifra .c-cifra.is-destacado .c-cifra-num { color: var(--deck-acento); }
+/* La unidad iba SIEMPRE en azul, estuviera destacada la cifra o no, así que el
+   azul hacía dos trabajos en la misma slide y había que mirar dos veces para
+   ver cuál número era el destacado. Ahora el azul es sólo del destacado. */
+.c-slide--cifra .c-cifra-unidad {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  line-height: 1.25;
+  color: var(--deck-texto-2);
+}
+.c-slide--cifra .c-cifra.is-destacado .c-cifra-unidad {
+  color: var(--deck-acento);
+}
+.c-slide--cifra .c-cifra-dice {
+  margin: 14px 0 0;
+  color: var(--deck-texto-cuerpo);
+}
+.c-slide--cifra .c-cifras--1 .c-cifra-dice {
+  font-size: 26px;
+  line-height: 1.4;
+  max-width: 28em;
+}
+.c-slide--cifra .c-cifras--2 .c-cifra-dice,
+.c-slide--cifra .c-cifras--3 .c-cifra-dice {
+  font-size: 21px;
+  line-height: 1.42;
+}
+
+/* ---------- tiempo: hitos en horizontal sobre un eje ---------- */
+.c-slide--tiempo .c-tiempo {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: grid;
+  gap: 0 18px;
+  align-items: start;
+}
+.c-slide--tiempo .c-tiempo--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.c-slide--tiempo .c-tiempo--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.c-slide--tiempo .c-tiempo--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.c-slide--tiempo .c-tiempo--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.c-slide--tiempo .c-tiempo-hito {
+  margin: 0;
+  min-width: 0;
+}
+.c-slide--tiempo .c-tiempo-anio {
+  display: block;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--deck-texto);
+}
+.c-slide--tiempo .c-tiempo-hito.is-destacado .c-tiempo-anio { color: var(--deck-acento); }
+/* eje: cada hito dibuja el tramo hasta el punto siguiente */
+.c-slide--tiempo .c-tiempo-eje {
+  position: relative;
+  display: block;
+  height: 14px;
+  margin: 16px 0 16px;
+}
+/* El eje es la slide: sin él quedan seis bloques sueltos de años y frases y se
+   pierde la secuencia. A 1 px en el borde institucional desaparecía proyectado.
+   Va al vocabulario de trazo de los quince diagramas (ninguna línea estructural
+   por debajo de 2, ninguna línea gris clara fina). */
+.c-slide--tiempo .c-tiempo-eje::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 7px;
+  right: -25px;
+  height: 3px;
+  background: var(--deck-texto-2);
+}
+.c-slide--tiempo .c-tiempo-hito:last-child .c-tiempo-eje::before { display: none; }
+.c-slide--tiempo .c-tiempo-punto {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--deck-texto-2);
+  border: 2px solid var(--deck-texto-2);
+  box-sizing: border-box;
+}
+.c-slide--tiempo .c-tiempo-hito.is-destacado .c-tiempo-punto {
+  background: var(--deck-acento);
+  border-color: var(--deck-acento);
+  box-shadow: 0 0 0 6px var(--deck-panel-fuerte);
+}
+.c-slide--tiempo .c-tiempo-hito p {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.4;
+  color: var(--deck-texto-cuerpo);
+}
+
+/* ---------- versus: dos alternativas con peso propio ---------- */
+.c-slide--versus .c-versus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0 24px;
+}
+.c-slide--versus .c-versus-lado {
+  background: var(--deck-panel);
+  border: 1px solid var(--deck-linea);
+  border-top: 3px solid var(--deck-linea-fuerte);
+  padding: 20px 24px;
+}
+.c-slide--versus .c-versus-lado.is-destacado {
+  background: var(--deck-panel-fuerte);
+  border-color: var(--deck-linea);
+  border-top-color: var(--deck-acento);
+}
+.c-slide--versus .c-versus-lado h2 {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 29px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  margin: 0 0 14px;
+  color: var(--deck-texto);
+}
+.c-slide--versus .c-versus-lado.is-destacado h2 { color: var(--deck-acento-2); }
+.c-slide--versus .c-versus-lado ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.c-slide--versus .c-versus-lado li {
+  position: relative;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 21px;
+  line-height: 1.35;
+  color: var(--deck-texto-cuerpo);
+}
+.c-slide--versus .c-versus-lado li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 10px;
+  height: 2px;
+  background: var(--deck-acento);
+}
+.c-slide--versus .c-versus-vs {
+  align-self: center;
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--deck-texto-2);
+}
+
+/* ---------- pasos: 3 a 5 etapas en horizontal ---------- */
+.c-slide--pasos .c-pasos {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: grid;
+  gap: 0 16px;
+  align-items: start;
+}
+.c-slide--pasos .c-pasos--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.c-slide--pasos .c-pasos--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.c-slide--pasos .c-pasos--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.c-slide--pasos .c-paso {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+  padding-right: 20px;
+}
+.c-slide--pasos .c-paso::after {
+  content: '›';
+  position: absolute;
+  right: 0;
+  top: 2px;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--deck-linea-fuerte);
+}
+.c-slide--pasos .c-paso:last-child::after { content: none; }
+.c-slide--pasos .c-paso-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--deck-acento);
+  color: var(--deck-acento);
+  font-weight: 700;
+  font-size: 24px;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+}
+.c-slide--pasos .c-paso.is-destacado .c-paso-n {
+  background: var(--deck-acento);
+  border-color: var(--deck-acento);
+  color: var(--deck-fondo);
+}
+.c-slide--pasos .c-paso h3 {
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.2;
+  margin: 0 0 8px;
+  color: var(--deck-texto);
+}
+.c-slide--pasos .c-paso p {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--deck-texto-cuerpo);
+}
+
+/* ---------- matriz: 2x2 con ejes rotulados ---------- */
+/* La calle del eje Y bajó de 150 a 118 px: la matriz arrancaba 166 px adentro
+   del margen de 48 en el que están marca, título, kicker, pie y todo lo demás.
+   El rótulo se probó rotado 90° —como el «COSTO DE CREAR» del diagrama de la
+   slide 14— y se descartó: en vertical y sin poder partirse, su largo pasa a
+   ser el alto mínimo de la matriz y le sumaba 26 px a cada slide de este tipo
+   en las ocho jornadas. Horizontal y en una calle más angosta parte en más
+   renglones, pero la caja está clampeada y no empuja el marco. */
+.c-slide--matriz .c-matriz {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  flex: 1;
+  min-height: 0;
+}
+.c-slide--matriz .c-matriz-eje-y {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: right;
+  min-height: 0;
+  overflow: hidden;
+}
+.c-slide--matriz .c-matriz-eje-y .c-matriz-extremo {
+  white-space: normal;
+}
+.c-slide--matriz .c-matriz-eje-x {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.c-slide--matriz .c-matriz-eje-rotulo {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--deck-acento);
+}
+.c-slide--matriz .c-matriz-eje-x .c-matriz-eje-rotulo { white-space: nowrap; }
+/* Los extremos SON el significado de la matriz: van al gris de lectura. */
+.c-slide--matriz .c-matriz-extremo {
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--deck-texto-2);
+  white-space: nowrap;
+}
+.c-slide--matriz .c-matriz-grid {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 0;
+}
+.c-slide--matriz .c-matriz-celda {
+  background: var(--deck-panel);
+  border: 1px solid var(--deck-linea);
+  border-top: 3px solid var(--deck-linea-fuerte);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.c-slide--matriz .c-matriz-celda.is-destacado {
+  background: var(--deck-panel-fuerte);
+  border-top-color: var(--deck-acento);
+}
+.c-slide--matriz .c-matriz-celda h3 {
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.2;
+  margin: 0 0 8px;
+  color: var(--deck-texto);
+}
+.c-slide--matriz .c-matriz-celda.is-destacado h3 { color: var(--deck-acento-2); }
+.c-slide--matriz .c-matriz-celda p {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--deck-texto-cuerpo);
+}
+
+/* ---------- tabla: para proyectar, no para leer de cerca ---------- */
+.c-slide--tabla .c-tabla-marco { margin: 4px 0 0; }
+.c-slide--tabla .c-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+/* `vertical-align: bottom`: cuando un rótulo de columna se parte en dos
+   renglones, el default (middle) dejaba los cortos flotando a media altura y
+   ninguno apoyaba sobre el filete azul, que es lo que ordena la fila. */
+.c-slide--tabla .c-tabla th {
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1.25;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: left;
+  vertical-align: bottom;
+  color: var(--deck-acento);
+  padding: 0 22px 10px 0;
+  border-bottom: 2px solid var(--deck-acento);
+}
+/* Las celdas de dato van en tinta: son el argumento de la slide y estaban en
+   gris, más débiles que el rótulo de la fila. La cebra se fue: competía con el
+   destaque sin aportar lectura, y los dos tintes se veían iguales proyectados.
+   La fila destacada se marca con filete azul arriba y abajo, que es el
+   vocabulario de panel del resto del sistema. */
+.c-slide--tabla .c-tabla td {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--deck-texto);
+  padding: 10px 22px 10px 0;
+  vertical-align: top;
+  border-bottom: 1px solid var(--deck-linea);
+  /* Ninguna celda parte palabras ni cifras: una tabla de proyección con un
+     total cortado al medio («9.38 4») proyecta un número equivocado. */
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+/* La fila destacada suele ser el remate de la jornada («8 h → 7 h 50 →
+   2 h 10»): era el destaque más flojo del sistema —mismo cuerpo, mismo peso,
+   mismo color, y un tinte del 2% que proyectado no existe— mientras :::cifra
+   escala a 86 px y :::versus pinta el panel. Acá usa el mismo vocabulario que
+   el resto: cuerpo más grande y azul hondo. */
+.c-slide--tabla .c-tabla tbody tr.is-destacado { background: var(--deck-panel-fuerte); }
+.c-slide--tabla .c-tabla tbody tr.is-destacado td {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--deck-acento-2);
+  border-top: 2px solid var(--deck-acento);
+  border-bottom: 2px solid var(--deck-acento);
+}
+.c-slide--tabla .c-tabla td:first-child {
+  font-weight: 700;
+  color: var(--deck-texto);
+}
+/* Margen único: título, kicker, copete, filete y pie arrancan en 48 px; la
+   primera columna arrancaba en 62 y la tabla quedaba a la deriva contra su
+   propio filete. El aire entre columnas lo paga el padding derecho. */
+.c-slide--tabla .c-tabla th:last-child,
+.c-slide--tabla .c-tabla td:last-child {
+  padding-right: 0;
+}
+
+/* ---------- pregunta: la pregunta grande y las opciones a votar ---------- */
+.c-slide--pregunta {
+  --deck-fondo: var(--deck-superficie);
+  --deck-panel: #ffffff;
+}
+.c-slide--pregunta .c-slide-pregunta {
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  color: var(--deck-texto);
+  margin: 0 0 28px;
+  max-width: 28em;
+}
+.c-slide--pregunta .c-opciones {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.c-slide--pregunta .c-opciones--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.c-slide--pregunta .c-opciones--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.c-slide--pregunta .c-opciones--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.c-slide--pregunta .c-opcion {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 16px 20px;
+  background: var(--deck-panel);
+  border: 1px solid var(--deck-linea);
+  border-top: 3px solid var(--deck-linea-fuerte);
+  min-width: 0;
+}
+/* Con la superficie de voto en #eef0fb, el relleno azul claro del destacado
+   sería el mismo tono que el fondo. El destaque pasa a la forma: panel blanco
+   —como los demás— con filete superior y contorno azul de marca, el control
+   rectangular de docs/iae-brand.md. */
+.c-slide--pregunta .c-opcion.is-destacado {
+  border-top-color: var(--deck-acento);
+  box-shadow: inset 0 0 0 1px var(--deck-acento);
+}
+.c-slide--pregunta .c-opcion.is-destacado strong {
+  color: var(--deck-acento-2);
+}
+.c-slide--pregunta .c-opcion strong {
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--deck-texto);
+}
+.c-slide--pregunta .c-opcion span {
+  font-size: 20px;
+  line-height: 1.35;
+  color: var(--deck-texto-cuerpo);
+}
+
+/* Por debajo del ancho de proyección la slide se apila y necesita crecer: la
+   caja 16:9 se suelta y vuelve a mandar el min-height. */
+
+/* ---------- pantallas intermedias (el campus, no la proyección):
+   las formas horizontales bajan un escalón antes de apilarse ---------- */
+
+/* ---------- pantalla chica: las formas horizontales se apilan ---------- */
+
+/* ============================================================
+   :::diagram Y :::manos · PIE DE FUENTES Y TRAMOS
+
+   La variante `est` de la ronda anterior quedó como no-op: sus
+   tamaños son ahora los tamaños por defecto de las dos formas (ver
+   más arriba), así que el mismo diagrama se ve igual en J1 que en
+   J4 y las 8 jornadas quedan vestidas sin editar su markdown.
+   ============================================================ */
+
+.c-slide--diagram .c-slide-kicker,
+.c-slide--manos .c-slide-kicker {
+  margin-bottom: 12px;
+}
+/* :::manos con tramos rotulados (`##`): versalita azul, como el resto de los
+   rótulos de registro del sistema. */
+.c-slide--manos h2 {
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--deck-acento);
+  margin: 11px 0 5px;
+}
+.c-slide--manos h2:first-of-type {
+  margin-top: 4px;
+}
+.c-slide--manos blockquote p {
+  margin: 0;
+  color: var(--deck-texto);
+}
+.c-slide--manos:has(h2) strong {
+  color: var(--deck-texto);
+}
+

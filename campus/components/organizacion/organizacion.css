@@ -1,0 +1,280 @@
+/* Mi organización, portfolio de entregables, verificación del entorno y docentes. Prefijo org-. */
+
+.org-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+.org-resumen dt {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris);
+}
+.org-resumen dd {
+  margin: 2px 0 0;
+}
+
+.org-lista {
+  display: grid;
+  gap: 10px;
+}
+.org-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--fondo);
+}
+.org-fila .field {
+  margin: 0;
+}
+.org-fila-num {
+  font-weight: 700;
+  color: var(--azul);
+  font-size: 13px;
+}
+
+.org-procesos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.org-procesos li {
+  border-left: 3px solid var(--cian);
+  padding: 4px 0 4px 10px;
+}
+
+.org-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.org-checklist li::before {
+  content: '○ ';
+  color: var(--gris-claro);
+}
+.org-checklist li.org-ok::before {
+  content: '● ';
+  color: var(--ok);
+}
+
+.org-entregables {
+  display: grid;
+  gap: 14px;
+}
+.org-entregable {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 14px;
+}
+.org-bloque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--azul);
+  color: #fff;
+  border-radius: var(--radio);
+  min-height: 64px;
+  font-weight: 700;
+}
+.org-bloque span {
+  font-size: 22px;
+  line-height: 1;
+}
+.org-bloque small {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+  text-align: center;
+  padding: 0 4px;
+}
+.org-entregable h3 {
+  margin: 0 0 4px;
+}
+.org-devolucion {
+  border-left: 3px solid var(--azul);
+  background: var(--hielo);
+  padding: 8px 12px;
+  border-radius: 0 var(--radio) var(--radio) 0;
+}
+.org-entrega-texto {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 8px 12px;
+  background: var(--papel);
+}
+
+.org-estado-pendiente { background: var(--fondo); color: var(--gris); }
+.org-estado-entregado { background: var(--alerta-suave); color: var(--alerta); }
+.org-estado-devuelto { background: var(--ok-suave); color: var(--ok); }
+.org-celda-estado {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.org-pasos {
+  counter-reset: paso;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+.org-pasos > li {
+  counter-increment: paso;
+  position: relative;
+  padding-left: 40px;
+}
+.org-pasos > li::before {
+  content: counter(paso);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--azul);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.org-pasos pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--navy);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: var(--radio);
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.org-docentes {
+  font-size: 13px;
+  color: var(--gris);
+}
+.org-docentes strong {
+  color: var(--tinta);
+  font-weight: 600;
+}
+.org-calendario {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.org-calendario li {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+@media (max-width: 720px) {
+  .org-entregable {
+    grid-template-columns: 1fr;
+  }
+  .org-bloque {
+    flex-direction: row;
+    gap: 8px;
+    min-height: 0;
+    padding: 6px 10px;
+    justify-content: flex-start;
+  }
+  .org-fila {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .shell-top,
+  .org-no-imprimir {
+    display: none !important;
+  }
+  .org-entrega-texto {
+    max-height: none;
+  }
+}
+
+/* ---------- formulario de Mi organización ---------- */
+.org-page { max-width: 900px; }
+.org-form { display: grid; gap: 16px; }
+.org-form .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.org-progreso { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; color: var(--gris); }
+.org-progreso strong { color: var(--tinta); }
+.org-progreso-total { margin-right: 4px; }
+.org-chip { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--borde-fuerte); background: var(--papel); color: var(--gris); text-decoration: none; font-size: 12px; font-weight: 600; }
+.org-chip:hover { border-color: var(--azul); color: var(--azul); }
+.org-chip[data-done] { border-color: var(--ok); background: var(--ok-suave); color: var(--ok); }
+.org-seccion { scroll-margin-top: 80px; }
+.org-form input::placeholder, .org-form textarea::placeholder { color: var(--gris-claro); font-style: italic; }
+.org-auto { field-sizing: content; min-height: 38px; resize: vertical; }
+
+.org-seccion { display: grid; gap: 14px; }
+.org-seccion-head { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; align-items: start; }
+.org-seccion-head h2 { margin: 0; font-size: 17px; }
+.org-seccion-head p { margin: 2px 0 0; font-size: 13px; color: var(--gris); }
+.org-seccion-num { width: 28px; height: 28px; border-radius: 50%; background: var(--hielo); color: var(--azul); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.org-seccion[data-done] .org-seccion-num { background: var(--ok); color: #fff; }
+.org-opcional { font-weight: 500; color: var(--gris); font-size: 13px; }
+
+.org-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.org-campos .field, .org-proceso .field, .org-fila3 .field, .org-fila2 .field { margin: 0; min-width: 0; }
+.org-ancho { grid-column: 1 / -1; }
+
+.org-procesos-form { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.org-proceso { border: 1px solid var(--borde); border-left: 3px solid var(--azul); border-radius: var(--radio); background: var(--fondo); padding: 10px 12px; display: grid; gap: 8px; }
+.org-proceso-head { display: grid; grid-template-columns: minmax(0, 1fr) 28px; gap: 8px; align-items: end; }
+.org-proceso-nombre { font-weight: 600; }
+.org-proceso-detalle { display: grid; grid-template-columns: 1.7fr 1fr 1fr; gap: 8px; align-items: start; }
+.org-fila-num { font-weight: 700; color: var(--azul); font-size: 14px; text-align: center; }
+
+.org-filas { display: grid; gap: 8px; }
+.org-fila3 { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr 28px; gap: 8px; align-items: start; }
+.org-fila3 > .org-quitar, .org-fila2 > .org-quitar { margin-top: 22px; }
+.org-fila2 { display: grid; grid-template-columns: 1fr 1.5fr 28px; gap: 8px; align-items: end; }
+.org-quitar { width: 28px; height: 36px; border: 0; background: transparent; color: var(--gris-claro); font-size: 20px; line-height: 1; cursor: pointer; border-radius: var(--radio); }
+.org-quitar:hover, .org-quitar:focus-visible { color: var(--error); background: var(--error-suave); }
+.org-agregar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+.org-guardar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--papel); border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: 0 -4px 16px rgba(16, 20, 44, .08); }
+.org-guardar-estado { display: grid; gap: 2px; font-size: 13px; min-width: 0; }
+.org-estado-ok { color: var(--ok); font-weight: 600; }
+.org-estado-sucio { color: var(--alerta); font-weight: 600; }
+.org-estado-error { color: var(--error); }
+
+@media (max-width: 720px) {
+  .org-campos { grid-template-columns: minmax(0, 1fr); }
+  .org-proceso-detalle { grid-template-columns: minmax(0, 1fr); padding-left: 0; }
+  .org-filas { gap: 0; }
+  .org-fila3, .org-fila2 { grid-template-columns: minmax(0, 1fr) 28px; padding: 10px 0; border-top: 1px solid var(--borde); }
+  .org-fila3:first-child, .org-fila2:first-child { border-top: 0; padding-top: 0; }
+  .org-fila3 .field, .org-fila2 .field { grid-column: 1; }
+  .org-fila3 > :last-child, .org-fila2 > :last-child { grid-column: 2; grid-row: 1; align-self: start; margin-top: 22px; }
+  .org-proceso { padding: 10px; }
+  .org-guardar { margin: 0 -16px; border-radius: 0; border-left: 0; border-right: 0; }
+}
+
+.org-deshacer { color: var(--tinta); }
+.org-deshacer .btn-link { border: 0; background: none; padding: 0; color: var(--azul); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.org-auto.org-proceso-nombre { font-weight: 600; resize: none; }

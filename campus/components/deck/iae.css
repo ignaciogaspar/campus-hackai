@@ -1,0 +1,32 @@
+/* Slides 'iae' (Shadow DOM, ver IaeStage.tsx). Esto es solo lo que vive en
+   el light DOM: el host y el componente vivo que entra por el <slot> de las
+   slides interactivas con la piel de Ignacio. */
+.iae-host {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+.iae-slot {
+  /* tokens del deck.css de Ignacio para los componentes del campus */
+  --deck-azul: #1E22AA;
+  --deck-tinta: #1A1A1A;
+  --deck-gris: #787878;
+  --deck-borde-fuerte: #A1A3A6;
+  --deck-superficie: #F3F5F9;
+  --iae-cian: #009ADD;
+  --azul: #1E22AA;
+  font-family: 'Montserrat', var(--font-montserrat), Arial, sans-serif;
+  color: #1A1A1A;
+  height: 100%;
+}
+/* el título ya lo pone la slide (kicker + h1 de Ignacio) */
+.iae-slot .c-slide-titulo,
+.iae-slot .c-slide-pregunta {
+  display: none;
+}
+.iae-slot .dk-interactivo {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}

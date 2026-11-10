@@ -1,0 +1,47 @@
+/* Seguimiento: reutiliza tokens y controles del campus. */
+.learning-next { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: clamp(20px, 4vw, 32px); margin: 0 0 28px; background: var(--papel); border: 1px solid var(--borde); border-left: 5px solid var(--azul); border-radius: var(--radio); }
+.learning-next[data-kind='overdue'] { border-left-color: var(--alerta); }
+.learning-next[data-kind='live'] { border-left-color: var(--naranja); }
+.learning-next h2 { font-size: clamp(22px, 3vw, 30px); max-width: 32ch; }
+.learning-next p { margin: 8px 0 0; max-width: 60ch; color: var(--gris); }
+.learning-next .learning-eyebrow, .learning-eyebrow { margin: 0 0 10px; color: var(--azul); font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.learning-next .btn { flex-shrink: 0; }
+.learning-timeline { display: grid; gap: 24px; }
+.learning-jornada { padding: clamp(18px, 3vw, 28px); scroll-margin-top: 90px; }
+.learning-jornada-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.learning-jornada-head h2 { font-size: 23px; }
+.learning-jornada-head .fila { flex-wrap: wrap; }
+.learning-feedback { padding: 20px; margin-bottom: 20px; border: 1px solid var(--borde-fuerte); border-left: 4px solid var(--azul); background: var(--hielo); border-radius: var(--radio); }
+.learning-body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; margin: 16px 0 20px; max-width: 75ch; }
+.learning-receipts { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding-top: 20px; margin-top: 20px; border-top: 1px solid var(--borde-fuerte); }
+.learning-receipt-form .btn { background: var(--papel); color: var(--azul); border-color: var(--borde-fuerte); font-size: 13px; }
+.learning-receipt-form p { margin: 6px 0; }
+.learning-reflection .textarea { min-height: 85px; }
+.learning-reflection p { margin-top: 0; }
+.learning-details > summary, .learning-preview > summary, .learning-schedule > summary { padding: 12px 0; color: var(--azul); font-weight: 600; cursor: pointer; }
+.learning-summary { padding: 12px 0; display: flex; flex-wrap: wrap; gap: 10px 20px; color: var(--gris); }
+.learning-teacher { display: grid; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); gap: 24px; align-items: flex-start; }
+.learning-roster { display: grid; padding: 0; list-style: none; max-height: 70vh; overflow: auto; margin: 0; }
+.learning-roster a { display: grid; gap: 5px; padding: 14px; border-bottom: 1px solid var(--borde); text-decoration: none; color: var(--tinta); }
+.learning-roster a[aria-current='page'] { border-left: 4px solid var(--azul); background: var(--hielo); }
+.learning-roster small { color: var(--gris); }
+.learning-editor-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.learning-editor-head h3, .learning-editor-head p { margin: 0; }
+.learning-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.learning-message-input { min-height: 280px; }
+.learning-evidence { margin: 20px 0; padding: 18px; background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio); }
+.learning-evidence dt { font-weight: 600; margin-top: 12px; }
+.learning-evidence dd { margin: 4px 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.learning-schedule .field { max-width: 380px; margin: 10px 0 14px; }
+.learning-filter { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.learning-filter .field { flex: 1; min-width: 180px; }
+.learning-course-map { margin-top: 24px; }
+.learning-course-map > summary { cursor: pointer; font-weight: 600; color: var(--azul); padding: 12px 0; }
+.learning-next .btn, .learning-jornada .btn, .learning-teacher .btn { white-space: normal; text-align: center; min-height: 42px; }
+@media (max-width: 760px) {
+  .learning-next, .learning-jornada-head { flex-direction: column; align-items: stretch; gap: 16px; }
+  .learning-teacher, .learning-fields { grid-template-columns: minmax(0, 1fr); }
+  .learning-roster { max-height: 200px; }
+  .learning-feedback { padding: 16px; }
+  .learning-receipts { align-items: stretch; flex-direction: column; }
+}

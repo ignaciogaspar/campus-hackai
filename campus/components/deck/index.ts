@@ -1,0 +1,6 @@
+export { SlideView, SlideCanvas, IaeCanvas, STAGE_WIDTH, STAGE_HEIGHT, MATERIA_DEFAULT } from './SlideView'
+export { IaeStage } from './IaeStage'
+export type { SlideViewProps } from './SlideView'
+export { DeckPlayer } from './DeckPlayer'
+export type { DeckPlayerProps, DeckPlayerSlide } from './DeckPlayer'
+export { DECK_DIAGRAMS } from './DeckDiagrams'

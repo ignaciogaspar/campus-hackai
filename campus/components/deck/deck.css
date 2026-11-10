@@ -1,0 +1,225 @@
+/* Ajustes del campus sobre la piel portada de mbt (slides-base.css):
+   escenario fijo 1280x720 escalable, tipografía, resaltador cian del IAE
+   y los placeholders de las slides interactivas. */
+
+/* ---------- escenario escalable ---------- */
+.dk-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  container-type: inline-size;
+}
+.dk-frame--width {
+  aspect-ratio: 16 / 9;
+}
+.dk-frame--contain {
+  height: 100%;
+  background: #05061a;
+}
+.dk-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+.dk-stage > .c-deck {
+  width: 1280px;
+  height: 720px;
+  min-height: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+.c-deck {
+  font-family: var(--font-montserrat), 'Montserrat', system-ui, sans-serif;
+  --iae-cian: #3ff0ff;
+  text-align: left;
+}
+.c-deck * {
+  box-sizing: border-box;
+}
+
+/* ---------- resaltador cian: sólo sobre azul pleno ---------- */
+.c-slide--cover .c-slide-kicker,
+.c-slide--cierre .c-slide-kicker {
+  color: var(--iae-cian);
+}
+.c-slide--cover strong,
+.c-slide--cierre strong,
+.c-slide--big:not(:has(h1)) strong {
+  background: var(--iae-cian);
+  color: var(--deck-azul);
+  padding: 0 0.14em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* ---------- slides interactivas (placeholder) ---------- */
+.c-slide--encuesta,
+.c-slide--postura,
+.c-slide--simulador,
+.c-slide--qr {
+  --deck-fondo: var(--deck-superficie);
+}
+.c-deck .dk-encuesta .c-slide-pregunta {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--deck-tinta);
+}
+.c-deck .dk-interactivo {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1 1 auto;
+}
+.c-deck .dk-encuesta-tipo {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--deck-azul);
+}
+.c-deck .dk-encuesta-opciones {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+.c-deck .dk-encuesta-opciones li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 74px;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-top: 3px solid var(--deck-azul);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--deck-tinta);
+}
+.c-deck .dk-encuesta-opciones.is-escala {
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+}
+.c-deck .dk-encuesta-opciones.is-escala li {
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+}
+.c-deck .dk-encuesta-letra {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--deck-azul);
+  color: var(--iae-cian);
+  font-size: 20px;
+  font-weight: 700;
+}
+.c-deck .dk-encuesta-letra:empty {
+  display: none;
+}
+.c-deck .dk-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 28px 32px;
+  border: 2px dashed var(--deck-borde-fuerte);
+  background: #ffffff;
+  font-size: 22px;
+  color: var(--deck-gris);
+}
+.c-deck .dk-qr-caja {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 auto;
+  background:
+    linear-gradient(90deg, var(--deck-azul) 50%, transparent 50%) 0 0 / 36px 36px,
+    linear-gradient(var(--deck-azul) 50%, transparent 50%) 0 0 / 36px 36px;
+  opacity: 0.18;
+}
+
+/* ---------- DeckPlayer ---------- */
+.dk-player {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.dk-player--vacio {
+  padding: 32px;
+  border: 1px dashed var(--borde, #d6d9e6);
+  color: var(--gris, #5f6474);
+}
+.dk-player-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dk-player-picker {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--gris, #5f6474);
+  max-width: min(460px, 100%);
+}
+.dk-player-picker select {
+  min-width: 0;
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+  font-size: 14px;
+  border: 1px solid var(--borde, #d6d9e6);
+  background: #ffffff;
+}
+.dk-player-capitulo {
+  font-size: 13px;
+  color: var(--azul, #1d21a9);
+  font-weight: 600;
+}
+.dk-player-escenario {
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(29, 33, 169, 0.08), 0 10px 30px rgba(29, 33, 169, 0.09);
+}
+.dk-player-escenario.is-full {
+  width: 100vw;
+  height: 100vh;
+  background: #05061a;
+  box-shadow: none;
+}
+.dk-player-controles {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dk-player-contador {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--gris, #5f6474);
+}
+.dk-player-notas {
+  padding: 14px 18px;
+  background: #fffbea;
+  border-left: 4px solid #e2b400;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.dk-player-notas h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.dk-player-notas p {
+  margin: 0;
+}

@@ -1,0 +1,62 @@
+/* Conceptos y materiales v2. Prefijo: cx- */
+.cx-intro { max-width: 68ch; margin: 6px 0 0; }
+.cx-saltos { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 8px; font-size: 14px; }
+.cx-saltos a { text-decoration: none; font-weight: 600; }
+.cx-saltos a:hover { text-decoration: underline; }
+
+.cx-jornada { margin-top: 34px; scroll-margin-top: 76px; }
+.cx-jornada > h2 { font-size: 19px; margin: 0 0 14px; }
+.cx-jornada > h2 a { color: var(--tinta); text-decoration: none; }
+.cx-jornada > h2 a:hover { color: var(--azul); text-decoration: underline; }
+.cx-jornada > h2 .cx-num { color: var(--azul); }
+
+.cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 12px; align-items: start; }
+
+.cx-card {
+  background: var(--papel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 14px 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  scroll-margin-top: 80px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cx-card h3 { font-size: 15px; margin: 0 0 6px; line-height: 1.3; }
+.cx-card h3 a { color: inherit; text-decoration: none; }
+.cx-card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--tinta); }
+.cx-card:target {
+  border-color: var(--azul);
+  box-shadow: 0 0 0 3px rgba(31, 92, 255, 0.18);
+  background: #fbfbff;
+}
+
+.cx-meta { margin-top: 10px; font-size: 13px; color: var(--gris); }
+.cx-meta a { font-weight: 600; display: inline-block; padding: 2px 4px; min-width: 24px; text-align: center; }
+
+.cx-links { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--borde); display: grid; gap: 6px; }
+.cx-links li { font-size: 13px; line-height: 1.4; }
+
+/* Un link como texto: título subrayado + fuente chica en gris. */
+.cx-link { color: var(--azul); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+.cx-link:hover { text-decoration-thickness: 2px; }
+.cx-fuente { color: var(--gris); font-size: 12px; white-space: nowrap; }
+
+/* Materiales */
+.cx-mats { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.cx-mat { display: grid; gap: 4px; }
+.cx-mat .cx-link { font-size: 15px; font-weight: 600; }
+.cx-mat-meta { font-size: 12px; color: var(--gris); }
+.cx-mat-why { font-size: 14px; margin: 2px 0 0; }
+.cx-mat-conceptos { font-size: 13px; color: var(--gris); margin-top: 4px; }
+.cx-mat-conceptos a { text-decoration: none; }
+.cx-mat-conceptos a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .cx-card { scroll-margin-top: 112px; }
+  .cx-jornada { margin-top: 26px; scroll-margin-top: 108px; }
+  .cx-jornada > h2 { font-size: 17px; }
+  .cx-card { padding: 12px 14px; }
+}
+.cx-sub { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gris); margin: 18px 0 8px; }
+.cx-card-mat { background: var(--hielo, #f4f6fb); }

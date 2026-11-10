@@ -1,0 +1,17 @@
+# Videos del deck HTML (~147 MB): se sirven desde https://empresas-familiares-ia.vercel.app
+# (ver redirects() en next.config.ts).
+public/decks/empresas-familiares/media/**/*.mp4
+
+# Secretos y artefactos locales
+.env
+.env.*
+.next
+node_modules
+tsconfig.tsbuildinfo
+.tmp-tests
+
+# No hacen falta para el build
+docs/shots
+
+# Seeds y tests: importan de ../mbt, que no se sube
+scripts
