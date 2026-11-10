@@ -18,4 +18,4 @@ Los avisos no llegan: el Campus no tiene push, el mail se ignora y la mensajerí
 - Hay que vincular la cuenta del canal externo de cada docente con su persona en HackAI. En la demo, el vínculo se carga a mano en el seed.
 - Un mensaje puede nacer de los dos lados, así que cada mensaje recuerda dónde nació para no duplicarse al sincronizar.
 - El contenido de la materia también queda en un tercero. Es una elección de la cátedra y se dice en el pitch.
-- Cómo se lee cada plataforma (consultas a su API REST a demanda o periódicas, o webhooks) se confirma con research antes de la spec.
+- Discord no empuja mensajes por HTTP: sin gateway, HackAI los lee consultando su API REST, a demanda o periódicamente. El bot necesita el intent Message Content, que en un servidor de equipo o de cátedra se activa en el Developer Portal sin revisión. Las URLs de los adjuntos vencen, así que el archivo se guarda al leerlo. Slack sí empuja eventos por HTTP. Detalle en la [nota de research](../research/2026-11-10-canales-externos-apis.md).

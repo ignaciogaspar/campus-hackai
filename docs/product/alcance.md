@@ -33,8 +33,15 @@ Es la versión vigente. Se ajusta con lo que salga de cada validación.
 | Material de la materia | Núcleo: lo reúne de Moodle, del canal externo y de lo que se sube a HackAI, e indica de dónde viene cada archivo | Hoy está suelto y repartido |
 | Inscribirse a una materia y quedar adentro de su aula y de su espacio | Núcleo: pide la inscripción al SIU y la matriculación a Moodle en un solo paso | Hoy son dos sistemas y la matriculación depende de otro proceso |
 | Inscripción a finales con cupo | SIU, por el mismo flujo de inscripción | La queja número uno del SIU (54%) |
-| Constancias y certificados | SIU | Lo burocrático se queda donde está |
-| Notas e historia académica | SIU, mostradas desde el núcleo | Una sola fuente de verdad |
+| Constancias y certificados | SIU, con enlace directo a su Autogestión | Lo burocrático se queda donde está |
+| Notas e historia académica | SIU, mostradas desde el núcleo | Una sola fuente de verdad; la API del SIU las expone |
+
+**Lo que el research cambia** ([SIU](../research/2026-11-10-siu-guarani-integracion.md), [Moodle](../research/2026-11-10-moodle-web-services.md), [normativa](../research/2026-11-10-burocracia-academica-y-normativa.md)):
+
+- **La API del SIU no permite inscribir.** Sus inscripciones a cursada y a examen son solo de lectura; inscribirse es una acción de la Autogestión. En la demo la inscripción en un paso es simulada de punta a punta; en producción, HackAI lleva al alumno a la Autogestión del SIU con un enlace directo, salvo que la universidad y el SIU habiliten otro canal.
+- **La matriculación automática ya existe.** El SIU tiene una interfaz oficial que crea un curso de Moodle por comisión y sincroniza las matrículas. Que el alumno tenga que matricularse a mano es una configuración que la Austral no usa o no tiene activa (a confirmar). Es un argumento para el pitch.
+- **El cronograma de evaluaciones no está en la API del SIU.** Sí están las inscripciones a mesas y las mesas de cada docente. En la demo se simula; en producción, los parciales necesitan otro canal.
+- **Ninguna norma nacional encontrada impide mostrar o iniciar trámites desde otro sistema.** Las reglas de inscripción y equivalencias son de cada universidad (Ley 24.521, art. 29 inc. j). Actas, analíticos y diplomas quedan en el SIU y en el circuito del Ministerio (SICER 2.0). Con datos reales, HackAI sería encargado de tratamiento y haría falta un acuerdo con la Austral (Ley 25.326).
 | Entregas | Moodle, con enlace directo | No vale la pena rehacerlo |
 
 **Por qué «qué me toca» se limita a parciales y finales:** son las fechas que el SIU ya tiene. Las de Moodle dependen de que cada docente las cargue: en el relevamiento, el Calendario del Campus tenía un solo evento en noviembre para 14 cursos. Las entregas con fecha de Moodle pueden sumarse como complemento, sin prometer que estén todas.
