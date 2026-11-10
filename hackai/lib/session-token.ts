@@ -1,12 +1,9 @@
-/* compat: imita lib/session-token.ts de campus según campus/docs/CONTRACTS.md.
-   Solo trae lo que el contrato documenta con firma clara. No se porta. */
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 export type Role = 'alumno' | 'profesor'
 export type Session = { personId: string; role: Role }
 
-export const SESSION_COOKIE = 'campus_session'
-export const GUEST_COOKIE = 'campus_guest'
+export const SESSION_COOKIE = 'hackai_session'
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30
 
@@ -39,7 +36,7 @@ export function verifySessionToken(token: string | undefined | null): Session | 
   }
 }
 
-/** Para tests y desarrollo: 'campus_session=<token>'. Necesita SESSION_SECRET. */
+/** Para tests y desarrollo: 'hackai_session=<token>'. Necesita SESSION_SECRET. */
 export function forgeSessionCookie(personId: string, role: Role): string {
   const iat = Math.floor(Date.now() / 1000)
   const body = Buffer.from(JSON.stringify({ personId, role, iat, exp: iat + THIRTY_DAYS })).toString('base64url')

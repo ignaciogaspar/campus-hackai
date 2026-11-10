@@ -1,6 +1,3 @@
-/* compat: test de ejemplo. Muestra cómo se escribe un test con node:test y
-   verifica el stub de sesión. Los tests de una feature van en
-   tests/<feature>.test.ts y prueban su core.ts puro. No se porta. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { SESSION_COOKIE, forgeSessionCookie, verifySessionToken } from '@/lib/session-token'

@@ -92,12 +92,6 @@ Present the two reports under `## Standards` and `## Spec` headings, verbatim or
 
 End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes: that's the reranking the separation exists to prevent.
 
-### 6. Mergeable check (only for a `hackai/` feature)
-
-If the diff touches a feature under `hackai/` (`hackai/lib/<feature>/`, `hackai/components/<feature>/`, `hackai/app/**/<feature>/`, its migration, tests or doc), the review is not finished until that feature is checked against the campus compatibility checklist. For each feature touched, call the Workflow tool with `name: "mergeable-check"` and `args: { "feature": "<feature>" }` (the folder name under `hackai/lib/`), and present its result under a third heading, `## Mergeable`, kept separate from the two axes: the `mergeable` verdict, then the `confirmed` findings by severity, then anything left `unverified` or `notReviewed`. If the workflow is unavailable, call the Skill tool with "campus-feature" and walk its checklist instead.
-
-A diff that touches nothing under `hackai/` skips this step.
-
 ## Why two axes
 
 A change can pass one axis and fail the other:

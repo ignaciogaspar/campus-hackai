@@ -1,7 +1,5 @@
-/* compat: imita lib/auth.ts de campus según campus/docs/CONTRACTS.md.
-   Diferencia con el real: acá getSession() solo verifica la firma de la cookie;
-   en campus además verifica persona, rol y session_version en la base.
-   No se porta. */
+/* Sesión provisoria: getSession() solo verifica la firma de la cookie.
+   Cómo entra el alumno (identidad e ingreso) todavía no está decidido. */
 import 'server-only'
 import { cache } from 'react'
 import { cookies } from 'next/headers'

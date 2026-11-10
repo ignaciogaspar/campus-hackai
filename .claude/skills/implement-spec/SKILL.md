@@ -46,7 +46,7 @@ Communication to and from the workflow's agents should be sparse. Communicate pr
 
 6. When a merge changes the **frontier** of available tickets, the workflow starts implementers for the newly unblocked tickets. This allows for maximum concurrency. The workflow returns `{ integrationBranch, waves, allMerged, tickets }`, with one entry per ticket carrying its state. If `allMerged` is false, resolve the cause and call the workflow again with the remaining tickets and `"explore": false`.
 
-7. Once all tickets are complete, call the Skill tool with `code-review` on the integration branch. If the spec's work is a feature under `hackai/`, make sure the review included the campus compatibility check: the `mergeable-check` workflow with `args: { "feature": "<feature>" }` returning `mergeable: true`, or the `campus-feature` skill's checklist. Fix all issues raised by both, yourself, on the integration branch, in a single pass.
+7. Once all tickets are complete, call the Skill tool with `code-review` on the integration branch. Fix all issues it raises, yourself, on the integration branch, in a single pass.
 
 8. If a draft PR exists, mark it ready for review. Otherwise, resolve each ticket the way the issue tracker closes work, and report the integration branch.
 

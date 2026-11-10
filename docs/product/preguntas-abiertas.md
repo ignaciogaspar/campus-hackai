@@ -8,7 +8,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - Agregar preguntas nuevas al final de su bloque, sin renumerar.
 - Las preguntas para Nacho se le hacen a él; la respuesta se copia textual en **Decisión**.
 
-**Las que bloquean empezar a construir:** #1, #2, #N1, #N2.
+**Las que bloquean empezar a construir:** #2 (el recorte de la demo).
 
 ## Bloque 1: Equipo
 
@@ -80,25 +80,21 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 
 ## Bloque 2: Para Nacho
 
-De la sección 11 del análisis de su repo.
+De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
 
 ### N1. ¿Qué significa «mergeable» para vos?
 
-- **Por qué importa:** un PR a su repo, un módulo que integre después, o solo mismo stack y convenciones. Todo el checklist de compatibilidad asume que valen las reglas de `SPEC.md` y `CONTRACTS.md`.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** ya no aplica (10/11/2026, ADR 0004)
 
 ### N2. ¿Podés pasar el repo completo o acceso a git?
 
-- **Por qué importa:** falta `lib/content/server` (el typecheck falla) y el contenido para sembrar una base. Con acceso a git, `campus/` pasa a ser un subtree ([campus-upstream.md](../campus-upstream.md)).
+- **Por qué importa:** falta `lib/content/server` y el contenido para sembrar su base. Ya no bloquea: lo necesitamos solo para leer su lógica completa. Con acceso a git, `campus/` pasa a ser un subtree ([campus-upstream.md](../campus-upstream.md)).
 - **Estado:** abierta
 - **Decisión:** pendiente
 
 ### N3. ¿Qué número de migración usamos y quién más suma migraciones esta semana?
 
-- **Por qué importa:** el último número usado es 0230 y está repetido en dos archivos. Mientras tanto arrancamos en 0240.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** ya no aplica (10/11/2026, ADR 0004)
 
 ### N4. ¿Hay un proyecto Supabase de prueba para la hackathon o cada equipo levanta el suyo?
 
@@ -108,18 +104,12 @@ De la sección 11 del análisis de su repo.
 
 ### N5. ¿La carpeta `content/hackai` es para nosotros? ¿Qué esperás ahí?
 
-- **Por qué importa:** existe y está vacía; parece el lugar reservado para la hackathon.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** ya no aplica (10/11/2026, ADR 0004)
 
 ### N6. ¿Aceptás tablas nuevas para varias materias y permisos administrativos, o preferís que todo quede dentro del curso único?
 
-- **Por qué importa:** decide si las ideas tipo SIU son mergeables o quedan solo en `hackai/`.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** ya no aplica (10/11/2026, ADR 0004)
 
 ### N7. ¿Cómo querés recibir el código?
 
-- **Por qué importa:** hoy lo que podemos mandar es el diff que arma `scripts/port-to-campus.sh` sobre una copia de su zip.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** ya no aplica (10/11/2026, ADR 0004)

@@ -237,25 +237,8 @@ Persona sin login que responde una encuesta por QR con un nombre.
 
 ### Este repo
 
-**Feature (Feature)**:
-Unidad de producto autocontenida que ocupa en `hackai/` las mismas rutas que ocuparía en campus y se identifica con un nombre de carpeta.
-_Avoid_: «módulo» para la feature entera (módulo es un concepto de `codebase-design`).
-
-**Port (Port)**:
-Copiar una feature de `hackai/` a una copia de campus con `scripts/port-to-campus.sh` y obtener el diff.
-_Avoid_: «merge» (no hay historial común), «migrar».
-
-**Parche (Patch)**:
-El diff que produce un port, más la lista de cambios manuales en archivos compartidos. Es lo que se le manda a Nacho.
-
 **Snapshot de campus (Campus snapshot)**:
 El contenido de `campus/`: una copia del repo de Nacho en una fecha, sin historial, que solo se reemplaza entera.
-
-**Archivo compat (Compat file)**:
-Archivo de `hackai/` que imita un helper compartido de campus para que una feature compile con los mismos imports. Listado en `hackai/compat.txt`; nunca viaja en un port.
-
-**Checklist de compatibilidad (Compatibility checklist)**:
-Las reglas que una feature debe cumplir para ser mergeable en campus. Están en la skill `campus-feature` y las verifica el workflow `mergeable-check`.
 
 ## Flagged ambiguities
 

@@ -1,5 +1,3 @@
-/* compat: imita lib/claude.ts de campus según campus/docs/CONTRACTS.md.
-   No se porta. */
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 

@@ -1,7 +1,5 @@
-/* compat: aproximación mínima de app/globals.css de campus. Solo los tokens y
-   las clases que nombra campus/docs/CONTRACTS.md. Los valores de --azul y
-   --cian son los del contrato; el resto es provisorio hasta compararlo con el
-   archivo real. No se porta: en campus mandan sus estilos. */
+/* Estilos base provisorios. El sistema visual se rediseña con los colores de
+   la Austral y foco en UX y UI (docs/product/alcance.md). */
 :root {
   --azul: #1d21a9;
   --cian: #3ff0ff;
