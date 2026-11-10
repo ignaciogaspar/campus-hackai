@@ -48,7 +48,7 @@ Reglas del equipo:
 - Una feature ocupa en `hackai/` las mismas rutas que ocuparía en campus: `lib/<feature>/`, `components/<feature>/`, `app/campus/<feature>/`, `app/profesor/<feature>/`, `app/api/<feature>/`, `supabase/migrations/02NN_<feature>.sql`, `tests/<feature>.test.ts`, `docs/<FEATURE>.md`.
 - Datos sintéticos siempre. Nada de datos reales de alumnos; los secretos, solo en `.env.local`.
 - Documentación en español; código e identificadores en inglés; UI en voseo.
-- El trabajo se trackea en GitHub Issues de `<owner>/campus-hackai`. Las decisiones difíciles de revertir van a `docs/adr/`.
+- El trabajo se trackea en GitHub Issues de `ignaciogaspar/campus-hackai`. Las decisiones difíciles de revertir van a `docs/adr/`.
 - Los agentes en paralelo se lanzan con workflows guardados, no con subagentes: [docs/agents/workflows.md](docs/agents/workflows.md).
 
 ## Cómo correr `hackai/`

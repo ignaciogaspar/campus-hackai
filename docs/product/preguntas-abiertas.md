@@ -68,9 +68,9 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 
 ### 9. ¿Quién es el owner del repo en GitHub?
 
-- **Por qué importa:** el issue tracker está escrito como `<owner>/campus-hackai`; hay que reemplazarlo.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Por qué importa:** el issue tracker y las skills necesitan saber dónde viven los issues.
+- **Estado:** decidida (10/11/2026)
+- **Decisión:** `ignaciogaspar/campus-hackai`, privado. Para sumar al equipo, invitarlos como colaboradores; si más adelante se pasa a una organización, actualizar `git remote` y las menciones al repo.
 
 ### 10. ¿Qué SIU Guaraní usa la Austral y quién lo administra?
 

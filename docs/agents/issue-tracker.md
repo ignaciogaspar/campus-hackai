@@ -1,8 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues in `<owner>/campus-hackai`. Use the `gh` CLI for all operations.
-
-The owner is not defined yet: `<owner>` is a literal placeholder. Once the GitHub repo exists, replace every `<owner>/campus-hackai` in the repo (`grep -rn '<owner>/campus-hackai' --exclude-dir=campus .`).
+Issues and specs for this repo live as GitHub issues in `ignaciogaspar/campus-hackai`. Use the `gh` CLI for all operations.
 
 ## Conventions
 

@@ -36,7 +36,7 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - Documentación en español. Nombres de entidades, código, columnas e identificadores en inglés; el glosario los lista entre paréntesis. Valores de dominio en español (`'borrador'`, `'abierta'`).
 - Textos de UI, comentarios y mensajes de error en español rioplatense con voseo. Rutas de páginas en español (`/campus/inscripciones`).
 - Código: dos espacios, comillas simples, sin punto y coma, imports con `@/`. Campus no tiene linter: se respeta a mano.
-- El trabajo se trackea en GitHub Issues de `<owner>/campus-hackai`. Cambios por PR a `main`.
+- El trabajo se trackea en GitHub Issues de `ignaciogaspar/campus-hackai`. Cambios por PR a `main`.
 - Las hipótesis en los docs están marcadas como tales. Pasan a decisión solo con confirmación del equipo; mientras tanto van a `docs/product/preguntas-abiertas.md`.
 
 ## Skills
@@ -61,7 +61,7 @@ Cuando una skill o una tarea necesite agentes en paralelo, llamá al Workflow to
 
 ### Issue tracker
 
-Los issues viven en GitHub Issues de `<owner>/campus-hackai` (CLI `gh`). See `docs/agents/issue-tracker.md`.
+Los issues viven en GitHub Issues de `ignaciogaspar/campus-hackai` (CLI `gh`). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
