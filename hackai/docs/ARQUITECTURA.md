@@ -1,0 +1,191 @@
+# Arquitectura de HackAI
+
+Cómo se organiza el código de `hackai/`. Sale de la skill `codebase-design` aplicada a la spec [#5](https://github.com/ignaciogaspar/campus-hackai/issues/5), y aplica el [ADR 0004](../../docs/adr/0004-sistema-propio-con-puertos-y-adaptadores.md) (puertos y adaptadores) y el [ADR 0005](../../docs/adr/0005-sincronizacion-con-canales-externos.md) (sincronización con canales externos). El vocabulario (módulo, interfaz, seam, adaptador, profundidad) es el de esa skill.
+
+## La idea en dos reglas
+
+1. **Puertos y adaptadores en los bordes.** SIU, Moodle y los canales externos son sistemas que no controlamos: cada uno entra por un puerto, con un adaptador para la demo y otro en memoria para los tests.
+2. **Módulos profundos adentro.** El núcleo son cuatro módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
+
+## Módulos del núcleo
+
+Cada módulo expone una sola interfaz. Lo de adentro (reglas, almacén, piezas internas) no se importa desde afuera. Los errores esperables vuelven como valores (`{ ok: false, error: 'sin-cupo' }`), no como excepciones. Las excepciones quedan para lo que no debería pasar.
+
+### Personas (`people`)
+
+Quién es quién.
+
+| Operación | Qué hace |
+| --- | --- |
+| `signIn(credencial)` | La persona que entra, según el puerto de identidad: en la demo, una persona elegida de la lista; en producción, la cuenta de Microsoft de la Austral |
+| `demoPeople()` | Personas sintéticas para el ingreso de demo |
+| `get(persona)` | Rol (alumno o docente), facultad y propuesta |
+| `accountIn(persona, sistema)` | Su id en un sistema de origen o canal externo (SIU, Moodle, Discord) |
+| `byExternalAccount(sistema, idExterno)` | La persona dueña de ese id, o nada. Se vincula por id, porque nombres de usuario y mails cambian o se repiten |
+
+Usa el puerto de identidad, el del SIU para los datos de la persona y su almacén para los vínculos con cada sistema. Los adaptadores nunca adivinan a quién corresponde un id: se lo preguntan a Personas.
+
+### Cursada (`studies`)
+
+Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
+
+| Operación | Qué hace |
+| --- | --- |
+| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas |
+| `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
+| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
+| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `falla-externa` |
+| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
+| `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
+| `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
+| `record(persona)` | Notas de parciales unificadas e historia académica |
+| `certificate(persona, tipo)` | Si cumple las condiciones de la constancia y el enlace a la Autogestión del SIU |
+
+`objetivo` es una comisión (cursada) o una mesa (examen).
+
+**Invariantes de `enroll`:**
+
+- **Todo o nada.** Si el SIU inscribe y Moodle falla, deshace la inscripción del SIU antes de devolver `falla-externa`.
+- **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
+- **Si el SIU no deja inscribir por API,** el adaptador lo declara y `enroll` devuelve `requiere-autogestion` con el enlace a la comisión en la Autogestión. Es el caso de la API real del SIU hoy. La pantalla lo muestra como un paso más, no como un error.
+
+**Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta.
+
+Usa los puertos del SIU, del aula virtual y el reloj.
+
+### Espacios (`spaces`)
+
+El espacio de la materia, con la sincronización con canales externos adentro.
+
+| Operación | Qué hace |
+| --- | --- |
+| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos y el material |
+| `channel(persona, canal)` | Mensajes del canal, con las consultas y sus respuestas; marca leído |
+| `post(persona, canal, mensaje)` | Publica y lo envía al canal externo vinculado |
+| `resolve(persona, consulta)` | Marca una consulta como resuelta |
+| `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |
+| `openDirect(persona, otraPersona)` | Canal directo entre alumno y docente |
+| `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
+| `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
+| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
+
+**Reglas que hace cumplir:**
+
+- **Un espacio por materia y facultad.** Se crea la primera vez que alguien lo abre, con sus canales por defecto: material de la materia, y `#avisos` y `#consultas` por comisión.
+- **Membresía.** Se deduce de `sectionsOf` de Cursada y no se guarda aparte. Por eso no hay operación para agregar miembros: quien se inscribe ya está adentro.
+- **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión.
+- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay.
+- **Sincronización:**
+  - Cada mensaje guarda su origen (HackAI, Discord, Moodle) y su id externo, y un mensaje no entra dos veces.
+  - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización.
+  - Los adjuntos externos se copian a Archivos al leerlos, porque las URLs de Discord vencen.
+  - `open` no sincroniza más de una vez cada pocos segundos por espacio.
+
+Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Archivos y el reloj.
+
+**Por qué la sincronización no es un módulo aparte:** separada, Espacios tendría que exponer operaciones que solo existen para ella («dame lo pendiente de enviar», «guardá este mensaje externo»), y cada pantalla tendría que acordarse de sincronizar. Adentro, todas las reglas de un mensaje (permisos, origen, duplicados, reintentos) están en un solo lugar y se prueban por la misma interfaz. La sincronización sigue siendo una pieza propia dentro de Espacios, con su seam interno.
+
+### Hoy (`today`)
+
+| Operación | Qué hace |
+| --- | --- |
+| `today(persona)` | Todo lo de la pantalla en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle |
+
+Compone Cursada y Espacios. No tiene almacén propio.
+
+### Dependencias entre módulos
+
+```text
+today ──► studies
+  │          ▲
+  └──► spaces ┘
+          │
+          └──► people
+```
+
+No hay ciclos. Si un módulo nuevo necesita llamar a uno que lo llama, el diseño está mal: se revisa antes de escribir código.
+
+## Puertos y adaptadores
+
+Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un puerto con un solo adaptador es indirección sin uso.
+
+| Puerto | Qué ofrece | Adaptadores |
+| --- | --- | --- |
+| **Identidad** | Validar una credencial y devolver quién es | Selector de demo, en memoria. En producción, Microsoft Entra ID (OpenID Connect) |
+| **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
+| **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha | Moodle simulado sobre tablas `moodle_*`, en memoria |
+| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, responder en un hilo, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
+| **Archivos** | Guardar un archivo y obtener su URL | Supabase Storage, en memoria |
+| **Reloj** | La fecha y hora actuales | Sistema, fijo |
+
+Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales: [research del SIU](../../docs/research/2026-11-10-siu-guarani-integracion.md) y [research de Moodle](../../docs/research/2026-11-10-moodle-web-services.md). Inscribir y el cronograma no existen en la API real del SIU: solo los provee el simulado. El adaptador de Discord sigue la [research de canales externos](../../docs/research/2026-11-10-canales-externos-apis.md): lee por REST desde un cursor, necesita el intent Message Content y ante un 429 espera `retry_after`.
+
+**Capacidades:** cada adaptador de un sistema de origen declara qué soporta: por ejemplo, si permite inscribir, si tiene cronograma, si ya matricula en Moodle, o si avisa por evento en vez de leerse desde un cursor. El núcleo decide con esas declaraciones, nunca preguntando qué adaptador es. Así el mismo núcleo funciona con el simulado de la demo y con el sistema real, que tiene menos capacidades.
+
+**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas.
+
+## Estructura de carpetas
+
+```text
+hackai/
+├── lib/
+│   ├── core/            people/, studies/, spaces/, today/
+│   ├── ports/           identity, siu, classroom, external-channel, files, clock
+│   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/
+│   └── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+├── app/                 pantallas y server actions
+├── components/
+├── supabase/migrations/
+└── tests/
+    ├── core/            un archivo por módulo
+    └── contracts/       una batería por puerto
+```
+
+**Reglas de import** (no hay linter: se respetan a mano y se revisan en `code-review`):
+
+- `core/` importa `ports/` y las interfaces de otros módulos de `core/`. Nunca `adapters/`, `app/` ni `lib/db`.
+- `adapters/` importa `ports/` y los tipos de `core/` que necesita.
+- `app/` importa `composition` y los tipos de `core/`. Las pantallas no tienen reglas de negocio.
+- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria.
+
+## De la demo a producción
+
+La demo y producción usan el mismo núcleo. Lo que cambia es qué adaptador elige `composition` y la configuración. Si para pasar a producción hubiera que tocar `core/`, el diseño está mal y se revisa.
+
+| Pieza | En la demo | En producción | Qué hace falta y de quién |
+| --- | --- | --- | --- |
+| Identidad | Elegir una persona sintética | Microsoft Entra ID por OpenID Connect, la misma cuenta del Campus Virtual | Registrar la app en el tenant de la Austral (TI de la Austral). Se implementa con `fetch` y `node:crypto`; si no alcanza, ADR para sumar una dependencia |
+| SIU | Simulado sobre `siu_*` | API REST v2 de Guaraní, con un usuario propio para HackAI. Inscribir y el cronograma no existen: el adaptador lo declara, `enroll` devuelve `requiere-autogestion` y Hoy muestra solo finales y fechas de Moodle | Usuario de API y permisos por recurso (TI de la Austral y del SIU) |
+| Aula virtual | Simulado sobre `moodle_*` | Web Services REST de Moodle con un token y un servicio con las funciones de la [research](../../docs/research/2026-11-10-moodle-web-services.md). Si la interfaz SIU → Moodle está activa, HackAI no matricula | Servicio, rol y token en el Moodle de la Austral (administración del Campus) |
+| Canal externo | Discord, en un servidor del equipo | El mismo adaptador, instalado en el servidor de cada cátedra. Slack entra con su adaptador: recibe los eventos por HTTP y los entrega por el mismo «leer desde un cursor», así el núcleo no cambia | Que cada cátedra instale el bot y vincule sus canales |
+| Base y archivos | Supabase del equipo | Supabase o Postgres de producción, con las mismas migraciones | Proyecto de producción y su backup |
+
+**Reglas para que el paso sea un cambio de configuración:**
+
+- **Adaptadores por entorno.** `composition` elige cada adaptador por una variable de entorno, una por puerto (por ejemplo `HACKAI_SIU` con `simulado` o `api`). Sus valores van en `.env.local` y en el hosting, y en los docs se nombran, nunca se copian.
+- **Lo simulado se puede tirar.** Las tablas `siu_*` y `moodle_*`, sus migraciones y el seed sintético van aparte de las tablas propias de HackAI. En producción no se aplican, y nada de HackAI depende de ellas fuera de sus adaptadores.
+- **Ids de los sistemas de origen.** Las tablas propias guardan los ids del SIU, de Moodle y de Discord tal como vienen, mapeados por Personas. Así los datos de producción entran sin migrar nada.
+- **Adaptadores que se portan bien con sistemas lentos:** cada llamada tiene tiempo máximo, los reintentos esperan lo que pide el sistema (por ejemplo `retry_after` en un 429) y una caída devuelve un error como valor, que el núcleo convierte en «desactualizado».
+- **Corrida periódica.** `syncAll` lo llama un cron del hosting, por ejemplo Vercel Cron, a través de una ruta protegida por un secreto.
+- **Logs sin datos personales:** se registran ids y resultados, nunca mensajes, notas ni nombres.
+- **Datos reales.** Antes de conectar un sistema de origen real hace falta un acuerdo con la Austral como encargado de tratamiento (Ley 25.326, art. 25; ver la [research de normativa](../../docs/research/2026-11-10-burocracia-academica-y-normativa.md)). Los espacios se archivan al cerrar el cuatrimestre y los datos se pueden suprimir a pedido.
+
+Esta tabla es el plan; en la hackathon se construyen solo los adaptadores de la demo. Los de producción se escriben contra el mismo puerto y deben pasar la misma batería de contrato.
+
+## Tests
+
+- **Por módulo** (`tests/core/`): cada test arma el módulo real con los adaptadores en memoria y el reloj fijo, ejecuta una operación de la interfaz y mira el resultado y lo que les quedó a los puertos.
+- **Sin dobles de módulos propios:** los tests de Hoy y de Espacios usan Cursada y Personas reales sobre puertos en memoria. Así se prueba el comportamiento real y los tests sobreviven a cualquier reordenamiento interno.
+- **Por puerto** (`tests/contracts/`): la misma batería corre contra el adaptador en memoria y contra el real, para que el doble se porte como el real. Al de Discord se le inyecta `fetch` con respuestas de ejemplo con la forma de su API: sin red. Los simulados del SIU y de Moodle corren contra la base solo si hay una de prueba.
+- **Casos que no pueden faltar:** los de la spec, entre ellos:
+  - una inscripción que falla en Moodle deshace la del SIU;
+  - un alumno de la comisión A no ve `#consultas` de la B;
+  - no hay canal directo entre dos alumnos;
+  - un mensaje nacido en HackAI no vuelve duplicado de Discord;
+  - parciales y finales salen ordenados por fecha.
+
+## Qué se descartó y por qué
+
+- **Puertos y adaptadores en todas las capas** (un puerto entre cada par de módulos, una clase por caso de uso): agrega interfaces sin que nada varíe detrás. Entre módulos propios hay un solo adaptador posible, el módulo real, así que el puerto sería indirección.
+- **Seis módulos, como decía la primera versión de la spec:** Académico era casi un pasamanos del SIU y se juntó con Cursada. Sincronización obligaba a Espacios a exponer operaciones solo para ella, así que pasó a estar adentro.
+- **Que Cursada agregue miembros a Espacios al inscribir:** sumaba un tercer paso que podía fallar en la inscripción y una segunda copia de la membresía. Espacios la deduce de Cursada.

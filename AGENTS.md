@@ -10,12 +10,12 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - `docs/research/`: notas con fuentes, incluido el relevamiento de SIU y Campus.
 - `docs/campus-upstream.md`: de dónde salió `campus/`, cómo se actualiza y sus problemas conocidos.
 - `docs/agents/workflows.md`: índice de los workflows guardados y cuándo usar cada uno.
-- `hackai/`: nuestro sistema. Cómo correrlo: `hackai/README.md`.
+- `hackai/`: nuestro sistema. Cómo correrlo: `hackai/README.md`. Módulos, puertos, carpetas y tests: `hackai/docs/ARQUITECTURA.md`.
 - `scripts/sync-campus.sh`: reemplaza el snapshot de `campus/`.
 
 ## Reglas duras
 
-- **Puertos y adaptadores** (ADR 0004). El núcleo es puro y no conoce a ningún sistema de origen; SIU, Moodle y Campus Austral entran cada uno por su adaptador. Por cada capacidad, el alcance dice si se delega en un sistema de origen o la resuelve el núcleo.
+- **Puertos y adaptadores en los bordes, módulos profundos adentro** (ADR 0004). Los sistemas de origen (SIU, Moodle, canales externos) entran por un puerto con un adaptador real y uno en memoria. El núcleo son cuatro módulos (`people`, `studies`, `spaces`, `today`) que se llaman por su interfaz. `core/` nunca importa `adapters/` ni `app/`, y solo `composition` arma los módulos con sus adaptadores. Leer `hackai/docs/ARQUITECTURA.md` antes de crear o mover un archivo de `hackai/lib/`.
 - **`campus/` es de solo lectura.** Es la referencia de la lógica de Campus Austral: se lee y se reimplementa en `hackai/`, sin copiar código. Se reemplaza entero con la skill `sync-campus`, en un commit aparte.
 - **Stack fijo, sin dependencias nuevas** (ADR 0002): Node 22, Next.js 15, React 19, TypeScript estricto, Supabase, CSS plano, tests con `node:test`. Sumar un paquete requiere una ADR.
 - **Datos en el servidor.** Todo acceso a la base pasa por el servidor con el service role. Las migraciones son idempotentes y activan RLS sin políticas.
