@@ -38,7 +38,7 @@ Todas están en `.claude/skills/` (procedencia y tabla completa: `.claude/skills
 | Fase | Skills |
 |---|---|
 | Entender y decidir | `grill-with-docs`, `grilling`, `domain-modeling`, `research`, `wayfinder`, `to-questionnaire`, `relevar-siu-campus` |
-| Validar una idea | `prototype` |
+| Validar una idea | `prototype`, `ui-collage` (mocks de pantallas antes de codear) |
 | Spec y tickets | `to-spec`, `to-tickets`, `triage` |
 | Construir | `implement`, `implement-spec`, `tdd`, `codebase-design`, `improve-codebase-architecture`, `diagnosing-bugs` |
 | Revisar | `code-review`, `pr` |

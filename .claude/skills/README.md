@@ -2,7 +2,7 @@
 
 Selección de 21 de las 27 skills del plugin **mattpocock-skills** (Matt Pocock), versión 1.3.1, tomadas del repositorio https://github.com/mattpocock/skills en el commit `49dd158d1076134a641b33efb035946536778336` el 2026-11-01. Licencia MIT (ver `LICENSE-mattpocock-skills`).
 
-Llegaron copiadas del repo `platform`, que las había tomado del plugin. A esas 21 se suman 2 skills propias de este repo (`sync-campus`, `relevar-siu-campus`), y 6 de las de Matt Pocock están modificadas para usar workflows en vez de subagentes (ver "Modificaciones a las skills de Matt Pocock").
+Llegaron copiadas del repo `platform`, que las había tomado del plugin. A esas 21 se suman 3 skills propias: `sync-campus` y `relevar-siu-campus`, escritas para este repo, y `ui-collage`, adaptada de la del repo `platform` del equipo. Además, 6 de las de Matt Pocock están modificadas para usar workflows en vez de subagentes (ver "Modificaciones a las skills de Matt Pocock").
 
 Están acá, y no instaladas como plugin, para que todo el equipo use exactamente las mismas versiones sin instalar nada: Claude Code carga `.claude/skills/<nombre>/SKILL.md` de cualquier clon del repo. Se invocan sin prefijo: `/grilling`, `/to-tickets`. `.claude/settings.json` desactiva los plugins `mattpocock-skills` y `superpowers` para que no haya dos copias de la misma skill.
 
@@ -18,6 +18,7 @@ Están acá, y no instaladas como plugin, para que todo el equipo use exactament
 | `research` | Investigar una pregunta en fuentes primarias y dejar una nota con fuentes en `docs/research/`. | Antes de decidir sobre algo que no sabemos (APIs, regulación, cómo hace X otro producto). |
 | `to-questionnaire` | Convertir una decisión que no podés cerrar solo en un cuestionario para otra persona. | Para pasarle preguntas a otro integrante del equipo o a Nacho de forma asincrónica. |
 | `prototype` | Prototipo descartable para contestar una pregunta de diseño (un modelo de estados, una pantalla). | Para validar un flujo o una pantalla antes de codear. |
+| `ui-collage` (propia) | Galería de mocks HTML clickeables, primero para el celular, con los tokens de `docs/design/`. Adaptada de la skill del repo `platform`. | Antes de codear una pantalla o un estado nuevo, y para elegir entre variantes. |
 | `relevar-siu-campus` (propia) | Volver a relevar un área puntual de SIU Guaraní o del Campus Virtual en el Chrome del usuario, solo lectura. | Cuando el relevamiento del Google Doc del equipo no alcanza para decidir. |
 
 **Pasar de alcance a trabajo**
@@ -90,7 +91,7 @@ Para sumar una: copiar su carpeta desde `~/.claude/plugins/cache/claude-plugins-
 ## Cómo actualizar
 
 1. Instalar o actualizar el plugin en tu máquina (`/plugin`, marketplace `claude-plugins-official`) para tener la versión nueva en `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/<versión>/`.
-2. Copiar sobre `.claude/skills/` solo las 21 carpetas de Matt Pocock; las 2 propias no existen upstream y no se tocan.
+2. Copiar sobre `.claude/skills/` solo las 21 carpetas de Matt Pocock; las 3 propias no existen upstream y no se tocan.
 3. Volver a aplicar las modificaciones de la sección anterior. `git diff` muestra qué pisó la copia: en los archivos listados, conservar lo nuevo de upstream y reponer las llamadas a workflows. Terminó cuando `grep -rniE "sub-?agent" .claude/skills` solo devuelve las frases "Do not spawn sub-agents with the Agent tool" y la mención de `writing-for-agents`.
 4. Actualizar la versión y el commit en este archivo, y abrir un PR.
 5. Volver a desactivar el plugin si quedó habilitado, para no tener las skills duplicadas.
