@@ -1,0 +1,3 @@
+# la raíz ignora .env*: el ejemplo sin secretos sí se versiona
+!.env.example
+next-env.d.ts

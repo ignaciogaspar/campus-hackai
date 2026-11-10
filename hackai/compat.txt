@@ -1,0 +1,12 @@
+# Archivos «compat»: imitan helpers compartidos de campus para que el código de
+# una feature compile acá con los mismos imports. NO son nuestros y nunca viajan
+# a campus: scripts/port-to-campus.sh saltea todo lo que figure en esta lista.
+# Una ruta por línea, relativa a hackai/. Un directorio excluye todo su contenido.
+lib/db.ts
+lib/auth.ts
+lib/session-token.ts
+lib/claude.ts
+app/globals.css
+app/layout.tsx
+app/page.tsx
+tests/compat.test.ts
