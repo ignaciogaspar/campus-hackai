@@ -53,7 +53,7 @@ Estado del snapshot del 10/11/2026. Detalle en la [nota del análisis](research/
 
 ## Cómo se le entrega código a Nacho
 
-`scripts/port-to-campus.sh` copia las rutas de una feature de `hackai/` a una copia de campus y muestra el diff (skill `port-to-campus`). Ese diff es lo que se le manda. Antes de armarlo, el workflow `mergeable-check` revisa la feature contra el [checklist de compatibilidad](research/2026-11-10-repo-campus-nacho.md#checklist-de-compatibilidad).
+`scripts/port-to-campus.sh` copia las rutas de una feature de `hackai/` a una copia de campus y muestra el diff (skill `port-to-campus`). Ese diff es lo que se le manda. Antes de armarlo, el workflow `mergeable-check` revisa la feature contra el [checklist de compatibilidad](research/2026-11-10-repo-campus-nacho.md#11-checklist-para-que-el-código-sea-mergeable).
 
 El diff tiene dos partes: archivos nuevos de la feature, que entran sin conflicto, y los toques a archivos compartidos (menú, middleware, `package.json`), que Nacho mergea a mano. Cómo quiere recibirlo (PR, parche, zip) está sin definir: pregunta N7 de [preguntas-abiertas.md](product/preguntas-abiertas.md).
 

@@ -48,4 +48,4 @@ El kickoff pide tener en cuenta cuatro cosas. Toda spec de feature que toque dat
 - **Permisos:** quién ve y quién modifica cada dato.
 - **Datos mínimos:** guardar solo los datos personales necesarios.
 
-Qué ofrece campus para esto y qué le falta está en [la nota del repo de Nacho](../research/2026-11-10-repo-campus-nacho.md#límites).
+Qué ofrece campus para esto y qué le falta está en [la nota del repo de Nacho](../research/2026-11-10-repo-campus-nacho.md#13-límites-del-repo-que-condicionan-la-idea).

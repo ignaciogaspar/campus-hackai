@@ -6,7 +6,7 @@ Contexto: [hackathon.md](hackathon.md) (reglas y calendario), [problema.md](prob
 
 ## Ideas candidatas
 
-Salen del research del equipo. El encaje y el costo son la estimación del análisis del repo de Nacho ([nota](../research/2026-11-10-repo-campus-nacho.md), sección 10 de la pestaña), hecha leyendo el código sin correr la app. Ninguna está elegida ni descartada.
+Salen del research del equipo. El encaje y el costo son la estimación del análisis del repo de Nacho ([nota](../research/2026-11-10-repo-campus-nacho.md#14-cómo-encajan-las-ideas-del-research), sección 14), hecha leyendo el código sin correr la app. Ninguna está elegida ni descartada.
 
 | Idea | Problemas que ataca | Encaje en campus | Costo estimado |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ Dos ideas del research no tienen fila en el análisis de encaje: «aula ordenada
 ## Restricciones que pesan en la elección
 
 - **Tiempo:** tres ciclos diarios hasta el pitch del 13/11.
-- **Campus es de un solo curso y dos roles.** Cualquier idea tipo SIU (varias materias, bedelía) necesita tablas nuevas propias; el detalle está en [la nota del repo](../research/2026-11-10-repo-campus-nacho.md#límites).
+- **Campus es de un solo curso y dos roles.** Cualquier idea tipo SIU (varias materias, bedelía) necesita tablas nuevas propias; el detalle está en [la nota del repo](../research/2026-11-10-repo-campus-nacho.md#13-límites-del-repo-que-condicionan-la-idea).
 - **Todo dato de SIU y Moodle va a ser sintético.** No hay acceso de administrador ni API confirmada.
 - **El zip de campus no compila tal como vino** ([campus-upstream.md](../campus-upstream.md)). Hasta que Nacho pase el repo completo, `hackai/` tiene que poder correr sin depender de `campus/`.
 
