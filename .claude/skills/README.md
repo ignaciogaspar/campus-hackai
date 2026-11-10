@@ -2,7 +2,7 @@
 
 Selección de 21 de las 27 skills del plugin **mattpocock-skills** (Matt Pocock), versión 1.3.1, tomadas del repositorio https://github.com/mattpocock/skills en el commit `49dd158d1076134a641b33efb035946536778336` el 2026-11-01. Licencia MIT (ver `LICENSE-mattpocock-skills`).
 
-Llegaron copiadas del repo `platform`, que las había tomado del plugin. A esas 21 se suman 4 skills propias de este repo (`campus-feature`, `port-to-campus`, `sync-campus`, `relevar-siu-campus`), y 6 de las de Matt Pocock están modificadas para usar workflows en vez de subagentes (ver "Modificaciones a las skills de Matt Pocock").
+Llegaron copiadas del repo `platform`, que las había tomado del plugin. A esas 21 se suman 2 skills propias de este repo (`sync-campus`, `relevar-siu-campus`), y 6 de las de Matt Pocock están modificadas para usar workflows en vez de subagentes (ver "Modificaciones a las skills de Matt Pocock").
 
 Están acá, y no instaladas como plugin, para que todo el equipo use exactamente las mismas versiones sin instalar nada: Claude Code carga `.claude/skills/<nombre>/SKILL.md` de cualquier clon del repo. Se invocan sin prefijo: `/grilling`, `/to-tickets`. `.claude/settings.json` desactiva los plugins `mattpocock-skills` y `superpowers` para que no haya dos copias de la misma skill.
 
@@ -42,8 +42,6 @@ Están acá, y no instaladas como plugin, para que todo el equipo use exactament
 | `diagnosing-bugs` | Bucle de diagnóstico para bugs difíciles y regresiones de performance. | Cuando algo falla y no es obvio por qué. |
 | `code-review` | Revisar cambios contra los estándares del repo y contra la spec del ticket. | Antes de pedir review o mergear. |
 | `pr` | Escribir el cuerpo de un PR. | Al abrir un PR. |
-| `campus-feature` (propia) | Construir una feature en `hackai/` siguiendo el checklist de compatibilidad con campus (mismas rutas, stack y convenciones). | Cada feature nueva de `hackai/`, desde el primer archivo. |
-| `port-to-campus` (propia) | Llevar una feature de `hackai/` a una copia de campus con `scripts/port-to-campus.sh` y armar el parche para Nacho. | Cuando una feature está terminada y pasó `mergeable-check`. |
 
 **Trabajo en equipo y agentes**
 
@@ -64,7 +62,6 @@ Este repo no usa subagentes lanzados a mano con el Agent tool: todo trabajo en p
 | `design-it-twice` | 3 o más diseños de interfaz radicalmente distintos y su comparación. | `codebase-design` (`DESIGN-IT-TWICE.md`), `improve-codebase-architecture` |
 | `explore-codebase` | Lectores en paralelo por área que devuelven un mapa del código. | `grilling` (y por lo tanto `grill-with-docs`), `improve-codebase-architecture` |
 | `research-tickets` | Resuelve en paralelo los tickets de research de un mapa, cada uno con la skill `research`. | `wayfinder` |
-| `mergeable-check` | Revisa una feature de `hackai/` contra el checklist de compatibilidad con campus, con verificación adversarial. | `code-review`, `implement`, `implement-spec`, `campus-feature`, `port-to-campus`, `sync-campus` |
 | `scan-siu-campus` | Releva SIU y Campus en Chrome por áreas, solo lectura. | `relevar-siu-campus` |
 
 ## Modificaciones a las skills de Matt Pocock
@@ -82,14 +79,6 @@ Subagentes → workflows (cada una indica los `args` del workflow y que no hay q
 | `wayfinder/SKILL.md` | Los subagentes de research pasan a `research-tickets` (definición del ticket Research y paso 5 de "Chart the map"). |
 | `grilling/SKILL.md` | La búsqueda de hechos con subagente pasa a `explore-codebase` cuando hay que recorrer varias áreas; una búsqueda puntual se hace inline. |
 
-Paso agregado de compatibilidad con campus (cuando el cambio es una feature de `hackai/`, correr `mergeable-check` o el checklist de `campus-feature` antes de dar el trabajo por terminado):
-
-| Archivo | Dónde |
-|---|---|
-| `code-review/SKILL.md` | Paso 6 nuevo, "Mergeable check". |
-| `implement/SKILL.md` | Párrafo después de la llamada a `code-review`. |
-| `implement-spec/SKILL.md` | Paso 7. |
-
 Al actualizar desde upstream estos cambios se pisan: hay que volver a aplicarlos (ver "Cómo actualizar").
 
 ## Qué se dejó afuera y por qué
@@ -101,7 +90,7 @@ Para sumar una: copiar su carpeta desde `~/.claude/plugins/cache/claude-plugins-
 ## Cómo actualizar
 
 1. Instalar o actualizar el plugin en tu máquina (`/plugin`, marketplace `claude-plugins-official`) para tener la versión nueva en `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/<versión>/`.
-2. Copiar sobre `.claude/skills/` solo las 21 carpetas de Matt Pocock; las 4 propias no existen upstream y no se tocan.
-3. Volver a aplicar las modificaciones de la sección anterior. `git diff` muestra qué pisó la copia: en los archivos listados, conservar lo nuevo de upstream y reponer las llamadas a workflows y el paso de `mergeable-check`. Terminó cuando `grep -rniE "sub-?agent" .claude/skills` solo devuelve las frases "Do not spawn sub-agents with the Agent tool" y la mención de `writing-for-agents`.
+2. Copiar sobre `.claude/skills/` solo las 21 carpetas de Matt Pocock; las 2 propias no existen upstream y no se tocan.
+3. Volver a aplicar las modificaciones de la sección anterior. `git diff` muestra qué pisó la copia: en los archivos listados, conservar lo nuevo de upstream y reponer las llamadas a workflows. Terminó cuando `grep -rniE "sub-?agent" .claude/skills` solo devuelve las frases "Do not spawn sub-agents with the Agent tool" y la mención de `writing-for-agents`.
 4. Actualizar la versión y el commit en este archivo, y abrir un PR.
 5. Volver a desactivar el plugin si quedó habilitado, para no tener las skills duplicadas.

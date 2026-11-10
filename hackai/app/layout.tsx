@@ -1,4 +1,3 @@
-/* compat: layout raíz mínimo. No se porta: campus tiene el suyo. */
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import './globals.css'

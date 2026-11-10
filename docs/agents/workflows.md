@@ -7,7 +7,7 @@ En este repo los agentes en paralelo se lanzan con el Workflow tool y un script 
 Llamá al Workflow tool con `name` igual al nombre del archivo sin `.js` y `args` como objeto JSON:
 
 ```json
-{ "name": "mergeable-check", "args": { "feature": "inscripciones" } }
+{ "name": "scan-siu-campus", "args": { "areas": ["siu-cursada"] } }
 ```
 
 - Los arrays van como arrays JSON reales, no como texto.
@@ -25,7 +25,6 @@ Modelo y esfuerzo: «sesión» significa que los agentes heredan los de la sesi�
 | `design-it-twice` | Generar 3 o más diseños de interfaz radicalmente distintos para un módulo, uno por restricción, y compararlos. | `{ brief, constraints?: [texto] }` (por defecto: interfaz mínima, máxima flexibilidad, caso común) | `{ designs, comparison }` | skill `codebase-design` (`DESIGN-IT-TWICE.md`); `improve-codebase-architecture` llega a través de ella | sesión |
 | `explore-codebase` | Lectores en paralelo, uno por área del repo, que devuelven un mapa para responder una pregunta. Solo lectura. | `{ question, areas: [{ name, paths: [rutas] }], synthesize? }` | `{ maps, synthesis }`: por área, resumen, archivos con su rol, fricciones y qué aporta a la pregunta. `synthesis` es `null` sin `synthesize`. | skills `grilling` e `improve-codebase-architecture` | sesión / medio |
 | `research-tickets` | Resolver en paralelo los tickets de research de un mapa de wayfinder: un agente por ticket, en su worktree, con la skill `research`. Deja la nota en el branch `research/<number>`; no abre PR ni cierra el ticket. | `{ tickets: [{ number, question }], push? }` | `{ results: [{ number, answer, sources, notePath, branch, unresolved }], missing }` | skill `wayfinder` | sesión |
-| `mergeable-check` | Revisar una feature de `hackai/` contra el checklist de compatibilidad con campus: un revisor por dimensión y un escéptico por hallazgo que intenta refutarlo. Solo lectura. | `{ feature }` (nombre de la carpeta de la feature) | `{ feature, mergeable, confirmed, unverified, refuted, notReviewed, coverage }`. Severidades: `bloquea-merge`, `genera-conflicto`, `menor`. | skills `campus-feature`, `port-to-campus`, `sync-campus`, `implement`, `implement-spec` y `code-review` | sesión |
 | `scan-siu-campus` | Relevar SIU Guaraní y el Campus Virtual en el Chrome del usuario, por áreas, en solo lectura. Requiere Claude in Chrome conectado y la sesión de alumno iniciada en los dos sitios. | `{ areas?: [ids] }` con ids entre `siu-inicio`, `siu-cursada`, `siu-examenes`, `siu-reportes`, `siu-tramites`, `campus-inicio`, `campus-curso`, `campus-herramientas`, `campus-integraciones`. Sin args releva todas. | `{ results, missing }`: un relevamiento por área | skill `relevar-siu-campus` | Sonnet / medio |
 
 ## Cuándo usar un workflow
@@ -45,7 +44,7 @@ Si dudás, inline: un workflow gasta más tokens y tarda más en arrancar de lo 
 
 - **Archivos disjuntos.** Dos agentes del mismo workflow no escriben el mismo archivo. Si el reparto no lo garantiza, cada agente corre con `isolation: 'worktree'` y un paso posterior integra de a uno (así lo hacen `implement-tickets` y `research-tickets`).
 - **`campus/` es de solo lectura** también para ellos. Un lector entra a `campus/` solo si el área que le asignaron lo pide.
-- **Solo lectura cuando el workflow revisa o releva.** `review-axes`, `explore-codebase`, `mergeable-check` y `scan-siu-campus` no editan archivos ni hacen commits; `scan-siu-campus` además no toca botones que confirmen, envíen, inscriban o den de baja.
+- **Solo lectura cuando el workflow revisa o releva.** `review-axes`, `explore-codebase` y `scan-siu-campus` no editan archivos ni hacen commits; `scan-siu-campus` además no toca botones que confirmen, envíen, inscriban o den de baja.
 - **Sin datos personales.** Lo relevado de SIU y Campus vuelve con marcadores (`<nota>`, `<nombre>`), no con datos de la cuenta.
 - Un agente de workflow no ve la conversación: todo lo que necesita va en `args` o en archivos del repo.
 

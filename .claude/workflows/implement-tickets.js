@@ -91,7 +91,7 @@ Notas de exploración (si existen): ${a.notesDir}
 Pasos:
 1. Estás en un worktree propio. Creá el branch \`${branchOf(t)}\` parado en la punta de \`${a.integrationBranch}\` (\`git checkout -B ${branchOf(t)} ${a.integrationBranch}\`); si ya existía, reseteá sobre el branch de integración.
 2. Leé el ticket completo en el tracker (docs/agents/issue-tracker.md) y las notas que apliquen.
-3. Implementalo llamando a la Skill tool con "tdd". El código va en hackai/ con las rutas y convenciones de la skill campus-feature. No edites campus/.
+3. Implementalo llamando a la Skill tool con "tdd". El código va en hackai/ siguiendo las convenciones de AGENTS.md. No edites campus/.
 4. Corré typecheck y tests de hackai/ hasta que pasen.
 5. Commiteá en \`${branchOf(t)}\` con el id del ticket en el mensaje. Antes de terminar, mergeá la punta de \`${a.integrationBranch}\` en tu branch y volvé a correr los tests.
 6. No hagas push, no abras PR y no cierres el ticket.

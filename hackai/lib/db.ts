@@ -1,9 +1,5 @@
-/* compat: imita lib/db.ts de campus según campus/docs/CONTRACTS.md.
-   No se porta (ver compat.txt). En campus se usa el archivo real. */
 import 'server-only'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-
-export const COURSE_ID = 'ai-centric-management'
 
 let client: SupabaseClient | null = null
 

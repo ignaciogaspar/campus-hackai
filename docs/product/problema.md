@@ -4,7 +4,7 @@ Qué les molesta a alumnos y docentes de SIU Guaraní y del Campus Virtual, por 
 
 **Fuentes** (pestañas del [Google Doc del equipo](https://docs.google.com/document/d/1vzCAqms9f6OHlAU2imse0ZOsw-SNLW2Ol5P_9auUWtk/edit)): Research, Moodle (campus), Moodle y Siu, y el [relevamiento](../research/2026-11-10-relevamiento-siu-campus.md) del 10/11/2026.
 
-**Límites de la evidencia:** las quejas salen de conversaciones con pocos alumnos de grado de la Facultad de Ingeniería (Informática y Biomédica) y un docente. Los porcentajes vienen de una encuesta del equipo cuyo tamaño de muestra no está registrado en el doc. El relevamiento se hizo con una sola cuenta de alumno, en solo lectura.
+**Límites de la evidencia:** las quejas salen de conversaciones con pocos alumnos de grado de la Facultad de Ingeniería (Informática y Biomédica) y un docente. Los porcentajes vienen de la encuesta del equipo a alumnos: 39 respuestas entre el 6 y el 10/11/2026, 41% de Ingeniería, 28% de Comunicación, 18% de Empresariales y el resto de Biomédicas y Derecho. El conteo está en la pestaña «Resultados Encuesta» del Google Doc. No hubo respuestas de docentes. El relevamiento se hizo con una sola cuenta de alumno, en solo lectura.
 
 ## Los dos sistemas
 
@@ -25,9 +25,9 @@ No están conectados. Cada uno tiene su calendario, su bandeja de mensajes y sus
 | A6 | Al patear un final te sacan del curso y perdés el material | No verificable con una cuenta de alumno. Indicio: existe un plugin de desmatriculación masiva por CSV y el curso más viejo visible es de julio de 2025 | Hipótesis: limpieza manual al cierre del cuatrimestre |
 | A7 | No llegan notificaciones del material nuevo | **Explicado.** La preferencia «Cambios de contenido del curso» está activa en Web y Email, pero solo se envía si el docente marca la casilla al subir. No hay canal push | La casilla viene desmarcada; push sin configurar |
 | A8 | Cursos viejos mezclados con los actuales (56% de la encuesta) | **Confirmado.** 14 cursos en el inicio: 1C, 2C, anuales y uno de 2025, con la misma imagen y nombres con códigos internos | Ningún curso tiene fecha de fin y los filtros En progreso / Pasados están desactivados |
-| A9 | No se ven las fechas en el inicio (39%) | **Confirmado.** El inicio no muestra entregas, eventos ni avisos | El inicio usa un bloque de tarjetas de terceros, sin Línea de tiempo |
-| A10 | Mal en el celular (61%) | **Inferido del código, sin probar en un teléfono.** El SIU bloquea el zoom; el Campus esconde accesos en un cajón y usa iframes de ancho fijo | Diseño de escritorio; tema Lambda 2 |
-| A11 | Aulas con organización confusa (61%) | **Confirmado.** Cada docente organiza distinto; hasta 16 pestañas por curso; contenido heredado de 2022 y 2025 | No hay plantilla de curso |
+| A9 | No se ven las fechas en el inicio (36%) | **Confirmado.** El inicio no muestra entregas, eventos ni avisos | El inicio usa un bloque de tarjetas de terceros, sin Línea de tiempo |
+| A10 | Mal en el celular (49%) | **Inferido del código, sin probar en un teléfono.** El SIU bloquea el zoom; el Campus esconde accesos en un cajón y usa iframes de ancho fijo | Diseño de escritorio; tema Lambda 2 |
+| A11 | Aulas con organización confusa (54%) | **Confirmado.** Cada docente organiza distinto; hasta 16 pestañas por curso; contenido heredado de 2022 y 2025 | No hay plantilla de curso |
 
 ## Problemas de docentes
 

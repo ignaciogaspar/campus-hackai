@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-10. Análisis del zip `campus-aicm`, que es lo que hoy está en `campus/`. Es la misma versión que la pestaña [Repo Mergeable de Nacho](https://docs.google.com/document/d/1vzCAqms9f6OHlAU2imse0ZOsw-SNLW2Ol5P_9auUWtk/edit?tab=t.jsz8o639788i) del Google Doc del equipo; si se edita una, hay que actualizar la otra.
 
-El checklist vigente para construir es el de la skill `campus-feature` ([CHECKLIST.md](../../.claude/skills/campus-feature/CHECKLIST.md)); la sección 11 de esta nota es su origen.
+Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código a Nacho, así que la sección 11 (checklist para ser mergeable) quedó como antecedente. El resto sigue sirviendo para leer su lógica y para conectarlo como sistema de origen.
 
 Referencia única del repo «Campus Austral» (zip campus-aicm) para la hackathon, hecha por Claude el 10/11/2026 sobre el zip, el artifact «HackAI 2026 Product» y las pestañas de relevamiento de SIU, Campus y Moodle de este documento. Se hizo en dos pasadas en modo solo lectura (una general con 7 agentes y otra en profundidad con 8 lectores Opus por área), con verificación manual de los datos clave.
 
