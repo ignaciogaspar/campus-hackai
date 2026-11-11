@@ -140,9 +140,13 @@ test('Hoy trae las novedades sin leer de los espacios del alumno', async () => {
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
+  // Al abrir el espacio, Ledesma trajo de Moodle su aviso y las dos guías de la A.
   assert.deepEqual(
-    result.value.unread.map((u) => [u.subjectId, u.kind, u.count, u.latest.text]),
-    [['am1', 'avisos', 1, 'El parcial es en el aula 20.']]
+    result.value.unread.map((u) => [u.subjectId, u.kind, u.count, u.latest.text, u.latest.origin]),
+    [
+      ['am1', 'avisos', 2, 'El parcial es en el aula 20.', 'hackai'],
+      ['am1', 'material', 2, 'Guía de ejercicios 2', 'moodle']
+    ]
   )
   assert.equal(result.value.unavailable.includes('unread'), false)
 })
