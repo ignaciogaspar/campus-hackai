@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Hoy · HackAI</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="ui.css">
+<script src="data.js"></script>
+<script src="app.js"></script>
+</head>
+<body data-active="hoy" data-title="Hola, Tomás" data-kicker="Martes 10 de noviembre">
+<main id="page"></main>
+<script>
+/* Hoy (ticket #18): qué tengo que hacer y cuándo. Las novedades están en la
+   campana y las materias en su pestaña.
+   ?carga=alta (7 materias), ?estado=vacio | cargando | error | desactualizado | offline,
+   ?instalar=ios | android (botón Instalar en el encabezado; ?hoja=1 abre los pasos), ?pwa=1 (instalada) */
+if (UI.P.carga === 'alta') document.body.dataset.title = 'Hola, Valentina'
+window.render = function (P) {
+  const { icon, origen } = UI
+  const D = UI.set()
+  const e = P.estado
+  const MAX = 4
+
+  if (e === 'cargando') {
+    const filas = (n) => Array.from({ length: n }, () => `
+      <div class="fecha"><div class="skel" style="width:48px;height:52px"></div>
+        <div class="fecha-body"><div class="skel" style="height:14px;width:70%"></div><div class="skel" style="height:12px;width:45%"></div></div></div>`).join('')
+    return `
+      <p class="sr" role="status">Cargando tu día</p>
+      <div class="skel" style="height:150px;border-radius:var(--r-lg)"></div>
+      <section class="sec"><div class="skel" style="height:18px;width:50%"></div><div class="card">${filas(3)}</div></section>
+      <section class="sec"><div class="skel" style="height:18px;width:60%"></div><div class="card">${filas(1)}</div></section>`
+  }
+
+  const fechaLi = (f, past) => `
+    <li><a class="fecha ${past ? 'is-past' : ''} ${f.origen === 'moodle' ? 'complemento' : ''}" href="#">
+      <div class="dia"><span class="dow">${f.dow}</span><span class="num">${f.num}</span><span class="mes">${f.mes}</span></div>
+      <div class="fecha-body">
+        <span class="fecha-title">${f.titulo}</span>
+        <span class="small muted">${f.materia}</span>
+        <span class="xs muted">${f.meta}</span>
+      </div>
+      ${origen(f.origen)}
+    </a></li>`
+
+  const desact = e === 'desactualizado' ? `
+    <div class="note" role="status">${icon('warn')}<div><b>El SIU no responde.</b> Te mostramos los parciales y finales que leímos hoy a las 11:40, hace 20 min. Puede haber cambios que todavía no vemos.</div></div>` : ''
+
+  const hero = e === 'vacio' ? '' : `
+    <section class="hero area-hero" aria-label="Próximo parcial">
+      <div class="hero-top"><span class="hero-kicker">Próximo parcial</span>${origen('siu')}</div>
+      <div><h2>${D.proximo.titulo}</h2><p class="meta">${D.proximo.materia}</p></div>
+      <div class="hero-cuenta"><b>${D.proximo.dias}</b><span>${D.proximo.dias === 1 ? 'día' : 'días'} · ${D.proximo.meta}</span></div>
+    </section>`
+
+  const visibles = D.semanas.slice(0, MAX)
+  const resto = D.semanas.length - visibles.length
+  const errorMoodle = e === 'error' ? `
+    <li><div class="note note-error" role="alert" style="margin:var(--s-3)">${icon('warn')}<div><b>No pudimos traer las entregas de Moodle.</b> Los parciales del SIU están al día. Las entregas aparecen acá cuando Moodle responda.<br><button class="btn btn-sm" type="button">${icon('refresh', 'icon-sm')} Reintentar</button></div></div></li>` : ''
+
+  const semanas = e === 'vacio' ? `
+    <section class="sec area-semanas solo-cel" aria-labelledby="t-sem">
+      <div class="sec-head"><h2 id="t-sem">Próximas 2 semanas</h2></div>
+      <div class="empty">${icon('cal')}<strong>No tenés parciales ni entregas hasta el 24/11</strong>Lo próximo es el final de ${D.masAdelante.materia}, el ${D.masAdelante.dow} ${D.masAdelante.num}/12.</div>
+    </section>` : `
+    <section class="sec area-semanas solo-cel" aria-labelledby="t-sem">
+      <div class="sec-head"><h2 id="t-sem">Próximas 2 semanas</h2><a href="#">Calendario</a></div>
+      ${desact}
+      <div class="card">
+        <ul class="fechas">${errorMoodle}${(e === 'error' ? visibles.filter((f) => f.origen !== 'moodle') : visibles).map((f) => fechaLi(f)).join('')}</ul>
+        ${resto > 0 ? `<a class="row-mas" href="#">Ver ${resto} más en estas 2 semanas</a>` : ''}
+        <details class="desplegable"><summary>Más adelante (1) · Ya pasaron (${D.pasadas.length})</summary>
+          <ul class="fechas">${fechaLi(D.masAdelante)}${D.pasadas.map((f) => fechaLi(f, true)).join('')}</ul></details>
+      </div>
+      <p class="sec-note">Las entregas vienen de Moodle y son un complemento: solo aparecen las que el docente cargó con fecha.</p>
+    </section>`
+
+  const inscripciones = `
+    <section class="sec area-ins" aria-labelledby="t-ins">
+      <div class="sec-head"><h2 id="t-ins">Inscripciones que cierran pronto</h2></div>
+      <ul class="card list">${D.inscripciones.slice(0, 1).map((x) => `
+        <li><div class="row">
+          <span class="row-icon">${icon('cal')}</span>
+          <span class="row-body">
+            <span class="row-title">${x.titulo}</span>
+            <span class="xs muted">${x.meta}</span>
+            ${x.nota ? `<span class="xs muted">${x.nota}</span>` : ''}
+            <span class="row-meta">${origen('siu')}<span class="chip chip-alerta">${x.cierra}</span></span>
+          </span>
+          <a class="btn btn-sm btn-primary" href="#">Inscribirme</a>
+        </div></li>`).join('')}
+        <li><a class="row-mas" href="#" style="border-top:0">Ver las ${D.inscripcionesTotal} inscripciones abiertas</a></li>
+      </ul>
+    </section>`
+
+  /* Solo en compu: calendario de esta semana y la próxima. Cada día muestra
+     hasta 2 cosas y el resto como «+N»: con muchas materias no se desborda. */
+  const DOW = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
+  const HOY = '2026-11-10'
+  const todos = [{ ...D.proximo, origen: 'siu', proximo: true }, ...D.semanas, D.masAdelante]
+    .filter((f) => f.iso && !(e === 'error' && f.origen === 'moodle'))
+  const dias = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 10, 9 + i))
+    return { iso: d.toISOString().slice(0, 10), num: d.getUTCDate(), dow: DOW[i % 7] }
+  })
+  const fin = dias[13].iso
+  const despues = [...D.semanas.filter((f) => f.iso > fin && !(e === 'error' && f.origen === 'moodle')), D.masAdelante]
+  const celda = (d) => {
+    const ev = e === 'vacio' ? [] : todos.filter((f) => f.iso === d.iso)
+    return `<div class="cal-dia ${d.iso < HOY ? 'pasado' : ''} ${d.iso === HOY ? 'hoy' : ''}">
+      <span class="cal-num">${d.num}${d.iso === HOY ? ' <span class="cal-hoy">Hoy</span>' : ''}</span>
+      ${ev.slice(0, 2).map((f) => `<a class="ev ${f.origen} ${f.proximo ? 'proximo' : ''}" href="#" title="${f.titulo} · ${f.materia}"><b>${f.sigla}</b> ${f.titulo}</a>`).join('')}
+      ${ev.length > 2 ? `<a class="ev mas" href="#">+${ev.length - 2} más</a>` : ''}
+    </div>`
+  }
+  const calendario = `
+    <section class="sec area-semanas solo-compu" aria-labelledby="t-cal">
+      <div class="sec-head"><h2 id="t-cal">Esta semana y la próxima</h2><span class="cal-leyenda"><span class="ev siu">Parcial o final · SIU</span><span class="ev moodle">Entrega · Moodle</span></span></div>
+      ${desact}
+      ${e === 'error' ? `<div class="note note-error" role="alert">${icon('warn')}<div><b>No pudimos traer las entregas de Moodle.</b> Los parciales del SIU están al día.</div></div>` : ''}
+      <div class="card cal">
+        <div class="cal-head">${DOW.map((d) => `<span>${d}</span>`).join('')}</div>
+        <div class="cal-grid">${dias.map(celda).join('')}</div>
+      </div>
+      <div class="card">
+        <details class="desplegable" open><summary style="border-top:0">Después (${despues.length}) · Ya pasaron (${D.pasadas.length})</summary>
+          <ul class="fechas">${despues.map((f) => fechaLi(f)).join('')}${D.pasadas.map((f) => fechaLi(f, true)).join('')}</ul></details>
+      </div>
+    </section>`
+
+  const novedades = `
+    <section class="sec area-nov solo-compu" aria-labelledby="t-nov">
+      <div class="sec-head"><h2 id="t-nov">Últimas novedades</h2><a href="m-novedades.html">Ver todas (${window.HK.novedades.length})</a></div>
+      <ul class="card list">${window.HK.novedades.slice(0, 3).map((n) => `
+        <li><a class="row" href="${n.destino}">
+          <span class="row-icon">${icon(n.icono)}</span>
+          <span class="row-body"><span class="row-title">${n.titulo}</span><span class="row-meta"><span>${n.materia}</span><span aria-hidden="true">·</span><span>${n.hace}</span></span></span>
+          <span class="unread-dot" aria-label="Sin leer"></span>
+        </a></li>`).join('')}
+      </ul>
+    </section>`
+
+  return `<div class="hoy-grid">${hero + semanas + calendario + inscripciones + novedades}</div>`
+}
+</script>
+</body>
+</html>
