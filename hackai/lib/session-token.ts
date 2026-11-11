@@ -5,12 +5,18 @@ export type Session = { personId: string; role: Role }
 
 export const SESSION_COOKIE = 'hackai_session'
 
-const THIRTY_DAYS = 60 * 60 * 24 * 30
+/** Cuánto dura una sesión, en segundos: 30 días. */
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 30
 
 function secret(): string {
   const value = process.env.SESSION_SECRET
   if (!value) throw new Error('Falta SESSION_SECRET')
   return value
+}
+
+/** Si está la clave que firma las sesiones. Sin ella no se puede abrir ninguna. */
+export function hasSessionSecret(): boolean {
+  return Boolean(process.env.SESSION_SECRET)
 }
 
 function sign(body: string): string {
@@ -36,9 +42,14 @@ export function verifySessionToken(token: string | undefined | null): Session | 
   }
 }
 
+/** El token firmado de una sesión que empieza ahora. Necesita SESSION_SECRET. */
+export function createSessionToken({ personId, role }: Session): string {
+  const iat = Math.floor(Date.now() / 1000)
+  const body = Buffer.from(JSON.stringify({ personId, role, iat, exp: iat + SESSION_MAX_AGE })).toString('base64url')
+  return `${body}.${sign(body)}`
+}
+
 /** Para tests y desarrollo: 'hackai_session=<token>'. Necesita SESSION_SECRET. */
 export function forgeSessionCookie(personId: string, role: Role): string {
-  const iat = Math.floor(Date.now() / 1000)
-  const body = Buffer.from(JSON.stringify({ personId, role, iat, exp: iat + THIRTY_DAYS })).toString('base64url')
-  return `${SESSION_COOKIE}=${body}.${sign(body)}`
+  return `${SESSION_COOKIE}=${createSessionToken({ personId, role })}`
 }

@@ -15,6 +15,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
     externalChannel: 'memoria',
     files: 'memoria',
     clock: 'memoria',
+    store: 'memoria',
   })
   assert.equal(system.ports.clock.now().toISOString(), NOW.toISOString())
 
@@ -30,8 +31,6 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
   const { people, studies, spaces, today } = compose({})
   const p = 'persona'
   const calls = [
-    people.signIn({ kind: 'demo', subject: 'demo' }),
-    people.demoPeople(),
     studies.offer(p, { kind: 'cursada', subjectId: 's' }),
     studies.enroll(p, { kind: 'comision', sectionId: 's' }),
     studies.drop(p, { kind: 'mesa', examBoardId: 'm' }),
@@ -78,6 +77,31 @@ test('HACKAI_SIU=simulado usa el SIU simulado sobre Supabase, que declara sus ca
 
 test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () => {
   assert.throws(() => compose({ HACKAI_SIU: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
+})
+
+test('HACKAI_STORE=supabase guarda los vínculos de Personas en Supabase y sin sus variables no arranca', async () => {
+  const system = compose({
+    HACKAI_STORE: 'supabase',
+    NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+  })
+  assert.equal(system.adapters.store, 'supabase')
+  assert.equal(system.adapters.siu, 'memoria')
+
+  assert.throws(() => compose({ HACKAI_STORE: 'supabase' }), /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.throws(() => compose({ HACKAI_STORE: 'postgres' }), /HACKAI_STORE/)
+})
+
+test('con todo en memoria se entra eligiendo una persona de la lista de demo', async () => {
+  const { people } = compose({})
+
+  const listed = await people.demoPeople()
+  assert.ok(listed.ok)
+  assert.equal(listed.value.length, syntheticData.people.length)
+
+  const entered = await people.signIn({ kind: 'demo', subject: 'demo:p-mledesma' })
+  assert.ok(entered.ok)
+  assert.equal(entered.value.role, 'profesor')
 })
 
 test('el canal externo de Discord se arma con el token del entorno y sin token no arranca', () => {

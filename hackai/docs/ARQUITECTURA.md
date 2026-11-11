@@ -164,7 +164,7 @@ La demo y producción usan el mismo núcleo. Lo que cambia es qué adaptador eli
 
 **Reglas para que el paso sea un cambio de configuración:**
 
-- **Adaptadores por entorno.** `composition` elige cada adaptador por una variable de entorno, una por puerto (por ejemplo `HACKAI_SIU` con `simulado` o `api`). Sus valores van en `.env.local` y en el hosting, y en los docs se nombran, nunca se copian.
+- **Adaptadores por entorno.** `composition` elige cada adaptador por una variable de entorno, una por puerto (por ejemplo `HACKAI_SIU` con `simulado` o `api`), y una más para el almacén de los módulos (`HACKAI_STORE` con `memoria` o `supabase`). Sus valores van en `.env.local` y en el hosting, y en los docs se nombran, nunca se copian.
 - **Lo simulado se puede tirar.** Las tablas `siu_*` y `moodle_*`, sus migraciones y el seed sintético van aparte de las tablas propias de HackAI. En producción no se aplican, y nada de HackAI depende de ellas fuera de sus adaptadores.
 - **Ids de los sistemas de origen.** Las tablas propias guardan los ids del SIU, de Moodle y de Discord tal como vienen, mapeados por Personas. Así los datos de producción entran sin migrar nada.
 - **Adaptadores que se portan bien con sistemas lentos:** cada llamada tiene tiempo máximo, los reintentos esperan lo que pide el sistema (por ejemplo `retry_after` en un 429) y una caída devuelve un error como valor, que el núcleo convierte en «desactualizado».
