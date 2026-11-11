@@ -136,7 +136,8 @@ hackai/
 │   └── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
 ├── app/                 pantallas y server actions
 ├── components/
-├── supabase/migrations/
+├── supabase/migrations/ tablas propias de HackAI
+├── supabase/simulados/  tablas siu_* y moodle_* con su seed: solo para la demo
 └── tests/
     ├── core/            un archivo por módulo
     └── contracts/       una batería por puerto
