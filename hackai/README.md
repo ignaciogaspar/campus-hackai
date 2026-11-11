@@ -43,7 +43,26 @@ Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: u
 
 La batería de contrato del SIU (`tests/contracts/siu.test.ts`) corre siempre contra el SIU en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice.
 
-Los tests que arman un cliente de Supabase (el SIU simulado y `composition` con `HACKAI_SIU=simulado`) necesitan Node 22: con Node 20, supabase-js falla por no tener `WebSocket` nativo.
+Los tests que arman un cliente de Supabase (el SIU y el Moodle simulados, y `composition` con `HACKAI_SIU=simulado` o `HACKAI_CLASSROOM=simulado`) necesitan Node 22: con Node 20, supabase-js falla por no tener `WebSocket` nativo.
+
+## Moodle simulado
+
+Con `HACKAI_CLASSROOM=simulado`, el puerto del aula virtual lee y escribe las tablas `moodle_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de los Web Services de Moodle ([research](../docs/research/2026-11-10-moodle-web-services.md)): cursos de una persona, matrículas, foro de avisos, contenidos del curso y tareas con fecha. Son solo de la demo, y van aparte de las propias igual que las del SIU.
+
+| Archivo | Qué hace |
+| --- | --- |
+| `supabase/simulados/0002_moodle.sql` | Crea las tablas `moodle_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. En el encabezado figura qué campos de la API quedan afuera. |
+| `supabase/simulados/moodle_seed.sql` | Carga cursos, matrículas, avisos, contenidos y tareas del set sintético. Idempotente: pisa cada fila por su clave y borra las matrículas hechas durante la demo. Se genera con `npm run moodle:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el aula en memoria; no se edita a mano. |
+
+Para cargarlas en el Supabase del equipo:
+
+```bash
+psql "$DATABASE_URL" -f supabase/simulados/0002_moodle.sql -f supabase/simulados/moodle_seed.sql
+```
+
+Los dos adaptadores arman el enlace al aula con `courseUrl(courseId)`: `<base>/course/view.php?id=<id>`, con la base de `data.moodle.baseUrl` en el set sintético. Si cambiás `synthetic-data.ts`, corré `npm run moodle:seed` y commiteá el SQL: un test avisa si quedó viejo.
+
+La batería de contrato del aula virtual (`tests/contracts/classroom.test.ts`) corre siempre contra el aula en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice. Cada caso que matricula deja las matrículas como estaban, así se puede repetir.
 
 ## Con Docker
 
@@ -72,7 +91,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `ANTHROPIC_API_KEY` | API de Claude. |
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES`, `HACKAI_CLOCK` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
-| `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corre la batería de contrato del SIU simulado. |
+| `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corre la batería de contrato del SIU y del Moodle simulados. |
 
 No las imprimas en logs ni en reportes.
 
@@ -96,6 +115,8 @@ No las imprimas en logs ni en reportes.
 | `tests/contracts/` | La batería de contrato de cada puerto, que corre contra el adaptador en memoria y el real. `fake-discord.ts` es un `fetch` con la forma de la API de Discord, sin red. |
 | `lib/composition.ts` | `compose(env)` para los tests y `system()` para la app: arma los módulos con el adaptador de cada puerto. |
 | `lib/adapters/siu-simulado/` | El SIU simulado sobre las tablas `siu_*` y el generador de su seed. |
-| `app/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente. |
+| `lib/adapters/moodle-simulado/` | El Moodle simulado sobre las tablas `moodle_*` y el generador de su seed. |
+| `lib/adapters/supabase/` | `client.ts` (cliente con service role) y `sql.ts` (literales y `upsert` que usan los generadores de seed). |
+| `app/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con el enlace a su aula de Moodle y sus tareas con fecha. |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
