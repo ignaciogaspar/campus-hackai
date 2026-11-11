@@ -31,11 +31,7 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
   const { studies, spaces, today } = compose({})
   const p = 'persona'
   const calls = [
-    studies.offer(p, { kind: 'cursada', subjectId: 's' }),
-    studies.enroll(p, { kind: 'comision', sectionId: 's' }),
-    studies.drop(p, { kind: 'mesa', examBoardId: 'm' }),
     studies.upcoming(p),
-    studies.openEnrollments(p),
     spaces.open(p, 's'),
     spaces.channel(p, 'c'),
     spaces.post(p, 'c', { text: 'hola' }),
