@@ -201,7 +201,8 @@ export type Spaces = {
   open(personId: PersonId, subjectId: string): Promise<Result<SpaceView, AccessError>>
   /** Mensajes del canal, con las consultas y sus respuestas; marca leído. */
   channel(personId: PersonId, channelId: ChannelId): Promise<Result<ChannelView, 'canal-desconocido' | AccessError>>
-  /** Publica y lo envía al canal externo vinculado. Si el envío falla, queda pendiente. */
+  /** Publica y lo envía al canal externo vinculado. Si el envío falla, queda pendiente. El canal de
+      material no lleva mensajes (`sin-mensajes`): el material se sube con `addMaterial`. */
   post(
     personId: PersonId,
     channelId: ChannelId,
@@ -209,7 +210,13 @@ export type Spaces = {
   ): Promise<
     Result<
       Message,
-      'canal-desconocido' | 'solo-docentes' | 'mensaje-vacio' | 'mensaje-desconocido' | FilesError | AccessError
+      | 'canal-desconocido'
+      | 'solo-docentes'
+      | 'sin-mensajes'
+      | 'mensaje-vacio'
+      | 'mensaje-desconocido'
+      | FilesError
+      | AccessError
     >
   >
   /** Marca una consulta como resuelta. Solo los docentes de su comisión. */
