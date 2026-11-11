@@ -1,6 +1,7 @@
-/* Piezas para escribir el seed de los simulados (siu_*, moodle_*) como SQL:
+/* Piezas para escribir como SQL los seeds que salen del set sintético:
    literales y un insert que pisa la fila si ya existe. Las usan
-   lib/adapters/siu-simulado/seed.ts y lib/adapters/moodle-simulado/seed.ts. */
+   lib/adapters/siu-simulado/seed.ts, lib/adapters/moodle-simulado/seed.ts y
+   lib/adapters/supabase/people-seed.ts. */
 
 /** Un valor ya escrito como literal de SQL. */
 export type Sql = string

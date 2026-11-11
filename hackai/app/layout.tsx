@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'Campus HackAI',
   description: 'Propuesta del equipo para HackAI 2026: rediseño de SIU Guaraní y el Campus Virtual.',
   appleWebApp: { capable: true, title: 'Austral', statusBarStyle: 'black-translucent' },
-  icons: { apple: '/icons/apple-touch-icon.png' }
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' }
 }
 
 export const viewport: Viewport = {

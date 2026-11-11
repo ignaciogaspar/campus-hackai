@@ -9,6 +9,7 @@
    código de error, nunca datos de personas. */
 import { randomInt, randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createQueryRunner, type Query } from '@/lib/adapters/supabase/query'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
   SiuAssessment,
@@ -208,10 +209,6 @@ function toExamBoard(row: ExamBoardRow): SiuExamBoard {
   }
 }
 
-type DbError = { message: string; code?: string }
-type Response<T> = { data: T | null; error: DbError | null }
-type QueryError = ExternalFailure | 'duplicado'
-
 export function createSimulatedSiu({
   client,
   clock,
@@ -224,47 +221,15 @@ export function createSimulatedSiu({
   const now = () => clock.now().toISOString()
 
   /** Corre una consulta con tiempo máximo. Nunca tira: una caída es `falla-externa`. */
-  async function run<T>(
-    op: string,
-    query: (signal: AbortSignal) => PromiseLike<Response<T>>
-  ): Promise<Result<T | null, QueryError>> {
-    const controller = new AbortController()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        controller.abort()
-        reject(new Error('tiempo agotado'))
-      }, timeoutMs)
-    })
-    try {
-      const { data, error } = await Promise.race([Promise.resolve(query(controller.signal)), timeout])
-      if (error) {
-        if (error.code === '23505') return fail('duplicado')
-        log(`[siu-simulado] ${op}: error ${error.code ?? 'sin código'}`)
-        return fail('falla-externa')
-      }
-      return ok(data)
-    } catch (cause) {
-      log(`[siu-simulado] ${op}: ${cause instanceof Error ? cause.name : 'falla'}`)
-      return fail('falla-externa')
-    } finally {
-      clearTimeout(timer)
-    }
-  }
+  const run = createQueryRunner({ name: 'siu-simulado', timeoutMs, log })
 
   /** Una lectura: cualquier error es `falla-externa`. */
-  async function read<T>(
-    op: string,
-    query: (signal: AbortSignal) => PromiseLike<Response<T>>
-  ): Promise<Result<T | null, ExternalFailure>> {
+  async function read<T>(op: string, query: Query<T>): Promise<Result<T | null, ExternalFailure>> {
     const result = await run(op, query)
     return result.ok ? result : fail('falla-externa')
   }
 
-  async function list<T>(
-    op: string,
-    query: (signal: AbortSignal) => PromiseLike<Response<T[]>>
-  ): Promise<Result<T[], ExternalFailure>> {
+  async function list<T>(op: string, query: Query<T[]>): Promise<Result<T[], ExternalFailure>> {
     const result = await read(op, query)
     return result.ok ? ok(result.value ?? []) : result
   }

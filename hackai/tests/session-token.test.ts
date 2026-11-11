@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { forgeSessionCookie, SESSION_COOKIE, verifySessionToken } from '@/lib/session-token'
+import {
+  createSessionToken,
+  forgeSessionCookie,
+  SESSION_COOKIE,
+  SESSION_MAX_AGE,
+  verifySessionToken
+} from '@/lib/session-token'
 
 process.env.SESSION_SECRET = 'secreto-solo-para-tests'
 
@@ -31,4 +37,14 @@ test('un token firmado con otro secreto no da sesión', () => {
   process.env.SESSION_SECRET = 'otro-secreto'
   assert.equal(verifySessionToken(token), null)
   process.env.SESSION_SECRET = 'secreto-solo-para-tests'
+})
+
+test('el token de una sesión nueva se verifica y dura lo que dura la cookie', () => {
+  const token = createSessionToken({ personId: 'p-taguirre', role: 'alumno' })
+  assert.deepEqual(verifySessionToken(token), { personId: 'p-taguirre', role: 'alumno' })
+
+  const [body] = token.split('.')
+  const { iat, exp } = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'))
+  assert.equal(exp - iat, SESSION_MAX_AGE)
+  assert.equal(forgeSessionCookie('p-taguirre', 'alumno').split('=')[0], SESSION_COOKIE)
 })
