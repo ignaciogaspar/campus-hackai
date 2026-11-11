@@ -25,7 +25,7 @@ const SCHOOL = 'Facultad de Ingeniería'
 
 const SUBJECTS = [
   { href: '/muestra/am1', code: 'AM1', name: 'Análisis Matemático I', unread: 3 },
-  { href: '/muestra/pr1', code: 'PR1', name: 'Programación I', unread: 1 },
+  { href: '/muestra/pr1', code: 'PR1', name: 'Programación I', unread: 1 }
 ]
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -38,18 +38,17 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function RowIcon({ children }: { children: ReactNode }) {
-  return <span className='grid size-9 flex-none place-items-center rounded-full bg-accent text-blue-light [&>svg]:size-5'>{children}</span>
+  return (
+    <span className='grid size-9 flex-none place-items-center rounded-full bg-accent text-blue-light [&>svg]:size-5'>
+      {children}
+    </span>
+  )
 }
 
 export default function MuestraPage() {
   return (
     <AppShell school={SCHOOL} subjects={SUBJECTS}>
-      <PageHeader
-        title='Muestra del sistema visual'
-        kicker='Datos de ejemplo'
-        school={SCHOOL}
-        unread={4}
-      />
+      <PageHeader title='Muestra del sistema visual' kicker='Datos de ejemplo' school={SCHOOL} unread={4} />
       <main className='mx-auto flex max-w-280 flex-col gap-8 px-4 pt-5 pb-8 lg:px-10'>
         <Section title='Botones'>
           <div className='flex flex-wrap gap-2'>
@@ -75,23 +74,47 @@ export default function MuestraPage() {
           <Card>
             <List>
               <ListItem
-                start={<RowIcon><MessageSquare aria-hidden='true' /></RowIcon>}
+                start={
+                  <RowIcon>
+                    <MessageSquare aria-hidden='true' />
+                  </RowIcon>
+                }
                 title='Respondieron tu consulta'
                 description='Mariana Ledesma: «No, llega hasta derivadas y sus aplicaciones.»'
                 meta={<>Análisis Matemático I · Consultas · hace 40 min</>}
-                end={<span aria-label='Sin leer' className='mt-1.5 size-2 rounded-full bg-blue-light' />}
+                end={
+                  <span className='mt-1.5 size-2 rounded-full bg-blue-light'>
+                    <span className='sr-only'>Sin leer</span>
+                  </span>
+                }
               />
               <ListItem
-                start={<RowIcon><Megaphone aria-hidden='true' /></RowIcon>}
+                start={
+                  <RowIcon>
+                    <Megaphone aria-hidden='true' />
+                  </RowIcon>
+                }
                 title='Cambio de aula para el segundo parcial'
                 description='El segundo parcial del lunes 16 se toma en el aula 20. Traigan DNI.'
                 meta={<>Análisis Matemático I · Avisos · vie 6/11</>}
               />
               <ListItem
-                start={<RowIcon><FileText aria-hidden='true' /></RowIcon>}
+                start={
+                  <RowIcon>
+                    <FileText aria-hidden='true' />
+                  </RowIcon>
+                }
                 title='resumen-derivadas.pdf'
-                meta={<><OriginBadge origin='discord' /> 52 KB · jue 5/11</>}
-                end={<Button size='sm' variant='outline'>Abrir</Button>}
+                meta={
+                  <>
+                    <OriginBadge origin='discord' /> 52 KB · jue 5/11
+                  </>
+                }
+                end={
+                  <Button size='sm' variant='outline'>
+                    Abrir
+                  </Button>
+                }
               />
             </List>
           </Card>
@@ -100,48 +123,105 @@ export default function MuestraPage() {
         <Section title='Pestañas'>
           <Tabs defaultValue='avisos' className='flex flex-col gap-3'>
             <TabsList aria-label='Canales del espacio'>
-              <TabsTrigger value='avisos'>Avisos <UnreadCount count={1} /></TabsTrigger>
-              <TabsTrigger value='consultas'>Consultas <UnreadCount count={1} /></TabsTrigger>
+              <TabsTrigger value='avisos'>
+                Avisos <UnreadCount count={1} />
+              </TabsTrigger>
+              <TabsTrigger value='consultas'>
+                Consultas <UnreadCount count={1} />
+              </TabsTrigger>
               <TabsTrigger value='material'>Material</TabsTrigger>
               <TabsTrigger value='directos'>Directos</TabsTrigger>
             </TabsList>
-            <TabsContent value='avisos' className='text-sm text-muted-foreground'>Los avisos de la comisión.</TabsContent>
-            <TabsContent value='consultas' className='text-sm text-muted-foreground'>Las consultas y sus respuestas.</TabsContent>
-            <TabsContent value='material' className='text-sm text-muted-foreground'>El material por secciones.</TabsContent>
-            <TabsContent value='directos' className='text-sm text-muted-foreground'>Los mensajes con los docentes.</TabsContent>
+            <TabsContent value='avisos' className='text-sm text-muted-foreground'>
+              Los avisos de la comisión.
+            </TabsContent>
+            <TabsContent value='consultas' className='text-sm text-muted-foreground'>
+              Las consultas y sus respuestas.
+            </TabsContent>
+            <TabsContent value='material' className='text-sm text-muted-foreground'>
+              El material por secciones.
+            </TabsContent>
+            <TabsContent value='directos' className='text-sm text-muted-foreground'>
+              Los mensajes con los docentes.
+            </TabsContent>
           </Tabs>
         </Section>
 
         <Section title='Selector segmentado'>
           <Tabs defaultValue='cursando' className='flex flex-col gap-3'>
             <SegmentedList aria-label='Tus materias'>
-              <SegmentedTrigger value='cursando'>Cursando <span className='text-[11px] text-muted-foreground'>7</span></SegmentedTrigger>
-              <SegmentedTrigger value='final'>Falta final <span className='text-[11px] text-muted-foreground'>2</span></SegmentedTrigger>
-              <SegmentedTrigger value='aprobadas'>Aprobadas <span className='text-[11px] text-muted-foreground'>10</span></SegmentedTrigger>
+              <SegmentedTrigger value='cursando'>
+                Cursando <span className='text-[11px] text-muted-foreground'>7</span>
+              </SegmentedTrigger>
+              <SegmentedTrigger value='final'>
+                Falta final <span className='text-[11px] text-muted-foreground'>2</span>
+              </SegmentedTrigger>
+              <SegmentedTrigger value='aprobadas'>
+                Aprobadas <span className='text-[11px] text-muted-foreground'>10</span>
+              </SegmentedTrigger>
             </SegmentedList>
-            <TabsContent value='cursando' className='text-sm text-muted-foreground'>Las materias del cuatrimestre.</TabsContent>
-            <TabsContent value='final' className='text-sm text-muted-foreground'>Las regularizadas que falta cerrar.</TabsContent>
-            <TabsContent value='aprobadas' className='text-sm text-muted-foreground'>Las aprobadas, por año de la carrera.</TabsContent>
+            <TabsContent value='cursando' className='text-sm text-muted-foreground'>
+              Las materias del cuatrimestre.
+            </TabsContent>
+            <TabsContent value='final' className='text-sm text-muted-foreground'>
+              Las regularizadas que falta cerrar.
+            </TabsContent>
+            <TabsContent value='aprobadas' className='text-sm text-muted-foreground'>
+              Las aprobadas, por año de la carrera.
+            </TabsContent>
           </Tabs>
         </Section>
 
         <Section title='Próximo parcial'>
           <div className='max-w-md'>
-            <NextExamCard title='Segundo parcial' subject='Análisis Matemático I' when='Lunes 16 de noviembre · 08:00 · Aula 20' daysLeft={6} />
+            <NextExamCard
+              title='Segundo parcial'
+              subject='Análisis Matemático I'
+              when='Lunes 16 de noviembre · 08:00 · Aula 20'
+              daysLeft={6}
+            />
           </div>
         </Section>
 
         <Section title='Secciones plegables'>
           <CollapsibleCard title='Unidad 2: Derivadas' count='2 archivos' defaultOpen>
             <List>
-              <ListItem title='resumen-derivadas.pdf' meta={<><OriginBadge origin='discord' /> 52 KB · jue 5/11</>} />
-              <ListItem title='Guía de ejercicios 2' meta={<><OriginBadge origin='moodle' /> 29/9</>} />
+              <ListItem
+                title='resumen-derivadas.pdf'
+                meta={
+                  <>
+                    <OriginBadge origin='discord' /> 52 KB · jue 5/11
+                  </>
+                }
+              />
+              <ListItem
+                title='Guía de ejercicios 2'
+                meta={
+                  <>
+                    <OriginBadge origin='moodle' /> 29/9
+                  </>
+                }
+              />
             </List>
           </CollapsibleCard>
           <CollapsibleCard title='Unidad 1: Límites' count='2 archivos'>
             <List>
-              <ListItem title='Guía de ejercicios 1' meta={<><OriginBadge origin='moodle' /> 11/8</>} />
-              <ListItem title='Apunte de límites' meta={<><OriginBadge origin='hackai' /> 11/8</>} />
+              <ListItem
+                title='Guía de ejercicios 1'
+                meta={
+                  <>
+                    <OriginBadge origin='moodle' /> 11/8
+                  </>
+                }
+              />
+              <ListItem
+                title='Apunte de límites'
+                meta={
+                  <>
+                    <OriginBadge origin='hackai' /> 11/8
+                  </>
+                }
+              />
             </List>
           </CollapsibleCard>
         </Section>
@@ -149,7 +229,9 @@ export default function MuestraPage() {
         <Section title='Hoja desde abajo'>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant='outline' className='self-start'><Download aria-hidden='true' /> Instalar</Button>
+              <Button variant='outline' className='self-start'>
+                <Download aria-hidden='true' /> Instalar
+              </Button>
             </SheetTrigger>
             <IosInstallSteps />
           </Sheet>
@@ -168,7 +250,7 @@ export default function MuestraPage() {
               events={[
                 { code: 'PYE', title: 'Segundo parcial', origin: 'siu' },
                 { code: 'QUI', title: 'Cuestionario 5', origin: 'moodle' },
-                { code: 'ING', title: 'Quiz de vocabulario', origin: 'moodle' },
+                { code: 'ING', title: 'Quiz de vocabulario', origin: 'moodle' }
               ]}
             />
             <CalendarDay day={22} events={[{ code: 'PR2', title: 'TP de listas enlazadas', origin: 'moodle' }]} />
@@ -187,14 +269,24 @@ export default function MuestraPage() {
               <Skeleton className='h-3 w-3/4' />
             </Card>
             <StaleNotice>
-              <p><b>El SIU no responde.</b> Te mostramos lo que leímos hoy a las 11:40, hace 20 min. Puede haber cambios que todavía no vemos.</p>
+              <p>
+                <b>El SIU no responde.</b> Te mostramos lo que leímos hoy a las 11:40, hace 20 min. Puede haber cambios
+                que todavía no vemos.
+              </p>
             </StaleNotice>
             <ErrorNotice>
-              <p><b>No pudimos traer las entregas de Moodle.</b> El resto de la pantalla está al día.</p>
-              <Button size='sm' variant='outline'><RotateCw aria-hidden='true' /> Reintentar</Button>
+              <p>
+                <b>No pudimos traer las entregas de Moodle.</b> El resto de la pantalla está al día.
+              </p>
+              <Button size='sm' variant='outline'>
+                <RotateCw aria-hidden='true' /> Reintentar
+              </Button>
             </ErrorNotice>
             <OfflineNotice>
-              <p><b>Sin conexión.</b> Te mostramos lo último que guardamos, de hoy a las 11:40. Para inscribirte, escribir o subir material necesitás internet.</p>
+              <p>
+                <b>Sin conexión.</b> Te mostramos lo último que guardamos, de hoy a las 11:40. Para inscribirte,
+                escribir o subir material necesitás internet.
+              </p>
             </OfflineNotice>
             <EmptyState icon={CircleCheck} title='Estás al día'>
               No hay avisos, material ni respuestas nuevas en tus materias desde ayer a las 18:40.

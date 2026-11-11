@@ -1,4 +1,4 @@
-import { CircleAlert, Clock, WifiOff, type LucideIcon } from 'lucide-react'
+import { CircleAlert, Clock, type LucideIcon, WifiOff } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -18,7 +18,17 @@ export function Skeleton({ className, ...props }: ComponentProps<'div'>) {
   return <div aria-hidden='true' className={cn('rounded-md bg-ice motion-safe:animate-pulse', className)} {...props} />
 }
 
-function Notice({ icon: Icon, tone, role, children }: { icon: LucideIcon; tone: string; role: 'status' | 'alert'; children: ReactNode }) {
+function Notice({
+  icon: Icon,
+  tone,
+  role,
+  children
+}: {
+  icon: LucideIcon
+  tone: string
+  role: 'status' | 'alert'
+  children: ReactNode
+}) {
   return (
     <div role={role} className={cn('flex items-start gap-3 rounded-[14px] px-4 py-3 text-[0.8125rem]', tone)}>
       <Icon aria-hidden='true' className='mt-px size-5 flex-none' strokeWidth={1.8} />
@@ -29,15 +39,27 @@ function Notice({ icon: Icon, tone, role, children }: { icon: LucideIcon; tone: 
 
 /* Un sistema de origen no responde: lo último que se leyó, con su hora. */
 export function StaleNotice({ children }: { children: ReactNode }) {
-  return <Notice icon={Clock} tone='bg-warning-background text-warning-foreground [&>svg]:text-warning-icon' role='status'>{children}</Notice>
+  return (
+    <Notice icon={Clock} tone='bg-warning-background text-warning-foreground [&>svg]:text-warning-icon' role='status'>
+      {children}
+    </Notice>
+  )
 }
 
 /* Algo falló y no hay copia: solo en el bloque que falló. */
 export function ErrorNotice({ children }: { children: ReactNode }) {
-  return <Notice icon={CircleAlert} tone='bg-error-background text-error-foreground [&>svg]:text-destructive' role='alert'>{children}</Notice>
+  return (
+    <Notice icon={CircleAlert} tone='bg-error-background text-error-foreground [&>svg]:text-destructive' role='alert'>
+      {children}
+    </Notice>
+  )
 }
 
 /* Sin internet: se ve lo guardado y se deshabilita lo que necesita conexión. */
 export function OfflineNotice({ children }: { children: ReactNode }) {
-  return <Notice icon={WifiOff} tone='bg-ink text-white [&>svg]:text-cyan' role='status'>{children}</Notice>
+  return (
+    <Notice icon={WifiOff} tone='bg-ink text-white [&>svg]:text-cyan' role='status'>
+      {children}
+    </Notice>
+  )
 }

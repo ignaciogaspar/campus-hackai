@@ -24,7 +24,16 @@ type Props = {
   children?: ReactNode
 }
 
-export function PageHeader({ title, kicker, school, backHref, hideBackOnDesktop, unread = 0, actions, children }: Props) {
+export function PageHeader({
+  title,
+  kicker,
+  school,
+  backHref,
+  hideBackOnDesktop,
+  unread = 0,
+  actions,
+  children
+}: Props) {
   return (
     <header className='rounded-b-[28px] bg-navy text-white'>
       <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>

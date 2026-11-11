@@ -11,7 +11,10 @@ import { system } from '@/lib/composition'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await requireSession()
-  const [person, subjects] = await Promise.all([system().people.get(session.personId), system().studies.subjectsOf(session.personId)])
+  const [person, subjects] = await Promise.all([
+    system().people.get(session.personId),
+    system().studies.subjectsOf(session.personId)
+  ])
 
   const nav = new Map<string, NavSubject>()
   if (subjects.ok) {

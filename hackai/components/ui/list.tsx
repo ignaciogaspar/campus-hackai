@@ -24,7 +24,9 @@ export function ListItem({ title, description, meta, start, end, className }: Li
       <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
         <span className='font-semibold'>{title}</span>
         {description && <span className='line-clamp-2 text-[0.8125rem] text-muted-foreground'>{description}</span>}
-        {meta && <span className='mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>{meta}</span>}
+        {meta && (
+          <span className='mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>{meta}</span>
+        )}
       </div>
       {end && <div className='flex flex-none flex-col items-end gap-1.5'>{end}</div>}
     </li>

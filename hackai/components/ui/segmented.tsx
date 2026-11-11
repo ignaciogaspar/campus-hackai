@@ -15,7 +15,7 @@ export function SegmentedTrigger({ className, ...props }: ComponentProps<typeof 
     <TabsPrimitive.Trigger
       className={cn(
         'inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-1.5 text-[0.8125rem] font-semibold whitespace-nowrap text-muted-foreground focus-ring data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_2px_rgb(16_20_44/0.1)]',
-        className,
+        className
       )}
       {...props}
     />

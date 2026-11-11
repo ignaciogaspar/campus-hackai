@@ -11,7 +11,10 @@ type Props = {
 /* El próximo parcial o final, protagonista en Hoy. La fecha viene del SIU. */
 export function NextExamCard({ title, subject, when, daysLeft }: Props) {
   return (
-    <section aria-label='Próximo parcial' className='flex flex-col gap-3 rounded-[22px] bg-linear-135 from-blue to-blue-deep p-5 text-white shadow-card'>
+    <section
+      aria-label='Próximo parcial'
+      className='flex flex-col gap-3 rounded-[22px] bg-linear-135 from-blue to-blue-deep p-5 text-white shadow-card'
+    >
       <div className='flex items-center justify-between gap-2'>
         <span className='text-xs font-bold tracking-widest text-white/80 uppercase'>Próximo parcial</span>
         <OriginBadge origin='siu' className='bg-white/15 text-white' />

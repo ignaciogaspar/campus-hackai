@@ -12,7 +12,7 @@ export type NavSubject = { href: string; code: string; name: string; unread: num
 const SECTIONS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/hoy', label: 'Hoy', icon: House },
   { href: '/materias', label: 'Materias', icon: LibraryBig },
-  { href: '/academico', label: 'Académico', icon: GraduationCap },
+  { href: '/academico', label: 'Académico', icon: GraduationCap }
 ]
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
@@ -38,7 +38,7 @@ export function AppNav({ school, subjects }: { school?: string; subjects: NavSub
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-muted-foreground focus-ring lg:flex-row lg:gap-3 lg:p-3 lg:text-[0.9375rem]',
-              active && 'text-blue-light lg:bg-accent lg:text-blue',
+              active && 'text-blue-light lg:bg-accent lg:text-blue'
             )}
           >
             <Icon aria-hidden='true' className='size-5' strokeWidth={active ? 2.3 : 1.8} />
@@ -48,7 +48,9 @@ export function AppNav({ school, subjects }: { school?: string; subjects: NavSub
       })}
       {subjects.length > 0 && (
         <div className='mt-3 hidden min-h-0 flex-1 flex-col border-t border-border lg:flex'>
-          <p className='px-3 pt-5 pb-2 text-[11px] font-bold tracking-widest text-muted-foreground uppercase'>Tus materias</p>
+          <p className='px-3 pt-5 pb-2 text-[11px] font-bold tracking-widest text-muted-foreground uppercase'>
+            Tus materias
+          </p>
           <div className='flex min-h-0 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none]'>
             {subjects.map((s) => (
               <Link
@@ -58,7 +60,10 @@ export function AppNav({ school, subjects }: { school?: string; subjects: NavSub
                 aria-current={isActive(pathname, s.href) ? 'page' : undefined}
                 className='flex items-center gap-3 rounded-xl px-3 py-1.5 text-[0.8125rem] font-medium text-foreground hover:bg-background focus-ring-inset aria-[current=page]:bg-accent aria-[current=page]:font-bold'
               >
-                <span aria-hidden='true' className='grid size-7.5 flex-none place-items-center rounded-[8px] bg-blue text-[10px] font-extrabold text-white'>
+                <span
+                  aria-hidden='true'
+                  className='grid size-7.5 flex-none place-items-center rounded-[8px] bg-blue text-[10px] font-extrabold text-white'
+                >
                   {s.code}
                 </span>
                 <span className='min-w-0 flex-1 truncate'>{s.name}</span>

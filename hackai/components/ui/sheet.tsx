@@ -8,7 +8,15 @@ export const SheetTrigger = Dialog.Trigger
 export const SheetClose = Dialog.Close
 
 /* Hoja que sube desde abajo, con fondo oscuro detrás. Se cierra con Escape o tocando afuera. */
-export function SheetContent({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+export function SheetContent({
+  title,
+  description,
+  children
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+}) {
   return (
     <Dialog.Portal>
       <Dialog.Overlay className='fixed inset-0 z-20 bg-navy/45 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none' />
