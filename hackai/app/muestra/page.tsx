@@ -1,14 +1,19 @@
 /* Página de muestra del sistema visual (ticket #8): la estructura y los
    componentes base con datos de ejemplo. No pide sesión ni lee datos. */
-import { Bell, CalendarDays, CircleCheck, FileText, Megaphone, MessageSquare, RotateCw } from 'lucide-react'
+import { Bell, CalendarDays, CircleCheck, Download, FileText, Megaphone, MessageSquare, RotateCw } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
 import { PageHeader } from '@/components/shell/page-header'
 import { Button } from '@/components/ui/button'
+import { CalendarDay } from '@/components/ui/calendar-day'
 import { Card } from '@/components/ui/card'
+import { CollapsibleCard } from '@/components/ui/collapsible-card'
 import { List, ListItem } from '@/components/ui/list'
+import { NextExamCard } from '@/components/ui/next-exam-card'
 import { OriginBadge } from '@/components/ui/origin-badge'
+import { SegmentedList, SegmentedTrigger } from '@/components/ui/segmented'
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { EmptyState, ErrorNotice, OfflineNotice, Skeleton, StaleNotice } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UnreadCount } from '@/components/ui/unread-count'
@@ -109,6 +114,77 @@ export default function MuestraPage() {
             <TabsContent value='material' className='text-sm text-muted-foreground'>El material por secciones.</TabsContent>
             <TabsContent value='directos' className='text-sm text-muted-foreground'>Los mensajes con los docentes.</TabsContent>
           </Tabs>
+        </Section>
+
+        <Section title='Selector segmentado'>
+          <Tabs defaultValue='cursando' className='flex flex-col gap-3'>
+            <SegmentedList aria-label='Tus materias'>
+              <SegmentedTrigger value='cursando'>Cursando <span className='text-[11px] text-muted-foreground'>7</span></SegmentedTrigger>
+              <SegmentedTrigger value='final'>Falta final <span className='text-[11px] text-muted-foreground'>2</span></SegmentedTrigger>
+              <SegmentedTrigger value='aprobadas'>Aprobadas <span className='text-[11px] text-muted-foreground'>10</span></SegmentedTrigger>
+            </SegmentedList>
+            <TabsContent value='cursando' className='text-sm text-muted-foreground'>Las materias del cuatrimestre.</TabsContent>
+            <TabsContent value='final' className='text-sm text-muted-foreground'>Las regularizadas que falta cerrar.</TabsContent>
+            <TabsContent value='aprobadas' className='text-sm text-muted-foreground'>Las aprobadas, por año de la carrera.</TabsContent>
+          </Tabs>
+        </Section>
+
+        <Section title='Próximo parcial'>
+          <div className='max-w-md'>
+            <NextExamCard title='Segundo parcial' subject='Análisis Matemático I' when='Lunes 16 de noviembre · 08:00 · Aula 20' daysLeft={6} />
+          </div>
+        </Section>
+
+        <Section title='Secciones plegables'>
+          <CollapsibleCard title='Unidad 2: Derivadas' count='2 archivos' defaultOpen>
+            <List>
+              <ListItem title='resumen-derivadas.pdf' meta={<><OriginBadge origin='discord' /> 52 KB · jue 5/11</>} />
+              <ListItem title='Guía de ejercicios 2' meta={<><OriginBadge origin='moodle' /> 29/9</>} />
+            </List>
+          </CollapsibleCard>
+          <CollapsibleCard title='Unidad 1: Límites' count='2 archivos'>
+            <List>
+              <ListItem title='Guía de ejercicios 1' meta={<><OriginBadge origin='moodle' /> 11/8</>} />
+              <ListItem title='Apunte de límites' meta={<><OriginBadge origin='hackai' /> 11/8</>} />
+            </List>
+          </CollapsibleCard>
+        </Section>
+
+        <Section title='Hoja desde abajo'>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant='outline' className='self-start'><Download aria-hidden='true' /> Instalar</Button>
+            </SheetTrigger>
+            <SheetContent title='Tené la app en tu celular' description='Se abre desde el ícono, sin el navegador.'>
+              <ol className='flex list-decimal flex-col gap-1.5 pl-5 text-[0.8125rem]'>
+                <li>Tocá <b>Compartir</b> en la barra de Safari.</li>
+                <li>Elegí <b>Agregar a inicio</b>.</li>
+                <li>Abrila desde el ícono de la Austral.</li>
+              </ol>
+              <SheetClose asChild>
+                <Button variant='outline'>Listo</Button>
+              </SheetClose>
+            </SheetContent>
+          </Sheet>
+        </Section>
+
+        <Section title='Días del calendario'>
+          <div className='grid grid-cols-3 gap-1.5 sm:grid-cols-7'>
+            <CalendarDay day={9} past events={[]} />
+            <CalendarDay day={10} today events={[]} />
+            <CalendarDay day={12} events={[{ code: 'AM2', title: 'Segundo parcial', origin: 'siu', next: true }]} />
+            <CalendarDay day={13} events={[{ code: 'QUI', title: 'Informe de laboratorio 4', origin: 'moodle' }]} />
+            <CalendarDay day={16} events={[{ code: 'FI2', title: 'Segundo parcial', origin: 'siu' }]} />
+            <CalendarDay
+              day={20}
+              events={[
+                { code: 'PYE', title: 'Segundo parcial', origin: 'siu' },
+                { code: 'QUI', title: 'Cuestionario 5', origin: 'moodle' },
+                { code: 'ING', title: 'Quiz de vocabulario', origin: 'moodle' },
+              ]}
+            />
+            <CalendarDay day={22} events={[{ code: 'PR2', title: 'TP de listas enlazadas', origin: 'moodle' }]} />
+          </div>
         </Section>
 
         <Section title='Estados'>
