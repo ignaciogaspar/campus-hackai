@@ -172,11 +172,15 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   return { adapters, ports, people, studies, spaces, today }
 }
 
-let current: System | null = null
+/** Next.js compila las páginas, las server actions y las rutas en bundles
+    distintos, cada uno con su copia de este módulo. El sistema vive en
+    `globalThis` para que todos usen el mismo: si no, lo que una página guarda
+    en memoria (un archivo subido) no lo encuentra la ruta que lo entrega. */
+const shared = globalThis as typeof globalThis & { hackaiSystem?: System }
 
 /** El sistema de la app, armado una vez por proceso con `process.env`. Los
     adaptadores en memoria guardan su estado mientras viva el proceso. */
 export function system(): System {
-  if (!current) current = compose(process.env)
-  return current
+  shared.hackaiSystem ??= compose(process.env)
+  return shared.hackaiSystem
 }
