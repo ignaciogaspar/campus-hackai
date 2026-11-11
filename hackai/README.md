@@ -44,7 +44,9 @@ No las imprimas en logs ni en reportes.
 | `lib/db.ts` | `db()`, el cliente de Supabase con service role, y `must(res, what)`, que devuelve `data` o tira un error. |
 | `lib/claude.ts` | `claude()`, `MODEL_LIVE`, `MODEL_AUTHORING`. |
 | `lib/session-token.ts`, `lib/auth.ts` | Sesión firmada en una cookie: `forgeSessionCookie`, `getSession()`, `requireSession(role?)`. Es provisoria: cómo entra el alumno todavía no está decidido. |
-| `app/globals.css` | Estilos base provisorios, hasta que se rediseñe el sistema visual. |
+| `app/globals.css` | Tailwind CSS 4 y los tokens de shadcn/ui, con los colores provisorios de la Austral, hasta que se rediseñe el sistema visual. |
+| `components/ui/` | Componentes de shadcn/ui (ADR 0006). Se suman con `npx shadcn add <componente>` y se pasan a las convenciones del repo. Por ahora, `button`. |
+| `lib/utils.ts` | `cn()`, que junta clases de Tailwind. |
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
 | `lib/result.ts` | `Result`, `ok()`, `fail()` y `notImplemented()`: los errores como valores. |
 | `lib/ports/` | Los seis puertos (identidad, SIU, aula virtual, canal externo, archivos, reloj) con sus capacidades. |

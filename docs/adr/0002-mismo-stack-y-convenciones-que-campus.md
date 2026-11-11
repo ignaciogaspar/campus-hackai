@@ -5,6 +5,8 @@ date: 2026-11-10
 
 # `hackai/` usa el mismo stack, versiones y convenciones que campus
 
+> La parte de estilos (CSS plano y sin librerías de UI) la reemplaza el [ADR 0006](0006-tailwind-y-shadcn-para-la-interfaz.md).
+
 Para que una feature se pueda copiar de `hackai/` a campus tal cual, el código tiene que ser indistinguible del de Nacho en todo lo que no sea la feature. Decidimos que `hackai/` use exactamente su stack y sus versiones (Node 22, Next.js 15 App Router, React 19, TypeScript estricto, Supabase Postgres con migraciones SQL a mano, CSS plano, `@anthropic-ai/sdk`, tests con `node:test` y `tsx`), sin dependencias que campus no tenga, y que siga sus reglas escritas en `campus/docs/SPEC.md` y `CONTRACTS.md`: una carpeta por feature en `lib/`, `components/` y `app/`; lógica pura separada del acceso a datos; todo acceso a datos en el servidor con el service role; RLS activado sin políticas; migraciones idempotentes que solo crean tablas nuevas; UI en voseo; dos espacios, comillas simples, sin punto y coma, imports con `@/`.
 
 ## Opciones consideradas
