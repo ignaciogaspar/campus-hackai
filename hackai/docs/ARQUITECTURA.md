@@ -59,11 +59,13 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 
 | Operación | Qué hace |
 | --- | --- |
-| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos y el material |
-| `channel(persona, canal)` | Mensajes del canal, con las consultas y sus respuestas; marca leído |
+| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos, el material y qué puede hacer. Crea el espacio y los canales de sus comisiones si no existen |
+| `channel(persona, canal)` | Mensajes del canal, con las consultas y sus respuestas en hilos; en el de material, el material. Marca leído |
 | `post(persona, canal, mensaje)` | Publica y lo envía al canal externo vinculado |
 | `resolve(persona, consulta)` | Marca una consulta como resuelta |
 | `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |
+| `addMaterial(persona, espacio, archivo)` | Sube un archivo al material, con Archivos, en la unidad o el tema que elige el docente |
+| `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
 | `openDirect(persona, otraPersona)` | Canal directo entre alumno y docente |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
@@ -74,7 +76,9 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 - **Un espacio por materia y facultad.** Se crea la primera vez que alguien lo abre, con sus canales por defecto: material de la materia, y `#avisos` y `#consultas` por comisión.
 - **Membresía.** Se deduce de `sectionsOf` de Cursada y no se guarda aparte. Por eso no hay operación para agregar miembros: quien se inscribe ya está adentro.
 - **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión.
-- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay.
+- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`), así la pantalla no repite estas reglas.
+- **Canales por defecto:** el espacio y su canal de material se crean la primera vez que alguien abre el espacio; `#avisos` y `#consultas` de una comisión, la primera vez que lo abre alguien de esa comisión. Los nombres no se repiten entre canales que ven las mismas personas.
+- **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que en la demo está fija.
 - **Sincronización:**
   - Cada mensaje guarda su origen (HackAI, Discord, Moodle) y su id externo, y un mensaje no entra dos veces.
   - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización.
@@ -116,14 +120,14 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
 | **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
 | **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, responder en un hilo, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
-| **Archivos** | Guardar un archivo y obtener su URL | Supabase Storage, en memoria |
+| **Archivos** | Guardar un archivo y obtener su URL; leerlo por id | Supabase Storage (bucket privado), en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
 
 Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales: [research del SIU](../../docs/research/2026-11-10-siu-guarani-integracion.md) y [research de Moodle](../../docs/research/2026-11-10-moodle-web-services.md). Inscribir y el cronograma no existen en la API real del SIU: solo los provee el simulado. El adaptador de Discord sigue la [research de canales externos](../../docs/research/2026-11-10-canales-externos-apis.md): lee por REST desde un cursor, necesita el intent Message Content y ante un 429 espera `retry_after`. Si Discord pide esperar más de 30 segundos o sigue limitando después de 3 reintentos, el adaptador devuelve `falla-externa` en vez de bloquear la request, y la próxima sincronización reintenta. Es una desviación aceptada del issue #11, que pedía esperar siempre.
 
 **Capacidades:** cada adaptador de un sistema de origen declara qué soporta: por ejemplo, si permite inscribir, si tiene cronograma, si ya matricula en Moodle, o si avisa por evento en vez de leerse desde un cursor. El núcleo decide con esas declaraciones, nunca preguntando qué adaptador es. Así el mismo núcleo funciona con el simulado de la demo y con el sistema real, que tiene menos capacidades.
 
-**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas.
+**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas. Los archivos guardados se entregan por la ruta `/archivos/<id>/<nombre>`, que pide sesión: el bucket es privado y nada se lee desde el navegador directo a Supabase.
 
 ## Estructura de carpetas
 

@@ -78,7 +78,20 @@ test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () =
   assert.throws(() => compose({ HACKAI_SIU: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
 })
 
-test('HACKAI_STORE=supabase guarda los vínculos de Personas en Supabase y sin sus variables no arranca', async () => {
+test('HACKAI_FILES=supabase guarda los archivos en Supabase Storage y sin sus variables no arranca', () => {
+  const system = compose({
+    HACKAI_FILES: 'supabase',
+    NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
+  })
+  assert.equal(system.adapters.files, 'supabase')
+  assert.deepEqual(system.ports.files.capabilities, { maxBytes: 10 * 1024 * 1024 })
+
+  assert.throws(() => compose({ HACKAI_FILES: 'supabase' }), /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.throws(() => compose({ HACKAI_FILES: 's3' }), /HACKAI_FILES/)
+})
+
+test('HACKAI_STORE=supabase guarda lo de Personas y Espacios en Supabase y sin sus variables no arranca', async () => {
   const system = compose({
     HACKAI_STORE: 'supabase',
     NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
