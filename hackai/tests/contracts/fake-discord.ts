@@ -43,7 +43,13 @@ export function createFakeDiscord() {
   const nextId = () => String(++lastId)
 
   function addChannel(id: string, parentId: string | null = null): RawChannel {
-    const channel: RawChannel = { id, type: parentId ? 11 : 0, guild_id: GUILD, parent_id: parentId, last_message_id: null }
+    const channel: RawChannel = {
+      id,
+      type: parentId ? 11 : 0,
+      guild_id: GUILD,
+      parent_id: parentId,
+      last_message_id: null
+    }
     if (parentId) channel.thread_metadata = { archived: false, archive_timestamp: new Date().toISOString() }
     channels.set(id, channel)
     messages.set(id, [])
@@ -73,7 +79,15 @@ export function createFakeDiscord() {
   }
 
   function systemMessage(channelId: string, type: number): RawMessage {
-    return { id: nextId(), channel_id: channelId, type, content: '', timestamp: new Date().toISOString(), author: BOT_USER, attachments: [] }
+    return {
+      id: nextId(),
+      channel_id: channelId,
+      type,
+      content: '',
+      timestamp: new Date().toISOString(),
+      author: BOT_USER,
+      attachments: []
+    }
   }
 
   function json(status: number, body: unknown, headers: Record<string, string> = {}) {
@@ -86,14 +100,20 @@ export function createFakeDiscord() {
   async function handle(method: string, url: URL, body: unknown): Promise<Response> {
     if (url.hostname === 'cdn.discordapp.com') {
       const file = files.get(url.toString())
-      return file ? new Response(file, { status: 200 }) : new Response('This content is no longer available.', { status: 404 })
+      return file
+        ? new Response(file, { status: 200 })
+        : new Response('This content is no longer available.', { status: 404 })
     }
-    if (url.origin !== 'https://discord.com' || !url.pathname.startsWith('/api/v10/')) return json(400, { message: 'Ruta desconocida', code: 0 })
+    if (url.origin !== 'https://discord.com' || !url.pathname.startsWith('/api/v10/'))
+      return json(400, { message: 'Ruta desconocida', code: 0 })
     const path = url.pathname.slice('/api/v10'.length).split('/').filter(Boolean)
 
     // GET /guilds/{guild}/threads/active
     if (path[0] === 'guilds' && path[2] === 'threads' && method === 'GET') {
-      return json(200, { threads: [...channels.values()].filter((c) => c.thread_metadata && !c.thread_metadata.archived), members: [] })
+      return json(200, {
+        threads: [...channels.values()].filter((c) => c.thread_metadata && !c.thread_metadata.archived),
+        members: []
+      })
     }
     if (path[0] !== 'channels') return json(400, { message: 'Ruta desconocida', code: 0 })
     const channel = channels.get(path[1])
@@ -109,7 +129,9 @@ export function createFakeDiscord() {
       const archived = [...channels.values()]
         .filter((c) => c.parent_id === channel.id && c.thread_metadata?.archived)
         .filter((c) => !before || Date.parse(c.thread_metadata!.archive_timestamp) < Date.parse(before))
-        .sort((a, b) => Date.parse(b.thread_metadata!.archive_timestamp) - Date.parse(a.thread_metadata!.archive_timestamp))
+        .sort(
+          (a, b) => Date.parse(b.thread_metadata!.archive_timestamp) - Date.parse(a.thread_metadata!.archive_timestamp)
+        )
       return json(200, { threads: archived.slice(0, limit), members: [], has_more: archived.length > limit })
     }
 
@@ -117,7 +139,8 @@ export function createFakeDiscord() {
     if (path.length === 3 && path[2] === 'messages' && method === 'GET') {
       const after = BigInt(url.searchParams.get('after') ?? '0')
       const limit = Number(url.searchParams.get('limit') ?? '50')
-      const page = messages.get(channel.id)!
+      const page = messages
+        .get(channel.id)!
         .filter((m) => BigInt(m.id) > after)
         .sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1))
         .slice(0, limit)
@@ -143,7 +166,8 @@ export function createFakeDiscord() {
     // POST /channels/{id}/messages/{message}/threads
     if (path.length === 5 && path[4] === 'threads' && method === 'POST') {
       if (!message) return notFound(10008)
-      if (message.thread) return json(400, { message: 'A thread has already been created for this message', code: 160004 })
+      if (message.thread)
+        return json(400, { message: 'A thread has already been created for this message', code: 160004 })
       return json(201, startThread(channel.id, message.id, (body as { name: string }).name))
     }
     return json(400, { message: 'Ruta desconocida', code: 0 })
@@ -157,7 +181,11 @@ export function createFakeDiscord() {
     if (throttled.length > 0) {
       const next = throttled[0]
       if (--next.times === 0) throttled = throttled.slice(1)
-      return json(429, { message: 'You are being rate limited.', retry_after: next.retryAfter, global: false }, { 'Retry-After': String(Math.ceil(next.retryAfter)) })
+      return json(
+        429,
+        { message: 'You are being rate limited.', retry_after: next.retryAfter, global: false },
+        { 'Retry-After': String(Math.ceil(next.retryAfter)) }
+      )
     }
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
     return handle(method, url, body)
@@ -182,7 +210,7 @@ export function createFakeDiscord() {
     },
     messagesOf(channelId: string) {
       return messages.get(channelId) ?? []
-    },
+    }
   }
 }
 
@@ -190,7 +218,11 @@ export type FakeDiscord = ReturnType<typeof createFakeDiscord>
 
 /** Carga en el Discord falso los canales del set sintético, traducidos a la
     forma cruda de la API: los mensajes con `threadId` van al canal del hilo. */
-export function seedFromSynthetic(fake: FakeDiscord, channels: { id: string; messages: ExternalMessage[] }[], files: Record<string, string>) {
+export function seedFromSynthetic(
+  fake: FakeDiscord,
+  channels: { id: string; messages: ExternalMessage[] }[],
+  files: Record<string, string>
+) {
   for (const channel of channels) {
     fake.addChannel(channel.id)
     for (const m of channel.messages.filter((m) => m.threadId === null)) fake.addMessage(toRaw(m, channel.id))
@@ -211,8 +243,19 @@ function toRaw(m: ExternalMessage, channelId: string): RawMessage {
     timestamp: m.createdAt.replace('Z', '+00:00'),
     author: m.viaWebhook
       ? { id: m.author.id, username: m.author.name, global_name: null, bot: true }
-      : { id: m.author.id, username: m.author.name.toLowerCase(), global_name: m.author.name, ...(m.author.isBot ? { bot: true } : {}) },
-    attachments: m.attachments.map((a) => ({ id: a.id, filename: a.filename, content_type: a.contentType, size: a.size, url: a.url })),
-    ...(m.viaWebhook ? { webhook_id: m.author.id } : {}),
+      : {
+          id: m.author.id,
+          username: m.author.name.toLowerCase(),
+          global_name: m.author.name,
+          ...(m.author.isBot ? { bot: true } : {})
+        },
+    attachments: m.attachments.map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      content_type: a.contentType,
+      size: a.size,
+      url: a.url
+    })),
+    ...(m.viaWebhook ? { webhook_id: m.author.id } : {})
   }
 }

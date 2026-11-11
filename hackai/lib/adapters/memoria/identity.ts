@@ -19,6 +19,6 @@ export function createMemoryIdentity(data: SyntheticData): IdentityPort {
     },
     async demoSubjects() {
       return ok(subjects.map((s) => ({ ...s })))
-    },
+    }
   }
 }

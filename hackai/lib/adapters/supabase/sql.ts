@@ -29,6 +29,9 @@ export function upsert(table: string, key: string[], rows: Record<string, Sql>[]
   if (!rows.length) return `-- ${table}: sin filas\n`
   const columns = Object.keys(rows[0])
   const values = rows.map((row) => `  (${columns.map((c) => row[c]).join(', ')})`).join(',\n')
-  const updates = columns.filter((c) => !key.includes(c)).map((c) => `${c} = excluded.${c}`).join(', ')
+  const updates = columns
+    .filter((c) => !key.includes(c))
+    .map((c) => `${c} = excluded.${c}`)
+    .join(', ')
   return `insert into ${table} (${columns.join(', ')}) values\n${values}\non conflict (${key.join(', ')}) do update set ${updates};\n`
 }

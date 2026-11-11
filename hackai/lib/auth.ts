@@ -1,10 +1,10 @@
 /* Sesión provisoria: getSession() solo verifica la firma de la cookie.
    Cómo entra el alumno (identidad e ingreso) todavía no está decidido. */
 import 'server-only'
-import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { SESSION_COOKIE, verifySessionToken, type Role, type Session } from '@/lib/session-token'
+import { cache } from 'react'
+import { type Role, SESSION_COOKIE, type Session, verifySessionToken } from '@/lib/session-token'
 
 export type { Role, Session }
 

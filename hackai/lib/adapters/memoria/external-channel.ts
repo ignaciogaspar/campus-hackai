@@ -31,7 +31,7 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
       attachments: [],
       threadId,
       viaWebhook: false,
-      createdAt: clock.now().toISOString(),
+      createdAt: clock.now().toISOString()
     }
     channel.messages.push(message)
     return message
@@ -65,7 +65,11 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
     async download(attachment) {
       const content = files[attachment.url]
       if (content === undefined) return fail('adjunto-vencido')
-      return ok({ filename: attachment.filename, contentType: attachment.contentType, bytes: new TextEncoder().encode(content) })
-    },
+      return ok({
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        bytes: new TextEncoder().encode(content)
+      })
+    }
   }
 }
