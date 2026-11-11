@@ -18,17 +18,22 @@ import type { OfferItem } from '@/lib/core/studies'
 
 export const metadata: Metadata = { title: 'Mesas de examen · Campus HackAI' }
 
+/** Una mesa sin fecha igual está ofrecida: se ve, con «Fecha a confirmar», como el lugar y el tribunal. */
 function BoardCard({ item }: { item: OfferItem }) {
-  if (item.target.kind !== 'mesa' || !item.date) return null
+  if (item.target.kind !== 'mesa') return null
   return (
     <OfferCard
       item={item}
       title={
-        <time dateTime={item.date}>
-          {longDay(item.date)} · {timeOf(item.date)}
-        </time>
+        item.date ? (
+          <time dateTime={item.date}>
+            {longDay(item.date)} · {timeOf(item.date)}
+          </time>
+        ) : (
+          'Fecha a confirmar'
+        )
       }
-      label={`Final de ${item.subjectName}, ${shortDate(item.date)}`}
+      label={`Final de ${item.subjectName}, ${item.date ? shortDate(item.date) : item.period}`}
       enrollAction={enrollAction}
       dropAction={dropAction}
     >

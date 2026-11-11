@@ -1448,6 +1448,59 @@ test('el espacio le dice al alumno a qué docentes de su comisión les puede esc
   assert.deepEqual(teacher.value.viewer.directContacts, [])
 })
 
+/** Joaquín cursa la A de AM1 con Ledesma y, antes, cursó AM1 en el 1er cuatrimestre con Ferreyra. */
+function withPastSection(): SyntheticData {
+  const data = withEnrollment('30105', 'sec-am1-fi-1c')
+  const b = data.siu.sections.find((s) => s.id === 'sec-am1-fi-b')
+  assert.ok(b)
+  data.siu.sections.push({ ...b, id: 'sec-am1-fi-1c', name: 'C', termId: '1c-2026' })
+  return data
+}
+
+test('quien recursa le escribe en privado al docente de su comisión vigente, no al de la que cursó antes', async () => {
+  const { spaces } = build(withPastSection())
+  await am1(spaces)
+
+  const opened = await spaces.open('p-jescobar', 'am1')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.viewer.sections.map((s) => [s.name, s.current]),
+    [
+      ['A', true],
+      ['C', false]
+    ]
+  )
+  assert.deepEqual(
+    opened.value.viewer.directContacts.map((c) => c.personId),
+    ['p-mledesma']
+  )
+  const spaceId = opened.value.space.id
+  assert.deepEqual(await spaces.openDirect('p-jescobar', spaceId, 'p-gferreyra'), {
+    ok: false,
+    error: 'sin-comision-en-comun'
+  })
+  assert.deepEqual(await spaces.openDirect('p-gferreyra', spaceId, 'p-jescobar'), {
+    ok: false,
+    error: 'sin-comision-en-comun'
+  })
+})
+
+test('en una materia archivada, el alumno le sigue pudiendo escribir en privado al docente de su comisión', async () => {
+  const { spaces } = build()
+
+  // Valentina cursó Álgebra con Ledesma en el 1er cuatrimestre: no tiene comisión vigente (pregunta abierta 17).
+  const opened = await spaces.open('p-vfunes', 'aga')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.viewer.directContacts.map((c) => [c.personId, c.sectionName]),
+    [['p-mledesma', 'A']]
+  )
+  const direct = await spaces.openDirect('p-vfunes', opened.value.space.id, 'p-mledesma')
+  assert.ok(direct.ok)
+})
+
 test('no hay canal directo entre dos alumnos, entre dos docentes ni con un docente de otra comisión', async () => {
   const { spaces } = build()
   const { spaceId } = await am1(spaces)

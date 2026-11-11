@@ -122,25 +122,34 @@ export function canResolve(member: Membership, channel: StoredChannel): boolean 
   return false
 }
 
+/** Las comisiones del alumno que cuentan para los directos: las vigentes, o todas si en el espacio no
+    tiene ninguna vigente, como en una materia archivada (pregunta abierta 17). Así quien recursa no le
+    escribe al docente de la comisión que cursó antes. */
+function directSections(student: Membership): MySection[] {
+  const current = student.sections.filter((s) => s.current)
+  return current.length ? current : student.sections
+}
+
 /** Por qué no puede haber un canal directo entre las dos membresías, o `null` si puede: solo entre un
-    alumno y un docente que comparten una comisión del espacio. Primero los roles, así dos alumnos de la
-    misma comisión no tienen canal aunque compartan comisión. */
+    alumno y un docente de una comisión del alumno que cuenta para los directos (`directSections`).
+    Primero los roles, así dos alumnos de la misma comisión no tienen canal aunque compartan comisión. */
 export function directRefusal(
   member: Membership,
   other: Membership
 ): 'solo-alumno-docente' | 'sin-comision-en-comun' | null {
   if (member.personId === other.personId || member.role === other.role) return 'solo-alumno-docente'
-  return member.sections.some((s) => hasSection(other, s.sectionId)) ? null : 'sin-comision-en-comun'
+  const [student, teacher] = member.role === 'alumno' ? [member, other] : [other, member]
+  return directSections(student).some((s) => hasSection(teacher, s.sectionId)) ? null : 'sin-comision-en-comun'
 }
 
-/** A quiénes les puede escribir en privado: para el alumno, cada docente de sus comisiones del espacio
-    que tiene cuenta en HackAI, una sola vez y con la primera comisión en que lo tiene. Para el docente,
-    nadie: Cursada no da los alumnos de una comisión, así que responde lo que le escriben (aunque
-    `openDirect` le deja abrir el canal con un alumno de su comisión si conoce su id). */
+/** A quiénes les puede escribir en privado: para el alumno, cada docente de sus comisiones que cuentan
+    para los directos y tiene cuenta en HackAI, una sola vez y con la primera comisión en que lo tiene.
+    Para el docente, nadie: Cursada no da los alumnos de una comisión, así que responde lo que le
+    escriben (aunque `openDirect` le deja abrir el canal con un alumno de su comisión si conoce su id). */
 export function directContacts(member: Membership): DirectContact[] {
   if (member.role !== 'alumno') return []
   const seen = new Set<PersonId>()
-  return member.sections.flatMap((s) =>
+  return directSections(member).flatMap((s) =>
     s.teachers.flatMap((t) => {
       if (!t.personId || t.personId === member.personId || seen.has(t.personId)) return []
       seen.add(t.personId)
