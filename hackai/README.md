@@ -16,11 +16,11 @@ Chequeos:
 
 ```bash
 npm run typecheck      # tsc --noEmit -p .
-npm test               # node:test + tsx sobre tests/*.test.ts
+npm test               # node:test + tsx sobre tests/**/*.test.ts
 npm run build
 ```
 
-Con Node 20 instala y pasa los tres chequeos, con un warning de `engines`. Para la demo, usá Node 22.
+`npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22.
 
 ## Variables de entorno
 
@@ -33,6 +33,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `DATABASE_URL` | Solo para correr migraciones con psql. |
 | `SESSION_SECRET` | Firma la cookie de sesión `hackai_session`. |
 | `ANTHROPIC_API_KEY` | API de Claude. |
+| `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES`, `HACKAI_CLOCK` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 
 No las imprimas en logs ni en reportes.
 
@@ -45,5 +46,11 @@ No las imprimas en logs ni en reportes.
 | `lib/session-token.ts`, `lib/auth.ts` | Sesión firmada en una cookie: `forgeSessionCookie`, `getSession()`, `requireSession(role?)`. Es provisoria: cómo entra el alumno todavía no está decidido. |
 | `app/globals.css` | Estilos base provisorios, hasta que se rediseñe el sistema visual. |
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
+| `lib/result.ts` | `Result`, `ok()`, `fail()` y `notImplemented()`: los errores como valores. |
+| `lib/ports/` | Los seis puertos (identidad, SIU, aula virtual, canal externo, archivos, reloj) con sus capacidades. |
+| `lib/core/` | Las interfaces de Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
+| `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. |
+| `lib/adapters/memoria/` | Un adaptador en memoria por puerto, cargado con ese set. |
+| `lib/composition.ts` | `compose(env)` para los tests y `system()` para la app: arma los módulos con el adaptador de cada puerto. |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
