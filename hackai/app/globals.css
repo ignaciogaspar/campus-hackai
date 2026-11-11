@@ -20,6 +20,18 @@
   --tinta: #14162b;
   --gris: #5b6072;
   --borde: #d9deea;
+  /* Dirección visual «B, Profundo», elegida por el equipo el 11/11: los tonos
+     que usan el encabezado, las tarjetas y los avisos de las pantallas nuevas.
+     Salen de los tokens de los mocks; el ticket #8 completa el resto. */
+  --navy: #0b1150;
+  --azul-claro: #1f5cff;
+  --azul-hondo: #14178a;
+  --azul-suave: #e6edff;
+  --header-sub: #c4c9f2;
+  --gris-claro: #8a8fa0;
+  --error: #b42318;
+  --error-suave: #fdecea;
+  --error-tinta: #5e130c;
   /* Avisos: algo para tener en cuenta, que no es un error. */
   --warning: var(--naranja);
   --warning-background: #fff4ea;
@@ -100,6 +112,20 @@ a { color: var(--azul); }
 .tabla th, .tabla td { padding: 8px 12px; border-bottom: 1px solid var(--borde); text-align: left; }
 
 @theme inline {
+  --color-navy: var(--navy);
+  --color-azul: var(--azul);
+  --color-azul-claro: var(--azul-claro);
+  --color-azul-hondo: var(--azul-hondo);
+  --color-azul-suave: var(--azul-suave);
+  --color-naranja: var(--naranja);
+  --color-header-sub: var(--header-sub);
+  --color-gris-claro: var(--gris-claro);
+  --color-error: var(--error);
+  --color-error-suave: var(--error-suave);
+  --color-error-tinta: var(--error-tinta);
+  --shadow-card: 0 1px 2px rgba(11, 17, 80, .06), 0 6px 18px rgba(11, 17, 80, .08);
+  --radius-card: 22px;
+  --radius-header: 28px;
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -184,6 +210,10 @@ a { color: var(--azul); }
   }
   body {
     @apply bg-background text-foreground;
+  }
+  ::selection {
+    background: var(--azul-suave);
+    color: var(--tinta);
   }
   html {
     @apply font-sans;

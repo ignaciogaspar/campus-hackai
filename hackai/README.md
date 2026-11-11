@@ -109,7 +109,7 @@ No las imprimas en logs ni en reportes.
 | `lib/db.ts` | `db()`, el cliente de Supabase con service role, y `must(res, what)`, que devuelve `data` o tira un error. |
 | `lib/claude.ts` | `claude()`, `MODEL_LIVE`, `MODEL_AUTHORING`. |
 | `lib/session-token.ts`, `lib/auth.ts` | Sesión firmada en una cookie: `createSessionToken`, `forgeSessionCookie` (tests y desarrollo), `getSession()`, `requireSession(role?)`, `startSession()`, `endSession()` y `homeFor(role)`. |
-| `app/globals.css` | Tailwind CSS 4 y los tokens de shadcn/ui, con los colores provisorios de la Austral, hasta que se rediseñe el sistema visual. |
+| `app/globals.css` | Tailwind CSS 4 y los tokens de shadcn/ui, con los colores de la Austral. Ya trae los tonos de la dirección visual «B, Profundo» que usan el ingreso y Hoy (`navy`, `azul-claro`, sombra y radio de tarjeta); el resto del sistema visual llega con el #8. |
 | `components/ui/` | Componentes de shadcn/ui (ADR 0006). Se suman con `npx shadcn add <componente>` y se pasan a las convenciones del repo. Por ahora, `button`. |
 | `lib/utils.ts` | `cn()`, que junta clases de Tailwind. |
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
@@ -124,7 +124,8 @@ No las imprimas en logs ni en reportes.
 | `lib/adapters/siu-simulado/` | El SIU simulado sobre las tablas `siu_*` y el generador de su seed. |
 | `lib/adapters/supabase/` | Lo que comparten los adaptadores sobre Supabase (cliente, consultas con tiempo máximo, literales de SQL para los seeds), el almacén de Personas sobre `people_accounts` y el generador de su seed. |
 | `app/page.tsx`, `app/actions/session.ts`, `components/session/` | El ingreso de demo: la lista de personas por rol, y las acciones para entrar y salir. |
-| `components/notices.tsx` | `ErrorNotice` y `EmptyNotice`: los avisos de error y de estado vacío de una página. Provisorios, hasta que el sistema visual (#8) traiga los componentes base. |
+| `components/shell/` | Lo que comparten las pantallas con la dirección visual «B, Profundo»: `PageHeader` (encabezado navy con la marca), `Brand` y `Avatar` (iniciales). |
+| `components/notices.tsx` | `ErrorNotice` y `EmptyNotice`: los avisos de error y de estado vacío de una página. |
 | `app/hoy/` | Inicio de los dos roles. Por ahora saluda y lleva a Mis materias; el resto llega con Hoy (#18). |
 | `app/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente. |
 

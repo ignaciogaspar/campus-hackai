@@ -2,11 +2,13 @@
    clave. En producción se entra con la cuenta de Microsoft de la Austral
    (docs/product/alcance.md). Sin reglas de negocio: quiénes son las personas
    y quién entra lo decide Personas. */
+import { UsersRound } from 'lucide-react'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import type { SignInError } from '@/app/actions/session'
-import { ErrorNotice } from '@/components/notices'
+import { EmptyNotice, ErrorNotice } from '@/components/notices'
 import { PersonPicker } from '@/components/session/person-picker'
+import { PageHeader } from '@/components/shell/page-header'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { ExternalFailure } from '@/lib/result'
@@ -43,20 +45,26 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
   const [{ error }, listed] = await Promise.all([searchParams, system().people.demoPeople()])
 
   return (
-    <main className='mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-6 pb-16 sm:max-w-3xl lg:max-w-5xl lg:pt-10'>
-      <header>
-        <p className='text-xs font-bold tracking-widest text-primary uppercase'>Campus HackAI</p>
-        <h1 className='mt-1 text-2xl leading-tight font-bold'>¿Quién sos?</h1>
-        <p className='mt-2 text-sm text-muted-foreground'>
-          Elegí una persona para entrar. Es una demo con datos inventados: no hace falta clave.
-        </p>
-      </header>
+    <>
+      <PageHeader title='¿Quién sos?' sub='Elegí una persona para entrar. No hace falta clave.' brandSub='HackAI'>
+        <span className='rounded-full bg-naranja px-3 py-1 text-[0.8125rem] font-bold text-foreground'>
+          Demo con datos inventados
+        </span>
+      </PageHeader>
 
-      {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
+      <main className='mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pt-5 pb-16 lg:px-10 lg:pt-8'>
+        {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
 
-      {listed.ok
-        ? <PersonPicker people={listed.value} />
-        : <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>}
-    </main>
+        {!listed.ok ? (
+          <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
+        ) : listed.value.length ? (
+          <PersonPicker people={listed.value} />
+        ) : (
+          <EmptyNotice icon={UsersRound} title='No hay personas cargadas para la demo'>
+            La lista sale de las personas sintéticas. Si usás la base, cargá el seed de vínculos (hackai/README.md).
+          </EmptyNotice>
+        )}
+      </main>
+    </>
   )
 }

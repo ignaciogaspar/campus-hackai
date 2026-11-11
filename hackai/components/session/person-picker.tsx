@@ -1,70 +1,87 @@
-/* Lista de personas del ingreso de demo, agrupadas por rol y con su facultad.
-   Cada persona es un botón que abre su sesión. Solo muestra lo que le da
-   Personas.
+'use client'
 
-   En el celular es una columna, con atajos para saltar a cada grupo. En
-   pantallas anchas las tarjetas van en grilla de tres columnas: los grupos
-   siguen uno debajo del otro, pero se ven los dos casi sin scrollear, así que
-   los atajos se esconden. */
+/* Lista de personas del ingreso de demo, agrupadas por rol y, adentro, por
+   facultad. Cada persona es una fila que abre su sesión. Solo muestra lo que
+   le da Personas.
+
+   En el celular se ve un rol por vez, y se cambia con las pastillas de arriba.
+   En pantallas anchas entran los dos: alumnos a la izquierda, en dos columnas,
+   y docentes a la derecha. */
+import { useState } from 'react'
 import { signInAsDemoPerson } from '@/app/actions/session'
-import { EmptyNotice } from '@/components/notices'
-import { PersonButton } from '@/components/session/person-button'
+import { PersonRow } from '@/components/session/person-row'
 import { activeProgram } from '@/components/session/person-text'
 import type { Person, Role } from '@/lib/core/people'
+import { cn } from '@/lib/utils'
 
-const GROUPS: { role: Role; title: string }[] = [
-  { role: 'alumno', title: 'Alumnos' },
-  { role: 'profesor', title: 'Docentes' },
+const GROUPS: { role: Role; title: string; wide: boolean }[] = [
+  { role: 'alumno', title: 'Alumnos', wide: true },
+  { role: 'profesor', title: 'Docentes', wide: false },
 ]
 
-/** La facultad y, si es alumno, la propuesta que cursa. */
-function detail(person: Person): string {
-  const program = activeProgram(person)
-  return program ? `${person.school.name} · ${program.name}` : person.school.name
+type School = Person['school'] & { members: Person[] }
+
+/** Las personas de un rol, por facultad, en el orden en que aparecen. */
+function bySchool(people: Person[]): School[] {
+  const schools = new Map<string, School>()
+  for (const person of people) {
+    const school = schools.get(person.school.id) ?? { ...person.school, members: [] }
+    school.members.push(person)
+    schools.set(person.school.id, school)
+  }
+  return [...schools.values()]
 }
 
 export function PersonPicker({ people }: { people: Person[] }) {
-  if (!people.length) {
-    return <EmptyNotice>No hay personas cargadas para la demo.</EmptyNotice>
-  }
-
   const groups = GROUPS
-    .map((g) => ({ ...g, members: people.filter((p) => p.role === g.role) }))
-    .filter((g) => g.members.length)
+    .map((g) => ({ ...g, schools: bySchool(people.filter((p) => p.role === g.role)), count: people.filter((p) => p.role === g.role).length }))
+    .filter((g) => g.count)
+  const [shown, setShown] = useState<Role | undefined>(groups[0]?.role)
 
   return (
-    <div className='flex flex-col gap-8'>
+    <div className='flex flex-col gap-5 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-6'>
       {groups.length > 1 && (
-        <nav aria-label='Ir a un grupo' className='flex gap-2 lg:hidden'>
-          {groups.map(({ role, title }) => (
-            <a
+        <div role='group' aria-label='Qué personas ver' className='flex gap-2 lg:hidden'>
+          {groups.map(({ role, title, count }) => (
+            <button
               key={role}
-              href={`#grupo-${role}`}
-              className='inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-sm font-semibold outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50'
+              type='button'
+              aria-pressed={shown === role}
+              onClick={() => setShown(role)}
+              className='inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-card px-4 text-[0.8125rem] font-semibold text-muted-foreground shadow-[0_1px_2px_rgba(11,17,80,.08)] outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-azul-claro focus-visible:ring-offset-2 aria-pressed:bg-azul aria-pressed:text-white'
             >
               {title}
-            </a>
+              <span className={cn('text-[11px] font-bold', shown === role ? 'text-header-sub' : 'text-gris-claro')}>{count}</span>
+            </button>
           ))}
-        </nav>
+        </div>
       )}
 
-      {groups.map(({ role, title, members }) => (
-        <section key={role} aria-labelledby={`grupo-${role}`} className='flex scroll-mt-4 flex-col gap-3'>
-          <h2 id={`grupo-${role}`} className='text-sm font-semibold text-muted-foreground'>
-            {title} <span className='font-normal'>({members.length})</span>
+      {groups.map(({ role, title, wide, schools, count }) => (
+        <section
+          key={role}
+          aria-labelledby={`grupo-${role}`}
+          className={cn('flex-col gap-4 lg:flex', shown === role ? 'flex' : 'hidden', wide ? 'lg:col-span-2' : 'lg:col-span-1')}
+        >
+          <h2 id={`grupo-${role}`} className='sr-only text-lg leading-tight font-extrabold lg:not-sr-only'>
+            {title} <span className='text-[0.8125rem] font-semibold text-muted-foreground'>{count}</span>
           </h2>
-          <ul className='grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
-            {members.map((person) => (
-              <li key={person.id} className='flex'>
-                <form className='flex w-full' action={signInAsDemoPerson.bind(null, person.id)}>
-                  <PersonButton>
-                    <span className='text-base leading-snug font-semibold text-foreground'>{person.name}</span>
-                    <span className='text-sm font-normal text-muted-foreground'>{detail(person)}</span>
-                  </PersonButton>
-                </form>
-              </li>
+          <div className={cn('grid gap-5', wide && 'sm:grid-cols-2 sm:gap-x-6')}>
+            {schools.map((school) => (
+              <div key={school.id} className='flex flex-col gap-2'>
+                <h3 className='px-1 text-xs font-bold tracking-[.08em] text-muted-foreground uppercase lg:flex lg:min-h-8 lg:items-end'>{school.name}</h3>
+                <ul className='divide-y divide-border overflow-hidden rounded-card bg-card shadow-card'>
+                  {school.members.map((person) => (
+                    <li key={person.id}>
+                      <form action={signInAsDemoPerson.bind(null, person.id)}>
+                        <PersonRow person={person} detail={activeProgram(person)?.name} />
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       ))}
     </div>
