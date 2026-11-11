@@ -453,3 +453,106 @@ test('el docente de la comisión marca resuelta una consulta y todos la ven resu
   assert.equal(named(asStudent.value, 'consultas', 'A').canResolve, false)
   assert.equal(named(asTeacher.value, 'consultas', 'A').canResolve, true)
 })
+
+test('el docente crea un canal de la materia, que ven todos, o de su comisión, que ve solo ella', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+
+  const forSubject = await spaces.createChannel('p-mledesma', ids.spaceId, {
+    name: ' #Parciales   Viejos ',
+    scope: { kind: 'materia' }
+  })
+  assert.ok(forSubject.ok)
+  assert.deepEqual(
+    { ...forSubject.value, id: undefined },
+    {
+      id: undefined,
+      spaceId: ids.spaceId,
+      name: 'parciales-viejos',
+      kind: 'libre',
+      scope: { kind: 'materia' },
+      sectionName: null,
+      unread: 0,
+      canPost: true,
+      canResolve: true,
+      externalLink: null
+    }
+  )
+  const forSection = await spaces.createChannel('p-mledesma', ids.spaceId, {
+    name: 'Grupo TP',
+    scope: { kind: 'comision', sectionId: 'sec-am1-fi-a' }
+  })
+  assert.ok(forSection.ok)
+  assert.equal(forSection.value.sectionName, 'A')
+
+  const a = await spaces.open('p-taguirre', 'am1')
+  const b = await spaces.open('p-mcabrera', 'am1')
+  assert.ok(a.ok && b.ok)
+  assert.deepEqual(labels(a.value.channels), [
+    '#avisos (A)',
+    '#consultas (A)',
+    '#material',
+    '#parciales-viejos',
+    '#grupo-tp (A)'
+  ])
+  assert.deepEqual(labels(b.value.channels), ['#avisos (B)', '#consultas (B)', '#material', '#parciales-viejos'])
+  assert.deepEqual(await spaces.channel('p-mcabrera', forSection.value.id), { ok: false, error: 'sin-acceso' })
+  // En los canales libres escribe cualquiera que los ve.
+  const posted = await spaces.post('p-mcabrera', forSubject.value.id, { text: '¿Alguien tiene el de 2025?' })
+  assert.ok(posted.ok)
+  assert.equal(posted.value.question, null)
+})
+
+test('solo los docentes crean canales: de la materia, o de una comisión que dictan', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const fce = await spaces.open('p-cbustos', 'am1')
+  assert.ok(fce.ok)
+  const materia = { kind: 'materia' } as const
+
+  assert.deepEqual(await spaces.createChannel('p-taguirre', ids.spaceId, { name: 'charla', scope: materia }), {
+    ok: false,
+    error: 'solo-docentes'
+  })
+  assert.deepEqual(
+    await spaces.createChannel('p-mledesma', ids.spaceId, {
+      name: 'charla',
+      scope: { kind: 'comision', sectionId: 'sec-am1-fi-b' }
+    }),
+    { ok: false, error: 'solo-docentes' }
+  )
+  assert.deepEqual(await spaces.createChannel('p-mledesma', fce.value.space.id, { name: 'charla', scope: materia }), {
+    ok: false,
+    error: 'sin-acceso'
+  })
+  assert.deepEqual(await spaces.createChannel('p-mledesma', 'sp-nada', { name: 'charla', scope: materia }), {
+    ok: false,
+    error: 'espacio-desconocido'
+  })
+})
+
+test('el nombre de un canal nuevo se normaliza y no puede repetir uno que vean los mismos miembros', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const materia = { kind: 'materia' } as const
+  const sectionA = { kind: 'comision', sectionId: 'sec-am1-fi-a' } as const
+  const sectionB = { kind: 'comision', sectionId: 'sec-am1-fi-b' } as const
+  const create = async (personId: string, name: string, scope: typeof materia | typeof sectionA | typeof sectionB) => {
+    const created = await spaces.createChannel(personId, ids.spaceId, { name, scope })
+    return created.ok ? created.value.name : created.error
+  }
+
+  assert.equal(await create('p-mledesma', 'Ñandú   Álgebra!!--2_bis', materia), 'ñandú-álgebra-2_bis')
+  assert.equal(await create('p-mledesma', `${'a'.repeat(39)} b`, materia), 'a'.repeat(39))
+  assert.equal(await create('p-mledesma', ' # !! ', materia), 'nombre-invalido')
+
+  // Uno de la materia choca con cualquier canal del espacio.
+  assert.equal(await create('p-mledesma', 'Avisos', materia), 'nombre-repetido')
+  assert.equal(await create('p-mledesma', 'ñandú-álgebra-2_bis', materia), 'nombre-repetido')
+  // Uno de comisión choca con los de la materia y los de esa comisión, no con los de otra.
+  assert.equal(await create('p-mledesma', 'grupo', sectionA), 'grupo')
+  assert.equal(await create('p-gferreyra', 'grupo', sectionB), 'grupo')
+  assert.equal(await create('p-gferreyra', 'consultas', sectionB), 'nombre-repetido')
+  assert.equal(await create('p-gferreyra', 'Ñandú álgebra 2_bis', sectionB), 'nombre-repetido')
+  assert.equal(await create('p-gferreyra', 'grupo', materia), 'nombre-repetido')
+})

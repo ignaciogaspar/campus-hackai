@@ -12,11 +12,14 @@ import { fail, notImplemented, ok, type Result } from '@/lib/result'
 import type {
   AccessError,
   Attachment,
+  Channel,
   ChannelView,
   Message,
   MessageId,
+  NewChannel,
   NewMessage,
   Space,
+  SpaceId,
   Spaces,
   SpacesDeps,
   SpacesStoreError,
@@ -25,9 +28,19 @@ import type {
   StoredMessage,
   StoredSpace
 } from '.'
-import { canResolve, type Membership, membershipInSpace, membershipOf, postRefusal, sees, viewerOf } from './access'
+import {
+  canManage,
+  canResolve,
+  type Membership,
+  membershipInSpace,
+  membershipOf,
+  postRefusal,
+  sees,
+  teachesSection,
+  viewerOf
+} from './access'
 import { authorsFrom } from './authors'
-import { ensureChannels, toChannel, visibleChannels } from './channels'
+import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from './channels'
 import { materialItems, materialView } from './material'
 import { threadsOf, toMessage } from './messages'
 import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from './reading'
@@ -249,6 +262,50 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return resolved.value ? seenBy(personId, resolved.value) : fail('mensaje-desconocido')
   }
 
+  /** El espacio, si existe y la persona es de su materia. */
+  async function inSpace(
+    personId: PersonId,
+    spaceId: SpaceId
+  ): Promise<Result<{ space: StoredSpace; member: Membership }, 'espacio-desconocido' | AccessError>> {
+    const space = await store.space(spaceId)
+    if (!space.ok) return space
+    if (!space.value) return fail('espacio-desconocido')
+    const member = await membershipInSpace(studies, personId, space.value)
+    if (!member.ok) return member
+    return ok({ space: space.value, member: member.value })
+  }
+
+  /** Crea un canal ya autorizado, si el nombre es válido y no choca con otro. */
+  async function addChannel(
+    member: Membership,
+    space: StoredSpace,
+    wanted: NewChannel
+  ): Promise<Result<Channel, 'nombre-invalido' | 'nombre-repetido' | SpacesStoreError>> {
+    const name = channelName(wanted.name)
+    if (name === null) return fail('nombre-invalido')
+    const existing = await store.channels([space.id])
+    if (!existing.ok) return existing
+    if (nameTaken(existing.value, name, wanted.scope)) return fail('nombre-repetido')
+    const created = await store.createChannel({
+      spaceId: space.id,
+      name,
+      kind: 'libre',
+      scope: wanted.scope,
+      externalLink: null
+    })
+    if (!created.ok) return fail(created.error === 'duplicado' ? 'nombre-repetido' : created.error)
+    return ok(toChannel(member, created.value, 0))
+  }
+
+  const createChannel: Spaces['createChannel'] = async (personId, spaceId, wanted) => {
+    const found = await inSpace(personId, spaceId)
+    if (!found.ok) return found
+    const { member, space } = found.value
+    const allowed = wanted.scope.kind === 'materia' ? canManage(member) : teachesSection(member, wanted.scope.sectionId)
+    if (!allowed) return fail('solo-docentes')
+    return addChannel(member, space, wanted)
+  }
+
   return {
     open,
     resolve,
@@ -258,8 +315,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       return found.value.channel.kind === 'material' ? readMaterial(found.value) : readMessages(found.value)
     },
     post,
-
-    createChannel: pending,
+    createChannel,
     addMaterial: pending,
     organizeMaterial: pending,
     openDirect: notImplemented,

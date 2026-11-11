@@ -1,7 +1,7 @@
 /* Los canales de un espacio: los que se crean por defecto, en qué orden los ve
    cada persona y cómo se muestran. Sin acceso al almacén salvo `ensureChannels`. */
 import { fail, type Result } from '@/lib/result'
-import type { Channel, SpacesStore, SpacesStoreError, StoredChannel, StoredSpace } from '.'
+import type { Channel, NewChannel, SpacesStore, SpacesStoreError, StoredChannel, StoredSpace } from '.'
 import { canResolve, type Membership, postRefusal, sees } from './access'
 
 type NewStoredChannel = Omit<StoredChannel, 'id'>
@@ -67,6 +67,34 @@ function rank(member: Membership, channel: StoredChannel): number {
     lugar quedan en el orden en que se crearon. */
 export function visibleChannels(member: Membership, channels: StoredChannel[]): StoredChannel[] {
   return channels.filter((c) => sees(member, c)).sort((a, b) => rank(member, a) - rank(member, b))
+}
+
+const MAX_NAME = 40
+
+/** El nombre como se guarda: sin `#`, en minúsculas, con guiones en vez de
+    espacios y solo letras, dígitos, `-` y `_`. `null` si no queda nada. */
+export function channelName(raw: string): string | null {
+  const name = raw
+    .trim()
+    .replace(/^#+/, '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\p{L}\p{N}_-]/gu, '')
+    .replace(/-+/g, '-')
+    .slice(0, MAX_NAME)
+    .replace(/^-+|-+$/g, '')
+  return name === '' ? null : name
+}
+
+/** Si el nombre choca con un canal que ven los mismos miembros: uno de la
+    materia, con cualquiera del espacio; uno de comisión, con los de la materia
+    y los de esa comisión. */
+export function nameTaken(channels: StoredChannel[], name: string, scope: NewChannel['scope']): boolean {
+  return channels.some((c) => {
+    if (c.name !== name) return false
+    if (scope.kind === 'materia' || c.scope.kind === 'materia') return true
+    return c.scope.kind === 'comision' && c.scope.sectionId === scope.sectionId
+  })
 }
 
 export function sectionNameOf(member: Membership, channel: StoredChannel): string | null {
