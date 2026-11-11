@@ -1,0 +1,36 @@
+# Chequea las reglas de AGENTS.md (scripts/checks/reglas.sh) en cada PR a main
+# y en cada push a main, también en los que solo tocan docs. Tarda segundos.
+name: Reglas
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: reglas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  reglas:
+    name: reglas de AGENTS.md
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Los commits del PR tal cual, con la historia completa para recorrerlos.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Probar los chequeos
+        run: sh scripts/checks/reglas.test.sh
+
+      - name: Chequear las reglas
+        run: sh scripts/checks/reglas.sh "$DESDE"
+        env:
+          DESDE: ${{ github.event.pull_request.base.sha || github.event.before }}
