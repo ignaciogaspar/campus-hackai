@@ -51,6 +51,10 @@ export type ExternalChannelPort = {
   /** Mensajes posteriores a `cursor`, del más viejo al más nuevo. Con `null`, desde el principio. */
   read(channelId: string, cursor: string | null): Promise<Result<ExternalPage, ExternalChannelError>>
   post(channelId: string, text: string): Promise<Result<ExternalMessage, ExternalChannelError>>
-  reply(channelId: string, threadId: string, text: string): Promise<Result<ExternalMessage, ExternalChannelError | 'mensaje-inexistente' | 'no-soportado'>>
+  reply(
+    channelId: string,
+    threadId: string,
+    text: string
+  ): Promise<Result<ExternalMessage, ExternalChannelError | 'mensaje-inexistente' | 'no-soportado'>>
   download(attachment: ExternalAttachment): Promise<Result<ExternalDownload, 'adjunto-vencido' | ExternalFailure>>
 }

@@ -35,9 +35,9 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
         school: { id: 'fi', name: 'Facultad de Ingeniería' },
         programs: [
           { id: 'iinf', name: 'Ingeniería en Informática', status: 'activa' },
-          { id: 'asp-fi', name: 'Aspirantes - fi', status: 'pasiva' },
-        ],
-      },
+          { id: 'asp-fi', name: 'Aspirantes - fi', status: 'pasiva' }
+        ]
+      }
     })
     assert.deepEqual(await siu.person('99999'), { ok: false, error: 'no-encontrado' })
   })
@@ -46,13 +46,22 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     const terms = await siu.terms()
     assert.ok(terms.ok)
     const current = terms.value.find((t) => t.id === '2c-2026')
-    assert.deepEqual(current, syntheticData.siu.terms.find((t) => t.id === '2c-2026'))
+    assert.deepEqual(
+      current,
+      syntheticData.siu.terms.find((t) => t.id === '2c-2026')
+    )
     assert.deepEqual(sorted(terms.value.map((t) => t.id)), ['1c-2026', '2c-2026', 'verano-2027'])
   })
 
   it('devuelve una materia y una comisión, o «no encontrado»', async (siu) => {
-    assert.deepEqual(await siu.subject('am1'), { ok: true, value: { id: 'am1', code: 'AM1', name: 'Análisis Matemático I' } })
-    assert.deepEqual(await siu.section('sec-am1-fi-a'), { ok: true, value: syntheticData.siu.sections.find((s) => s.id === 'sec-am1-fi-a') })
+    assert.deepEqual(await siu.subject('am1'), {
+      ok: true,
+      value: { id: 'am1', code: 'AM1', name: 'Análisis Matemático I' }
+    })
+    assert.deepEqual(await siu.section('sec-am1-fi-a'), {
+      ok: true,
+      value: syntheticData.siu.sections.find((s) => s.id === 'sec-am1-fi-a')
+    })
     assert.deepEqual(await siu.subject('nada'), { ok: false, error: 'no-encontrado' })
     assert.deepEqual(await siu.section('nada'), { ok: false, error: 'no-encontrado' })
   })
@@ -60,7 +69,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
   it('filtra la oferta de comisiones por materia y facultad, con sus inscriptos', async (siu) => {
     const found = await siu.sections({ subjectId: 'am1', schoolId: 'fi' })
     assert.ok(found.ok)
-    assert.deepEqual(found.value.map((s) => [s.id, s.enrolled]).sort(), [['sec-am1-fi-a', 3], ['sec-am1-fi-b', 3]])
+    assert.deepEqual(found.value.map((s) => [s.id, s.enrolled]).sort(), [
+      ['sec-am1-fi-a', 3],
+      ['sec-am1-fi-b', 3]
+    ])
 
     const summer = await siu.sections({ termId: 'verano-2027' })
     assert.ok(summer.ok)
@@ -82,14 +94,20 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     assert.deepEqual(sorted(current.value.map((e) => e.sectionId)), ['sec-am1-fi-a', 'sec-pr1-fi-a'])
     assert.deepEqual(sorted(all.value.map((e) => e.sectionId)), ['sec-aga-fi-a', 'sec-am1-fi-a', 'sec-pr1-fi-a'])
     const am1 = all.value.find((e) => e.sectionId === 'sec-am1-fi-a')!
-    assert.deepEqual(am1, syntheticData.siu.courseEnrollments.find((e) => e.id === am1.id))
+    assert.deepEqual(
+      am1,
+      syntheticData.siu.courseEnrollments.find((e) => e.id === am1.id)
+    )
     assert.deepEqual(await siu.courseEnrollments('99999'), { ok: false, error: 'no-encontrado' })
   })
 
   it('lista las mesas con sus inscriptos y las inscripciones a examen', async (siu) => {
     const boards = await siu.examBoards({ subjectId: 'aga', schoolId: 'fi' })
     assert.ok(boards.ok)
-    assert.deepEqual(boards.value.map((m) => [m.id, m.enrolled, m.capacity]), [['mesa-aga-fi-dic', 1, 2]])
+    assert.deepEqual(
+      boards.value.map((m) => [m.id, m.enrolled, m.capacity]),
+      [['mesa-aga-fi-dic', 1, 2]]
+    )
 
     const exams = await siu.examEnrollments(siuId('p-taguirre'))
     assert.ok(exams.ok)
@@ -105,7 +123,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
   it('devuelve historia académica, actuación provisoria y condiciones de constancias', async (siu) => {
     const nicolas = siuId('p-nherrera')
-    assert.deepEqual(await siu.history(nicolas), { ok: true, value: syntheticData.siu.history.filter((h) => h.personId === nicolas) })
+    assert.deepEqual(await siu.history(nicolas), {
+      ok: true,
+      value: syntheticData.siu.history.filter((h) => h.personId === nicolas)
+    })
 
     const provisional = await siu.provisionalResults(siuId('p-sdominguez'))
     assert.ok(provisional.ok)
@@ -117,11 +138,26 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
   it('rechaza inscripciones sin cupo, fuera de período o a lo que no existe', async (siu) => {
     const lucia = siuId('p-lbenitez')
-    assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-fi1-fi-v' }), { ok: false, error: 'sin-cupo' })
-    assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-am1-fi-b' }), { ok: false, error: 'fuera-de-periodo' })
-    assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'nada' }), { ok: false, error: 'no-encontrado' })
-    assert.deepEqual(await siu.enroll(siuId('p-taguirre'), { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }), { ok: false, error: 'ya-inscripto' })
-    assert.deepEqual(await siu.drop(lucia, { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }), { ok: false, error: 'no-inscripto' })
+    assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-fi1-fi-v' }), {
+      ok: false,
+      error: 'sin-cupo'
+    })
+    assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-am1-fi-b' }), {
+      ok: false,
+      error: 'fuera-de-periodo'
+    })
+    assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'nada' }), {
+      ok: false,
+      error: 'no-encontrado'
+    })
+    assert.deepEqual(await siu.enroll(siuId('p-taguirre'), { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }), {
+      ok: false,
+      error: 'ya-inscripto'
+    })
+    assert.deepEqual(await siu.drop(lucia, { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }), {
+      ok: false,
+      error: 'no-inscripto'
+    })
   })
 
   it('inscribe a cursada con comprobante, la cuenta como vigente y la da de baja', async (siu) => {
@@ -146,7 +182,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     }
     const after = await siu.courseEnrollments(lucia)
     assert.ok(after.ok)
-    assert.equal(after.value.some((e) => e.sectionId === target.sectionId), false)
+    assert.equal(
+      after.value.some((e) => e.sectionId === target.sectionId),
+      false
+    )
   })
 
   it('inscribe a examen y lo da de baja', async (siu) => {
@@ -163,9 +202,18 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
   it('arma los enlaces a la Autogestión', (siu) => {
     const base = syntheticData.siu.selfServiceBaseUrl
-    assert.equal(siu.selfServiceUrl({ kind: 'comision', sectionId: 'sec-am1-fi-a' }), `${base}/cursada/inscripcion?comision=sec-am1-fi-a`)
-    assert.equal(siu.selfServiceUrl({ kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' }), `${base}/examenes/inscripcion?mesa=mesa-am1-fi-dic`)
-    assert.equal(siu.selfServiceUrl({ kind: 'constancia', type: 'alumno-regular' }), `${base}/constancias/solicitar?tipo=alumno-regular`)
+    assert.equal(
+      siu.selfServiceUrl({ kind: 'comision', sectionId: 'sec-am1-fi-a' }),
+      `${base}/cursada/inscripcion?comision=sec-am1-fi-a`
+    )
+    assert.equal(
+      siu.selfServiceUrl({ kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' }),
+      `${base}/examenes/inscripcion?mesa=mesa-am1-fi-dic`
+    )
+    assert.equal(
+      siu.selfServiceUrl({ kind: 'constancia', type: 'alumno-regular' }),
+      `${base}/constancias/solicitar?tipo=alumno-regular`
+    )
   })
 }
 
@@ -177,10 +225,11 @@ const url = process.env.HACKAI_TEST_SUPABASE_URL
 const key = process.env.HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY
 siuContract(
   'SIU simulado',
-  () => createSimulatedSiu({
-    client: createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false } }),
-    clock: clock(),
-    selfServiceBaseUrl: syntheticData.siu.selfServiceBaseUrl,
-  }),
-  url && key ? false : 'sin base de prueba: definí HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY',
+  () =>
+    createSimulatedSiu({
+      client: createClient(url!, key!, { auth: { persistSession: false, autoRefreshToken: false } }),
+      clock: clock(),
+      selfServiceBaseUrl: syntheticData.siu.selfServiceBaseUrl
+    }),
+  url && key ? false : 'sin base de prueba: definí HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY'
 )

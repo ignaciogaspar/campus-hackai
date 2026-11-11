@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
+import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
@@ -15,7 +15,7 @@ function build(overrides: { siu?: Partial<SiuPort> } = {}) {
   return createPeople({
     identity: createMemoryIdentity(syntheticData),
     siu,
-    store: createMemoryPeopleStore(syntheticData),
+    store: createMemoryPeopleStore(syntheticData)
   })
 }
 
@@ -31,9 +31,9 @@ test('get devuelve rol, facultad y propuestas de la persona según el SIU', asyn
       school: { id: 'fi', name: 'Facultad de Ingeniería' },
       programs: [
         { id: 'iinf', name: 'Ingeniería en Informática', status: 'activa' },
-        { id: 'asp-fi', name: 'Aspirantes - fi', status: 'pasiva' },
-      ],
-    },
+        { id: 'asp-fi', name: 'Aspirantes - fi', status: 'pasiva' }
+      ]
+    }
   })
 
   const docente = await people.get('p-cbustos')

@@ -13,12 +13,13 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - `hackai/docs/discord.md`: bot de Discord: token y prueba del adaptador contra el servidor del equipo.
 - `hackai/`: nuestro sistema. Cómo correrlo: `hackai/README.md`. Módulos, puertos, carpetas y tests: `hackai/docs/ARQUITECTURA.md`.
 - `scripts/sync-campus.sh`: reemplaza el snapshot de `campus/`.
+- `.github/workflows/`, `scripts/checks/` y `.githooks/`: CI de cada PR y ganchos locales, que también chequean las reglas duras de abajo. Qué corre cada uno y qué hacer si algo falla: `hackai/README.md`, «CI».
 
 ## Reglas duras
 
 - **Puertos y adaptadores en los bordes, módulos profundos adentro** (ADR 0004). Los sistemas de origen (SIU, Moodle, canales externos) entran por un puerto con un adaptador real y uno en memoria. El núcleo son cuatro módulos (`people`, `studies`, `spaces`, `today`) que se llaman por su interfaz. `core/` nunca importa `adapters/` ni `app/`, y solo `composition` arma los módulos con sus adaptadores. Leer `hackai/docs/ARQUITECTURA.md` antes de crear o mover un archivo de `hackai/lib/`.
 - **`campus/` es de solo lectura.** Es la referencia de la lógica de Campus Austral: se lee y se reimplementa en `hackai/`, sin copiar código. Se reemplaza entero con la skill `sync-campus`, en un commit aparte.
-- **Stack fijo, sin dependencias nuevas** (ADR 0002 y 0006): Node 22, Next.js 15, React 19, TypeScript estricto, Supabase, Tailwind CSS 4 con componentes de shadcn/ui en `components/ui/`, tests con `node:test`. Sumar un paquete requiere una ADR.
+- **Stack fijo, sin dependencias nuevas** (ADR 0002, 0006 y 0007): Node 22, Next.js 15, React 19, TypeScript estricto, Supabase, Tailwind CSS 4 con componentes de shadcn/ui en `components/ui/`, tests con `node:test`, formato y lint con Biome. Sumar un paquete requiere una ADR.
 - **Datos en el servidor.** Todo acceso a la base pasa por el servidor con el service role. Las migraciones son idempotentes y activan RLS sin políticas.
 - **Lo simulado va aparte.** Las tablas de los sistemas de origen simulados (`siu_*`, `moodle_*`), sus SQL y su seed van en `hackai/supabase/simulados/`, no en `supabase/migrations/`, para no aplicarlos en producción. El seed se genera desde `hackai/lib/adapters/synthetic-data.ts`, la misma fuente que los adaptadores en memoria.
 - **Datos sintéticos.** Alumnos, materias, inscripciones y notas son inventados y verosímiles. Del relevamiento de SIU y Campus solo entran estructuras y textos de interfaz, con los datos personales reemplazados por marcadores como `<nota>`.
@@ -29,7 +30,7 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 
 - Documentación en español. Nombres de entidades, código, columnas e identificadores en inglés; el glosario los lista entre paréntesis. Valores de dominio en español (`'borrador'`, `'abierta'`).
 - Textos de UI, comentarios y mensajes de error en español rioplatense con voseo. Rutas de páginas en español (`/inscripciones`).
-- Código: dos espacios, comillas simples, sin punto y coma, imports con `@/`. No hay linter: se respeta a mano.
+- Código: dos espacios, comillas simples, sin punto y coma, imports con `@/`, funciones con complejidad cognitiva de 15 como máximo. Biome lo chequea (`hackai/biome.json`); `npm run lint:arreglar` en `hackai/` arregla el formato antes de commitear.
 - El trabajo se trackea en GitHub Issues de `ignaciogaspar/campus-hackai`. Cambios por PR a `main`.
 - Las hipótesis en los docs están marcadas como tales. Pasan a decisión solo con confirmación del equipo; mientras tanto van a `docs/product/preguntas-abiertas.md`.
 

@@ -19,10 +19,12 @@ export function createMemoryClassroom(data: SyntheticData, options: MemoryClassr
 
     async coursesOf(userId) {
       const mine = db.enrolments.filter((e) => e.userId === userId)
-      return ok(mine.flatMap((e) => {
-        const course = db.courses.find((c) => c.id === e.courseId)
-        return course ? [{ ...copy(course), role: e.role }] : []
-      }))
+      return ok(
+        mine.flatMap((e) => {
+          const course = db.courses.find((c) => c.id === e.courseId)
+          return course ? [{ ...copy(course), role: e.role }] : []
+        })
+      )
     },
 
     async coursesForSection(siuSectionId) {
@@ -65,6 +67,6 @@ export function createMemoryClassroom(data: SyntheticData, options: MemoryClassr
 
     courseUrl(courseId) {
       return `${db.baseUrl}/course/view.php?id=${encodeURIComponent(courseId)}`
-    },
+    }
   }
 }

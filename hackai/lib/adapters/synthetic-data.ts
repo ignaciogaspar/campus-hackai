@@ -16,7 +16,13 @@
      Nicolás Herrera, Introducción a la Economía.
    - Cursos de Moodle por comisión (Sofía Domínguez todavía no está matriculada
      en Programación I) y canales de Discord del servidor del equipo. */
-import type { ClassroomAnnouncement, ClassroomAssignment, ClassroomContent, ClassroomCourse, ClassroomEnrolment } from '@/lib/ports/classroom'
+import type {
+  ClassroomAnnouncement,
+  ClassroomAssignment,
+  ClassroomContent,
+  ClassroomCourse,
+  ClassroomEnrolment
+} from '@/lib/ports/classroom'
 import type { ExternalMessage } from '@/lib/ports/external-channel'
 import type {
   SiuAssessment,
@@ -31,7 +37,7 @@ import type {
   SiuSchool,
   SiuSection,
   SiuSubject,
-  SiuTerm,
+  SiuTerm
 } from '@/lib/ports/siu'
 
 /** Los ids de una persona en cada sistema. Es el vínculo que guarda Personas. */
@@ -110,7 +116,7 @@ const rows: Row[] = [
   ['p-agimenez', '30107', '407', null, 'Giménez', 'Agustina', 'alumno', fce, [administracion]],
   ['p-nherrera', '30108', '408', null, 'Herrera', 'Nicolás', 'alumno', fce, [contador]],
   ['p-cibarra', '30109', '409', null, 'Ibarra', 'Camila', 'alumno', fce, [administracion]],
-  ['p-fjuarez', '30110', '410', null, 'Juárez', 'Federico', 'alumno', fce, [contador]],
+  ['p-fjuarez', '30110', '410', null, 'Juárez', 'Federico', 'alumno', fce, [contador]]
 ]
 
 function slug(text: string): string {
@@ -122,7 +128,7 @@ const people: SyntheticPerson[] = rows.map(([id, siuId, moodleId, discordId]) =>
   identitySubject: `demo:${id}`,
   siuId,
   moodleId,
-  discordId,
+  discordId
 }))
 
 const persons: SiuPerson[] = rows.map(([, siuId, , , surname, names, role, school, programs]) => ({
@@ -132,7 +138,7 @@ const persons: SiuPerson[] = rows.map(([, siuId, , , surname, names, role, schoo
   email: `${slug(names)}.${slug(surname)}@${role === 'alumno' ? 'alumnos.' : ''}example.edu.ar`,
   role,
   school,
-  programs,
+  programs
 }))
 
 /** Id del SIU de una persona de HackAI. */
@@ -153,9 +159,30 @@ function discord(personId: string): string {
 // Períodos lectivos y materias
 
 const terms: SiuTerm[] = [
-  { id: '1c-2026', name: 'Grado 1er Cuatrimestre 2026', start: at('2026-03-09'), end: at('2026-07-10', '23:59'), enrollmentStart: at('2026-02-16'), enrollmentEnd: at('2026-03-13', '23:59') },
-  { id: '2c-2026', name: 'Grado 2do Cuatrimestre 2026', start: at('2026-08-10'), end: at('2026-11-28', '23:59'), enrollmentStart: at('2026-07-27'), enrollmentEnd: at('2026-08-14', '23:59') },
-  { id: 'verano-2027', name: 'Curso de Verano 2027', start: at('2027-01-11'), end: at('2027-02-26', '23:59'), enrollmentStart: at('2026-11-02'), enrollmentEnd: at('2026-12-18', '23:59') },
+  {
+    id: '1c-2026',
+    name: 'Grado 1er Cuatrimestre 2026',
+    start: at('2026-03-09'),
+    end: at('2026-07-10', '23:59'),
+    enrollmentStart: at('2026-02-16'),
+    enrollmentEnd: at('2026-03-13', '23:59')
+  },
+  {
+    id: '2c-2026',
+    name: 'Grado 2do Cuatrimestre 2026',
+    start: at('2026-08-10'),
+    end: at('2026-11-28', '23:59'),
+    enrollmentStart: at('2026-07-27'),
+    enrollmentEnd: at('2026-08-14', '23:59')
+  },
+  {
+    id: 'verano-2027',
+    name: 'Curso de Verano 2027',
+    start: at('2027-01-11'),
+    end: at('2027-02-26', '23:59'),
+    enrollmentStart: at('2026-11-02'),
+    enrollmentEnd: at('2026-12-18', '23:59')
+  }
 ]
 
 const subjects: SiuSubject[] = [
@@ -164,62 +191,154 @@ const subjects: SiuSubject[] = [
   { id: 'pr1', code: 'PR1', name: 'Programación I' },
   { id: 'fi1', code: 'FI1', name: 'Física I' },
   { id: 'iec', code: 'IEC', name: 'Introducción a la Economía' },
-  { id: 'co1', code: 'CO1', name: 'Contabilidad I' },
+  { id: 'co1', code: 'CO1', name: 'Contabilidad I' }
 ]
 
 // Comisiones
 
 const sections: SiuSection[] = [
   {
-    id: 'sec-am1-fi-a', name: 'A', subjectId: 'am1', schoolId: 'fi', termId: '2c-2026', teacherIds: [siu('p-mledesma')],
-    schedule: [{ day: 'lunes', start: '08:00', end: '10:00' }, { day: 'miercoles', start: '08:00', end: '10:00' }],
-    location: 'Campus Pilar, aula 12', modality: 'presencial', instance: 'regularidad', capacity: 40,
+    id: 'sec-am1-fi-a',
+    name: 'A',
+    subjectId: 'am1',
+    schoolId: 'fi',
+    termId: '2c-2026',
+    teacherIds: [siu('p-mledesma')],
+    schedule: [
+      { day: 'lunes', start: '08:00', end: '10:00' },
+      { day: 'miercoles', start: '08:00', end: '10:00' }
+    ],
+    location: 'Campus Pilar, aula 12',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 40
   },
   {
-    id: 'sec-am1-fi-b', name: 'B', subjectId: 'am1', schoolId: 'fi', termId: '2c-2026', teacherIds: [siu('p-gferreyra')],
-    schedule: [{ day: 'martes', start: '14:00', end: '16:00' }, { day: 'jueves', start: '14:00', end: '16:00' }],
-    location: 'Campus Pilar, aula 14', modality: 'presencial', instance: 'regularidad', capacity: 40,
+    id: 'sec-am1-fi-b',
+    name: 'B',
+    subjectId: 'am1',
+    schoolId: 'fi',
+    termId: '2c-2026',
+    teacherIds: [siu('p-gferreyra')],
+    schedule: [
+      { day: 'martes', start: '14:00', end: '16:00' },
+      { day: 'jueves', start: '14:00', end: '16:00' }
+    ],
+    location: 'Campus Pilar, aula 14',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 40
   },
   {
-    id: 'sec-am1-fce-a', name: 'A', subjectId: 'am1', schoolId: 'fce', termId: '2c-2026', teacherIds: [siu('p-cbustos')],
-    schedule: [{ day: 'lunes', start: '18:00', end: '20:00' }, { day: 'jueves', start: '18:00', end: '20:00' }],
-    location: 'Sede Buenos Aires, aula 3', modality: 'presencial', instance: 'regularidad', capacity: 35,
+    id: 'sec-am1-fce-a',
+    name: 'A',
+    subjectId: 'am1',
+    schoolId: 'fce',
+    termId: '2c-2026',
+    teacherIds: [siu('p-cbustos')],
+    schedule: [
+      { day: 'lunes', start: '18:00', end: '20:00' },
+      { day: 'jueves', start: '18:00', end: '20:00' }
+    ],
+    location: 'Sede Buenos Aires, aula 3',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 35
   },
   {
-    id: 'sec-pr1-fi-a', name: 'A', subjectId: 'pr1', schoolId: 'fi', termId: '2c-2026', teacherIds: [siu('p-darrieta')],
+    id: 'sec-pr1-fi-a',
+    name: 'A',
+    subjectId: 'pr1',
+    schoolId: 'fi',
+    termId: '2c-2026',
+    teacherIds: [siu('p-darrieta')],
     schedule: [{ day: 'viernes', start: '09:00', end: '12:00' }],
-    location: 'Campus Pilar, laboratorio 2', modality: 'hibrida', instance: 'promocion', capacity: 30,
+    location: 'Campus Pilar, laboratorio 2',
+    modality: 'hibrida',
+    instance: 'promocion',
+    capacity: 30
   },
   {
-    id: 'sec-co1-fce-a', name: 'A', subjectId: 'co1', schoolId: 'fce', termId: '2c-2026', teacherIds: [siu('p-srosales')],
+    id: 'sec-co1-fce-a',
+    name: 'A',
+    subjectId: 'co1',
+    schoolId: 'fce',
+    termId: '2c-2026',
+    teacherIds: [siu('p-srosales')],
     schedule: [{ day: 'martes', start: '18:00', end: '21:00' }],
-    location: 'Sede Buenos Aires, aula 5', modality: 'presencial', instance: 'regularidad', capacity: 35,
+    location: 'Sede Buenos Aires, aula 5',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 35
   },
   {
-    id: 'sec-aga-fi-a', name: 'A', subjectId: 'aga', schoolId: 'fi', termId: '1c-2026', teacherIds: [siu('p-mledesma')],
+    id: 'sec-aga-fi-a',
+    name: 'A',
+    subjectId: 'aga',
+    schoolId: 'fi',
+    termId: '1c-2026',
+    teacherIds: [siu('p-mledesma')],
     schedule: [{ day: 'martes', start: '08:00', end: '11:00' }],
-    location: 'Campus Pilar, aula 12', modality: 'presencial', instance: 'regularidad', capacity: 40,
+    location: 'Campus Pilar, aula 12',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 40
   },
   {
-    id: 'sec-iec-fce-a', name: 'A', subjectId: 'iec', schoolId: 'fce', termId: '1c-2026', teacherIds: [siu('p-cbustos')],
+    id: 'sec-iec-fce-a',
+    name: 'A',
+    subjectId: 'iec',
+    schoolId: 'fce',
+    termId: '1c-2026',
+    teacherIds: [siu('p-cbustos')],
     schedule: [{ day: 'miercoles', start: '18:00', end: '21:00' }],
-    location: 'Sede Buenos Aires, aula 3', modality: 'presencial', instance: 'promocion', capacity: 35,
+    location: 'Sede Buenos Aires, aula 3',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 35
   },
   {
-    id: 'sec-fi1-fi-v', name: 'Verano', subjectId: 'fi1', schoolId: 'fi', termId: 'verano-2027', teacherIds: [siu('p-gferreyra')],
-    schedule: [{ day: 'lunes', start: '09:00', end: '13:00' }, { day: 'jueves', start: '09:00', end: '13:00' }],
-    location: 'Campus Pilar, aula 20', modality: 'presencial', instance: 'regularidad', capacity: 2,
+    id: 'sec-fi1-fi-v',
+    name: 'Verano',
+    subjectId: 'fi1',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-gferreyra')],
+    schedule: [
+      { day: 'lunes', start: '09:00', end: '13:00' },
+      { day: 'jueves', start: '09:00', end: '13:00' }
+    ],
+    location: 'Campus Pilar, aula 20',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 2
   },
   {
-    id: 'sec-pr1-fi-v', name: 'Verano', subjectId: 'pr1', schoolId: 'fi', termId: 'verano-2027', teacherIds: [siu('p-darrieta')],
+    id: 'sec-pr1-fi-v',
+    name: 'Verano',
+    subjectId: 'pr1',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-darrieta')],
     schedule: [{ day: 'martes', start: '09:00', end: '13:00' }],
-    location: 'Virtual', modality: 'virtual', instance: 'regularidad', capacity: null,
+    location: 'Virtual',
+    modality: 'virtual',
+    instance: 'regularidad',
+    capacity: null
   },
   {
-    id: 'sec-am1-fce-v', name: 'Verano', subjectId: 'am1', schoolId: 'fce', termId: 'verano-2027', teacherIds: [siu('p-cbustos')],
+    id: 'sec-am1-fce-v',
+    name: 'Verano',
+    subjectId: 'am1',
+    schoolId: 'fce',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-cbustos')],
     schedule: [{ day: 'miercoles', start: '18:00', end: '21:00' }],
-    location: 'Sede Buenos Aires, aula 3', modality: 'presencial', instance: 'regularidad', capacity: 25,
-  },
+    location: 'Sede Buenos Aires, aula 3',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 25
+  }
 ]
 
 // Inscripciones a cursada: [persona, comisión, fecha]
@@ -244,7 +363,7 @@ const enrollmentRows: [string, string, string][] = [
   ['p-cibarra', 'sec-am1-fce-a', '2026-08-05'],
   ['p-fjuarez', 'sec-co1-fce-a', '2026-08-05'],
   ['p-mcabrera', 'sec-fi1-fi-v', '2026-11-03'],
-  ['p-jescobar', 'sec-fi1-fi-v', '2026-11-04'],
+  ['p-jescobar', 'sec-fi1-fi-v', '2026-11-04']
 ]
 
 const courseEnrollments: SiuCourseEnrollment[] = enrollmentRows.map(([personId, sectionId, date], i) => ({
@@ -253,22 +372,69 @@ const courseEnrollments: SiuCourseEnrollment[] = enrollmentRows.map(([personId, 
   personId: siu(personId),
   sectionId,
   date: at(date, '10:00'),
-  status: 'aceptada',
+  status: 'aceptada'
 }))
 
 // Mesas de examen del turno de diciembre, con la inscripción abierta
 
-const decemberBoard = { examPeriod: 'Turno Diciembre 2026', enrollmentStart: at('2026-11-09'), enrollmentEnd: at('2026-12-04', '23:59') }
+const decemberBoard = {
+  examPeriod: 'Turno Diciembre 2026',
+  enrollmentStart: at('2026-11-09'),
+  enrollmentEnd: at('2026-12-04', '23:59')
+}
 
 const examBoards: SiuExamBoard[] = [
-  { id: 'mesa-aga-fi-dic', subjectId: 'aga', schoolId: 'fi', date: at('2026-12-09', '09:00'), location: 'Campus Pilar, aula 12', teacherIds: [siu('p-mledesma'), siu('p-gferreyra')], capacity: 2, ...decemberBoard },
-  { id: 'mesa-am1-fi-dic', subjectId: 'am1', schoolId: 'fi', date: at('2026-12-11', '09:00'), location: 'Campus Pilar, aula 14', teacherIds: [siu('p-mledesma'), siu('p-gferreyra')], capacity: 40, ...decemberBoard },
-  { id: 'mesa-iec-fce-dic', subjectId: 'iec', schoolId: 'fce', date: at('2026-12-10', '18:00'), location: 'Sede Buenos Aires, aula 3', teacherIds: [siu('p-cbustos')], capacity: 30, ...decemberBoard },
-  { id: 'mesa-co1-fce-dic', subjectId: 'co1', schoolId: 'fce', date: at('2026-12-14', '18:00'), location: 'Sede Buenos Aires, aula 5', teacherIds: [siu('p-srosales')], capacity: 30, ...decemberBoard },
+  {
+    id: 'mesa-aga-fi-dic',
+    subjectId: 'aga',
+    schoolId: 'fi',
+    date: at('2026-12-09', '09:00'),
+    location: 'Campus Pilar, aula 12',
+    teacherIds: [siu('p-mledesma'), siu('p-gferreyra')],
+    capacity: 2,
+    ...decemberBoard
+  },
+  {
+    id: 'mesa-am1-fi-dic',
+    subjectId: 'am1',
+    schoolId: 'fi',
+    date: at('2026-12-11', '09:00'),
+    location: 'Campus Pilar, aula 14',
+    teacherIds: [siu('p-mledesma'), siu('p-gferreyra')],
+    capacity: 40,
+    ...decemberBoard
+  },
+  {
+    id: 'mesa-iec-fce-dic',
+    subjectId: 'iec',
+    schoolId: 'fce',
+    date: at('2026-12-10', '18:00'),
+    location: 'Sede Buenos Aires, aula 3',
+    teacherIds: [siu('p-cbustos')],
+    capacity: 30,
+    ...decemberBoard
+  },
+  {
+    id: 'mesa-co1-fce-dic',
+    subjectId: 'co1',
+    schoolId: 'fce',
+    date: at('2026-12-14', '18:00'),
+    location: 'Sede Buenos Aires, aula 5',
+    teacherIds: [siu('p-srosales')],
+    capacity: 30,
+    ...decemberBoard
+  }
 ]
 
 const examEnrollments: SiuExamEnrollment[] = [
-  { id: 'ie-1', transactionNumber: 'T-200001', personId: siu('p-taguirre'), examBoardId: 'mesa-aga-fi-dic', date: at('2026-11-09', '11:30'), status: 'aceptada' },
+  {
+    id: 'ie-1',
+    transactionNumber: 'T-200001',
+    personId: siu('p-taguirre'),
+    examBoardId: 'mesa-aga-fi-dic',
+    date: at('2026-11-09', '11:30'),
+    status: 'aceptada'
+  }
 ]
 
 // Cronograma de evaluaciones: [comisión, nombre, tipo, fecha, hora]
@@ -287,7 +453,7 @@ const assessmentRows: [string, string, SiuAssessment['kind'], string, string][] 
   ['sec-pr1-fi-a', 'TP integrador', 'tp', '2026-10-16', '09:00'],
   ['sec-pr1-fi-a', 'Parcial', 'parcial', '2026-11-20', '09:00'],
   ['sec-co1-fce-a', 'Primer parcial', 'parcial', '2026-10-06', '18:00'],
-  ['sec-co1-fce-a', 'Segundo parcial', 'parcial', '2026-11-24', '18:00'],
+  ['sec-co1-fce-a', 'Segundo parcial', 'parcial', '2026-11-24', '18:00']
 ]
 
 const assessments: SiuAssessment[] = assessmentRows.map(([sectionId, name, kind, date, time], i) => ({
@@ -295,7 +461,7 @@ const assessments: SiuAssessment[] = assessmentRows.map(([sectionId, name, kind,
   sectionId,
   name,
   kind,
-  date: at(date, time),
+  date: at(date, time)
 }))
 
 function assessmentId(sectionId: string, name: string): string {
@@ -305,9 +471,36 @@ function assessmentId(sectionId: string, name: string): string {
 // Historia académica
 
 const history: SiuHistoryEntry[] = [
-  { id: 'ha-1', personId: siu('p-taguirre'), subjectId: 'aga', type: 'cursada', date: at('2026-07-08'), grade: 6, result: 'regular', gradeRecord: 'C-2026-0412' },
-  { id: 'ha-2', personId: siu('p-vfunes'), subjectId: 'aga', type: 'cursada', date: at('2026-07-08'), grade: 7, result: 'regular', gradeRecord: 'C-2026-0412' },
-  { id: 'ha-3', personId: siu('p-nherrera'), subjectId: 'iec', type: 'promocion', date: at('2026-07-06'), grade: 9, result: 'promocionado', gradeRecord: 'P-2026-0087' },
+  {
+    id: 'ha-1',
+    personId: siu('p-taguirre'),
+    subjectId: 'aga',
+    type: 'cursada',
+    date: at('2026-07-08'),
+    grade: 6,
+    result: 'regular',
+    gradeRecord: 'C-2026-0412'
+  },
+  {
+    id: 'ha-2',
+    personId: siu('p-vfunes'),
+    subjectId: 'aga',
+    type: 'cursada',
+    date: at('2026-07-08'),
+    grade: 7,
+    result: 'regular',
+    gradeRecord: 'C-2026-0412'
+  },
+  {
+    id: 'ha-3',
+    personId: siu('p-nherrera'),
+    subjectId: 'iec',
+    type: 'promocion',
+    date: at('2026-07-06'),
+    grade: 9,
+    result: 'promocionado',
+    gradeRecord: 'P-2026-0087'
+  }
 ]
 
 // Actuación provisoria: [persona, comisión, evaluación, nota]
@@ -327,7 +520,7 @@ const provisionalRows: [string, string, string, number | null][] = [
   ['p-sdominguez', 'sec-pr1-fi-a', 'TP integrador', null],
   ['p-agimenez', 'sec-co1-fce-a', 'Primer parcial', 6],
   ['p-nherrera', 'sec-co1-fce-a', 'Primer parcial', 8],
-  ['p-fjuarez', 'sec-co1-fce-a', 'Primer parcial', 7],
+  ['p-fjuarez', 'sec-co1-fce-a', 'Primer parcial', 7]
 ]
 
 const provisionalResults: SiuProvisionalResult[] = provisionalRows.map(([personId, sectionId, name, grade], i) => {
@@ -338,7 +531,7 @@ const provisionalResults: SiuProvisionalResult[] = provisionalRows.map(([personI
     sectionId,
     assessmentId: id,
     grade,
-    date: assessments.find((a) => a.id === id)!.date,
+    date: assessments.find((a) => a.id === id)!.date
   }
 })
 
@@ -348,7 +541,7 @@ const certificates = persons
   .filter((p) => p.role === 'alumno')
   .flatMap((p) => [
     { personId: p.id, type: 'alumno-regular' as const, meetsConditions: true },
-    { personId: p.id, type: 'examen-final' as const, meetsConditions: false },
+    { personId: p.id, type: 'examen-final' as const, meetsConditions: false }
   ])
 
 // Moodle: un curso por comisión
@@ -360,7 +553,7 @@ const courses: ClassroomCourse[] = sections.map((s) => {
     id: `c-${s.id.slice(4)}`,
     shortName: `${term}-${subject.code}-${s.schoolId.toUpperCase()}-${s.name}`,
     fullName: `${subject.name} - Comisión ${s.name} (${s.schoolId.toUpperCase()}) - ${terms.find((t) => t.id === s.termId)!.name}`,
-    siuSectionIds: [s.id],
+    siuSectionIds: [s.id]
   }
 })
 
@@ -372,44 +565,110 @@ const teacherEnrolments: ClassroomEnrolment[] = sections.flatMap((s) =>
   s.teacherIds.map((siuId) => ({
     userId: people.find((p) => p.siuId === siuId)!.moodleId,
     courseId: courseOf(s.id),
-    role: 'editingteacher' as const,
-  })),
+    role: 'editingteacher' as const
+  }))
 )
 
 // Sofía Domínguez se inscribió tarde a Programación I y todavía no la matricularon.
 const studentEnrolments: ClassroomEnrolment[] = enrollmentRows
   .filter(([personId, sectionId]) => !(personId === 'p-sdominguez' && sectionId === 'sec-pr1-fi-a'))
-  .map(([personId, sectionId]) => ({ userId: moodle(personId), courseId: courseOf(sectionId), role: 'student' as const }))
+  .map(([personId, sectionId]) => ({
+    userId: moodle(personId),
+    courseId: courseOf(sectionId),
+    role: 'student' as const
+  }))
 
 const announcements: ClassroomAnnouncement[] = [
   {
-    id: 'av-1', courseId: courseOf('sec-am1-fi-a'), authorId: moodle('p-mledesma'),
+    id: 'av-1',
+    courseId: courseOf('sec-am1-fi-a'),
+    authorId: moodle('p-mledesma'),
     subject: 'Cambio de aula para el segundo parcial',
     message: 'El segundo parcial del lunes 16 se toma en el aula 20. Traigan DNI.',
-    createdAt: at('2026-11-06', '17:12'), attachments: [],
+    createdAt: at('2026-11-06', '17:12'),
+    attachments: []
   },
   {
-    id: 'av-2', courseId: courseOf('sec-co1-fce-a'), authorId: moodle('p-srosales'),
+    id: 'av-2',
+    courseId: courseOf('sec-co1-fce-a'),
+    authorId: moodle('p-srosales'),
     subject: 'Temas del segundo parcial',
     message: 'Les dejo la lista de temas que entran en el segundo parcial.',
     createdAt: at('2026-11-03', '20:40'),
-    attachments: [{ name: 'temas-segundo-parcial.pdf', url: 'https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf', contentType: 'application/pdf', size: 48213 }],
-  },
+    attachments: [
+      {
+        name: 'temas-segundo-parcial.pdf',
+        url: 'https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf',
+        contentType: 'application/pdf',
+        size: 48213
+      }
+    ]
+  }
 ]
 
 const contents: ClassroomContent[] = [
-  { id: 'r-1', courseId: courseOf('sec-am1-fi-a'), topic: 'Unidad 1: Límites', name: 'Guía de ejercicios 1', type: 'file', url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf', modifiedAt: at('2026-08-11', '09:00') },
-  { id: 'r-2', courseId: courseOf('sec-am1-fi-a'), topic: 'Unidad 2: Derivadas', name: 'Guía de ejercicios 2', type: 'file', url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf', modifiedAt: at('2026-09-29', '09:00') },
-  { id: 'r-3', courseId: courseOf('sec-am1-fi-b'), topic: 'Bibliografía', name: 'Apunte de la cátedra', type: 'url', url: 'https://example.edu.ar/apuntes/am1', modifiedAt: at('2026-08-12', '15:00') },
-  { id: 'r-4', courseId: courseOf('sec-pr1-fi-a'), topic: 'Trabajos prácticos', name: 'Enunciado del TP integrador', type: 'file', url: 'https://moodle.example.edu.ar/pluginfile.php/pr1-fi-a/tp-integrador.pdf', modifiedAt: at('2026-09-04', '10:00') },
-  { id: 'r-5', courseId: courseOf('sec-am1-fce-a'), topic: 'Unidad 1', name: 'Apunte de funciones', type: 'file', url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fce-a/funciones.pdf', modifiedAt: at('2026-08-14', '19:00') },
+  {
+    id: 'r-1',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'Unidad 1: Límites',
+    name: 'Guía de ejercicios 1',
+    type: 'file',
+    url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf',
+    modifiedAt: at('2026-08-11', '09:00')
+  },
+  {
+    id: 'r-2',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'Unidad 2: Derivadas',
+    name: 'Guía de ejercicios 2',
+    type: 'file',
+    url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf',
+    modifiedAt: at('2026-09-29', '09:00')
+  },
+  {
+    id: 'r-3',
+    courseId: courseOf('sec-am1-fi-b'),
+    topic: 'Bibliografía',
+    name: 'Apunte de la cátedra',
+    type: 'url',
+    url: 'https://example.edu.ar/apuntes/am1',
+    modifiedAt: at('2026-08-12', '15:00')
+  },
+  {
+    id: 'r-4',
+    courseId: courseOf('sec-pr1-fi-a'),
+    topic: 'Trabajos prácticos',
+    name: 'Enunciado del TP integrador',
+    type: 'file',
+    url: 'https://moodle.example.edu.ar/pluginfile.php/pr1-fi-a/tp-integrador.pdf',
+    modifiedAt: at('2026-09-04', '10:00')
+  },
+  {
+    id: 'r-5',
+    courseId: courseOf('sec-am1-fce-a'),
+    topic: 'Unidad 1',
+    name: 'Apunte de funciones',
+    type: 'file',
+    url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fce-a/funciones.pdf',
+    modifiedAt: at('2026-08-14', '19:00')
+  }
 ]
 
 const assignments: ClassroomAssignment[] = [
-  { id: 't-1', courseId: courseOf('sec-pr1-fi-a'), name: 'Entrega del TP integrador', dueDate: at('2026-10-16', '23:59') },
-  { id: 't-2', courseId: courseOf('sec-pr1-fi-a'), name: 'Ejercicios de recursión', dueDate: at('2026-11-21', '23:59') },
+  {
+    id: 't-1',
+    courseId: courseOf('sec-pr1-fi-a'),
+    name: 'Entrega del TP integrador',
+    dueDate: at('2026-10-16', '23:59')
+  },
+  {
+    id: 't-2',
+    courseId: courseOf('sec-pr1-fi-a'),
+    name: 'Ejercicios de recursión',
+    dueDate: at('2026-11-21', '23:59')
+  },
   { id: 't-3', courseId: courseOf('sec-am1-fi-a'), name: 'Guía 3 resuelta', dueDate: at('2026-11-13', '23:59') },
-  { id: 't-4', courseId: courseOf('sec-co1-fce-a'), name: 'Práctico de asientos', dueDate: null },
+  { id: 't-4', courseId: courseOf('sec-co1-fce-a'), name: 'Práctico de asientos', dueDate: null }
 ]
 
 // Discord: canales del servidor del equipo
@@ -428,50 +687,91 @@ const discordChannels: SyntheticData['discord']['channels'] = [
     name: 'am1-fi-a-avisos',
     messages: [
       {
-        id: '1310000000000000001', channelId: avisosAm1FiA, author: author('p-mledesma', 'mledesma'),
+        id: '1310000000000000001',
+        channelId: avisosAm1FiA,
+        author: author('p-mledesma', 'mledesma'),
         text: 'Recuerden que el segundo parcial es el lunes 16. Adjunto los temas.',
-        attachments: [{ id: '1311000000000000001', filename: 'temas-parcial-2.pdf', contentType: 'application/pdf', size: 31877, url: `${cdn}/${avisosAm1FiA}/1311000000000000001/temas-parcial-2.pdf?ex=vence` }],
-        threadId: null, viaWebhook: false, createdAt: at('2026-11-07', '10:15'),
+        attachments: [
+          {
+            id: '1311000000000000001',
+            filename: 'temas-parcial-2.pdf',
+            contentType: 'application/pdf',
+            size: 31877,
+            url: `${cdn}/${avisosAm1FiA}/1311000000000000001/temas-parcial-2.pdf?ex=vence`
+          }
+        ],
+        threadId: null,
+        viaWebhook: false,
+        createdAt: at('2026-11-07', '10:15')
       },
       {
-        id: '1310000000000000002', channelId: avisosAm1FiA, author: { id: '1302000000000000099', name: 'Avisos de la cátedra', isBot: true },
+        id: '1310000000000000002',
+        channelId: avisosAm1FiA,
+        author: { id: '1302000000000000099', name: 'Avisos de la cátedra', isBot: true },
         text: 'Ya están las notas del primer parcial en el SIU.',
-        attachments: [], threadId: null, viaWebhook: true, createdAt: at('2026-11-08', '09:00'),
-      },
-    ],
+        attachments: [],
+        threadId: null,
+        viaWebhook: true,
+        createdAt: at('2026-11-08', '09:00')
+      }
+    ]
   },
   {
     id: consultasAm1FiA,
     name: 'am1-fi-a-consultas',
     messages: [
       {
-        id: '1310000000000000003', channelId: consultasAm1FiA, author: author('p-taguirre', 'tomi.aguirre'),
+        id: '1310000000000000003',
+        channelId: consultasAm1FiA,
+        author: author('p-taguirre', 'tomi.aguirre'),
         text: '¿Entran integrales en el segundo parcial?',
-        attachments: [], threadId: null, viaWebhook: false, createdAt: at('2026-11-08', '21:30'),
+        attachments: [],
+        threadId: null,
+        viaWebhook: false,
+        createdAt: at('2026-11-08', '21:30')
       },
       {
-        id: '1310000000000000004', channelId: consultasAm1FiA, author: author('p-mledesma', 'mledesma'),
+        id: '1310000000000000004',
+        channelId: consultasAm1FiA,
+        author: author('p-mledesma', 'mledesma'),
         text: 'No, llega hasta derivadas y sus aplicaciones.',
-        attachments: [], threadId: '1310000000000000003', viaWebhook: false, createdAt: at('2026-11-09', '08:05'),
-      },
-    ],
+        attachments: [],
+        threadId: '1310000000000000003',
+        viaWebhook: false,
+        createdAt: at('2026-11-09', '08:05')
+      }
+    ]
   },
   {
     id: materialAm1Fi,
     name: 'am1-fi-material',
     messages: [
       {
-        id: '1310000000000000005', channelId: materialAm1Fi, author: author('p-gferreyra', 'gferreyra'),
+        id: '1310000000000000005',
+        channelId: materialAm1Fi,
+        author: author('p-gferreyra', 'gferreyra'),
         text: 'Resumen de derivadas para las dos comisiones.',
-        attachments: [{ id: '1311000000000000002', filename: 'resumen-derivadas.pdf', contentType: 'application/pdf', size: 52044, url: `${cdn}/${materialAm1Fi}/1311000000000000002/resumen-derivadas.pdf?ex=vence` }],
-        threadId: null, viaWebhook: false, createdAt: at('2026-10-30', '18:45'),
-      },
-    ],
-  },
+        attachments: [
+          {
+            id: '1311000000000000002',
+            filename: 'resumen-derivadas.pdf',
+            contentType: 'application/pdf',
+            size: 52044,
+            url: `${cdn}/${materialAm1Fi}/1311000000000000002/resumen-derivadas.pdf?ex=vence`
+          }
+        ],
+        threadId: null,
+        viaWebhook: false,
+        createdAt: at('2026-10-30', '18:45')
+      }
+    ]
+  }
 ]
 
 const discordFiles: Record<string, string> = Object.fromEntries(
-  discordChannels.flatMap((c) => c.messages.flatMap((m) => m.attachments.map((a) => [a.url, `Contenido sintético de ${a.filename}`]))),
+  discordChannels.flatMap((c) =>
+    c.messages.flatMap((m) => m.attachments.map((a) => [a.url, `Contenido sintético de ${a.filename}`]))
+  )
 )
 
 export const syntheticData: SyntheticData = {
@@ -489,7 +789,7 @@ export const syntheticData: SyntheticData = {
     assessments,
     history,
     provisionalResults,
-    certificates,
+    certificates
   },
   moodle: {
     baseUrl: 'https://moodle.example.edu.ar',
@@ -497,10 +797,10 @@ export const syntheticData: SyntheticData = {
     enrolments: [...teacherEnrolments, ...studentEnrolments],
     announcements,
     contents,
-    assignments,
+    assignments
   },
   discord: {
     channels: discordChannels,
-    files: discordFiles,
-  },
+    files: discordFiles
+  }
 }
