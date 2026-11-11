@@ -99,6 +99,18 @@ export function createSupabaseFiles({
         log(`[files] bajar: ${cause instanceof Error ? cause.name : 'falla'}`)
         return fail('falla-externa')
       }
+    },
+
+    async delete(id) {
+      // Un id sin forma de uuid no puede ser un archivo nuestro: no hay nada que borrar.
+      if (!isFileId(id)) return ok(null)
+      // Storage no avisa si el objeto no existía: borra lo que encuentra.
+      const removed = await run('borrar', () =>
+        storage()
+          .remove([id])
+          .then((response) => asDbResponse(response))
+      )
+      return removed.ok ? ok(null) : fail('falla-externa')
     }
   }
 }

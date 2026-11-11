@@ -174,14 +174,24 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok(target.value.replyTo ?? target.value.id)
   }
 
-  /** Guarda los adjuntos con Archivos. Si uno falla, no se publica el mensaje. */
+  /** Borra archivos que quedaron sin nada que los referencie. Es lo mejor que se
+      puede hacer: si el borrado falla, el error que importa es el original. */
+  async function discard(fileIds: Array<string | null>): Promise<void> {
+    await Promise.all(fileIds.map((id) => (id === null ? null : files.delete(id))))
+  }
+
+  /** Guarda los adjuntos con Archivos. Si uno falla, no se publica el mensaje y
+      se borran los que ya se habían guardado. */
   async function saveAttachments(
     attachments: NonNullable<NewMessage['attachments']>
   ): Promise<Result<StoredAttachment[], 'demasiado-grande' | 'falla-externa'>> {
     const saved: StoredAttachment[] = []
     for (const attachment of attachments) {
       const file = await files.save(attachment)
-      if (!file.ok) return file
+      if (!file.ok) {
+        await discard(saved.map((a) => a.fileId))
+        return file
+      }
       saved.push({
         name: file.value.name,
         contentType: file.value.contentType,
@@ -212,7 +222,11 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       resolved: isQuestion ? false : null,
       createdAt: clock.now().toISOString()
     })
-    if (!added.ok) return fail('falla-externa')
+    if (!added.ok) {
+      // Ningún mensaje referencia los adjuntos: no se dejan sueltos en Archivos.
+      await discard(draft.attachments.map((a) => a.fileId))
+      return fail('falla-externa')
+    }
     const marked = await store.markRead(member.personId, channel.id, added.value.seq)
     if (!marked.ok) return marked
     return ok(await toMessage(added.value, authorsFrom(people), false))
@@ -356,7 +370,11 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       addedBy: personId,
       addedAt: clock.now().toISOString()
     })
-    if (!added.ok) return fail('falla-externa')
+    if (!added.ok) {
+      // Ningún material referencia el archivo: no se deja suelto en Archivos.
+      await discard([file.value.id])
+      return fail('falla-externa')
+    }
     const [item] = await materialItems([added.value], authorsFrom(people), personId, 0)
     return ok(item)
   }

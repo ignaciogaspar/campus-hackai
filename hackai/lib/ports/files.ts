@@ -48,6 +48,10 @@ export type FilesPort = {
   /** Los bytes de un archivo guardado. Un id que no es de un archivo, o que ni
       siquiera tiene forma de uuid, es `no-encontrado`. */
   read(id: string): Promise<Result<FileContent, FilesReadError>>
+  /** Borra un archivo guardado. Un id que no existe no es un error: el archivo
+      ya no está, que es lo que se pedía. Sirve para no dejar archivos sueltos
+      cuando falla lo que iba a referenciarlos. */
+  delete(id: string): Promise<Result<null, ExternalFailure>>
 }
 
 const FILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/

@@ -10,9 +10,10 @@ import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
-import { type Channel, createSpaces, type SpaceView } from '@/lib/core/spaces'
+import { type Channel, createSpaces, type SpacesStore, type SpaceView } from '@/lib/core/spaces'
 import { createStudies } from '@/lib/core/studies'
 import type { ClockPort } from '@/lib/ports/clock'
+import type { FilesPort } from '@/lib/ports/files'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
 
@@ -40,7 +41,7 @@ function assertFileUrl(url: string | undefined, name: string) {
   assert.ok(url?.endsWith(`/${encodeURIComponent(name)}`))
 }
 
-function build(data: SyntheticData = syntheticData) {
+function build(data: SyntheticData = syntheticData, overrides: { store?: SpacesStore; files?: FilesPort } = {}) {
   let now = data.now
   // Reloj que se puede mover, para subir material en distintas semanas.
   const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(now) }
@@ -51,8 +52,8 @@ function build(data: SyntheticData = syntheticData) {
   const classroom = createMemoryClassroom(data)
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
   const studies = createStudies({ people, siu, classroom, clock })
-  const store = createMemorySpacesStore()
-  const files = createMemoryFiles()
+  const store = overrides.store ?? createMemorySpacesStore()
+  const files: FilesPort = overrides.files ?? createMemoryFiles()
   const spaces = createSpaces({
     people,
     studies,
@@ -62,7 +63,7 @@ function build(data: SyntheticData = syntheticData) {
     clock,
     store
   })
-  return { spaces, store, files, siuState, setNow }
+  return { spaces, studies, store, files, siuState, setNow }
 }
 
 /** Copia del set sintético con una inscripción a cursada de más. */
@@ -929,4 +930,74 @@ test('un mensaje de un canal externo sin persona lleva el nombre con que llegó,
       [{ personId: 'p-borrada', name: 'Persona sin datos', role: null }, 'discord', 'd-2']
     ]
   )
+})
+
+/** Archivos en memoria que anota los ids de lo que guarda, para ver qué quedó
+    después de un error. */
+function trackedFiles() {
+  const inner = createMemoryFiles()
+  const saved: string[] = []
+  const files: FilesPort = {
+    ...inner,
+    async save(file) {
+      const result = await inner.save(file)
+      if (result.ok) saved.push(result.value.id)
+      return result
+    }
+  }
+  return { files, saved }
+}
+
+/** Los ids que todavía se pueden leer de Archivos. */
+async function stillStored(files: FilesPort, ids: string[]) {
+  const found: string[] = []
+  for (const id of ids) if ((await files.read(id)).ok) found.push(id)
+  return found
+}
+
+test('si falla guardar el mensaje, los adjuntos ya guardados se borran de Archivos', async () => {
+  const store: SpacesStore = { ...createMemorySpacesStore(), addMessage: async () => fail('falla-externa') }
+  const { files, saved } = trackedFiles()
+  const { spaces } = build(syntheticData, { store, files })
+  const opened = await spaces.open('p-mledesma', 'am1')
+  assert.ok(opened.ok)
+
+  const posted = await spaces.post('p-mledesma', named(opened.value, 'avisos', 'A').id, {
+    text: 'Con adjuntos',
+    attachments: [
+      { name: 'uno.png', contentType: 'image/png', bytes: new Uint8Array([1]) },
+      { name: 'dos.png', contentType: 'image/png', bytes: new Uint8Array([2]) }
+    ]
+  })
+
+  assert.deepEqual(posted, { ok: false, error: 'falla-externa' })
+  assert.equal(saved.length, 2)
+  assert.deepEqual(await stillStored(files, saved), [])
+})
+
+test('si falla guardar el material, el archivo ya guardado se borra de Archivos', async () => {
+  const store: SpacesStore = { ...createMemorySpacesStore(), addMaterial: async () => fail('falla-externa') }
+  const { files, saved } = trackedFiles()
+  const { spaces } = build(syntheticData, { store, files })
+  const opened = await spaces.open('p-mledesma', 'am1')
+  assert.ok(opened.ok)
+
+  const added = await spaces.addMaterial('p-mledesma', opened.value.space.id, pdf('Guía 4.pdf'))
+
+  assert.deepEqual(added, { ok: false, error: 'falla-externa' })
+  assert.equal(saved.length, 1)
+  assert.deepEqual(await stillStored(files, saved), [])
+})
+
+test('si falla borrar el archivo, igual se devuelve el error del almacén', async () => {
+  const store: SpacesStore = { ...createMemorySpacesStore(), addMaterial: async () => fail('falla-externa') }
+  const inner = createMemoryFiles()
+  const files: FilesPort = { ...inner, delete: async () => fail('falla-externa') }
+  const { spaces } = build(syntheticData, { store, files })
+  const opened = await spaces.open('p-mledesma', 'am1')
+  assert.ok(opened.ok)
+
+  const added = await spaces.addMaterial('p-mledesma', opened.value.space.id, pdf('Guía 4.pdf'))
+
+  assert.deepEqual(added, { ok: false, error: 'falla-externa' })
 })

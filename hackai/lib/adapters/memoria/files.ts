@@ -35,6 +35,11 @@ export function createMemoryFiles(): FilesPort {
       if (!entry) return fail('no-encontrado')
       const content: FileContent = { name: entry.name, contentType: entry.contentType, bytes: entry.bytes.slice() }
       return ok(content)
+    },
+
+    async delete(id) {
+      stored.delete(id)
+      return ok(null)
     }
   }
 }

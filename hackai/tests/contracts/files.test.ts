@@ -69,11 +69,32 @@ function filesContract(
     assert.deepEqual(await files.read(randomUUID()), { ok: false, error: 'no-encontrado' })
     assert.deepEqual(await files.read('../otro-bucket/secreto'), { ok: false, error: 'no-encontrado' })
   })
+
+  it('borrar un archivo lo saca: leerlo después es «no encontrado», y los otros siguen', async ({ files }) => {
+    const first = await files.save(pdf())
+    const second = await files.save({ ...pdf(), bytes: new TextEncoder().encode('otra versión') })
+    assert.ok(first.ok && second.ok)
+
+    assert.deepEqual(await files.delete(first.value.id), { ok: true, value: null })
+
+    assert.deepEqual(await files.read(first.value.id), { ok: false, error: 'no-encontrado' })
+    assert.ok((await files.read(second.value.id)).ok)
+  })
+
+  it('borrar un id que no existe, o que no tiene forma de id, no es un error', async ({ files }) => {
+    assert.deepEqual(await files.delete(randomUUID()), { ok: true, value: null })
+    assert.deepEqual(await files.delete('../otro-bucket/secreto'), { ok: true, value: null })
+    const saved = await files.save(pdf())
+    assert.ok(saved.ok)
+    assert.deepEqual(await files.delete(saved.value.id), { ok: true, value: null })
+    assert.deepEqual(await files.delete(saved.value.id), { ok: true, value: null })
+  })
 }
 
 /** API de Storage de mentira para un bucket: sube con POST y baja con GET
-    `/storage/v1/object/<bucket>/<id>`, y responde como Storage cuando el
-    objeto no existe. Cualquier otro pedido es un 400, así un pedido con otra
+    `/storage/v1/object/<bucket>/<id>`, borra con DELETE
+    `/storage/v1/object/<bucket>` y `{ prefixes: [ids] }` (como supabase-js), y
+    responde como Storage cuando el objeto no existe. Cualquier otro pedido es un 400, así un pedido con otra
     forma hace fallar la batería. */
 function fakeStorage(bucket: string) {
   const objects = new Map<string, { contentType: string; bytes: Uint8Array<ArrayBuffer> }>()
@@ -97,8 +118,19 @@ function fakeStorage(bucket: string) {
     return new Response(object.bytes, { headers: { 'content-type': object.contentType } })
   }
 
+  /** Como Storage, devuelve los objetos que borró: los que no existían no están. */
+  async function remove(init: RequestInit | undefined) {
+    const { prefixes } = JSON.parse(String(init?.body)) as { prefixes: string[] }
+    const removed = prefixes.filter((id) => objects.delete(id))
+    return json(
+      removed.map((name) => ({ name, bucket_id: bucket })),
+      200
+    )
+  }
+
   const fetch: typeof globalThis.fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input)
+    if (init?.method === 'DELETE' && url.pathname === `/storage/v1/object/${bucket}`) return remove(init)
     const prefix = `/storage/v1/object/${bucket}/`
     if (!url.pathname.startsWith(prefix)) return json({ statusCode: '400', error: 'pedido desconocido' }, 400)
     const id = decodeURIComponent(url.pathname.slice(prefix.length))
@@ -145,8 +177,9 @@ test('si Storage no responde a tiempo devuelve «falla externa» en vez de queda
   const started = Date.now()
   assert.deepEqual(await files.save(pdf()), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await files.read(randomUUID()), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await files.delete(randomUUID()), { ok: false, error: 'falla-externa' })
   assert.ok(Date.now() - started < 1000)
-  assert.equal(logs.length, 2)
+  assert.equal(logs.length, 3)
 })
 
 test('si la red falla o Storage responde con error devuelve «falla externa» sin tirar, y los logs no llevan nombres', async () => {
@@ -155,6 +188,7 @@ test('si la red falla o Storage responde con error devuelve «falla externa» si
   })
   assert.deepEqual(await sinRed.files.save(pdf()), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await sinRed.files.read(randomUUID()), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await sinRed.files.delete(randomUUID()), { ok: false, error: 'falla-externa' })
 
   const sinBucket = filesWith(
     async () =>
@@ -165,8 +199,9 @@ test('si la red falla o Storage responde con error devuelve «falla externa» si
   )
   assert.deepEqual(await sinBucket.files.save(pdf()), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await sinBucket.files.read(randomUUID()), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await sinBucket.files.delete(randomUUID()), { ok: false, error: 'falla-externa' })
 
   const logs = [...sinRed.logs, ...sinBucket.logs]
-  assert.equal(logs.length, 4)
+  assert.equal(logs.length, 6)
   assert.ok(logs.every((line) => line.startsWith('[files] ') && !line.includes('derivadas')))
 })
