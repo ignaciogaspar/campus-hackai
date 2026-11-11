@@ -1,0 +1,180 @@
+-- Generado por npm run siu:seed desde lib/adapters/synthetic-data.ts. No lo edites a mano.
+
+begin;
+
+delete from siu_course_enrollments where id <> all (array['ic-1', 'ic-2', 'ic-3', 'ic-4', 'ic-5', 'ic-6', 'ic-7', 'ic-8', 'ic-9', 'ic-10', 'ic-11', 'ic-12', 'ic-13', 'ic-14', 'ic-15', 'ic-16', 'ic-17', 'ic-18', 'ic-19', 'ic-20']::text[]);
+
+delete from siu_exam_enrollments where id <> all (array['ie-1']::text[]);
+
+insert into siu_schools (id, name) values
+  ('fi', 'Facultad de Ingeniería'),
+  ('fce', 'Facultad de Ciencias Empresariales')
+on conflict (id) do update set name = excluded.name;
+
+insert into siu_programs (id, name) values
+  ('iinf', 'Ingeniería en Informática'),
+  ('asp-fi', 'Aspirantes - fi'),
+  ('iind', 'Ingeniería Industrial'),
+  ('ladm', 'Licenciatura en Administración de Empresas'),
+  ('cpub', 'Contador Público')
+on conflict (id) do update set name = excluded.name;
+
+insert into siu_persons (id, surname, names, email, role, school_id) values
+  ('20101', 'Ledesma', 'Mariana', 'mariana.ledesma@example.edu.ar', 'profesor', 'fi'),
+  ('20102', 'Ferreyra', 'Gustavo', 'gustavo.ferreyra@example.edu.ar', 'profesor', 'fi'),
+  ('20103', 'Bustos', 'Carolina', 'carolina.bustos@example.edu.ar', 'profesor', 'fce'),
+  ('20104', 'Arrieta', 'Diego', 'diego.arrieta@example.edu.ar', 'profesor', 'fi'),
+  ('20105', 'Rosales', 'Silvina', 'silvina.rosales@example.edu.ar', 'profesor', 'fce'),
+  ('30101', 'Aguirre', 'Tomás', 'tomas.aguirre@alumnos.example.edu.ar', 'alumno', 'fi'),
+  ('30102', 'Benítez', 'Lucía', 'lucia.benitez@alumnos.example.edu.ar', 'alumno', 'fi'),
+  ('30103', 'Cabrera', 'Martín', 'martin.cabrera@alumnos.example.edu.ar', 'alumno', 'fi'),
+  ('30104', 'Domínguez', 'Sofía', 'sofia.dominguez@alumnos.example.edu.ar', 'alumno', 'fi'),
+  ('30105', 'Escobar', 'Joaquín', 'joaquin.escobar@alumnos.example.edu.ar', 'alumno', 'fi'),
+  ('30106', 'Funes', 'Valentina', 'valentina.funes@alumnos.example.edu.ar', 'alumno', 'fi'),
+  ('30107', 'Giménez', 'Agustina', 'agustina.gimenez@alumnos.example.edu.ar', 'alumno', 'fce'),
+  ('30108', 'Herrera', 'Nicolás', 'nicolas.herrera@alumnos.example.edu.ar', 'alumno', 'fce'),
+  ('30109', 'Ibarra', 'Camila', 'camila.ibarra@alumnos.example.edu.ar', 'alumno', 'fce'),
+  ('30110', 'Juárez', 'Federico', 'federico.juarez@alumnos.example.edu.ar', 'alumno', 'fce')
+on conflict (id) do update set surname = excluded.surname, names = excluded.names, email = excluded.email, role = excluded.role, school_id = excluded.school_id;
+
+insert into siu_person_programs (person_id, program_id, status, position) values
+  ('30101', 'iinf', 'activa', 0),
+  ('30101', 'asp-fi', 'pasiva', 1),
+  ('30102', 'iinf', 'activa', 0),
+  ('30103', 'iind', 'activa', 0),
+  ('30104', 'iind', 'activa', 0),
+  ('30105', 'iinf', 'activa', 0),
+  ('30106', 'iind', 'activa', 0),
+  ('30107', 'ladm', 'activa', 0),
+  ('30108', 'cpub', 'activa', 0),
+  ('30109', 'ladm', 'activa', 0),
+  ('30110', 'cpub', 'activa', 0)
+on conflict (person_id, program_id) do update set status = excluded.status, position = excluded.position;
+
+insert into siu_terms (id, name, start_at, end_at, enrollment_start, enrollment_end) values
+  ('1c-2026', 'Grado 1er Cuatrimestre 2026', '2026-03-09T03:00:00.000Z', '2026-07-11T02:59:00.000Z', '2026-02-16T03:00:00.000Z', '2026-03-14T02:59:00.000Z'),
+  ('2c-2026', 'Grado 2do Cuatrimestre 2026', '2026-08-10T03:00:00.000Z', '2026-11-29T02:59:00.000Z', '2026-07-27T03:00:00.000Z', '2026-08-15T02:59:00.000Z'),
+  ('verano-2027', 'Curso de Verano 2027', '2027-01-11T03:00:00.000Z', '2027-02-27T02:59:00.000Z', '2026-11-02T03:00:00.000Z', '2026-12-19T02:59:00.000Z')
+on conflict (id) do update set name = excluded.name, start_at = excluded.start_at, end_at = excluded.end_at, enrollment_start = excluded.enrollment_start, enrollment_end = excluded.enrollment_end;
+
+insert into siu_subjects (id, code, name) values
+  ('am1', 'AM1', 'Análisis Matemático I'),
+  ('aga', 'AGA', 'Álgebra y Geometría Analítica'),
+  ('pr1', 'PR1', 'Programación I'),
+  ('fi1', 'FI1', 'Física I'),
+  ('iec', 'IEC', 'Introducción a la Economía'),
+  ('co1', 'CO1', 'Contabilidad I')
+on conflict (id) do update set code = excluded.code, name = excluded.name;
+
+insert into siu_sections (id, name, subject_id, school_id, term_id, teacher_ids, schedule, location, modality, instance, capacity) values
+  ('sec-am1-fi-a', 'A', 'am1', 'fi', '2c-2026', array['20101']::text[], '[{"day":"lunes","start":"08:00","end":"10:00"},{"day":"miercoles","start":"08:00","end":"10:00"}]'::jsonb, 'Campus Pilar, aula 12', 'presencial', 'regularidad', 40),
+  ('sec-am1-fi-b', 'B', 'am1', 'fi', '2c-2026', array['20102']::text[], '[{"day":"martes","start":"14:00","end":"16:00"},{"day":"jueves","start":"14:00","end":"16:00"}]'::jsonb, 'Campus Pilar, aula 14', 'presencial', 'regularidad', 40),
+  ('sec-am1-fce-a', 'A', 'am1', 'fce', '2c-2026', array['20103']::text[], '[{"day":"lunes","start":"18:00","end":"20:00"},{"day":"jueves","start":"18:00","end":"20:00"}]'::jsonb, 'Sede Buenos Aires, aula 3', 'presencial', 'regularidad', 35),
+  ('sec-pr1-fi-a', 'A', 'pr1', 'fi', '2c-2026', array['20104']::text[], '[{"day":"viernes","start":"09:00","end":"12:00"}]'::jsonb, 'Campus Pilar, laboratorio 2', 'hibrida', 'promocion', 30),
+  ('sec-co1-fce-a', 'A', 'co1', 'fce', '2c-2026', array['20105']::text[], '[{"day":"martes","start":"18:00","end":"21:00"}]'::jsonb, 'Sede Buenos Aires, aula 5', 'presencial', 'regularidad', 35),
+  ('sec-aga-fi-a', 'A', 'aga', 'fi', '1c-2026', array['20101']::text[], '[{"day":"martes","start":"08:00","end":"11:00"}]'::jsonb, 'Campus Pilar, aula 12', 'presencial', 'regularidad', 40),
+  ('sec-iec-fce-a', 'A', 'iec', 'fce', '1c-2026', array['20103']::text[], '[{"day":"miercoles","start":"18:00","end":"21:00"}]'::jsonb, 'Sede Buenos Aires, aula 3', 'presencial', 'promocion', 35),
+  ('sec-fi1-fi-v', 'Verano', 'fi1', 'fi', 'verano-2027', array['20102']::text[], '[{"day":"lunes","start":"09:00","end":"13:00"},{"day":"jueves","start":"09:00","end":"13:00"}]'::jsonb, 'Campus Pilar, aula 20', 'presencial', 'regularidad', 2),
+  ('sec-pr1-fi-v', 'Verano', 'pr1', 'fi', 'verano-2027', array['20104']::text[], '[{"day":"martes","start":"09:00","end":"13:00"}]'::jsonb, 'Virtual', 'virtual', 'regularidad', null),
+  ('sec-am1-fce-v', 'Verano', 'am1', 'fce', 'verano-2027', array['20103']::text[], '[{"day":"miercoles","start":"18:00","end":"21:00"}]'::jsonb, 'Sede Buenos Aires, aula 3', 'presencial', 'regularidad', 25)
+on conflict (id) do update set name = excluded.name, subject_id = excluded.subject_id, school_id = excluded.school_id, term_id = excluded.term_id, teacher_ids = excluded.teacher_ids, schedule = excluded.schedule, location = excluded.location, modality = excluded.modality, instance = excluded.instance, capacity = excluded.capacity;
+
+insert into siu_course_enrollments (id, transaction_number, person_id, section_id, enrolled_at, status) values
+  ('ic-1', 'T-100001', '30101', 'sec-aga-fi-a', '2026-03-02T13:00:00.000Z', 'aceptada'),
+  ('ic-2', 'T-100002', '30106', 'sec-aga-fi-a', '2026-03-02T13:00:00.000Z', 'aceptada'),
+  ('ic-3', 'T-100003', '30108', 'sec-iec-fce-a', '2026-03-03T13:00:00.000Z', 'aceptada'),
+  ('ic-4', 'T-100004', '30101', 'sec-am1-fi-a', '2026-08-03T13:00:00.000Z', 'aceptada'),
+  ('ic-5', 'T-100005', '30101', 'sec-pr1-fi-a', '2026-08-03T13:00:00.000Z', 'aceptada'),
+  ('ic-6', 'T-100006', '30102', 'sec-am1-fi-a', '2026-08-03T13:00:00.000Z', 'aceptada'),
+  ('ic-7', 'T-100007', '30102', 'sec-pr1-fi-a', '2026-08-04T13:00:00.000Z', 'aceptada'),
+  ('ic-8', 'T-100008', '30105', 'sec-am1-fi-a', '2026-08-05T13:00:00.000Z', 'aceptada'),
+  ('ic-9', 'T-100009', '30103', 'sec-am1-fi-b', '2026-08-03T13:00:00.000Z', 'aceptada'),
+  ('ic-10', 'T-100010', '30104', 'sec-am1-fi-b', '2026-08-04T13:00:00.000Z', 'aceptada'),
+  ('ic-11', 'T-100011', '30104', 'sec-pr1-fi-a', '2026-08-12T13:00:00.000Z', 'aceptada'),
+  ('ic-12', 'T-100012', '30106', 'sec-am1-fi-b', '2026-08-06T13:00:00.000Z', 'aceptada'),
+  ('ic-13', 'T-100013', '30107', 'sec-am1-fce-a', '2026-08-03T13:00:00.000Z', 'aceptada'),
+  ('ic-14', 'T-100014', '30107', 'sec-co1-fce-a', '2026-08-03T13:00:00.000Z', 'aceptada'),
+  ('ic-15', 'T-100015', '30108', 'sec-am1-fce-a', '2026-08-04T13:00:00.000Z', 'aceptada'),
+  ('ic-16', 'T-100016', '30108', 'sec-co1-fce-a', '2026-08-04T13:00:00.000Z', 'aceptada'),
+  ('ic-17', 'T-100017', '30109', 'sec-am1-fce-a', '2026-08-05T13:00:00.000Z', 'aceptada'),
+  ('ic-18', 'T-100018', '30110', 'sec-co1-fce-a', '2026-08-05T13:00:00.000Z', 'aceptada'),
+  ('ic-19', 'T-100019', '30103', 'sec-fi1-fi-v', '2026-11-03T13:00:00.000Z', 'aceptada'),
+  ('ic-20', 'T-100020', '30105', 'sec-fi1-fi-v', '2026-11-04T13:00:00.000Z', 'aceptada')
+on conflict (id) do update set transaction_number = excluded.transaction_number, person_id = excluded.person_id, section_id = excluded.section_id, enrolled_at = excluded.enrolled_at, status = excluded.status;
+
+insert into siu_exam_boards (id, subject_id, school_id, exam_period, date, location, teacher_ids, capacity, enrollment_start, enrollment_end) values
+  ('mesa-aga-fi-dic', 'aga', 'fi', 'Turno Diciembre 2026', '2026-12-09T12:00:00.000Z', 'Campus Pilar, aula 12', array['20101', '20102']::text[], 2, '2026-11-09T03:00:00.000Z', '2026-12-05T02:59:00.000Z'),
+  ('mesa-am1-fi-dic', 'am1', 'fi', 'Turno Diciembre 2026', '2026-12-11T12:00:00.000Z', 'Campus Pilar, aula 14', array['20101', '20102']::text[], 40, '2026-11-09T03:00:00.000Z', '2026-12-05T02:59:00.000Z'),
+  ('mesa-iec-fce-dic', 'iec', 'fce', 'Turno Diciembre 2026', '2026-12-10T21:00:00.000Z', 'Sede Buenos Aires, aula 3', array['20103']::text[], 30, '2026-11-09T03:00:00.000Z', '2026-12-05T02:59:00.000Z'),
+  ('mesa-co1-fce-dic', 'co1', 'fce', 'Turno Diciembre 2026', '2026-12-14T21:00:00.000Z', 'Sede Buenos Aires, aula 5', array['20105']::text[], 30, '2026-11-09T03:00:00.000Z', '2026-12-05T02:59:00.000Z')
+on conflict (id) do update set subject_id = excluded.subject_id, school_id = excluded.school_id, exam_period = excluded.exam_period, date = excluded.date, location = excluded.location, teacher_ids = excluded.teacher_ids, capacity = excluded.capacity, enrollment_start = excluded.enrollment_start, enrollment_end = excluded.enrollment_end;
+
+insert into siu_exam_enrollments (id, transaction_number, person_id, exam_board_id, enrolled_at, status) values
+  ('ie-1', 'T-200001', '30101', 'mesa-aga-fi-dic', '2026-11-09T14:30:00.000Z', 'aceptada')
+on conflict (id) do update set transaction_number = excluded.transaction_number, person_id = excluded.person_id, exam_board_id = excluded.exam_board_id, enrolled_at = excluded.enrolled_at, status = excluded.status;
+
+insert into siu_assessments (id, section_id, name, kind, date) values
+  ('ev-1', 'sec-aga-fi-a', 'Primer parcial', 'parcial', '2026-04-21T11:00:00.000Z'),
+  ('ev-2', 'sec-aga-fi-a', 'Segundo parcial', 'parcial', '2026-06-23T11:00:00.000Z'),
+  ('ev-3', 'sec-iec-fce-a', 'Parcial', 'parcial', '2026-05-13T21:00:00.000Z'),
+  ('ev-4', 'sec-am1-fi-a', 'Primer parcial', 'parcial', '2026-09-21T11:00:00.000Z'),
+  ('ev-5', 'sec-am1-fi-a', 'Segundo parcial', 'parcial', '2026-11-16T11:00:00.000Z'),
+  ('ev-6', 'sec-am1-fi-a', 'Recuperatorio', 'recuperatorio', '2026-11-25T11:00:00.000Z'),
+  ('ev-7', 'sec-am1-fi-b', 'Primer parcial', 'parcial', '2026-09-22T17:00:00.000Z'),
+  ('ev-8', 'sec-am1-fi-b', 'Segundo parcial', 'parcial', '2026-11-17T17:00:00.000Z'),
+  ('ev-9', 'sec-am1-fce-a', 'Primer parcial', 'parcial', '2026-09-28T21:00:00.000Z'),
+  ('ev-10', 'sec-am1-fce-a', 'Segundo parcial', 'parcial', '2026-11-19T21:00:00.000Z'),
+  ('ev-11', 'sec-pr1-fi-a', 'TP integrador', 'tp', '2026-10-16T12:00:00.000Z'),
+  ('ev-12', 'sec-pr1-fi-a', 'Parcial', 'parcial', '2026-11-20T12:00:00.000Z'),
+  ('ev-13', 'sec-co1-fce-a', 'Primer parcial', 'parcial', '2026-10-06T21:00:00.000Z'),
+  ('ev-14', 'sec-co1-fce-a', 'Segundo parcial', 'parcial', '2026-11-24T21:00:00.000Z')
+on conflict (id) do update set section_id = excluded.section_id, name = excluded.name, kind = excluded.kind, date = excluded.date;
+
+insert into siu_history (id, person_id, subject_id, type, date, grade, result, grade_record) values
+  ('ha-1', '30101', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 6, 'regular', 'C-2026-0412'),
+  ('ha-2', '30106', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 7, 'regular', 'C-2026-0412'),
+  ('ha-3', '30108', 'iec', 'promocion', '2026-07-06T03:00:00.000Z', 9, 'promocionado', 'P-2026-0087')
+on conflict (id) do update set person_id = excluded.person_id, subject_id = excluded.subject_id, type = excluded.type, date = excluded.date, grade = excluded.grade, result = excluded.result, grade_record = excluded.grade_record;
+
+insert into siu_provisional_results (id, person_id, section_id, assessment_id, grade, date) values
+  ('ap-1', '30101', 'sec-am1-fi-a', 'ev-4', 7, '2026-09-21T11:00:00.000Z'),
+  ('ap-2', '30102', 'sec-am1-fi-a', 'ev-4', 8, '2026-09-21T11:00:00.000Z'),
+  ('ap-3', '30105', 'sec-am1-fi-a', 'ev-4', 4, '2026-09-21T11:00:00.000Z'),
+  ('ap-4', '30103', 'sec-am1-fi-b', 'ev-7', 6, '2026-09-22T17:00:00.000Z'),
+  ('ap-5', '30104', 'sec-am1-fi-b', 'ev-7', 9, '2026-09-22T17:00:00.000Z'),
+  ('ap-6', '30106', 'sec-am1-fi-b', 'ev-7', 5, '2026-09-22T17:00:00.000Z'),
+  ('ap-7', '30107', 'sec-am1-fce-a', 'ev-9', 8, '2026-09-28T21:00:00.000Z'),
+  ('ap-8', '30108', 'sec-am1-fce-a', 'ev-9', 7, '2026-09-28T21:00:00.000Z'),
+  ('ap-9', '30109', 'sec-am1-fce-a', 'ev-9', 6, '2026-09-28T21:00:00.000Z'),
+  ('ap-10', '30101', 'sec-pr1-fi-a', 'ev-11', 9, '2026-10-16T12:00:00.000Z'),
+  ('ap-11', '30102', 'sec-pr1-fi-a', 'ev-11', 8, '2026-10-16T12:00:00.000Z'),
+  ('ap-12', '30104', 'sec-pr1-fi-a', 'ev-11', null, '2026-10-16T12:00:00.000Z'),
+  ('ap-13', '30107', 'sec-co1-fce-a', 'ev-13', 6, '2026-10-06T21:00:00.000Z'),
+  ('ap-14', '30108', 'sec-co1-fce-a', 'ev-13', 8, '2026-10-06T21:00:00.000Z'),
+  ('ap-15', '30110', 'sec-co1-fce-a', 'ev-13', 7, '2026-10-06T21:00:00.000Z')
+on conflict (id) do update set person_id = excluded.person_id, section_id = excluded.section_id, assessment_id = excluded.assessment_id, grade = excluded.grade, date = excluded.date;
+
+insert into siu_certificates (person_id, type, meets_conditions) values
+  ('30101', 'alumno-regular', true),
+  ('30101', 'examen-final', false),
+  ('30102', 'alumno-regular', true),
+  ('30102', 'examen-final', false),
+  ('30103', 'alumno-regular', true),
+  ('30103', 'examen-final', false),
+  ('30104', 'alumno-regular', true),
+  ('30104', 'examen-final', false),
+  ('30105', 'alumno-regular', true),
+  ('30105', 'examen-final', false),
+  ('30106', 'alumno-regular', true),
+  ('30106', 'examen-final', false),
+  ('30107', 'alumno-regular', true),
+  ('30107', 'examen-final', false),
+  ('30108', 'alumno-regular', true),
+  ('30108', 'examen-final', false),
+  ('30109', 'alumno-regular', true),
+  ('30109', 'examen-final', false),
+  ('30110', 'alumno-regular', true),
+  ('30110', 'examen-final', false)
+on conflict (person_id, type) do update set meets_conditions = excluded.meets_conditions;
+
+commit;
