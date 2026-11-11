@@ -78,7 +78,10 @@ test('un adjunto del canal externo se baja y se guarda en archivos', async () =>
   })
   assert.ok(saved.ok)
   assert.equal(saved.value.name, 'resumen-derivadas.pdf')
-  assert.ok(saved.value.url.startsWith('data:application/pdf;base64,'))
+  assert.equal(saved.value.url, `/archivos/${saved.value.id}/resumen-derivadas.pdf`)
+  const read = await files.read(saved.value.id)
+  assert.ok(read.ok)
+  assert.deepEqual([...read.value.bytes], [...downloaded.value.bytes])
 
   assert.deepEqual(await externalChannel.download({ ...attachment, url: 'https://vencida' }), {
     ok: false,
