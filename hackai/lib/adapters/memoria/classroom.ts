@@ -62,5 +62,9 @@ export function createMemoryClassroom(data: SyntheticData, options: MemoryClassr
       if (!hasCourse(courseId)) return fail('curso-inexistente')
       return ok(copy(db.assignments.filter((a) => a.courseId === courseId)))
     },
+
+    courseUrl(courseId) {
+      return `${db.baseUrl}/course/view.php?id=${encodeURIComponent(courseId)}`
+    },
   }
 }

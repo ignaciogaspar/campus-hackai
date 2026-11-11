@@ -70,4 +70,6 @@ export type ClassroomPort = {
   announcements(courseId: string, since?: string): Promise<Result<ClassroomAnnouncement[], ClassroomReadError>>
   contents(courseId: string): Promise<Result<ClassroomContent[], ClassroomReadError>>
   assignments(courseId: string): Promise<Result<ClassroomAssignment[], ClassroomReadError | 'no-soportado'>>
+  /** Enlace al aula del curso en el Campus Virtual (`<base>/course/view.php?id=<id>`). No consulta nada. */
+  courseUrl(courseId: string): string
 }

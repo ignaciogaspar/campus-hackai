@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { compose } from '@/lib/composition'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 
@@ -63,4 +64,25 @@ test('un adjunto del canal externo se baja y se guarda en archivos', async () =>
   assert.ok(saved.value.url.startsWith('data:application/pdf;base64,'))
 
   assert.deepEqual(await externalChannel.download({ ...attachment, url: 'https://vencida' }), { ok: false, error: 'adjunto-vencido' })
+})
+
+test('el aula en memoria sin matriculación ni tareas lo declara y responde «no soportado»', async () => {
+  const classroom = createMemoryClassroom(syntheticData, { capabilities: { canEnrol: false, hasAssignments: false } })
+
+  assert.deepEqual(classroom.capabilities, { canEnrol: false, hasAssignments: false })
+  assert.deepEqual(await classroom.enrol('404', 'c-pr1-fi-a', 'student'), { ok: false, error: 'no-soportado' })
+  assert.deepEqual(await classroom.unenrol('401', 'c-pr1-fi-a'), { ok: false, error: 'no-soportado' })
+  assert.deepEqual(await classroom.assignments('c-pr1-fi-a'), { ok: false, error: 'no-soportado' })
+  assert.equal((await classroom.coursesOf('401')).ok, true)
+  assert.equal(classroom.courseUrl('c-pr1-fi-a'), `${syntheticData.moodle.baseUrl}/course/view.php?id=c-pr1-fi-a`)
+})
+
+test('el aula en memoria no comparte matrículas entre instancias', async () => {
+  const a = createMemoryClassroom(syntheticData)
+  const b = createMemoryClassroom(syntheticData)
+
+  assert.equal((await a.enrol('404', 'c-pr1-fi-a', 'student')).ok, true)
+
+  const inB = await b.coursesOf('404')
+  assert.equal(inB.ok && inB.value.some((c) => c.id === 'c-pr1-fi-a'), false)
 })
