@@ -214,7 +214,7 @@ export function FreeChannelPanel({ subjectId, channel, threads }: PanelProps) {
       )}
       <ComposerDock>
         {channel.canPost ? (
-          <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Escribí en #${channel.name}`} />
+          <Composer subjectId={subjectId} channelId={channel.id} placeholder='Escribí un mensaje' />
         ) : (
           <LockedNote>En este canal escriben solo los docentes.</LockedNote>
         )}

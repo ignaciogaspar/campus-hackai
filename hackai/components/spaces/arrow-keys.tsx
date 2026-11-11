@@ -3,9 +3,10 @@
 /* Pestañas hechas con enlaces que se recorren con las flechas del teclado,
    como pide el sistema visual: izquierda y derecha (o arriba y abajo en la
    lista vertical de compu) pasan al enlace de al lado, Inicio y Fin van a los
-   extremos. Tab sigue entrando y saliendo de la lista como siempre. Es lo único
-   de las pestañas que corre en el navegador. */
-import type { ComponentProps, KeyboardEvent } from 'react'
+   extremos. Tab sigue entrando y saliendo de la lista como siempre. Al cargar,
+   la pestaña elegida se desliza a la vista si en el celular quedó afuera. Es lo
+   único de las pestañas que corre en el navegador. */
+import { type ComponentProps, type KeyboardEvent, useEffect, useRef } from 'react'
 
 const STEP: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
 
@@ -24,5 +25,12 @@ function onKeyDown(event: KeyboardEvent<HTMLUListElement>) {
 }
 
 export function ArrowKeysList(props: ComponentProps<'ul'>) {
-  return <ul onKeyDown={onKeyDown} {...props} />
+  const list = useRef<HTMLUListElement>(null)
+
+  useEffect(() => {
+    const current = list.current?.querySelector<HTMLElement>('[aria-current="page"]')
+    current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  })
+
+  return <ul ref={list} onKeyDown={onKeyDown} {...props} />
 }
