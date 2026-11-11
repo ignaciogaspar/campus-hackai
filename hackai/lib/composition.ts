@@ -36,6 +36,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
@@ -157,7 +158,8 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     externalChannel: ports.externalChannel,
     classroom: ports.classroom,
     files: ports.files,
-    clock
+    clock,
+    store: createMemorySpacesStore()
   })
   const today = createToday({ studies, spaces })
 

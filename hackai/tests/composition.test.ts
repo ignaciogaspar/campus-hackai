@@ -38,15 +38,9 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
     studies.openEnrollments(p),
     studies.record(p),
     studies.certificate(p, 'alumno-regular'),
-    spaces.open(p, 's'),
-    spaces.channel(p, 'c'),
-    spaces.post(p, 'c', { text: 'hola' }),
-    spaces.resolve(p, 'm'),
-    spaces.createChannel(p, 'e', { name: 'tp1', scope: { kind: 'materia' } }),
     spaces.openDirect(p, 'otra'),
     spaces.link(p, 'c', { system: 'discord', channelId: 'd' }),
     spaces.syncAll(),
-    spaces.unreadFor(p),
     today.today(p)
   ]
   for (const result of await Promise.all(calls)) {

@@ -213,8 +213,12 @@ test('sectionsOf devuelve las comisiones del alumno con sus docentes como person
     sectionId: 'sec-am1-fi-a',
     name: 'A',
     subjectId: 'am1',
+    subjectCode: 'AM1',
+    subjectName: 'Análisis Matemático I',
     schoolId: 'fi',
     termId: '2c-2026',
+    termName: 'Grado 2do Cuatrimestre 2026',
+    current: true,
     role: 'alumno',
     teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }]
   })
