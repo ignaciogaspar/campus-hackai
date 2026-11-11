@@ -1,0 +1,15 @@
+# docker compose up --build  →  http://localhost:3000
+# Las variables salen de .env.local en runtime; sin ese archivo, los puertos
+# usan los adaptadores en memoria con los datos sintéticos.
+services:
+  hackai:
+    build:
+      context: .
+      target: runner
+    image: hackai
+    ports:
+      - '3000:3000'
+    env_file:
+      - path: .env.local
+        required: false
+    restart: unless-stopped
