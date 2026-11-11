@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pantalla de inicio · HackAI</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* Pantalla de inicio del teléfono con la app instalada (?vista=inicio) y
+     pantalla de carga al abrirla (?vista=carga). Solo para mostrar el ícono,
+     el nombre y los colores del manifest. */
+  * { box-sizing: border-box; }
+  html { scrollbar-width: none; }
+  body { margin: 0; min-height: 100vh; font-family: var(--font-body); color: #fff; }
+  .inicio { min-height: 100vh; padding: 64px 22px 40px; background: linear-gradient(160deg, #2b3a8f 0%, #5b3f8f 55%, #c46a5a 100%); display: flex; flex-direction: column; }
+  .reloj { text-align: center; font-family: var(--font-head); font-weight: 800; font-size: 64px; line-height: 1; }
+  .fecha { text-align: center; font-size: 15px; margin-top: 6px; opacity: .9; }
+  .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px 12px; margin-top: auto; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; text-align: center; }
+  .app i { width: 62px; height: 62px; border-radius: 15px; display: block; background: rgba(255, 255, 255, .28); }
+  .app img { width: 62px; height: 62px; border-radius: 15px; display: block; box-shadow: 0 0 0 3px var(--cian); }
+  .app.nueva span { font-weight: 700; }
+  .dock { margin-top: 28px; padding: 14px; border-radius: 30px; background: rgba(255, 255, 255, .18); display: grid; grid-template-columns: repeat(4, 1fr); justify-items: center; }
+  .dock i { width: 62px; height: 62px; border-radius: 15px; background: rgba(255, 255, 255, .35); display: block; }
+  .carga { min-height: 100vh; background: var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  .carga img { width: 120px; height: 120px; }
+  .carga b { font-family: var(--font-head); font-weight: 800; font-size: 20px; }
+  .carga span { color: #c4c9f2; font-size: 13px; }
+</style>
+</head>
+<body>
+<main id="vista"></main>
+<script>
+  const vista = new URLSearchParams(location.search).get('vista') || 'inicio'
+  const apps = ['Mail', 'Calendario', 'Fotos', 'Cámara', 'Mapas', 'Clima', 'Notas', 'Discord']
+  document.getElementById('vista').innerHTML = vista === 'carga'
+    ? `<div class="carga"><img src="icon.svg" alt=""><b>Universidad Austral</b><span>Facultad de Ingeniería</span></div>`
+    : `<div class="inicio">
+        <div class="reloj">9:41</div><div class="fecha">martes 10 de noviembre</div>
+        <div class="apps">
+          ${apps.map((a) => `<div class="app"><i></i><span>${a}</span></div>`).join('')}
+          <div class="app nueva"><img src="icon.svg" alt=""><span>Austral</span></div>
+        </div>
+        <div class="dock"><i></i><i></i><i></i><i></i></div>
+      </div>`
+</script>
+</body>
+</html>

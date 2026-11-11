@@ -1,0 +1,15 @@
+{
+  "name": "Universidad Austral · HackAI",
+  "short_name": "Austral",
+  "description": "Qué te toca, tus materias y los avisos de la cátedra, en un solo lugar.",
+  "lang": "es-AR",
+  "start_url": "m-hoy.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1150",
+  "theme_color": "#0b1150",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
