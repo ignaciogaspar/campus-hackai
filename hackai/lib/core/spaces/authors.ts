@@ -3,7 +3,7 @@
    misma persona. Si Personas no la encuentra o no responde, el mensaje se
    muestra igual, con «Persona sin datos». */
 import type { People, PersonId } from '@/lib/core/people'
-import type { Author, MaterialItem, StoredMaterial, StoredMessage } from '.'
+import type { Author, MaterialItem, StoredMaterial, StoredMessage } from '@/lib/core/spaces'
 
 export type Authors = {
   ofMessage(message: StoredMessage): Promise<Author>

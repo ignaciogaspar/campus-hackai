@@ -2,9 +2,9 @@
    guarda: sale de las comisiones que da Cursada, así que quien se inscribe ya
    está adentro. Todo acá es puro salvo `membershipOf`, que lee Cursada. */
 import type { PersonId, Role } from '@/lib/core/people'
+import type { AccessError, SpaceSection, SpaceViewer, StoredChannel, StoredSpace } from '@/lib/core/spaces'
 import type { MySection, Studies } from '@/lib/core/studies'
 import { fail, ok, type Result } from '@/lib/result'
-import type { AccessError, SpaceSection, SpaceViewer, StoredChannel, StoredSpace } from '.'
 
 /** Las comisiones de una persona en una materia y facultad, y con qué lectura de Cursada salieron. */
 export type Membership = {
@@ -73,13 +73,16 @@ export function hasSection(member: Membership, sectionId: string): boolean {
   return member.sections.some((s) => s.sectionId === sectionId)
 }
 
-/** Docente de alguna comisión del espacio: crea canales y sube y organiza el material. */
+/** Docente de una comisión actual del espacio: crea canales de la materia y
+    sube y organiza el material. Quien la dictó en un cuatrimestre que ya
+    terminó sigue viendo el espacio, pero no lo gestiona. */
 export function canManage(member: Membership): boolean {
-  return member.role === 'profesor'
+  return member.role === 'profesor' && member.sections.some((s) => s.current)
 }
 
+/** Docente de esa comisión, actual o archivada: escribe en sus `#avisos` y resuelve sus consultas. */
 export function teachesSection(member: Membership, sectionId: string): boolean {
-  return canManage(member) && hasSection(member, sectionId)
+  return member.role === 'profesor' && hasSection(member, sectionId)
 }
 
 /** Los de la materia los ven todos; los de una comisión, quienes la tienen; los directos, sus dos personas. */

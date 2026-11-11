@@ -17,7 +17,13 @@ import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import type { SpacesStore, StoredChannel, StoredMaterial, StoredMessage, StoredSpace } from '@/lib/core/spaces'
 import type { Result } from '@/lib/result'
-import { createFakePostgrest, type FakeRow, invalidUuid, isUuid, PostgrestError } from './fake-postgrest'
+import {
+  createFakePostgrest,
+  type FakeRow,
+  invalidUuid,
+  isUuid,
+  PostgrestError
+} from '@/tests/contracts/fake-postgrest'
 
 /** El valor de un Result que tiene que haber salido bien. */
 function value<T>(result: Result<T, string>): T {

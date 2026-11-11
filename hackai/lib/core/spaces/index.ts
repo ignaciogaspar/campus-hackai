@@ -16,13 +16,13 @@
    Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de
    archivos y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
+import { createSpacesModule } from '@/lib/core/spaces/module'
 import type { Studies } from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { ExternalChannelPort } from '@/lib/ports/external-channel'
-import type { FilesPort } from '@/lib/ports/files'
+import type { FilesError, FilesPort } from '@/lib/ports/files'
 import type { ExternalFailure, NotImplemented, Result } from '@/lib/result'
-import { createSpacesModule } from './module'
 
 export type SpaceId = string
 export type ChannelId = string
@@ -193,7 +193,6 @@ export type UnreadItem = {
 
 /** Por qué una persona no puede entrar: no existe, no es de la materia o Cursada no respondió. */
 export type AccessError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
-type FilesError = 'demasiado-grande' | ExternalFailure
 
 export type Spaces = {
   /** Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos y el material.

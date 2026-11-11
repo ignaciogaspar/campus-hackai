@@ -1,8 +1,9 @@
 /* Los canales de un espacio: los que se crean por defecto, en qué orden los ve
    cada persona y cómo se muestran. Sin acceso al almacén salvo `ensureChannels`. */
+
+import type { Channel, NewChannel, SpacesStore, SpacesStoreError, StoredChannel, StoredSpace } from '@/lib/core/spaces'
+import { canResolve, type Membership, postRefusal, sees } from '@/lib/core/spaces/access'
 import { fail, type Result } from '@/lib/result'
-import type { Channel, NewChannel, SpacesStore, SpacesStoreError, StoredChannel, StoredSpace } from '.'
-import { canResolve, type Membership, postRefusal, sees } from './access'
 
 type NewStoredChannel = Omit<StoredChannel, 'id'>
 

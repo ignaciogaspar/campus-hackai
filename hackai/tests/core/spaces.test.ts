@@ -217,6 +217,32 @@ test('una materia archivada se sigue abriendo', async () => {
   assert.ok(asked.ok)
 })
 
+test('quien dictó la materia en un cuatrimestre que terminó la ve y la atiende, pero no la gestiona', async () => {
+  const { spaces } = build()
+
+  // Mariana Ledesma dictó Álgebra en el 1er cuatrimestre: su comisión está archivada.
+  const opened = await spaces.open('p-mledesma', 'aga')
+  assert.ok(opened.ok)
+  assert.equal(opened.value.viewer.canManage, false)
+
+  const space = opened.value.space.id
+  const pdf = { name: 'final.pdf', contentType: 'application/pdf', bytes: new Uint8Array([1]) }
+  assert.deepEqual(await spaces.addMaterial('p-mledesma', space, pdf), { ok: false, error: 'solo-docentes' })
+  assert.deepEqual(await spaces.organizeMaterial('p-mledesma', space, 'semana'), { ok: false, error: 'solo-docentes' })
+  assert.deepEqual(await spaces.createChannel('p-mledesma', space, { name: 'finales', scope: { kind: 'materia' } }), {
+    ok: false,
+    error: 'solo-docentes'
+  })
+
+  // Sigue siendo la docente de su comisión: publica avisos y resuelve consultas.
+  const avisos = named(opened.value, 'avisos', 'A')
+  assert.equal(avisos.canPost, true)
+  assert.equal((await spaces.post('p-mledesma', avisos.id, { text: 'La mesa de diciembre es el 9.' })).ok, true)
+  const asked = await spaces.post('p-vfunes', named(opened.value, 'consultas', 'A').id, { text: '¿Entra todo?' })
+  assert.ok(asked.ok)
+  assert.equal((await spaces.resolve('p-mledesma', asked.value.id)).ok, true)
+})
+
 test('si el SIU no responde, la membresía sale de la última lectura y se marca desactualizada', async () => {
   const { spaces, siuState } = build()
 

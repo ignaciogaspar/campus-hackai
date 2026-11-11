@@ -3,7 +3,6 @@
    canal, los mensajes; en el de material, los archivos del espacio. Lo propio
    nunca está sin leer. */
 import type { PersonId } from '@/lib/core/people'
-import { ok, type Result } from '@/lib/result'
 import type {
   ChannelId,
   Origin,
@@ -13,7 +12,8 @@ import type {
   StoredChannel,
   StoredMaterial,
   StoredMessage
-} from '.'
+} from '@/lib/core/spaces'
+import { ok, type Result } from '@/lib/result'
 
 /** Lo que hace falta para saber qué no leyó una persona en unos canales. */
 export type Snapshot = {

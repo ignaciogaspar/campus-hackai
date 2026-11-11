@@ -2,12 +2,12 @@
    navegación. Solo cuentan las comisiones actuales y los espacios que ya
    existen: pedir novedades no crea espacios. */
 import type { PersonId } from '@/lib/core/people'
+import type { SpacesStore, StoredChannel, StoredSpace, UnreadItem } from '@/lib/core/spaces'
+import { type Membership, membershipFrom, sectionsOf } from '@/lib/core/spaces/access'
+import { visibleChannels } from '@/lib/core/spaces/channels'
+import { loadSnapshot, type Snapshot, unreadIn } from '@/lib/core/spaces/reading'
 import type { MySection, Studies } from '@/lib/core/studies'
 import { type ExternalFailure, ok, type Result } from '@/lib/result'
-import type { SpacesStore, StoredChannel, StoredSpace, UnreadItem } from '.'
-import { type Membership, membershipFrom, sectionsOf } from './access'
-import { visibleChannels } from './channels'
-import { loadSnapshot, type Snapshot, unreadIn } from './reading'
 
 /** Una membresía por materia, con la facultad de su primera comisión actual. */
 function membershipsOf(personId: PersonId, sections: MySection[]): Membership[] {

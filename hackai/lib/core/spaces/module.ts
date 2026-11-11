@@ -8,7 +8,6 @@
    nuevo, `post` no envía al canal externo vinculado y `link` y `syncAll` no
    están (#15 y #16). */
 import type { PersonId } from '@/lib/core/people'
-import { fail, notImplemented, ok, type Result } from '@/lib/result'
 import type {
   AccessError,
   Attachment,
@@ -29,7 +28,7 @@ import type {
   StoredChannel,
   StoredMessage,
   StoredSpace
-} from '.'
+} from '@/lib/core/spaces'
 import {
   canManage,
   canResolve,
@@ -40,13 +39,14 @@ import {
   sees,
   teachesSection,
   viewerOf
-} from './access'
-import { authorsFrom } from './authors'
-import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from './channels'
-import { materialItems, materialView } from './material'
-import { threadsOf, toMessage } from './messages'
-import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from './reading'
-import { unreadFor } from './unread'
+} from '@/lib/core/spaces/access'
+import { authorsFrom } from '@/lib/core/spaces/authors'
+import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
+import { materialItems, materialView } from '@/lib/core/spaces/material'
+import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
+import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from '@/lib/core/spaces/reading'
+import { unreadFor } from '@/lib/core/spaces/unread'
+import { fail, notImplemented, ok, type Result } from '@/lib/result'
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
 type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }

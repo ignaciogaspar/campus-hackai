@@ -2,8 +2,8 @@
    de primer nivel con sus respuestas. Una respuesta a una respuesta se guarda
    colgada de la raíz, así que los hilos tienen un solo nivel. */
 
-import type { Message, StoredMessage, Thread } from '.'
-import type { Authors } from './authors'
+import type { Message, StoredMessage, Thread } from '@/lib/core/spaces'
+import type { Authors } from '@/lib/core/spaces/authors'
 
 export async function toMessage(stored: StoredMessage, authors: Authors, unread: boolean): Promise<Message> {
   return {

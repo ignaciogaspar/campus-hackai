@@ -5,9 +5,9 @@
    Aires y la más nueva primero; o todo junto. Adentro de cada sección, lo más
    nuevo primero. */
 import type { PersonId } from '@/lib/core/people'
-import type { MaterialItem, MaterialLayout, MaterialSection, MaterialView, StoredMaterial } from '.'
-import type { Authors } from './authors'
-import { isUnreadMaterial } from './reading'
+import type { MaterialItem, MaterialLayout, MaterialSection, MaterialView, StoredMaterial } from '@/lib/core/spaces'
+import type { Authors } from '@/lib/core/spaces/authors'
+import { isUnreadMaterial } from '@/lib/core/spaces/reading'
 
 const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 const MONTHS = [
