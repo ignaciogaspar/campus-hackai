@@ -33,6 +33,12 @@ function fallibleSiu(siu: SiuPort) {
   return { port, state }
 }
 
+// Archivos devuelve la URL de la ruta que los entrega: /archivos/<id>/<nombre>.
+function assertFileUrl(url: string | undefined, name: string) {
+  assert.match(url ?? '', /^\/archivos\/[0-9a-f-]{36}\/[^/]+$/)
+  assert.ok(url?.endsWith(`/${encodeURIComponent(name)}`))
+}
+
 function build(data: SyntheticData = syntheticData) {
   let now = data.now
   // Reloj que se puede mover, para subir material en distintas semanas.
@@ -366,9 +372,11 @@ test('los adjuntos se guardan con Archivos y si uno falla no se publica nada', a
     attachments: [{ name: 'ejercicio.png', contentType: 'image/png', bytes: new Uint8Array([1, 2, 3]) }]
   })
   assert.ok(posted.ok)
-  assert.deepEqual(posted.value.attachments, [
-    { name: 'ejercicio.png', contentType: 'image/png', size: 3, url: 'data:image/png;base64,AQID' }
-  ])
+  assert.deepEqual(
+    posted.value.attachments.map((attachment) => ({ ...attachment, url: undefined })),
+    [{ name: 'ejercicio.png', contentType: 'image/png', size: 3, url: undefined }]
+  )
+  assertFileUrl(posted.value.attachments[0]?.url, 'ejercicio.png')
 
   const tooBig = await spaces.post('p-taguirre', ids.consultasA, {
     text: 'Con todo',
@@ -583,11 +591,11 @@ test('el docente sube material, que se guarda con Archivos y aparece con su orig
   const added = await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf', '  Unidad 2 '))
   assert.ok(added.ok)
   assert.deepEqual(
-    { ...added.value, id: undefined },
+    { ...added.value, id: undefined, url: undefined },
     {
       id: undefined,
       name: 'Guía 4.pdf',
-      url: 'data:application/pdf;base64,AQI=',
+      url: undefined,
       contentType: 'application/pdf',
       size: 2,
       origin: 'hackai',
@@ -597,6 +605,7 @@ test('el docente sube material, que se guarda con Archivos y aparece con su orig
       unread: false
     }
   )
+  assertFileUrl(added.value.url, 'Guía 4.pdf')
 
   // Lo ven las dos comisiones; el docente de la B también sube.
   const fromB = await spaces.addMaterial('p-gferreyra', ids.spaceId, pdf('Resumen.pdf'))
