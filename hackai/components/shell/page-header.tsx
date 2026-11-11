@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Brand } from '@/components/shell/brand'
+import { InstallButton } from '@/components/shell/install-button'
 
 type Props = {
   title: string
@@ -20,7 +21,7 @@ type Props = {
 export function PageHeader({ title, kicker, school, backHref, actions, children }: Props) {
   return (
     <header className='rounded-b-[28px] bg-navy text-white'>
-      <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-3 pb-6 lg:px-10 lg:pt-5'>
+      <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>
         <div className='flex min-h-10 items-center lg:hidden'>
           {backHref ? (
             <Link
@@ -34,7 +35,10 @@ export function PageHeader({ title, kicker, school, backHref, actions, children 
             <Brand school={school} />
           )}
         </div>
-        {actions && <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>{actions}</div>}
+        <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
+          <InstallButton />
+          {actions}
+        </div>
         <div className='col-start-1 mt-2 lg:mt-0'>
           {kicker && <p className='text-[0.8125rem] text-white/75'>{kicker}</p>}
           <h1 className='mt-0.5 text-3xl leading-tight font-extrabold text-balance lg:text-[1.75rem]'>{title}</h1>
