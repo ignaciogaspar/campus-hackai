@@ -1,15 +1,16 @@
 /* Mis materias: las del período lectivo actual arriba y las archivadas aparte,
    leídas del SIU y de Moodle por Cursada, con el enlace al aula y las tareas
-   con fecha. Sirve al alumno y al docente. Sin reglas de negocio: qué es
-   actual, qué se archiva, qué facultad ve cada uno y qué tarea venció lo
-   decide Cursada. */
+   con fecha. Sirve al alumno y al docente. Si el SIU o Moodle no responden,
+   muestra lo último que leyó Cursada con el aviso de desactualizado y su hora.
+   Sin reglas de negocio: qué es actual, qué se archiva, qué facultad ve cada
+   uno, qué tarea venció y cuándo algo está desactualizado lo decide Cursada. */
 import { BookOpen, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { readTime } from '@/components/dates'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
-import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
+import { StaleBanner } from '@/components/ui/stale-banner'
+import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError } from '@/lib/core/studies'
@@ -47,12 +48,7 @@ export default async function MateriasPage() {
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus materias.'}</ErrorNotice>
         ) : (
           <>
-            {result.value.stale && (
-              <StaleNotice>
-                El SIU o el Campus Virtual no responden. Te mostramos lo que trajimos el {readTime(result.value.readAt)}
-                : puede estar desactualizado.
-              </StaleNotice>
-            )}
+            {result.value.stale && <StaleBanner since={result.value.readAt} />}
 
             <section aria-labelledby='actuales' className='flex flex-col gap-3'>
               <h2 id='actuales' className='text-sm font-semibold text-muted-foreground'>

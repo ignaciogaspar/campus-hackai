@@ -6,44 +6,13 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu, type MemorySiuOptions } from '@/lib/adapters/memoria/siu'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
-import { createStudies, type MySubject } from '@/lib/core/studies'
+import { createStudies, type MySubject, type OpenEnrollment, type UpcomingItem } from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
-import type { ClockPort } from '@/lib/ports/clock'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
+import { fallible, movableClock } from '@/tests/core/helpers'
 
 const NOW = syntheticData.now
-
-/** Reloj que se puede adelantar, para ver la hora de cada lectura. */
-function movableClock(start: string) {
-  let current = new Date(start)
-  const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(current) }
-  return {
-    clock,
-    advance: (minutes: number) => {
-      current = new Date(current.getTime() + minutes * 60_000)
-    }
-  }
-}
-
-/** Puerto en memoria que se puede «caer»: con `down`, toda llamada que devuelve una promesa devuelve `falla-externa`. */
-function fallible<P extends object>(port: P) {
-  const state = { down: false }
-  const wrapped = new Proxy(port, {
-    get(target, key) {
-      const value = target[key as keyof P]
-      if (typeof value !== 'function') return value
-      return (...args: unknown[]) => {
-        if (key === 'courseUrl' || key === 'selfServiceUrl')
-          return (value as (...a: unknown[]) => unknown).apply(target, args)
-        return state.down
-          ? Promise.resolve(fail('falla-externa'))
-          : (value as (...a: unknown[]) => unknown).apply(target, args)
-      }
-    }
-  })
-  return { port: wrapped, state }
-}
 
 type BuildOptions = {
   siu?: MemorySiuOptions
@@ -116,7 +85,9 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
         url: `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`
       }
     ],
-    assignments: [{ name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }]
+    assignments: [
+      { id: 't-3', name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }
+    ]
   })
 })
 
@@ -308,8 +279,8 @@ test('las tareas con fecha van ordenadas por fecha, con las vencidas marcadas se
   const [am1, pr1] = result.value.data.current
   assert.deepEqual(tasks(am1), [['Guía 3 resuelta', false]])
   assert.deepEqual(pr1.assignments, [
-    { name: 'Entrega del TP integrador', dueDate: '2026-10-17T02:59:00.000Z', source: 'moodle', past: true },
-    { name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false }
+    { id: 't-1', name: 'Entrega del TP integrador', dueDate: '2026-10-17T02:59:00.000Z', source: 'moodle', past: true },
+    { id: 't-2', name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false }
   ])
 })
 
@@ -451,6 +422,293 @@ test('con Moodle caído y sin nada leído antes devuelve «falla externa»', asy
   assert.deepEqual(await studies.subjectsOf('p-taguirre'), { ok: false, error: 'falla-externa' })
   // Las comisiones no dependen de Moodle.
   assert.equal((await studies.sectionsOf('p-taguirre')).ok, true)
+})
+
+// Próximos: parciales y finales de todas sus materias, solo del SIU (las entregas de Moodle las suma Hoy).
+
+const dated = (items: UpcomingItem[]) => items.map((i) => [i.date, i.subjectCode, i.name, i.kind, i.source, i.past])
+
+test('los parciales y finales de todas sus materias salen juntos y ordenados por fecha, con los pasados marcados', async () => {
+  const { studies } = build()
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.equal(result.value.readAt, NOW)
+  assert.deepEqual(dated(result.value.data), [
+    ['2026-09-21T11:00:00.000Z', 'AM1', 'Primer parcial', 'parcial', 'siu', true],
+    ['2026-10-16T12:00:00.000Z', 'PR1', 'TP integrador', 'tp', 'siu', true],
+    ['2026-11-16T11:00:00.000Z', 'AM1', 'Segundo parcial', 'parcial', 'siu', false],
+    ['2026-11-20T12:00:00.000Z', 'PR1', 'Parcial', 'parcial', 'siu', false],
+    ['2026-11-25T11:00:00.000Z', 'AM1', 'Recuperatorio', 'recuperatorio', 'siu', false],
+    ['2026-12-09T12:00:00.000Z', 'AGA', 'Final', 'final', 'siu', false]
+  ])
+  assert.deepEqual(result.value.data.at(-1), {
+    id: 'mesa:mesa-aga-fi-dic',
+    kind: 'final',
+    source: 'siu',
+    subjectId: 'aga',
+    subjectCode: 'AGA',
+    subjectName: 'Álgebra y Geometría Analítica',
+    name: 'Final',
+    date: '2026-12-09T12:00:00.000Z',
+    past: false
+  })
+})
+
+test('los finales son los de las mesas a las que está inscripto: ni una baja ni las mesas de otros', async () => {
+  const data = structuredClone(syntheticData)
+  data.siu.examEnrollments[0].status = 'baja'
+  data.siu.examEnrollments.push({
+    id: 'ie-extra',
+    transactionNumber: 'T-299999',
+    personId: '30101',
+    examBoardId: 'mesa-am1-fi-dic',
+    date: data.siu.examEnrollments[0].date,
+    status: 'aceptada'
+  })
+  const { studies } = build(data)
+
+  const tomas = await studies.upcoming('p-taguirre')
+  const lucia = await studies.upcoming('p-lbenitez')
+
+  assert.ok(tomas.ok)
+  assert.deepEqual(
+    tomas.value.data.filter((i) => i.kind === 'final').map((i) => [i.subjectCode, i.date]),
+    [['AM1', '2026-12-11T12:00:00.000Z']]
+  )
+  assert.ok(lucia.ok)
+  assert.deepEqual(
+    lucia.value.data.filter((i) => i.kind === 'final'),
+    []
+  )
+})
+
+test('si el SIU no tiene cronograma, salen solo los finales, sin error', async () => {
+  const { studies } = build(syntheticData, {}, { siu: { capabilities: { hasAssessmentSchedule: false } } })
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.deepEqual(
+    result.value.data.map((i) => [i.subjectCode, i.name]),
+    [['AGA', 'Final']]
+  )
+})
+
+test('un parcial pasa a «ya pasó» cuando el reloj llega a su fecha', async () => {
+  const { studies, advance } = build()
+
+  advance(6 * 24 * 60)
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  const segundo = result.value.data.find((i) => i.subjectCode === 'AM1' && i.name === 'Segundo parcial')
+  assert.equal(segundo?.past, true)
+  assert.equal(result.value.data.find((i) => i.name === 'Parcial')?.past, false)
+})
+
+test('los próximos con el SIU caído devuelven lo último que leyó, marcado como desactualizado', async () => {
+  const { studies, siuState, advance } = build()
+  const first = await studies.upcoming('p-taguirre')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+  assert.deepEqual(await studies.upcoming('p-taguirre'), {
+    ok: true,
+    value: { data: first.value.data, readAt: NOW, stale: true }
+  })
+})
+
+test('los próximos no dependen de Moodle: con el aula caída y nada leído antes salen igual, al día', async () => {
+  const { studies, classroomState } = build()
+  classroomState.down = true
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.equal(result.value.data.length, 6)
+  assert.equal(
+    result.value.data.every((i) => i.source === 'siu'),
+    true
+  )
+})
+
+test('los finales que ya se tomaron en su período actual salen marcados como pasados; los de antes, no', async () => {
+  const data = structuredClone(syntheticData)
+  const aga = data.siu.examBoards.find((b) => b.id === 'mesa-aga-fi-dic')!
+  data.siu.examBoards.push(
+    { ...aga, id: 'mesa-aga-fi-sep', date: '2026-09-21T12:00:00.000Z' },
+    { ...aga, id: 'mesa-aga-fi-jul', date: '2026-07-20T12:00:00.000Z' }
+  )
+  const enrollment = data.siu.examEnrollments.find((e) => e.examBoardId === 'mesa-aga-fi-dic')!
+  data.siu.examEnrollments.push(
+    { ...enrollment, id: 'ie-sep', examBoardId: 'mesa-aga-fi-sep' },
+    { ...enrollment, id: 'ie-jul', examBoardId: 'mesa-aga-fi-jul' }
+  )
+  const { studies } = build(data)
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.filter((i) => i.kind === 'final').map((i) => [i.id, i.past]),
+    [
+      ['mesa:mesa-aga-fi-sep', true],
+      ['mesa:mesa-aga-fi-dic', false]
+    ]
+  )
+})
+
+test('los próximos sin nada leído antes y con el SIU caído devuelven «falla externa»; de alguien que no existe, «persona desconocida»', async () => {
+  const { studies, siuState } = build()
+
+  assert.deepEqual(await studies.upcoming('p-nadie'), { ok: false, error: 'persona-desconocida' })
+  siuState.down = true
+  assert.deepEqual(await studies.upcoming('p-taguirre'), { ok: false, error: 'falla-externa' })
+})
+
+// Inscripciones abiertas que le sirven: hoy (10/11) está abierta la de verano y la de las mesas de diciembre.
+
+const openings = (items: OpenEnrollment[]) => items.map((i) => [i.kind, i.subjectId, i.closesAt])
+
+test('ve las mesas de lo que tiene regular o está cursando y las comisiones de verano de lo que le falta cursar, las que cierran antes primero', async () => {
+  const { studies } = build()
+
+  // Valentina tiene Álgebra regular, cursa Análisis I y no cursó Física I ni Programación I.
+  const result = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.equal(result.value.readAt, NOW)
+  assert.deepEqual(openings(result.value.data), [
+    ['examen', 'aga', '2026-12-05T02:59:00.000Z'],
+    ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
+    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z']
+  ])
+  assert.deepEqual(result.value.data[3], {
+    kind: 'cursada',
+    subjectId: 'pr1',
+    subjectName: 'Programación I',
+    opensAt: '2026-11-02T03:00:00.000Z',
+    closesAt: '2026-12-19T02:59:00.000Z',
+    needsRegularity: false
+  })
+})
+
+test('la mesa de una materia que está cursando avisa que le falta la regularidad; la de una regular, no', async () => {
+  const { studies } = build()
+
+  // Valentina tiene Álgebra regular y cursa Análisis I.
+  const result = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.filter((i) => i.kind === 'examen').map((i) => [i.subjectId, i.needsRegularity]),
+    [
+      ['aga', false],
+      ['am1', true]
+    ]
+  )
+})
+
+test('no ve la mesa a la que ya se inscribió ni el verano de lo que está cursando', async () => {
+  const { studies } = build()
+
+  // Tomás ya está en la mesa de Álgebra y cursa Análisis I y Programación I.
+  const result = await studies.openEnrollments('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(openings(result.value.data), [
+    ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
+    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z']
+  ])
+})
+
+test('una materia sin lugar en sus comisiones igual aparece: cuántos lugares quedan lo dice la oferta', async () => {
+  const { studies } = build()
+
+  // La única comisión de Física I de verano está llena.
+  const result = await studies.openEnrollments('p-vfunes')
+  const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'fi1' })
+
+  assert.ok(result.ok && offer.ok)
+  assert.equal(
+    result.value.data.some((i) => i.kind === 'cursada' && i.subjectId === 'fi1'),
+    true
+  )
+  assert.deepEqual(
+    offer.value.map((o) => o.spotsLeft),
+    [0]
+  )
+})
+
+test('no ve la mesa de lo que ya aprobó ni la oferta de otra facultad', async () => {
+  const { studies } = build()
+
+  // Nicolás (Ciencias Empresariales) promocionó Introducción a la Economía y cursa Análisis I y Contabilidad I.
+  const nicolas = await studies.openEnrollments('p-nherrera')
+  // Federico cursa solo Contabilidad I: le sirve Análisis I de verano.
+  const federico = await studies.openEnrollments('p-fjuarez')
+
+  assert.ok(nicolas.ok && federico.ok)
+  assert.deepEqual(openings(nicolas.value.data), [['examen', 'co1', '2026-12-05T02:59:00.000Z']])
+  assert.deepEqual(
+    federico.value.data.map((i) => [i.kind, i.subjectId]),
+    [
+      ['examen', 'co1'],
+      ['cursada', 'am1']
+    ]
+  )
+})
+
+test('cuando cierra la inscripción a las mesas dejan de aparecer, y sin nada abierto la lista sale vacía', async () => {
+  const { studies, advance } = build()
+
+  advance(25 * 24 * 60) // 5/12: cerraron las mesas, sigue abierto el verano.
+  const december = await studies.openEnrollments('p-vfunes')
+  advance(14 * 24 * 60) // 19/12: cerró todo.
+  const later = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(december.ok && later.ok)
+  assert.deepEqual(
+    december.value.data.map((i) => [i.kind, i.subjectId]),
+    [
+      ['cursada', 'fi1'],
+      ['cursada', 'pr1']
+    ]
+  )
+  assert.deepEqual(later.value.data, [])
+})
+
+test('un docente no tiene inscripciones abiertas', async () => {
+  const { studies } = build()
+
+  assert.deepEqual(await studies.openEnrollments('p-mledesma'), {
+    ok: true,
+    value: { data: [], readAt: NOW, stale: false }
+  })
+})
+
+test('las inscripciones abiertas con el SIU caído devuelven lo último que leyó, y de alguien que no existe, «persona desconocida»', async () => {
+  const { studies, siuState, advance } = build()
+  assert.deepEqual(await studies.openEnrollments('p-nadie'), { ok: false, error: 'persona-desconocida' })
+  const first = await studies.openEnrollments('p-vfunes')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+
+  assert.deepEqual(await studies.openEnrollments('p-vfunes'), {
+    ok: true,
+    value: { data: first.value.data, readAt: NOW, stale: true }
+  })
+  assert.deepEqual(await studies.openEnrollments('p-taguirre'), { ok: false, error: 'falla-externa' })
 })
 
 // Notas, historia y constancias
@@ -1113,8 +1371,9 @@ test('si el SIU ya matricula en Moodle, la baja no desmatricula por su cuenta', 
   assert.equal(unenrols, 0)
 })
 
-test('las inscripciones abiertas son las materias de su facultad con un período en inscripción, sin las que ya cursa', async () => {
+test('las inscripciones abiertas a cursada son las materias de su facultad con un período en inscripción, sin las que ya cursa', async () => {
   const { studies } = build()
+  const courses = (items: OpenEnrollment[]) => items.filter((o) => o.kind === 'cursada')
 
   const tomas = await studies.openEnrollments('p-taguirre')
   const martin = await studies.openEnrollments('p-mcabrera')
@@ -1122,22 +1381,23 @@ test('las inscripciones abiertas son las materias de su facultad con un período
 
   assert.ok(tomas.ok && martin.ok && federico.ok)
   assert.equal(tomas.value.stale, false)
-  assert.deepEqual(tomas.value.data, [
+  assert.deepEqual(courses(tomas.value.data), [
     {
       kind: 'cursada',
       subjectId: 'fi1',
       subjectName: 'Física I',
       opensAt: '2026-11-02T03:00:00.000Z',
-      closesAt: '2026-12-19T02:59:00.000Z'
+      closesAt: '2026-12-19T02:59:00.000Z',
+      needsRegularity: false
     }
   ])
   assert.deepEqual(
-    martin.value.data.map((o) => o.subjectId),
+    courses(martin.value.data).map((o) => o.subjectId),
     ['pr1']
   )
   // Federico, de Ciencias Empresariales, no cursa Análisis Matemático I.
   assert.deepEqual(
-    federico.value.data.map((o) => o.subjectId),
+    courses(federico.value.data).map((o) => o.subjectId),
     ['am1']
   )
 })

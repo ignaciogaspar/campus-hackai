@@ -159,7 +159,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     files: ports.files,
     clock
   })
-  const today = createToday({ studies, spaces })
+  const today = createToday({ studies, spaces, clock })
 
   return { adapters, ports, people, studies, spaces, today }
 }
