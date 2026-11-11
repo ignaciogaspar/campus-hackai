@@ -82,6 +82,7 @@ export function createFakeDiscord() {
 
   const notFound = (code: number) => json(404, { message: 'Unknown', code })
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 48 (máximo 15). Se refactoriza después de la demo (#30).
   async function handle(method: string, url: URL, body: unknown): Promise<Response> {
     if (url.hostname === 'cdn.discordapp.com') {
       const file = files.get(url.toString())

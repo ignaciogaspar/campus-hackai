@@ -147,6 +147,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return ok(entry?.meetsConditions ?? false)
     },
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 17 (máximo 15). Se refactoriza después de la demo (#30).
     async enroll(personId, target) {
       if (!capabilities.canEnroll) return fail('no-soportado')
       if (!hasPerson(personId)) return fail('no-encontrado')

@@ -214,6 +214,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   /** Las comisiones de la persona, actuales primero (por inicio del período) y
       archivadas después (la más reciente primero), cada grupo por materia. El
       rol y la facultad salen del SIU, con el id que da Personas. */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 18 (máximo 15). Se refactoriza después de la demo (#30).
   async function sectionsInTermsOf(personId: PersonId): Promise<Result<MySectionsInTerms, ReadError>> {
     const siuId = await people.accountIn(personId, 'siu')
     if (!siuId.ok) return fail(asUnknownPerson(siuId.error))

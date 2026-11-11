@@ -11,6 +11,7 @@
    texto de los mensajes ni el token. */
 import { compose } from '@/lib/composition'
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 23 (máximo 15). Se refactoriza después de la demo (#30).
 async function main() {
   const [channelId, flag] = process.argv.slice(2)
   if (!channelId || !/^\d+$/.test(channelId)) {

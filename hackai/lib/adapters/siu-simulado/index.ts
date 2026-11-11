@@ -375,6 +375,7 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
       return ok(row.value?.meets_conditions ?? false)
     },
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 21 (máximo 15). Se refactoriza después de la demo (#30).
     async enroll(personId, target) {
       const exists = await requirePerson(personId)
       if (!exists.ok) return exists

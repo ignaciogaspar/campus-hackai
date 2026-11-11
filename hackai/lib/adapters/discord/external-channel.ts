@@ -123,6 +123,7 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
   /** Raíz de la cadena de cada mensaje ya visto (`null` si él mismo es raíz). */
   const rootOf = new Map<string, string | null>()
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 19 (máximo 15). Se refactoriza después de la demo (#30).
   async function send(url: string, init: RequestInit): Promise<HttpOutcome> {
     for (let attempt = 0; ; attempt++) {
       let response: Response
@@ -221,6 +222,7 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
   return {
     capabilities: { delivery: 'cursor', threads: true },
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 39 (máximo 15). Se refactoriza después de la demo (#30).
     read: (channelId, cursor) => guard(async () => {
       const guild = await channelGuild(channelId)
       if (!guild.ok) return guild

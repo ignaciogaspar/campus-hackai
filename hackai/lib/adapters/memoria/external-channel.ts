@@ -14,6 +14,7 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
   const files = { ...data.discord.files }
   let lastId = channels
     .flatMap((c) => c.messages.map((m) => BigInt(m.id)))
+    // biome-ignore lint/complexity/useMathMinMax: son BigInt, y Math.max no los acepta.
     .reduce((max, id) => (id > max ? id : max), 1310000000000000000n)
 
   const copy = <T>(value: T): T => structuredClone(value)

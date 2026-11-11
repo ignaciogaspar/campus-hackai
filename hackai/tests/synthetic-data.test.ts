@@ -49,6 +49,7 @@ test('un alumno tiene materias de un cuatrimestre anterior', () => {
   assert.ok(withPrevious.length >= 1)
 })
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 23 (máximo 15). Se refactoriza después de la demo (#30).
 test('todas las referencias del set apuntan a algo que existe', () => {
   const personIds = new Set(siu.persons.map((p) => p.id))
   const sectionIds = new Set(siu.sections.map((s) => s.id))
