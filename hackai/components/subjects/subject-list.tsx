@@ -1,9 +1,11 @@
 /* Lista de materias de la pantalla Mis materias: las actuales arriba y las
-   archivadas plegadas aparte. Cada una con el enlace a su aula de Moodle y, las
-   actuales, sus tareas con fecha. Solo muestra lo que le da Cursada. */
-import { ExternalLink } from 'lucide-react'
+   archivadas plegadas aparte. Cada una lleva a su espacio, con el enlace a su
+   aula de Moodle y, las actuales, sus tareas con fecha. Solo muestra lo que le
+   da Cursada. */
+import { ChevronRight, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import type { MyAssignment, MyClassroom, MySubject } from '@/lib/core/studies'
+import type { MyAssignment, MySubject } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 function dueTime(dueDate: string): string {
@@ -17,10 +19,19 @@ function dueTime(dueDate: string): string {
   })
 }
 
-function ClassroomLinks({ classrooms }: { classrooms: MyClassroom[] }) {
-  if (!classrooms.length) return null
+/** El espacio de la materia como acción principal y, al lado, el aula de Moodle. */
+function SubjectActions({ subject }: { subject: MySubject }) {
+  const { subjectId, classrooms } = subject
   return (
-    <div className='mt-3 flex flex-col gap-2'>
+    <div className='mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap'>
+      <Link
+        href={`/materias/${subjectId}`}
+        className={cn(buttonVariants({ size: 'lg' }), 'min-h-11 w-full justify-center font-semibold sm:w-auto')}
+      >
+        Abrir espacio
+        <span className='sr-only'> de {subject.name}</span>
+        <ChevronRight aria-hidden data-icon='inline-end' />
+      </Link>
       {classrooms.map((c) => (
         <a
           key={c.courseId}
@@ -87,7 +98,7 @@ function SubjectCard({ subject, archived = false }: { subject: MySubject; archiv
           Dictás esta comisión
         </p>
       )}
-      <ClassroomLinks classrooms={subject.classrooms} />
+      <SubjectActions subject={subject} />
       <Assignments assignments={subject.assignments} />
     </li>
   )
