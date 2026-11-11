@@ -5,8 +5,11 @@
    último leído o su error y el resto se ve igual. Las novedades sin leer van a
    la campana del encabezado y llegan con Espacios (#12).
 
-   Al docente, por ahora, lo saluda, dice dónde dicta y lo lleva a Mis materias.
-   Sin reglas de negocio: qué se muestra lo deciden Personas y Hoy. */
+   Al docente, por ahora, lo saluda, dice dónde dicta y lo lleva a Mis materias:
+   su Hoy no está diseñado todavía, así que la página elige la vista según el
+   rol de la sesión y al docente no le pide Hoy. Más allá de eso y de sumar los
+   no leídos para la campana, no decide nada: qué hay en cada parte lo dicen
+   Personas y Hoy. */
 import { CalendarDays } from 'lucide-react'
 import type { Metadata } from 'next'
 import { activeProgram, firstName } from '@/components/session/person-text'
@@ -20,7 +23,7 @@ import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { PeopleError, Person } from '@/lib/core/people'
 import type { TodayView } from '@/lib/core/today'
-import { longDay } from '@/lib/dates'
+import { longDay } from '@/lib/format-dates'
 
 export const metadata: Metadata = { title: 'Hoy · Campus HackAI' }
 

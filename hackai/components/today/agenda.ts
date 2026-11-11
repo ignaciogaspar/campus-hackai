@@ -6,11 +6,10 @@ import type { CalendarEvent } from '@/components/ui/calendar-day'
 import type { UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, weekdayIndex } from '@/lib/dates'
 
-/** Días que entran en «Próximas 2 semanas», contando hoy. */
-const WINDOW_DAYS = 14
+/** Las 2 semanas de Hoy, en días: las próximas desde hoy en el celular, y esta semana y la próxima en compu. */
+const TWO_WEEKS = 14
 
-const isSame = (a: UpcomingItem, b: UpcomingItem | null) =>
-  b !== null && a.date === b.date && a.subjectId === b.subjectId && a.name === b.name
+const isSame = (a: UpcomingItem, b: UpcomingItem | null) => a.id === b?.id
 
 export type Agenda = {
   /** Hasta dos semanas desde hoy, sin el próximo parcial (va arriba). */
@@ -24,7 +23,7 @@ export type Agenda = {
 }
 
 export function agendaOf(items: UpcomingItem[], now: string, next: UpcomingItem | null): Agenda {
-  const soonUntil = addDays(dayKey(now), WINDOW_DAYS)
+  const soonUntil = addDays(dayKey(now), TWO_WEEKS - 1)
   const coming = items.filter((i) => !i.past && !isSame(i, next))
   return {
     soon: coming.filter((i) => dayKey(i.date) <= soonUntil),
@@ -49,8 +48,8 @@ export type Calendar = {
 export function calendarOf(items: UpcomingItem[], now: string, next: UpcomingItem | null): Calendar {
   const today = dayKey(now)
   const first = addDays(today, -weekdayIndex(today))
-  const last = addDays(first, 13)
-  const days = Array.from({ length: 14 }, (_, i): CalendarCell => {
+  const last = addDays(first, TWO_WEEKS - 1)
+  const days = Array.from({ length: TWO_WEEKS }, (_, i): CalendarCell => {
     const day = addDays(first, i)
     return {
       day,
@@ -60,9 +59,11 @@ export function calendarOf(items: UpcomingItem[], now: string, next: UpcomingIte
       events: items
         .filter((item) => dayKey(item.date) === day)
         .map((item) => ({
+          id: item.id,
           code: item.subjectCode,
           title: item.name,
           origin: item.source,
+          past: item.past,
           next: isSame(item, next)
         }))
     }

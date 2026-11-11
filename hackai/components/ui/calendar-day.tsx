@@ -1,7 +1,20 @@
 import { ORIGINS, type Origin } from '@/components/ui/origin-badge'
 import { cn } from '@/lib/utils'
 
-export type CalendarEvent = { code: string; title: string; origin: Extract<Origin, 'siu' | 'moodle'>; next?: boolean }
+export type CalendarEvent = {
+  id?: string
+  code: string
+  title: string
+  origin: Extract<Origin, 'siu' | 'moodle'>
+  next?: boolean
+  /** Ya pasó: va atenuado, con borde punteado y «ya pasó» para el lector de pantalla. */
+  past?: boolean
+}
+
+function eventStyle(e: CalendarEvent): string {
+  if (e.past) return 'border border-dashed border-gray-light text-muted-foreground'
+  return e.next ? 'bg-blue text-white' : ORIGINS[e.origin].className
+}
 
 const MAX_VISIBLE = 2
 
@@ -36,17 +49,18 @@ export function CalendarDay({
       </span>
       {events.slice(0, MAX_VISIBLE).map((e) => (
         <span
-          key={e.code + e.title}
-          title={`${e.code} · ${e.title} · ${ORIGINS[e.origin].label}`}
+          key={e.id ?? e.code + e.title}
+          title={`${e.code} · ${e.title}${e.past ? ' · ya pasó' : ''} · ${ORIGINS[e.origin].label}`}
           className={cn(
             'line-clamp-3 rounded-md px-1.5 py-0.5 text-[11px] leading-snug break-words hyphens-auto',
-            e.next ? 'bg-blue text-white' : ORIGINS[e.origin].className
+            eventStyle(e)
           )}
         >
           <b className='block font-extrabold'>{e.code}</b>
           {e.title}
           <span className='sr-only'>
-            , {e.next ? 'próximo, ' : ''}
+            , {e.past ? 'ya pasó, ' : ''}
+            {e.next ? 'próximo, ' : ''}
             {ORIGINS[e.origin].label}
           </span>
         </span>

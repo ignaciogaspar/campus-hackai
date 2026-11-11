@@ -79,6 +79,7 @@ test('el próximo parcial o final es el primero que no pasó, con los días que 
 
   assert.ok(result.ok)
   assert.deepEqual(result.value.next, {
+    id: 'evaluacion:ev-5',
     kind: 'parcial',
     source: 'siu',
     subjectId: 'am1',
@@ -164,21 +165,54 @@ test('si varias lecturas están desactualizadas, la hora es la de la más vieja'
   assert.deepEqual(result.value.unavailable, ['openEnrollments'])
 })
 
-test('con Moodle caído y nada leído antes, las inscripciones abiertas se ven igual', async () => {
+test('con Moodle caído y nada leído antes faltan las materias y sus entregas, pero los parciales, finales e inscripciones se ven igual', async () => {
   const { today, classroomState } = build()
   classroomState.down = true
 
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming'])
+  assert.deepEqual(result.value.unavailable, ['subjects'])
   assert.deepEqual(result.value.subjects, { current: [], archived: [] })
-  assert.deepEqual(result.value.upcoming, [])
+  assert.deepEqual(
+    result.value.upcoming.map((i) => [i.subjectCode, i.name, i.source]),
+    [
+      ['AM1', 'Primer parcial', 'siu'],
+      ['PR1', 'TP integrador', 'siu'],
+      ['AM1', 'Segundo parcial', 'siu'],
+      ['PR1', 'Parcial', 'siu'],
+      ['AM1', 'Recuperatorio', 'siu'],
+      ['AGA', 'Final', 'siu']
+    ]
+  )
+  assert.equal(result.value.next?.name, 'Segundo parcial')
   assert.deepEqual(
     result.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [['examen', 'am1']]
   )
   assert.equal(result.value.staleSince, null)
+})
+
+test('lo desactualizado se mira contra el reloj: lo que ya pasó sale pasado y lo que cerró no sale', async () => {
+  const { today, siuState, advance } = build()
+  const first = await today.today('p-taguirre')
+  assert.ok(first.ok)
+  siuState.down = true
+
+  advance((6 * 24 + 1) * 60) // lunes 16 a las 13:00: el segundo parcial ya se tomó
+  const monday = await today.today('p-taguirre')
+  advance(20 * 24 * 60) // domingo 6/12: cerró la inscripción a las mesas de diciembre
+  const december = await today.today('p-taguirre')
+
+  assert.ok(monday.ok && december.ok)
+  assert.equal(monday.value.staleSince, NOW)
+  assert.equal(monday.value.upcoming.find((i) => i.id === 'evaluacion:ev-5')?.past, true)
+  assert.deepEqual([monday.value.next?.subjectCode, monday.value.next?.name], ['PR1', 'Parcial'])
+  assert.deepEqual(
+    monday.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
+    [['examen', 'am1']]
+  )
+  assert.deepEqual(december.value.openEnrollments, [])
 })
 
 test('con el SIU caído y nada leído antes, Hoy responde igual, con todo marcado como no disponible', async () => {

@@ -71,7 +71,9 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
         url: `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`
       }
     ],
-    assignments: [{ name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }]
+    assignments: [
+      { id: 't-3', name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }
+    ]
   })
 })
 
@@ -263,8 +265,8 @@ test('las tareas con fecha van ordenadas por fecha, con las vencidas marcadas se
   const [am1, pr1] = result.value.data.current
   assert.deepEqual(tasks(am1), [['Guía 3 resuelta', false]])
   assert.deepEqual(pr1.assignments, [
-    { name: 'Entrega del TP integrador', dueDate: '2026-10-17T02:59:00.000Z', source: 'moodle', past: true },
-    { name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false }
+    { id: 't-1', name: 'Entrega del TP integrador', dueDate: '2026-10-17T02:59:00.000Z', source: 'moodle', past: true },
+    { id: 't-2', name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false }
   ])
 })
 
@@ -408,7 +410,7 @@ test('con Moodle caído y sin nada leído antes devuelve «falla externa»', asy
   assert.equal((await studies.sectionsOf('p-taguirre')).ok, true)
 })
 
-// Próximos: parciales y finales de todas sus materias, con las entregas de Moodle como complemento.
+// Próximos: parciales y finales de todas sus materias, solo del SIU (las entregas de Moodle las suma Hoy).
 
 const dated = (items: UpcomingItem[]) => items.map((i) => [i.date, i.subjectCode, i.name, i.kind, i.source, i.past])
 
@@ -423,15 +425,13 @@ test('los parciales y finales de todas sus materias salen juntos y ordenados por
   assert.deepEqual(dated(result.value.data), [
     ['2026-09-21T11:00:00.000Z', 'AM1', 'Primer parcial', 'parcial', 'siu', true],
     ['2026-10-16T12:00:00.000Z', 'PR1', 'TP integrador', 'tp', 'siu', true],
-    ['2026-10-17T02:59:00.000Z', 'PR1', 'Entrega del TP integrador', 'entrega', 'moodle', true],
-    ['2026-11-14T02:59:00.000Z', 'AM1', 'Guía 3 resuelta', 'entrega', 'moodle', false],
     ['2026-11-16T11:00:00.000Z', 'AM1', 'Segundo parcial', 'parcial', 'siu', false],
     ['2026-11-20T12:00:00.000Z', 'PR1', 'Parcial', 'parcial', 'siu', false],
-    ['2026-11-22T02:59:00.000Z', 'PR1', 'Ejercicios de recursión', 'entrega', 'moodle', false],
     ['2026-11-25T11:00:00.000Z', 'AM1', 'Recuperatorio', 'recuperatorio', 'siu', false],
     ['2026-12-09T12:00:00.000Z', 'AGA', 'Final', 'final', 'siu', false]
   ])
   assert.deepEqual(result.value.data.at(-1), {
+    id: 'mesa:mesa-aga-fi-dic',
     kind: 'final',
     source: 'siu',
     subjectId: 'aga',
@@ -471,7 +471,7 @@ test('los finales son los de las mesas a las que está inscripto: ni una baja ni
   )
 })
 
-test('si el SIU no tiene cronograma, salen los finales y las entregas, sin error', async () => {
+test('si el SIU no tiene cronograma, salen solo los finales, sin error', async () => {
   const { studies } = build(syntheticData, {}, { capabilities: { hasAssessmentSchedule: false } })
 
   const result = await studies.upcoming('p-taguirre')
@@ -480,12 +480,7 @@ test('si el SIU no tiene cronograma, salen los finales y las entregas, sin error
   assert.equal(result.value.stale, false)
   assert.deepEqual(
     result.value.data.map((i) => [i.subjectCode, i.name]),
-    [
-      ['PR1', 'Entrega del TP integrador'],
-      ['AM1', 'Guía 3 resuelta'],
-      ['PR1', 'Ejercicios de recursión'],
-      ['AGA', 'Final']
-    ]
+    [['AGA', 'Final']]
   )
 })
 
@@ -501,8 +496,8 @@ test('un parcial pasa a «ya pasó» cuando el reloj llega a su fecha', async ()
   assert.equal(result.value.data.find((i) => i.name === 'Parcial')?.past, false)
 })
 
-test('los próximos con el SIU o Moodle caídos devuelven lo último que leyó, marcado como desactualizado', async () => {
-  const { studies, siuState, classroomState, advance } = build()
+test('los próximos con el SIU caído devuelven lo último que leyó, marcado como desactualizado', async () => {
+  const { studies, siuState, advance } = build()
   const first = await studies.upcoming('p-taguirre')
   assert.ok(first.ok)
 
@@ -512,13 +507,47 @@ test('los próximos con el SIU o Moodle caídos devuelven lo último que leyó, 
     ok: true,
     value: { data: first.value.data, readAt: NOW, stale: true }
   })
+})
 
-  siuState.down = false
+test('los próximos no dependen de Moodle: con el aula caída y nada leído antes salen igual, al día', async () => {
+  const { studies, classroomState } = build()
   classroomState.down = true
-  assert.deepEqual(await studies.upcoming('p-taguirre'), {
-    ok: true,
-    value: { data: first.value.data, readAt: NOW, stale: true }
-  })
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.equal(result.value.data.length, 6)
+  assert.equal(
+    result.value.data.every((i) => i.source === 'siu'),
+    true
+  )
+})
+
+test('los finales que ya se tomaron en su período actual salen marcados como pasados; los de antes, no', async () => {
+  const data = structuredClone(syntheticData)
+  const aga = data.siu.examBoards.find((b) => b.id === 'mesa-aga-fi-dic')!
+  data.siu.examBoards.push(
+    { ...aga, id: 'mesa-aga-fi-sep', date: '2026-09-21T12:00:00.000Z' },
+    { ...aga, id: 'mesa-aga-fi-jul', date: '2026-07-20T12:00:00.000Z' }
+  )
+  const enrollment = data.siu.examEnrollments.find((e) => e.examBoardId === 'mesa-aga-fi-dic')!
+  data.siu.examEnrollments.push(
+    { ...enrollment, id: 'ie-sep', examBoardId: 'mesa-aga-fi-sep' },
+    { ...enrollment, id: 'ie-jul', examBoardId: 'mesa-aga-fi-jul' }
+  )
+  const { studies } = build(data)
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.filter((i) => i.kind === 'final').map((i) => [i.id, i.past]),
+    [
+      ['mesa:mesa-aga-fi-sep', true],
+      ['mesa:mesa-aga-fi-dic', false]
+    ]
+  )
 })
 
 test('los próximos sin nada leído antes y con el SIU caído devuelven «falla externa»; de alguien que no existe, «persona desconocida»', async () => {
@@ -552,8 +581,25 @@ test('ve las mesas de lo que tiene regular o está cursando y las comisiones de 
     subjectId: 'pr1',
     subjectName: 'Programación I',
     opensAt: '2026-11-02T03:00:00.000Z',
-    closesAt: '2026-12-19T02:59:00.000Z'
+    closesAt: '2026-12-19T02:59:00.000Z',
+    needsRegularity: false
   })
+})
+
+test('la mesa de una materia que está cursando avisa que le falta la regularidad; la de una regular, no', async () => {
+  const { studies } = build()
+
+  // Valentina tiene Álgebra regular y cursa Análisis I.
+  const result = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.filter((i) => i.kind === 'examen').map((i) => [i.subjectId, i.needsRegularity]),
+    [
+      ['aga', false],
+      ['am1', true]
+    ]
+  )
 })
 
 test('no ve la mesa a la que ya se inscribió ni el verano de lo que está cursando', async () => {

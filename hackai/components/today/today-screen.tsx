@@ -15,12 +15,15 @@ import { CalendarLegend } from '@/components/ui/calendar-day'
 import { NextExamCard } from '@/components/ui/next-exam-card'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
-import type { NextExam, TodayPart, TodayView } from '@/lib/core/today'
-import { longDay, timeOf } from '@/lib/dates'
+import type { NextExam, TodayView } from '@/lib/core/today'
+import { longDay, timeOf } from '@/lib/format-dates'
 import { cn } from '@/lib/utils'
 
-const UPCOMING_DOWN =
-  'No pudimos traer tus parciales, finales y entregas porque el SIU o el Campus Virtual no responden. Probá de nuevo en un rato.'
+const UPCOMING_DOWN = 'No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.'
+const MOODLE_NOTE =
+  'Las entregas vienen de Moodle y son un complemento: solo aparecen las que el docente cargó con fecha.'
+const ASSIGNMENTS_DOWN =
+  'Faltan las entregas de Moodle porque el Campus Virtual no responde. Los parciales y finales están todos.'
 const ENROLLMENTS_DOWN =
   'No pudimos traer las inscripciones abiertas porque el SIU no responde. Probá de nuevo en un rato.'
 
@@ -50,6 +53,20 @@ function Section({
   )
 }
 
+/** Las fechas, en lista o en calendario: si el SIU no respondió, su error; si faltan solo las entregas de Moodle, se avisa en la nota. */
+function Dates({ view, children }: { view: TodayView; children: ReactNode }) {
+  const siuDown = view.unavailable.includes('upcoming')
+  if (siuDown && view.upcoming.length === 0) return <ErrorNotice>{UPCOMING_DOWN}</ErrorNotice>
+  const moodleDown = !siuDown && view.unavailable.includes('subjects')
+  return (
+    <>
+      {siuDown && <ErrorNotice>{UPCOMING_DOWN}</ErrorNotice>}
+      {children}
+      <p className='text-[0.8125rem] text-muted-foreground'>{moodleDown ? ASSIGNMENTS_DOWN : MOODLE_NOTE}</p>
+    </>
+  )
+}
+
 function NextExamBlock({ next }: { next: NextExam }) {
   return (
     <NextExamCard
@@ -63,14 +80,8 @@ function NextExamBlock({ next }: { next: NextExam }) {
 }
 
 export function TodayScreen({ view }: { view: TodayView }) {
-  const missing = (part: TodayPart) => view.unavailable.includes(part)
   const agenda = agendaOf(view.upcoming, view.now, view.next)
   const calendar = calendarOf(view.upcoming, view.now, view.next)
-  const moodleNote = (
-    <p className='text-[0.8125rem] text-muted-foreground'>
-      Las entregas vienen de Moodle y son un complemento: solo aparecen las que el docente cargó con fecha.
-    </p>
-  )
 
   return (
     <div className='flex flex-col gap-6'>
@@ -83,8 +94,9 @@ export function TodayScreen({ view }: { view: TodayView }) {
           aside={<CalendarLegend />}
           className='hidden lg:col-start-1 lg:row-span-4 lg:row-start-1 lg:flex'
         >
-          {missing('upcoming') ? <ErrorNotice>{UPCOMING_DOWN}</ErrorNotice> : <TwoWeekCalendar calendar={calendar} />}
-          {!missing('upcoming') && moodleNote}
+          <Dates view={view}>
+            <TwoWeekCalendar calendar={calendar} />
+          </Dates>
         </Section>
 
         {view.next && (
@@ -94,12 +106,13 @@ export function TodayScreen({ view }: { view: TodayView }) {
         )}
 
         <Section id='proximas' title='Próximas 2 semanas' className='lg:hidden'>
-          {missing('upcoming') ? <ErrorNotice>{UPCOMING_DOWN}</ErrorNotice> : <UpcomingAgenda agenda={agenda} />}
-          {!missing('upcoming') && moodleNote}
+          <Dates view={view}>
+            <UpcomingAgenda agenda={agenda} />
+          </Dates>
         </Section>
 
         <Section id='inscripciones' title='Inscripciones que cierran pronto' className='lg:col-start-2'>
-          {missing('openEnrollments') ? (
+          {view.unavailable.includes('openEnrollments') ? (
             <ErrorNotice>{ENROLLMENTS_DOWN}</ErrorNotice>
           ) : (
             <OpenEnrollmentList items={view.openEnrollments} />

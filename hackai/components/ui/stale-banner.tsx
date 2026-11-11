@@ -1,5 +1,5 @@
 import { StaleNotice } from '@/components/ui/states'
-import { readTime } from '@/lib/dates'
+import { readTime } from '@/lib/format-dates'
 
 /* Aviso de «desactualizado»: un sistema de origen no respondió y se muestra lo
    último que se leyó, con su hora. Lo usan las pantallas que leen de Cursada. */

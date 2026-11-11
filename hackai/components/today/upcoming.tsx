@@ -10,7 +10,7 @@ import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
 import type { UpcomingItem } from '@/lib/core/studies'
-import { dayParts, longDay, shortDate, shortDay, timeOf } from '@/lib/dates'
+import { dayParts, longDay, shortDate, shortDay, timeOf } from '@/lib/format-dates'
 import { cn } from '@/lib/utils'
 
 /** Cuántas fechas se ven en el celular antes de «Ver más». */
@@ -84,8 +84,7 @@ function Fold({ summary, open, children }: { summary: string; open?: boolean; ch
   )
 }
 
-const rows = (items: UpcomingItem[]) =>
-  items.map((item) => <UpcomingRow key={`${item.date}-${item.subjectId}-${item.name}`} item={item} />)
+const rows = (items: UpcomingItem[]) => items.map((item) => <UpcomingRow key={item.id} item={item} />)
 
 /** Resumen de lo que queda plegado: «Más adelante (2) · Ya pasaron (3)». */
 function foldSummary(parts: [string, number][]): string {

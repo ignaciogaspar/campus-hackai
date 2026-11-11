@@ -186,7 +186,7 @@ Según la [documentación de Vercel](https://vercel.com/docs/cron-jobs/usage-and
 
 ## Si el SIU o Moodle no responden
 
-Las lecturas de Cursada (`subjectsOf`, `sectionsOf`, `upcoming`, `openEnrollments`) toleran caídas. El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy y Mis materias lo muestran con el aviso de `components/ui/stale-banner.tsx`. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló.
+Las lecturas de Cursada (`subjectsOf`, `sectionsOf`, `upcoming`, `openEnrollments`) toleran caídas. El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy y Mis materias lo muestran con el aviso de `components/ui/stale-banner.tsx`. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló. Los parciales y finales (`upcoming`) salen solo del SIU: si se cae Moodle, Hoy los muestra igual y avisa que faltan las entregas. Lo que pasó y las inscripciones que cerraron se miran contra el reloj al armar Hoy, aunque la lectura sea vieja.
 
 Lo último leído vive en la memoria del proceso. Si el hosting levanta un proceso nuevo, por ejemplo una función serverless fría, la copia se pierde y la primera lectura con el sistema caído devuelve el error.
 

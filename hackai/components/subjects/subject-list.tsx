@@ -4,18 +4,8 @@
 import { ExternalLink } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import type { MyAssignment, MyClassroom, MySubject } from '@/lib/core/studies'
+import { dueTime } from '@/lib/format-dates'
 import { cn } from '@/lib/utils'
-
-function dueTime(dueDate: string): string {
-  return new Date(dueDate).toLocaleString('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function ClassroomLinks({ classrooms }: { classrooms: MyClassroom[] }) {
   if (!classrooms.length) return null
@@ -46,7 +36,7 @@ function Assignments({ assignments }: { assignments: MyAssignment[] }) {
       <ul className='mt-2 flex flex-col gap-2'>
         {assignments.map((a) => (
           <li
-            key={`${a.dueDate}-${a.name}`}
+            key={a.id}
             className={cn('flex items-start justify-between gap-3 text-sm', a.past && 'text-muted-foreground')}
           >
             <div className='min-w-0'>

@@ -2,19 +2,21 @@
    cron del hosting. Solo deja pasar al que trae el secreto de `CRON_SECRET`
    y entonces sincroniza todos los espacios. */
 import { createHash, timingSafeEqual } from 'node:crypto'
-import type { SyncReport } from '@/lib/core/spaces'
-import type { Result } from '@/lib/result'
+import type { Spaces } from '@/lib/core/spaces'
 
 export type PeriodicSyncDeps = {
   /** El valor de `CRON_SECRET`, o nada si falta en el entorno. */
   secret: string | undefined
-  syncAll: () => Promise<Result<SyncReport, string>>
+  syncAll: Spaces['syncAll']
   log?: (message: string) => void
 }
 
-/** Cómo vuelve cada error de la sincronización. Uno que no esté acá (los que
-    sume Espacios) vuelve como 502: falló algo de afuera, no el pedido. */
-const ERROR_STATUS: Record<string, number> = { 'no-implementado': 501 }
+/** Los errores que puede devolver la sincronización de Espacios. */
+type SyncError = Extract<Awaited<ReturnType<Spaces['syncAll']>>, { ok: false }>['error']
+
+/** Cómo vuelve cada error de la sincronización. Es exhaustivo a propósito: si
+    Espacios suma un error, el typecheck pide decidir su código acá. */
+const ERROR_STATUS: Record<SyncError, number> = { 'no-implementado': 501 }
 
 const digest = (text: string) => createHash('sha256').update(text).digest()
 
@@ -43,7 +45,7 @@ export async function handlePeriodicSync(
   const result = await syncAll()
   if (!result.ok) {
     log(`[corrida-periodica] ${result.error}`)
-    return Response.json({ error: result.error }, { status: ERROR_STATUS[result.error] ?? 502 })
+    return Response.json({ error: result.error }, { status: ERROR_STATUS[result.error] })
   }
   const { channels, imported, sent, pending } = result.value
   log(`[corrida-periodica] ok: ${channels} canales, ${imported} importados, ${sent} enviados, ${pending} pendientes`)
