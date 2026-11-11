@@ -1,29 +1,43 @@
 /* Mensajes directos: la pestaña Directos, con las conversaciones privadas de
-   la persona y, para el alumno, los docentes de su comisión a los que todavía
-   no les escribió; y la conversación con una persona. Quién puede escribirle
-   a quién y quién ve cada canal lo decide Espacios (`openDirect`): acá no se
-   decide nada. */
-import { ArrowLeft, AtSign } from 'lucide-react'
+   la persona y la gente a la que todavía no le escribió, y la conversación
+   con una persona. A quién le puede escribir (`viewer.directContacts`) y
+   quién ve cada canal lo decide Espacios: acá no se decide nada. */
+import { AtSign } from 'lucide-react'
 import Link from 'next/link'
+import { BackLink } from '@/components/spaces/back-link'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
-import { shownSections, teachersOf } from '@/components/spaces/context-panel'
-import { DIRECTS_TAB, spaceHref } from '@/components/spaces/format'
+import { type SpaceRef, spaceHref } from '@/components/spaces/format'
 import { AuthorAvatar, MessageCard } from '@/components/spaces/messages'
 import { StartDirect } from '@/components/spaces/start-direct'
 import { EmptyState } from '@/components/ui/states'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Role } from '@/lib/core/people'
-import type { Author, Channel, SpaceSection, Thread } from '@/lib/core/spaces'
+import type { Author, Channel, DirectContact, Thread } from '@/lib/core/spaces'
 
 const ROLE_NAMES: Record<Role, string> = { alumno: 'Alumno', profesor: 'Docente' }
 
-function counterpartOf(channel: Channel): Author {
+/** Lo que dice la pestaña Directos según quién la mira. */
+const DIRECTS_TEXT: Record<Role, { emptyTitle: string; emptyBody: string; note: string }> = {
+  alumno: {
+    emptyTitle: 'No hay docentes a quienes escribirles',
+    emptyBody: 'Tu comisión todavía no tiene docentes con cuenta en HackAI.',
+    note: 'Podés escribirle en privado a los docentes de tu comisión. Lo que le escribas lo ven solo vos y el docente.'
+  },
+  profesor: {
+    emptyTitle: 'Nadie te escribió todavía',
+    emptyBody: 'Cuando un alumno de tu comisión te escriba en privado, la conversación aparece acá.',
+    note: 'Tus alumnos te pueden escribir en privado. Lo que se escriben lo ven solo vos y el alumno.'
+  }
+}
+
+/** La otra persona de la conversación. Espacios la da siempre en un canal directo; si faltara, se ve sin datos. */
+function otherPersonIn(channel: Channel): Author {
   return channel.counterpart ?? { personId: null, name: 'Persona sin datos', role: null }
 }
 
 function ConversationRow({ subjectId, channel }: { subjectId: string; channel: Channel }) {
-  const other = counterpartOf(channel)
+  const other = otherPersonIn(channel)
   return (
     <li>
       <Link
@@ -43,72 +57,55 @@ function ConversationRow({ subjectId, channel }: { subjectId: string; channel: C
   )
 }
 
-type Teacher = ReturnType<typeof teachersOf>[number] & { personId: string }
-
-function TeacherRow({ subjectId, spaceId, teacher }: { subjectId: string; spaceId: string; teacher: Teacher }) {
+function ContactRow({ space, contact }: { space: SpaceRef; contact: DirectContact }) {
+  const { personId, name, role, sectionName } = contact
   return (
     <li className='flex min-h-16 items-center gap-3 px-4 py-3'>
-      <AuthorAvatar author={{ personId: teacher.personId, name: teacher.name, role: 'profesor' }} />
+      <AuthorAvatar author={{ personId, name, role }} />
       <span className='flex min-w-0 flex-1 flex-col'>
-        <span className='truncate font-semibold'>{teacher.name}</span>
-        <span className='text-xs text-muted-foreground'>Docente · Comisión {teacher.section}</span>
+        <span className='truncate font-semibold'>{name}</span>
+        <span className='text-xs text-muted-foreground'>
+          {ROLE_NAMES[role]} · Comisión {sectionName}
+        </span>
       </span>
-      <StartDirect subjectId={subjectId} spaceId={spaceId} personId={teacher.personId} name={teacher.name} />
+      <StartDirect space={space} personId={personId} name={name} />
     </li>
   )
 }
 
-/** Los docentes de las comisiones del alumno, con cuenta en HackAI, a los que todavía no les escribió. */
-function teachersToWrite(sections: SpaceSection[], directs: Channel[]): Teacher[] {
-  const written = new Set(directs.map((c) => c.counterpart?.personId))
-  return teachersOf(shownSections(sections)).filter(
-    (t): t is Teacher => t.personId !== null && !written.has(t.personId)
-  )
-}
-
 /* Pestaña Directos: las conversaciones privadas, la más reciente al final, y
-   para el alumno, «Escribirle» a cada docente de su comisión. */
+   «Escribirle» a cada contacto con el que todavía no hay conversación. */
 export function DirectsPanel({
-  subjectId,
-  spaceId,
+  space,
   role,
   directs,
-  sections
+  contacts
 }: {
-  subjectId: string
-  spaceId: string
+  space: SpaceRef
   role: Role
   directs: Channel[]
-  sections: SpaceSection[]
+  contacts: DirectContact[]
 }) {
-  const teachers = role === 'alumno' ? teachersToWrite(sections, directs) : []
-  const empty = directs.length === 0 && teachers.length === 0
+  const text = DIRECTS_TEXT[role]
+  const written = new Set(directs.map((c) => c.counterpart?.personId))
+  const toWrite = contacts.filter((c) => !written.has(c.personId))
   return (
     <>
-      {empty ? (
-        <EmptyState
-          icon={AtSign}
-          title={role === 'alumno' ? 'No hay docentes a quienes escribirles' : 'Nadie te escribió todavía'}
-        >
-          {role === 'alumno'
-            ? 'Tu comisión todavía no tiene docentes con cuenta en HackAI.'
-            : 'Cuando un alumno de tu comisión te escriba en privado, la conversación aparece acá.'}
+      {directs.length === 0 && toWrite.length === 0 ? (
+        <EmptyState icon={AtSign} title={text.emptyTitle}>
+          {text.emptyBody}
         </EmptyState>
       ) : (
         <ul className='divide-y divide-border overflow-hidden rounded-[22px] bg-card shadow-card'>
           {directs.map((c) => (
-            <ConversationRow key={c.id} subjectId={subjectId} channel={c} />
+            <ConversationRow key={c.id} subjectId={space.subjectId} channel={c} />
           ))}
-          {teachers.map((t) => (
-            <TeacherRow key={t.personId} subjectId={subjectId} spaceId={spaceId} teacher={t} />
+          {toWrite.map((c) => (
+            <ContactRow key={c.personId} space={space} contact={c} />
           ))}
         </ul>
       )}
-      <p className='px-1 text-[0.8125rem] text-muted-foreground'>
-        {role === 'alumno'
-          ? 'Podés escribirle en privado a los docentes de tu comisión. Lo que le escribas lo ven solo vos y el docente.'
-          : 'Tus alumnos te pueden escribir en privado. Lo que se escriben lo ven solo vos y el alumno.'}
-      </p>
+      <p className='px-1 text-[0.8125rem] text-muted-foreground'>{text.note}</p>
     </>
   )
 }
@@ -124,18 +121,12 @@ export function DirectPanel({
   channel: Channel
   threads: Thread[]
 }) {
-  const other = counterpartOf(channel)
+  const other = otherPersonIn(channel)
   const firstName = other.name.split(/\s+/)[0]
   const messages = threads.flatMap((t) => [t.message, ...t.replies])
   return (
     <>
-      <Link
-        href={spaceHref(subjectId, { canal: DIRECTS_TAB })}
-        className='inline-flex min-h-10 w-fit items-center gap-1.5 rounded-lg pr-2 text-[0.875rem] font-bold text-blue hover:underline focus-ring'
-      >
-        <ArrowLeft aria-hidden='true' className='size-4' strokeWidth={2.2} />
-        Volver a Directos
-      </Link>
+      <BackLink href={spaceHref(subjectId, { vista: 'directos' })}>Volver a Directos</BackLink>
       {messages.length ? (
         <ol className='flex flex-col gap-3'>
           {messages.map((m) => (

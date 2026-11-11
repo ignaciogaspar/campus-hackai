@@ -1,12 +1,12 @@
 /* Panel de contexto del espacio, solo en compu (a la derecha, como el de
    detalles de Slack): el material reciente y los docentes de tu comisión,
-   con «Escribirle» para el alumno. En el celular no va: el material tiene su
-   pestaña y los docentes están en Directos. */
+   con «Escribirle» en los que Espacios da como contactos. En el celular no
+   va: el material tiene su pestaña y los contactos están en Directos. */
 import type { ReactNode } from 'react'
-import { initialsOf } from '@/components/spaces/format'
+import { initialsOf, type SpaceRef } from '@/components/spaces/format'
 import { MaterialRow } from '@/components/spaces/material-panel'
 import { StartDirect } from '@/components/spaces/start-direct'
-import type { MaterialItem, SpaceSection } from '@/lib/core/spaces'
+import type { DirectContact, MaterialItem, SpaceSection } from '@/lib/core/spaces'
 
 /** Las comisiones que se muestran: las actuales, o todas si no hay ninguna actual. */
 export function shownSections(sections: SpaceSection[]): SpaceSection[] {
@@ -15,7 +15,7 @@ export function shownSections(sections: SpaceSection[]): SpaceSection[] {
 }
 
 /** Los docentes de esas comisiones, sin repetir, cada uno con su comisión. */
-export function teachersOf(sections: SpaceSection[]) {
+function teachersOf(sections: SpaceSection[]) {
   const seen = new Set<string>()
   return sections.flatMap((s) =>
     s.teachers.flatMap((t) => {
@@ -41,13 +41,15 @@ function ContextCard({ id, title, children }: { id: string; title: string; child
 type Props = {
   recent: MaterialItem[]
   sections: SpaceSection[]
-  /** Solo para el alumno: el espacio donde se abre el canal directo con cada docente. */
-  directsIn: { subjectId: string; spaceId: string } | null
+  space: SpaceRef
+  /** A quiénes les puede escribir en privado (`viewer.directContacts`): esos docentes llevan «Escribirle». */
+  contacts: DirectContact[]
 }
 
-export function ContextPanel({ recent, sections, directsIn }: Props) {
+export function ContextPanel({ recent, sections, space, contacts }: Props) {
   const shown = shownSections(sections)
   const teachers = teachersOf(shown)
+  const writable = new Set(contacts.map((c) => c.personId))
   return (
     <aside aria-label='Sobre la materia' className='hidden flex-col gap-4 lg:sticky lg:top-4 lg:flex'>
       <ContextCard id='ctx-material' title='Material reciente'>
@@ -79,7 +81,9 @@ export function ContextPanel({ recent, sections, directsIn }: Props) {
                   <span className='truncate text-[0.875rem] font-semibold'>{t.name}</span>
                   <span className='text-xs text-muted-foreground'>Comisión {t.section}</span>
                 </span>
-                {directsIn && t.personId && <StartDirect {...directsIn} personId={t.personId} name={t.name} compact />}
+                {t.personId && writable.has(t.personId) && (
+                  <StartDirect space={space} personId={t.personId} name={t.name} compact />
+                )}
               </li>
             ))}
           </ul>

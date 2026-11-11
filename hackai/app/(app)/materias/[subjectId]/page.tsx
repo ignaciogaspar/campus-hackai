@@ -1,7 +1,7 @@
 /* Espacio de la materia: los canales como pestañas arriba (Avisos, Consultas,
    Material, los que crea un docente y Directos), cada una con sus no leídos, y
-   lo de la pestaña elegida. La pestaña va en `?canal=` (`?canal=directos` es
-   la lista de mensajes directos; un canal directo va con su id), el hilo de
+   lo de la pestaña elegida. El canal va en `?canal=` (también uno directo,
+   con su id), la lista de mensajes directos en `?vista=directos`, el hilo de
    una consulta en `?hilo=`, el filtro de Consultas en `?filtro=` y el
    formulario de canal nuevo en `?nuevo=canal`: todo se navega con enlaces, sin
    JavaScript. Escribirle a un docente por primera vez es un formulario.
@@ -28,7 +28,6 @@ import { ContextPanel, shownSections } from '@/components/spaces/context-panel'
 import { DirectPanel, DirectsPanel } from '@/components/spaces/direct-panels'
 import {
   channelLabel,
-  DIRECTS_TAB,
   hasSeveralSections,
   isDirect,
   messageTime,
@@ -80,7 +79,8 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
     canal: singleParam(raw.canal),
     hilo: singleParam(raw.hilo),
     filtro: singleParam(raw.filtro),
-    nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined
+    nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined,
+    vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined
   }
 }
 
@@ -188,7 +188,7 @@ type Pane = { kind: 'nuevo' } | { kind: 'directos' } | { kind: 'canal'; opened: 
     marca leído lo que no se vio. */
 async function paneFor(personId: string, view: SpaceView, query: SpaceQuery): Promise<Pane> {
   if (query.nuevo === 'canal' && view.viewer.canManage) return { kind: 'nuevo' }
-  if (query.canal === DIRECTS_TAB) return { kind: 'directos' }
+  if (query.vista === 'directos') return { kind: 'directos' }
   return { kind: 'canal', opened: await openChannel(personId, view, query.canal) }
 }
 
@@ -224,11 +224,10 @@ function CenterPane({
   if (pane.kind === 'directos') {
     return (
       <DirectsPanel
-        subjectId={subjectId}
-        spaceId={view.space.id}
+        space={{ subjectId, spaceId: view.space.id }}
         role={view.viewer.role}
         directs={channels.filter(isDirect)}
-        sections={view.viewer.sections}
+        contacts={view.viewer.directContacts}
       />
     )
   }
@@ -273,9 +272,10 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}
-            selectedId={query.canal ?? selected?.id ?? channels[0]?.id ?? null}
+            selectedId={pane.kind === 'canal' ? (query.canal ?? selected?.id ?? channels[0]?.id ?? null) : null}
             canManage={view.viewer.canManage}
             creating={pane.kind === 'nuevo'}
+            showingDirects={pane.kind === 'directos'}
           />
 
           <section
@@ -288,7 +288,8 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           <ContextPanel
             recent={view.material.recent}
             sections={view.viewer.sections}
-            directsIn={view.viewer.role === 'alumno' ? { subjectId, spaceId: view.space.id } : null}
+            space={{ subjectId, spaceId: view.space.id }}
+            contacts={view.viewer.directContacts}
           />
         </div>
       </main>

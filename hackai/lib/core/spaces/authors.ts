@@ -1,7 +1,8 @@
 /* Quién escribió cada mensaje, quién subió cada archivo y quién es la otra
-   persona de un canal directo, con su nombre y su rol de Personas. Se arma uno por llamada, para no preguntar dos veces por la
-   misma persona. Si Personas no la encuentra o no responde, el mensaje se
-   muestra igual, con «Persona sin datos». */
+   persona de un canal directo, con su nombre y su rol de Personas. Se arma
+   uno por llamada, para no preguntar dos veces por la misma persona. Si
+   Personas no la encuentra o no responde, el mensaje se muestra igual, con
+   «Persona sin datos». */
 import type { People, PersonId } from '@/lib/core/people'
 import type { Author, MaterialItem, StoredMaterial, StoredMessage } from '@/lib/core/spaces'
 

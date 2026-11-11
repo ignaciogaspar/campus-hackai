@@ -7,7 +7,7 @@
    Solo muestra lo que devuelve la server action. */
 import { CheckCircle2, ExternalLink, Info } from 'lucide-react'
 import Link from 'next/link'
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react'
 import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { targetFields } from '@/components/enrollment/target'
 import { spaceHref } from '@/components/spaces/format'
@@ -21,7 +21,7 @@ const INITIAL: EnrollmentState = { kind: 'inicial' }
 const STEP_TEXT: Record<EnrollmentStep, string> = { inscripcion: 'inscribirte', baja: 'darte de baja' }
 
 /** Las palabras que cambian entre una comisión y una mesa. */
-const TEXT: Record<Target['kind'], { what: string; dropped: string; dropWarning: string }> = {
+const TARGET_TEXT: Record<Target['kind'], { what: string; dropped: string; dropWarning: string }> = {
   comision: {
     what: 'esta comisión',
     dropped: 'Saliste de la comisión y de su aula del Campus Virtual.',
@@ -41,7 +41,10 @@ function Receipt({ transactionNumber }: { transactionNumber: string }) {
   return <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {transactionNumber}</p>
 }
 
-function SectionEnrolled({ inClassroom }: { inClassroom: boolean }) {
+type EnrolledProps = { inClassroom: boolean; subjectId: string; transactionNumber: string }
+
+/** La comisión: quedó en el SIU, en el aula (si se pudo) y en el espacio, adonde lleva. */
+function SectionEnrolled({ inClassroom, subjectId, transactionNumber }: EnrolledProps) {
   return (
     <>
       <p>
@@ -51,8 +54,39 @@ function SectionEnrolled({ inClassroom }: { inClassroom: boolean }) {
           : 'Ya estás en el SIU. Al aula del Campus Virtual todavía no te pudimos sumar desde HackAI.'}
       </p>
       <p>Y quedaste en el espacio de la materia, con sus avisos, consultas y material.</p>
+      <Receipt transactionNumber={transactionNumber} />
+      <div className='flex flex-wrap gap-2'>
+        <Link href={spaceHref(subjectId)} className={linkButton}>
+          Ir al espacio de la materia
+        </Link>
+        <Link href='/materias' className={outlineLinkButton}>
+          Ver en Mis materias
+        </Link>
+      </div>
     </>
   )
+}
+
+/** La mesa: quedó en el SIU y el final sale en Hoy, adonde lleva. */
+function BoardEnrolled({ transactionNumber }: EnrolledProps) {
+  return (
+    <>
+      <p>
+        <b>Listo, quedaste inscripto al final.</b> Ya estás en el SIU y lo vas a ver en Hoy, entre tus próximos.
+      </p>
+      <Receipt transactionNumber={transactionNumber} />
+      <div className='flex flex-wrap gap-2'>
+        <Link href='/hoy' className={linkButton}>
+          Ver en Hoy
+        </Link>
+      </div>
+    </>
+  )
+}
+
+const ENROLLED: Record<Target['kind'], (props: EnrolledProps) => ReactNode> = {
+  comision: SectionEnrolled,
+  mesa: BoardEnrolled
 }
 
 function Enrolled({
@@ -64,34 +98,12 @@ function Enrolled({
   target: Target
   subjectId: string
 }) {
+  const Done = ENROLLED[target.kind]
   return (
     <div role='status' className='flex gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm'>
       <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
       <div className='flex flex-col gap-2'>
-        {target.kind === 'comision' ? (
-          <SectionEnrolled inClassroom={state.inClassroom} />
-        ) : (
-          <p>
-            <b>Listo, quedaste inscripto al final.</b> Ya estás en el SIU y lo vas a ver en Hoy, entre tus próximos.
-          </p>
-        )}
-        <Receipt transactionNumber={state.transactionNumber} />
-        <div className='flex flex-wrap gap-2'>
-          {target.kind === 'comision' ? (
-            <>
-              <Link href={spaceHref(subjectId)} className={linkButton}>
-                Ir al espacio de la materia
-              </Link>
-              <Link href='/materias' className={outlineLinkButton}>
-                Ver en Mis materias
-              </Link>
-            </>
-          ) : (
-            <Link href='/hoy' className={linkButton}>
-              Ver en Hoy
-            </Link>
-          )}
-        </div>
+        <Done inClassroom={state.inClassroom} subjectId={subjectId} transactionNumber={state.transactionNumber} />
       </div>
     </div>
   )
@@ -105,7 +117,7 @@ function Outcome({ state, target, subjectId }: { state: EnrollmentState; target:
         <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-muted-foreground' />
         <div className='flex flex-col gap-1'>
           <p>
-            <b>Te diste de baja.</b> {TEXT[target.kind].dropped}
+            <b>Te diste de baja.</b> {TARGET_TEXT[target.kind].dropped}
           </p>
           <Receipt transactionNumber={state.transactionNumber} />
         </div>
@@ -119,7 +131,7 @@ function Outcome({ state, target, subjectId }: { state: EnrollmentState; target:
         <div className='flex flex-col gap-2'>
           <p>
             <b>Te falta un paso.</b> Para {STEP_TEXT[state.step]} hay que confirmarlo en la Autogestión del SIU. Te
-            llevamos directo a {TEXT[target.kind].what}.
+            llevamos directo a {TARGET_TEXT[target.kind].what}.
           </p>
           <a href={state.url} target='_blank' rel='noopener noreferrer' className={cn(linkButton, 'self-start')}>
             Seguir en la Autogestión
@@ -223,7 +235,7 @@ export function EnrollmentActions({ target, subjectId, label, status, enrollActi
           >
             <TargetInputs target={target} />
             <p className='text-sm'>
-              ¿Te das de baja de {label}? {TEXT[target.kind].dropWarning}
+              ¿Te das de baja de {label}? {TARGET_TEXT[target.kind].dropWarning}
             </p>
             <div className='flex flex-wrap gap-2'>
               <Button type='submit' variant='destructive' size='lg' className='min-h-11'>

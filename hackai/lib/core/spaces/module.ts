@@ -7,7 +7,7 @@
    regla de quién ve qué.
 
    `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
-   vista. Todavía no sincroniza con el canal externo: `open` no trae lo nuevo
+   vista, no más de una vez cada `SYNC_EVERY_MS` por espacio. Todavía no sincroniza con el canal externo: `open` no trae lo nuevo
    de Discord, `post` no envía al canal externo vinculado y `link` y `syncAll`
    no están (#15). */
 import type { PersonId } from '@/lib/core/people'
@@ -35,6 +35,7 @@ import type {
 import {
   canManage,
   canResolve,
+  directRefusal,
   type Membership,
   membershipInSpace,
   membershipOf,
@@ -46,13 +47,16 @@ import {
 import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
 import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
 import { importFromClassroom } from '@/lib/core/spaces/classroom-import'
-import { counterpartOf, directChannel, directRefusal } from '@/lib/core/spaces/direct'
+import { counterpartOf, directChannel } from '@/lib/core/spaces/direct'
 import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
 import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from '@/lib/core/spaces/reading'
 import { unreadFor } from '@/lib/core/spaces/unread'
 import { isFileId } from '@/lib/ports/files'
 import { fail, notImplemented, ok, type Result } from '@/lib/result'
+
+/** Cada cuánto, como mucho, `open` trae lo nuevo de los sistemas de origen a un mismo espacio. */
+const SYNC_EVERY_MS = 10_000
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
 type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }
@@ -76,6 +80,20 @@ const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(m
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
   const { people, studies, classroom, files, clock, store } = deps
+  /** Cuándo trajo `open` lo nuevo de cada espacio, en milisegundos del reloj. */
+  const lastSync = new Map<string, number>()
+
+  /** Si a `open` le toca traer lo nuevo del espacio, y si le toca, lo anota. Con el reloj fijo la hora
+      no avanza, así que no se puede medir el intervalo: trae siempre, como en los tests y en la demo
+      con los adaptadores en memoria. */
+  function syncDue(spaceId: string): boolean {
+    if (clock.capabilities.fixed) return true
+    const now = clock.now().getTime()
+    const last = lastSync.get(spaceId)
+    if (last !== undefined && now - last < SYNC_EVERY_MS) return false
+    lastSync.set(spaceId, now)
+    return true
+  }
 
   /** El espacio de la materia y facultad de la membresía; lo crea si no existe. */
   async function spaceOf(member: Membership): Promise<Result<StoredSpace, SpacesStoreError>> {
@@ -122,8 +140,10 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!space.ok) return space
     const channels = await ensureChannels(store, space.value, member.value)
     if (!channels.ok) return channels
-    // Acá va a ir traer lo nuevo del canal externo vinculado (#15).
-    await importFromClassroom({ classroom, people, store }, space.value, channels.value)
+    if (syncDue(space.value.id)) {
+      // Acá va a ir traer lo nuevo del canal externo vinculado (#15).
+      await importFromClassroom({ classroom, studies, people, store }, member.value, space.value, channels.value)
+    }
     return spaceView(member.value, space.value, channels.value)
   }
 

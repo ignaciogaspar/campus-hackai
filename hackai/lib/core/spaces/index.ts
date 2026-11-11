@@ -152,7 +152,13 @@ export type SpaceViewer = {
   sections: SpaceSection[]
   /** Docente de alguna comisión del espacio: crea canales y sube y organiza el material. */
   canManage: boolean
+  /** A quiénes les puede escribir en privado con `openDirect`: para el alumno, los docentes de sus
+      comisiones con cuenta en HackAI; para el docente, nadie (responde lo que le escriben). */
+  directContacts: DirectContact[]
 }
+
+/** Alguien a quien la persona le puede abrir un canal directo, con su rol y la comisión que comparten. */
+export type DirectContact = { personId: PersonId; name: string; role: Role; sectionName: string }
 
 export type SpaceView = {
   space: Space

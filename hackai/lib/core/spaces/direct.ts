@@ -2,8 +2,8 @@
    del espacio. Hay uno por par y por espacio: se crea la primera vez que
    alguno de los dos lo abre y se archiva con el espacio. Lo ven solo sus dos
    personas (`sees`, en ./access.ts), escriben los dos y no lleva consultas.
-   Entre dos alumnos, o entre dos docentes, no hay. Sin acceso al almacén salvo
-   `directChannel`. */
+   Quién puede abrir uno con quién lo dice `directRefusal`, en ./access.ts. Sin
+   acceso al almacén salvo `directChannel`. */
 import type { PersonId } from '@/lib/core/people'
 import type { Author, SpacesStore, SpacesStoreError, StoredChannel, StoredSpace } from '@/lib/core/spaces'
 import type { Membership } from '@/lib/core/spaces/access'
@@ -12,17 +12,6 @@ import { fail, ok, type Result } from '@/lib/result'
 
 /** El nombre con que se guarda. No se muestra: el canal se ve con el nombre de la otra persona. */
 const DIRECT_NAME = 'directo'
-
-/** Por qué no puede haber un canal directo entre las dos membresías, o `null` si puede. Primero los
-    roles, así dos alumnos de la misma comisión no tienen canal aunque compartan comisión. */
-export function directRefusal(
-  member: Membership,
-  other: Membership
-): 'solo-alumno-docente' | 'sin-comision-en-comun' | null {
-  if (member.personId === other.personId || member.role === other.role) return 'solo-alumno-docente'
-  const shared = member.sections.some((s) => other.sections.some((o) => o.sectionId === s.sectionId))
-  return shared ? null : 'sin-comision-en-comun'
-}
 
 const pairOf = (a: PersonId, b: PersonId): [PersonId, PersonId] => (a < b ? [a, b] : [b, a])
 

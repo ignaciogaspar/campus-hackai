@@ -7,24 +7,13 @@
 import { Hash, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { ChannelIcon } from '@/components/spaces/channel-icon'
+import type { RailTab } from '@/components/spaces/format'
 import { railItem } from '@/components/ui/rail'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { UnreadCount } from '@/components/ui/unread-count'
-import type { ChannelKind } from '@/lib/core/spaces'
-
-export type MoreChannel = {
-  id: string
-  href: string
-  label: string
-  kind: ChannelKind
-  /** A quién llega: «Toda la materia», «Comisión A». */
-  audience: string
-  unread: number
-  selected: boolean
-}
 
 type Props = {
-  channels: MoreChannel[]
+  channels: RailTab[]
   /** Solo docentes: el enlace al formulario de canal nuevo. */
   createHref: string | null
   creating: boolean

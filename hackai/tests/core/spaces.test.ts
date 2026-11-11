@@ -55,11 +55,18 @@ function withoutMoodleContent(data: SyntheticData): SyntheticData {
     de Moodle no cuenten lo que se importa al abrir. Los de Moodle pasan su aula. */
 function build(
   data: SyntheticData = syntheticData,
-  overrides: { store?: SpacesStore; files?: FilesPort; classroom?: ClassroomPort; peopleStore?: PeopleStore } = {}
+  overrides: {
+    store?: SpacesStore
+    files?: FilesPort
+    classroom?: ClassroomPort
+    peopleStore?: PeopleStore
+    /** Que el reloj diga que avanza solo, como el del sistema: así `open` mide cada cuánto sincroniza. */
+    clockMoves?: boolean
+  } = {}
 ) {
   let now = data.now
   // Reloj que se puede mover, para subir material en distintas semanas.
-  const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(now) }
+  const clock: ClockPort = { capabilities: { fixed: !overrides.clockMoves }, now: () => new Date(now) }
   const setNow = (iso: string) => {
     now = iso
   }
@@ -210,7 +217,8 @@ test('el docente ve sus comisiones con sus docentes y puede gestionar el espacio
         teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }]
       }
     ],
-    canManage: true
+    canManage: true,
+    directContacts: []
   })
   const student = await spaces.open('p-taguirre', 'am1')
   assert.ok(student.ok)
@@ -1100,8 +1108,24 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
   const opened = await spaces.open('p-taguirre', 'am1')
 
   assert.ok(opened.ok)
-  // Moodle no da el tamaño de un recurso: 0 es «sin dato».
+  // Moodle no da el tamaño de un recurso: 0 es «sin dato». El apunte es del curso de la B, que también
+  // es una comisión vigente de la materia.
   assert.deepEqual(materialRows(opened.value), [
+    [
+      'Bibliografía',
+      [
+        [
+          'Apunte de la cátedra',
+          'moodle',
+          'https://example.edu.ar/apuntes/am1',
+          'text/uri-list',
+          0,
+          null,
+          '2026-08-12T18:00:00.000Z',
+          true
+        ]
+      ]
+    ],
     [
       'Unidad 1: Límites',
       [
@@ -1133,13 +1157,13 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
       ]
     ]
   ])
-  assert.equal(named(opened.value, 'material').unread, 2)
+  assert.equal(named(opened.value, 'material').unread, 3)
 })
 
-test('el material reúne los recursos de Moodle de todas las comisiones de la materia, sin duplicarlos al volver a abrir', async () => {
+test('el material reúne los recursos de Moodle de todas las comisiones vigentes, aunque nadie de la otra haya abierto el espacio, sin duplicarlos', async () => {
   const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
-  await am1(spaces)
 
+  // Nadie de la B abrió el espacio todavía: sus recursos salen igual, de la oferta de la materia.
   await spaces.open('p-taguirre', 'am1')
   const opened = await spaces.open('p-taguirre', 'am1')
 
@@ -1173,7 +1197,7 @@ test('lo que trae de Moodle entra por fecha, así lo más nuevo queda primero au
   assert.ok(opened.ok)
   assert.deepEqual(
     opened.value.material.recent.map((i) => i.name),
-    ['Guía de ejercicios 2', 'Guía de ejercicios 1']
+    ['Guía de ejercicios 2', 'Apunte de la cátedra', 'Guía de ejercicios 1']
   )
   const avisos = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
   assert.deepEqual(
@@ -1217,7 +1241,7 @@ test('con Moodle caído el espacio abre igual, sin lo de Moodle, y lo trae en la
 
   assert.ok(back.ok)
   assert.equal(named(back.value, 'avisos', 'A').unread, 1)
-  assert.equal(named(back.value, 'material').unread, 2)
+  assert.equal(named(back.value, 'material').unread, 3)
 })
 
 /** Aula en memoria con el set completo a la que se le pueden publicar avisos después de armarla. */
@@ -1263,6 +1287,43 @@ test('un aviso que se publica en Moodle después de abrir el espacio entra en la
       ['av-nuevo', true]
     ]
   )
+})
+
+test('con un reloj que avanza, abrir el espacio no vuelve a Moodle antes de 10 segundos, y después sí', async () => {
+  const { classroom, publish } = classroomWithNewAnnouncements(syntheticData)
+  const reads = { courses: 0 }
+  const counted: ClassroomPort = {
+    ...classroom,
+    coursesForSection: async (id) => {
+      reads.courses++
+      return classroom.coursesForSection(id)
+    }
+  }
+  const { spaces, setNow } = build(syntheticData, { classroom: counted, clockMoves: true })
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+  const afterFirst = reads.courses
+  publish({
+    id: 'av-nuevo',
+    courseId: 'c-am1-fi-a',
+    authorId: syntheticData.moodle.announcements[0].authorId,
+    subject: 'Consultas antes del parcial',
+    message: 'El viernes hay clase de consulta a las 18.',
+    createdAt: '2026-11-10T21:00:00.000Z',
+    attachments: []
+  })
+
+  setNow(new Date(Date.parse(syntheticData.now) + 9_000).toISOString())
+  const soon = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(soon.ok)
+  assert.equal(reads.courses, afterFirst, 'no le pregunta a Moodle de nuevo')
+  assert.equal(named(soon.value, 'avisos', 'A').unread, 1)
+
+  setNow(new Date(Date.parse(syntheticData.now) + 10_000).toISOString())
+  const later = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(later.ok)
+  assert.equal(named(later.value, 'avisos', 'A').unread, 2)
 })
 
 test('si Personas no responde al buscar al autor de un aviso, el aviso entra en la próxima apertura con su autor', async () => {
@@ -1369,6 +1430,22 @@ test('el alumno abre un canal directo con un docente de su comisión, le escribe
       ['Mariana Ledesma', 'Sí, escribime la semana que viene.']
     ]
   )
+})
+
+test('el espacio le dice al alumno a qué docentes de su comisión les puede escribir en privado, y al docente, a nadie', async () => {
+  const { spaces } = build()
+  await am1(spaces)
+
+  const student = await spaces.open('p-taguirre', 'am1')
+  const teacher = await spaces.open('p-gferreyra', 'am1')
+
+  assert.ok(student.ok && teacher.ok)
+  assert.deepEqual(student.value.viewer.directContacts, [
+    { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor', sectionName: 'A' }
+  ])
+  const opened = await spaces.openDirect('p-taguirre', student.value.space.id, 'p-mledesma')
+  assert.ok(opened.ok, 'cada contacto es alguien con quien `openDirect` abre el canal')
+  assert.deepEqual(teacher.value.viewer.directContacts, [])
 })
 
 test('no hay canal directo entre dos alumnos, entre dos docentes ni con un docente de otra comisión', async () => {

@@ -82,13 +82,26 @@ export function hasSeveralSections(channels: Channel[]): boolean {
   return sections.size > 1
 }
 
-/** El valor de `?canal=` de la pestaña Directos, que junta los canales directos. Ningún canal tiene este id. */
-export const DIRECTS_TAB = 'directos'
-
 /** Si el canal va en la pestaña Directos y no suelto en el riel. */
 export const isDirect = (channel: Channel) => channel.kind === 'directo'
 
-export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal' }
+/** El espacio de una materia, como lo necesitan los formularios: la ruta va por materia y el módulo, por espacio. */
+export type SpaceRef = { subjectId: string; spaceId: string }
+
+/** Una pieza del riel de canales: un canal, o la pestaña Directos, que junta los canales directos. */
+export type RailTab = {
+  id: string
+  href: string
+  label: string
+  kind: ChannelKind
+  /** A quién llega: «Toda la materia», «Comisión A». */
+  audience: string
+  unread: number
+  selected: boolean
+}
+
+/** `?vista=directos` es la lista de mensajes directos; un canal, directo o no, va en `?canal=` con su id. */
+export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal'; vista?: 'directos' }
 
 /** El enlace a una pestaña, un hilo o un filtro del espacio. */
 export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {

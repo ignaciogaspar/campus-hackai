@@ -3,11 +3,12 @@
    hacer cada uno (escribir, marcar resuelta) lo dicen `canPost` y
    `canResolve` del canal: acá no se decide nada. */
 
-import { ArrowLeft, Check, Megaphone, MessagesSquare } from 'lucide-react'
+import { Check, Megaphone, MessagesSquare } from 'lucide-react'
 import Link from 'next/link'
 import { resolveQuestion } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { ArrowKeysList } from '@/components/spaces/arrow-keys'
+import { BackLink } from '@/components/spaces/back-link'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
 import { spaceHref } from '@/components/spaces/format'
@@ -235,15 +236,7 @@ export function ThreadPanel({
   backLabel
 }: PanelProps & { threadId: string; backLabel: string }) {
   const thread = threads.find((t) => t.message.id === threadId)
-  const back = (
-    <Link
-      href={spaceHref(subjectId, { canal: channel.id })}
-      className='inline-flex min-h-10 w-fit items-center gap-1.5 rounded-lg pr-2 text-[0.875rem] font-bold text-blue hover:underline focus-ring'
-    >
-      <ArrowLeft aria-hidden='true' className='size-4' strokeWidth={2.2} />
-      Volver a {backLabel}
-    </Link>
-  )
+  const back = <BackLink href={spaceHref(subjectId, { canal: channel.id })}>Volver a {backLabel}</BackLink>
   if (!thread) {
     return (
       <>

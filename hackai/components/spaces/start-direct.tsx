@@ -1,22 +1,21 @@
 /* «Escribirle» a una persona: abre el canal directo con ella, o el que ya
-   hay, y lleva a él. Si no se puede (no es docente de tu comisión, el SIU no
-   responde), el motivo aparece debajo. Lo usan la pestaña Directos y el panel
-   de contexto. */
+   hay, y lleva a él. Solo se muestra para los contactos que da Espacios
+   (`viewer.directContacts`); si igual no se puede (el SIU no responde), el
+   motivo aparece debajo. Lo usan la pestaña Directos y el panel de contexto. */
 import { MessageSquarePlus } from 'lucide-react'
 import { openDirect } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import type { SpaceRef } from '@/components/spaces/format'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export function StartDirect({
-  subjectId,
-  spaceId,
+  space,
   personId,
   name,
   compact = false
 }: {
-  subjectId: string
-  spaceId: string
+  space: SpaceRef
   personId: string
   name: string
   /** Solo el ícono, como en el panel de contexto. */
@@ -24,8 +23,8 @@ export function StartDirect({
 }) {
   return (
     <ActionForm action={openDirect} className='flex flex-col items-end gap-1'>
-      <input type='hidden' name='subjectId' value={subjectId} />
-      <input type='hidden' name='spaceId' value={spaceId} />
+      <input type='hidden' name='subjectId' value={space.subjectId} />
+      <input type='hidden' name='spaceId' value={space.spaceId} />
       <input type='hidden' name='otherPersonId' value={personId} />
       <SubmitButton
         aria-label={compact ? `Escribirle a ${name}` : undefined}
