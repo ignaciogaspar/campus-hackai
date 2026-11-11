@@ -1,0 +1,16 @@
+# Secretos: entran al contenedor en runtime con --env-file, nunca en la imagen.
+.env*
+!.env.example
+
+node_modules
+.next
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.git
+
+Dockerfile
+.dockerignore
+compose.yaml
+docs

@@ -22,6 +22,20 @@ npm run build
 
 `npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22.
 
+## Con Docker
+
+Necesita Docker Engine 25 o más nuevo y Docker Compose 2.24 o más nuevo (`docker compose version`). Qué hace cada etapa del build está en los comentarios del [Dockerfile](Dockerfile).
+
+```bash
+cd hackai
+docker compose up --build                 # http://localhost:3000
+docker build --target check -t hackai .   # typecheck y tests dentro del contenedor
+```
+
+Las variables se leen de `.env.local` al arrancar el contenedor, nunca se copian a la imagen (`.dockerignore` excluye `.env*`). Sin `.env.local`, arranca con los adaptadores en memoria.
+
+`GET /api/health` responde `{ "status": "ok" }` sin tocar la base. El `HEALTHCHECK` de la imagen lo consulta, y `docker compose ps` muestra el estado (`healthy` o `unhealthy`).
+
 ## Variables de entorno
 
 Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin valores.
