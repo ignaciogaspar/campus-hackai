@@ -60,6 +60,8 @@ export type Channel = {
   /** Si la persona puede marcar resueltas las consultas del canal. */
   canResolve: boolean
   externalLink: ExternalLink | null
+  /** En un canal directo, la otra persona, con su nombre y su rol: el canal se muestra con su nombre. En el resto, `null`. */
+  counterpart: Author | null
 }
 
 export type Attachment = { name: string; contentType: string; size: number; url: string }
@@ -98,6 +100,7 @@ export type MaterialItem = {
   name: string
   url: string
   contentType: string
+  /** En bytes; 0 si no se sabe, como en los recursos de Moodle. */
   size: number
   origin: Origin
   /** La unidad o el tema donde lo puso el docente, o `null`. */
@@ -149,7 +152,13 @@ export type SpaceViewer = {
   sections: SpaceSection[]
   /** Docente de alguna comisión del espacio: crea canales y sube y organiza el material. */
   canManage: boolean
+  /** A quiénes les puede escribir en privado con `openDirect`: para el alumno, los docentes de sus
+      comisiones con cuenta en HackAI; para el docente, nadie (responde lo que le escriben). */
+  directContacts: DirectContact[]
 }
+
+/** Alguien a quien la persona le puede abrir un canal directo, con su rol y la comisión que comparten. */
+export type DirectContact = { personId: PersonId; name: string; role: Role; sectionName: string }
 
 export type SpaceView = {
   space: Space
@@ -245,11 +254,14 @@ export type Spaces = {
     spaceId: SpaceId,
     layout: MaterialLayout
   ): Promise<Result<MaterialView, 'espacio-desconocido' | 'solo-docentes' | AccessError>>
-  /** Canal directo entre un alumno y un docente de su comisión. */
+  /** Canal directo entre un alumno y un docente de su comisión en ese espacio, creado la primera vez que
+      alguno de los dos lo abre. Hay uno por par y por espacio, así se archiva con el espacio. Lo ven solo
+      sus dos personas. Entre dos alumnos o dos docentes no hay (`solo-alumno-docente`). */
   openDirect(
     personId: PersonId,
+    spaceId: SpaceId,
     otherPersonId: PersonId
-  ): Promise<Result<Channel, 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError | NotImplemented>>
+  ): Promise<Result<Channel, 'espacio-desconocido' | 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError>>
   /** Vincula un canal con uno del canal externo de la cátedra. Solo docentes. */
   link(
     personId: PersonId,

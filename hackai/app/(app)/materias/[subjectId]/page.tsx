@@ -1,8 +1,10 @@
 /* Espacio de la materia: los canales como pestañas arriba (Avisos, Consultas,
-   Material y los que crea un docente), cada una con sus no leídos, y lo de la
-   pestaña elegida. La pestaña va en `?canal=`, el hilo de una consulta en
-   `?hilo=`, el filtro de Consultas en `?filtro=` y el formulario de canal
-   nuevo en `?nuevo=canal`: todo se navega con enlaces, sin JavaScript.
+   Material, los que crea un docente y Directos), cada una con sus no leídos, y
+   lo de la pestaña elegida. El canal va en `?canal=` (también uno directo,
+   con su id), la lista de mensajes directos en `?vista=directos`, el hilo de
+   una consulta en `?hilo=`, el filtro de Consultas en `?filtro=` y el
+   formulario de canal nuevo en `?nuevo=canal`: todo se navega con enlaces, sin
+   JavaScript. Escribirle a un docente por primera vez es un formulario.
 
    En el celular es una columna y el campo para escribir queda pegado abajo.
    En compu, tres columnas: canales, conversación y un panel de contexto.
@@ -23,13 +25,21 @@ import {
 } from '@/components/spaces/channel-panels'
 import { ChannelTabs } from '@/components/spaces/channel-tabs'
 import { ContextPanel, shownSections } from '@/components/spaces/context-panel'
-import { channelLabel, hasSeveralSections, messageTime, type SpaceQuery, spaceHref } from '@/components/spaces/format'
+import { DirectPanel, DirectsPanel } from '@/components/spaces/direct-panels'
+import {
+  channelLabel,
+  hasSeveralSections,
+  isDirect,
+  messageTime,
+  type SpaceQuery,
+  spaceHref
+} from '@/components/spaces/format'
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { AccessError, ChannelView, Spaces, SpaceView } from '@/lib/core/spaces'
+import type { AccessError, Channel, ChannelView, Spaces, SpaceView } from '@/lib/core/spaces'
 import type { Fail } from '@/lib/result'
 
 type Params = Promise<{ subjectId: string }>
@@ -55,7 +65,7 @@ const OPEN_ERRORS: Record<AccessError, string> = {
 
 const CHANNEL_ERRORS: Record<ChannelError, string> = {
   'canal-desconocido': 'Ese canal no existe o ya no está.',
-  'sin-acceso': 'Ese canal es de otra comisión: no lo podés ver.',
+  'sin-acceso': 'No podés ver ese canal: es de otra comisión o es un mensaje directo entre otras personas.',
   'persona-desconocida': OPEN_ERRORS['persona-desconocida'],
   'falla-externa': 'No pudimos traer los mensajes de este canal. Probá de nuevo en un rato.'
 }
@@ -69,7 +79,8 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
     canal: singleParam(raw.canal),
     hilo: singleParam(raw.hilo),
     filtro: singleParam(raw.filtro),
-    nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined
+    nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined,
+    vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined
   }
 }
 
@@ -131,7 +142,7 @@ function ChannelArea({
   }
   const { channel, threads, material } = opened.value
   const props = { subjectId, channel, threads }
-  if (query.hilo) {
+  if (query.hilo && channel.kind !== 'directo') {
     const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
     return <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
   }
@@ -149,6 +160,8 @@ function ChannelArea({
       return <AnnouncementsPanel {...props} />
     case 'consultas':
       return <QuestionsPanel {...props} filter={questionFilter(query.filtro)} role={view.viewer.role} />
+    case 'directo':
+      return <DirectPanel {...props} />
     default:
       return <FreeChannelPanel {...props} />
   }
@@ -167,6 +180,61 @@ async function openChannel(
   return opened
 }
 
+/** Lo que va en la columna del medio: el formulario de canal nuevo, la lista de directos o un canal
+    (`null` si el espacio no tiene ninguno). */
+type Pane = { kind: 'nuevo' } | { kind: 'directos' } | { kind: 'canal'; opened: ChannelResult | null }
+
+/** Con el formulario de canal nuevo o la lista de directos a la vista no se abre ningún canal, así no se
+    marca leído lo que no se vio. */
+async function paneFor(personId: string, view: SpaceView, query: SpaceQuery): Promise<Pane> {
+  if (query.nuevo === 'canal' && view.viewer.canManage) return { kind: 'nuevo' }
+  if (query.vista === 'directos') return { kind: 'directos' }
+  return { kind: 'canal', opened: await openChannel(personId, view, query.canal) }
+}
+
+function paneLabel(pane: Pane, selected: Channel | null, channels: Channel[]): string {
+  if (pane.kind === 'nuevo') return 'Canal nuevo'
+  if (pane.kind === 'directos') return 'Directos'
+  return selected ? channelLabel(selected, hasSeveralSections(channels)) : 'Canal'
+}
+
+function CenterPane({
+  subjectId,
+  view,
+  channels,
+  pane,
+  query
+}: {
+  subjectId: string
+  view: SpaceView
+  channels: Channel[]
+  pane: Pane
+  query: SpaceQuery
+}) {
+  if (pane.kind === 'nuevo') {
+    return (
+      <NewChannelForm
+        subjectId={subjectId}
+        spaceId={view.space.id}
+        sections={shownSections(view.viewer.sections)}
+        cancelHref={spaceHref(subjectId, { canal: query.canal })}
+      />
+    )
+  }
+  if (pane.kind === 'directos') {
+    return (
+      <DirectsPanel
+        space={{ subjectId, spaceId: view.space.id }}
+        role={view.viewer.role}
+        directs={channels.filter(isDirect)}
+        contacts={view.viewer.directContacts}
+      />
+    )
+  }
+  if (!pane.opened) return <ErrorNotice>Este espacio todavía no tiene canales.</ErrorNotice>
+  return <ChannelArea subjectId={subjectId} view={view} opened={pane.opened} query={query} />
+}
+
 export default async function SpacePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const session = await requireSession()
   const { subjectId } = await params
@@ -175,14 +243,11 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const opened = await openSpace(session.personId, subjectId)
   if (!opened.ok) return <SpaceError error={opened.error} />
   const view = opened.value
-  const creating = query.nuevo === 'canal' && view.viewer.canManage
-  // Con el formulario de canal nuevo a la vista no se abre ningún canal, así no se marca leído lo que no se vio.
-  const channel = creating ? null : await openChannel(session.personId, view, query.canal)
+  const pane = await paneFor(session.personId, view, query)
 
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
-  const selected = channel?.ok ? channel.value.channel : null
+  const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
   const channels = view.channels.map((c) => (c.id === selected?.id ? selected : c))
-  const label = selected ? channelLabel(selected, hasSeveralSections(channels)) : 'Canal'
 
   return (
     <>
@@ -207,30 +272,25 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}
-            selectedId={query.canal ?? selected?.id ?? channels[0]?.id ?? null}
+            selectedId={pane.kind === 'canal' ? (query.canal ?? selected?.id ?? channels[0]?.id ?? null) : null}
             canManage={view.viewer.canManage}
-            creating={creating}
+            creating={pane.kind === 'nuevo'}
+            showingDirects={pane.kind === 'directos'}
           />
 
           <section
-            aria-label={creating ? 'Canal nuevo' : label}
+            aria-label={paneLabel(pane, selected, channels)}
             className='flex min-w-0 flex-col gap-4 lg:min-h-[calc(100dvh-11rem)]'
           >
-            {creating ? (
-              <NewChannelForm
-                subjectId={subjectId}
-                spaceId={view.space.id}
-                sections={shownSections(view.viewer.sections)}
-                cancelHref={spaceHref(subjectId, { canal: query.canal })}
-              />
-            ) : channel ? (
-              <ChannelArea subjectId={subjectId} view={view} opened={channel} query={query} />
-            ) : (
-              <ErrorNotice>Este espacio todavía no tiene canales.</ErrorNotice>
-            )}
+            <CenterPane subjectId={subjectId} view={view} channels={channels} pane={pane} query={query} />
           </section>
 
-          <ContextPanel recent={view.material.recent} sections={view.viewer.sections} />
+          <ContextPanel
+            recent={view.material.recent}
+            sections={view.viewer.sections}
+            space={{ subjectId, spaceId: view.space.id }}
+            contacts={view.viewer.directContacts}
+          />
         </div>
       </main>
     </>

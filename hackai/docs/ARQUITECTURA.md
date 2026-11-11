@@ -63,14 +63,14 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 
 | Operación | Qué hace |
 | --- | --- |
-| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos, el material y qué puede hacer. Crea el espacio y los canales de sus comisiones si no existen |
+| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos, el material y qué puede hacer, incluido a quiénes les puede escribir en privado (`directContacts`). Crea el espacio y los canales de sus comisiones si no existen |
 | `channel(persona, canal)` | Mensajes del canal, con las consultas y sus respuestas en hilos; en el de material, el material. Marca leído |
 | `post(persona, canal, mensaje)` | Publica y lo envía al canal externo vinculado |
 | `resolve(persona, consulta)` | Marca una consulta como resuelta |
 | `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |
 | `addMaterial(persona, espacio, archivo)` | Sube un archivo al material, con Archivos, en la unidad o el tema que elige el docente |
 | `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
-| `openDirect(persona, otraPersona)` | Canal directo entre alumno y docente |
+| `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
 | `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
@@ -81,14 +81,16 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 - **Un espacio por materia y facultad.** Se crea la primera vez que alguien lo abre, con sus canales por defecto: material de la materia, y `#avisos` y `#consultas` por comisión.
 - **Membresía.** Se deduce de `sectionsOf` de Cursada y no se guarda aparte. Por eso no hay operación para agregar miembros: quien se inscribe ya está adentro.
 - **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión. Con los archivos guardados pasa lo mismo: el material lo baja cualquiera del espacio, y un adjunto, quien ve su canal.
-- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`), así la pantalla no repite estas reglas.
+- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión, contando las comisiones vigentes del alumno, o todas si la materia está archivada para él; entre alumnos no hay. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`), y el espacio, a quiénes les puede escribir en privado (`viewer.directContacts`), así la pantalla no repite estas reglas.
 - **Canales por defecto:** el espacio y su canal de material se crean la primera vez que alguien abre el espacio; `#avisos` y `#consultas` de una comisión, la primera vez que lo abre alguien de esa comisión. Los nombres no se repiten entre canales que ven las mismas personas.
 - **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que en la demo está fija.
 - **Sincronización:**
   - Cada mensaje guarda su origen (HackAI, Discord, Moodle) y su id externo, y un mensaje no entra dos veces.
   - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización.
   - Los adjuntos externos se copian a Archivos al leerlos, porque las URLs de Discord vencen.
-  - `open` no sincroniza más de una vez cada pocos segundos por espacio.
+  - `open` no sincroniza más de una vez cada 10 segundos por espacio. Con el reloj fijo (`capabilities.fixed`) la hora no avanza y no se puede medir el intervalo: sincroniza en cada apertura.
+  - `open` espera la sincronización antes de devolver la vista. Cada lectura de los adaptadores tiene tiempo máximo (5 s en Moodle simulado) y lo que no llega entra en la próxima, así que un sistema lento demora la apertura pero no la rompe. El límite de 10 segundos se guarda en la memoria del proceso: con varias instancias, cada una lleva el suyo. Alcanza para la demo, que corre en una sola; en producción, la corrida periódica (#15) debería sacar la sincronización del camino de `open`.
+  - El material de Moodle sale de los cursos de todas las comisiones vigentes de la materia, que da la oferta de Cursada, y no solo de las comisiones que ya tienen canales: así no depende de quién abrió antes el espacio.
 
 Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Archivos y el reloj.
 

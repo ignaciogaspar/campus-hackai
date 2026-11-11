@@ -1,7 +1,15 @@
 /* Los canales de un espacio: los que se crean por defecto, en qué orden los ve
    cada persona y cómo se muestran. Sin acceso al almacén salvo `ensureChannels`. */
 
-import type { Channel, NewChannel, SpacesStore, SpacesStoreError, StoredChannel, StoredSpace } from '@/lib/core/spaces'
+import type {
+  Author,
+  Channel,
+  NewChannel,
+  SpacesStore,
+  SpacesStoreError,
+  StoredChannel,
+  StoredSpace
+} from '@/lib/core/spaces'
 import { canResolve, type Membership, postRefusal, sees } from '@/lib/core/spaces/access'
 import { fail, type Result } from '@/lib/result'
 
@@ -89,10 +97,11 @@ export function channelName(raw: string): string | null {
 
 /** Si el nombre choca con un canal que ven los mismos miembros: uno de la
     materia, con cualquiera del espacio; uno de comisión, con los de la materia
-    y los de esa comisión. */
+    y los de esa comisión. Los directos no cuentan: se muestran con el nombre
+    de la otra persona. */
 export function nameTaken(channels: StoredChannel[], name: string, scope: NewChannel['scope']): boolean {
   return channels.some((c) => {
-    if (c.name !== name) return false
+    if (c.name !== name || c.scope.kind === 'directo') return false
     if (scope.kind === 'materia' || c.scope.kind === 'materia') return true
     return c.scope.kind === 'comision' && c.scope.sectionId === scope.sectionId
   })
@@ -104,7 +113,13 @@ export function sectionNameOf(member: Membership, channel: StoredChannel): strin
   return member.sections.find((s) => s.sectionId === scope.sectionId)?.name ?? null
 }
 
-export function toChannel(member: Membership, channel: StoredChannel, unread: number): Channel {
+/** El canal como lo ve la persona. `counterpart` es la otra persona si es un canal directo (ver ./direct.ts). */
+export function toChannel(
+  member: Membership,
+  channel: StoredChannel,
+  unread: number,
+  counterpart: Author | null = null
+): Channel {
   return {
     id: channel.id,
     spaceId: channel.spaceId,
@@ -115,6 +130,7 @@ export function toChannel(member: Membership, channel: StoredChannel, unread: nu
     unread,
     canPost: postRefusal(member, channel) === null,
     canResolve: canResolve(member, channel),
-    externalLink: channel.externalLink
+    externalLink: channel.externalLink,
+    counterpart
   }
 }
