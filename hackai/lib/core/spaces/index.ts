@@ -60,6 +60,8 @@ export type Channel = {
   /** Si la persona puede marcar resueltas las consultas del canal. */
   canResolve: boolean
   externalLink: ExternalLink | null
+  /** En un canal directo, la otra persona, con su nombre y su rol: el canal se muestra con su nombre. En el resto, `null`. */
+  counterpart: Author | null
 }
 
 export type Attachment = { name: string; contentType: string; size: number; url: string }
@@ -246,11 +248,14 @@ export type Spaces = {
     spaceId: SpaceId,
     layout: MaterialLayout
   ): Promise<Result<MaterialView, 'espacio-desconocido' | 'solo-docentes' | AccessError>>
-  /** Canal directo entre un alumno y un docente de su comisión. */
+  /** Canal directo entre un alumno y un docente de su comisión en ese espacio, creado la primera vez que
+      alguno de los dos lo abre. Hay uno por par y por espacio, así se archiva con el espacio. Lo ven solo
+      sus dos personas. Entre dos alumnos o dos docentes no hay (`solo-alumno-docente`). */
   openDirect(
     personId: PersonId,
+    spaceId: SpaceId,
     otherPersonId: PersonId
-  ): Promise<Result<Channel, 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError | NotImplemented>>
+  ): Promise<Result<Channel, 'espacio-desconocido' | 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError>>
   /** Vincula un canal con uno del canal externo de la cátedra. Solo docentes. */
   link(
     personId: PersonId,

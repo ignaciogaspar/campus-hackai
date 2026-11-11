@@ -2,8 +2,9 @@
    del módulo se usa su interfaz. Las piezas viven al lado: quién entra y qué
    puede hacer (access), los canales (channels), lo leído (reading), los
    autores (authors), los mensajes y sus hilos (messages), el material
-   (material) y lo que se trae de Moodle (classroom-import). Los archivos
-   guardados se entregan acá, con la misma regla de quién ve qué.
+   (material), los canales directos (direct) y lo que se trae de Moodle
+   (classroom-import). Los archivos guardados se entregan acá, con la misma
+   regla de quién ve qué.
 
    `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
    vista. Todavía no sincroniza con el canal externo: `open` no trae lo nuevo
@@ -42,9 +43,10 @@ import {
   teachesSection,
   viewerOf
 } from '@/lib/core/spaces/access'
-import { authorsFrom } from '@/lib/core/spaces/authors'
+import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
 import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
 import { importFromClassroom } from '@/lib/core/spaces/classroom-import'
+import { counterpartOf, directChannel, directRefusal } from '@/lib/core/spaces/direct'
 import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
 import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from '@/lib/core/spaces/reading'
@@ -54,6 +56,16 @@ import { fail, notImplemented, ok, type Result } from '@/lib/result'
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
 type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }
+
+/** El canal como lo ve la persona, con la otra persona si es un canal directo. */
+async function channelFor(
+  authors: Authors,
+  member: Membership,
+  channel: StoredChannel,
+  unread: number
+): Promise<Channel> {
+  return toChannel(member, channel, unread, await counterpartOf(authors, member, channel))
+}
 
 function toSpace(space: StoredSpace): Space {
   const { id, subjectId, subjectCode, schoolId, name } = space
@@ -89,11 +101,15 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!snapshot.ok) return snapshot
     const materialChannel = visible.find((c) => c.kind === 'material')
     const mark = materialChannel ? markOf(snapshot.value, materialChannel.id) : 0
-    const items = await materialItems(snapshot.value.material, authorsFrom(people), member.personId, mark)
+    const authors = authorsFrom(people)
+    const [items, shown] = await Promise.all([
+      materialItems(snapshot.value.material, authors, member.personId, mark),
+      Promise.all(visible.map((c) => channelFor(authors, member, c, unreadIn(snapshot.value, c).count)))
+    ])
     return ok({
       space: toSpace(space),
       viewer: viewerOf(member),
-      channels: visible.map((c) => toChannel(member, c, unreadIn(snapshot.value, c).count)),
+      channels: shown,
       material: materialView(space.materialLayout, items),
       staleSince: member.staleSince
     })
@@ -159,7 +175,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!marked.ok) return marked
     return ok({
       space: toSpace(space),
-      channel: toChannel(member, channel, 0),
+      channel: await channelFor(authors, member, channel, 0),
       threads: threadsOf(messages),
       material: null
     })
@@ -395,6 +411,23 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return material.ok ? ok(material.value.view) : material
   }
 
+  const openDirect: Spaces['openDirect'] = async (personId, spaceId, otherPersonId) => {
+    const found = await inSpace(personId, spaceId)
+    if (!found.ok) return found
+    const { space, member } = found.value
+    // Alguien que no existe o no es de la materia no comparte ninguna comisión del espacio.
+    const other = await membershipInSpace(studies, otherPersonId, space)
+    if (!other.ok) return fail(other.error === 'falla-externa' ? other.error : 'sin-comision-en-comun')
+    const refusal = directRefusal(member, other.value)
+    if (refusal) return fail(refusal)
+    const channel = await directChannel(store, space, personId, otherPersonId)
+    if (!channel.ok) return channel
+    const snapshot = await loadSnapshot(store, personId, [channel.value], [])
+    if (!snapshot.ok) return snapshot
+    const unread = unreadIn(snapshot.value, channel.value).count
+    return ok(await channelFor(authorsFrom(people), member, channel.value, unread))
+  }
+
   /** Si la persona ve el espacio o el canal del archivo. Un dueño que ya no existe
       es un archivo desconocido. */
   async function seesFile(
@@ -434,7 +467,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     createChannel,
     addMaterial,
     organizeMaterial,
-    openDirect: notImplemented,
+    openDirect,
     link: notImplemented,
     syncAll: notImplemented,
     unreadFor: (personId) => unreadFor(studies, store, personId),

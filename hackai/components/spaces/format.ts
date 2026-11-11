@@ -60,9 +60,11 @@ const DEFAULT_NAMES: Partial<Record<ChannelKind, string>> = {
 }
 
 /** Avisos, Consultas y Material para los canales por defecto; los que crea un
-    docente, con `#`. Si la persona ve canales de más de una comisión, cada uno
-    lleva su comisión: «Avisos · A». */
+    docente, con `#`; un directo, con el nombre de la otra persona. Si la
+    persona ve canales de más de una comisión, cada uno lleva su comisión:
+    «Avisos · A». */
 export function channelLabel(channel: Channel, severalSections: boolean): string {
+  if (channel.kind === 'directo') return channel.counterpart?.name ?? 'Mensaje directo'
   const base = DEFAULT_NAMES[channel.kind] ?? `#${channel.name}`
   return severalSections && channel.sectionName ? `${base} · ${channel.sectionName}` : base
 }
@@ -79,6 +81,12 @@ export function hasSeveralSections(channels: Channel[]): boolean {
   const sections = new Set(channels.flatMap((c) => (c.scope.kind === 'comision' ? [c.scope.sectionId] : [])))
   return sections.size > 1
 }
+
+/** El valor de `?canal=` de la pestaña Directos, que junta los canales directos. Ningún canal tiene este id. */
+export const DIRECTS_TAB = 'directos'
+
+/** Si el canal va en la pestaña Directos y no suelto en el riel. */
+export const isDirect = (channel: Channel) => channel.kind === 'directo'
 
 export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal' }
 

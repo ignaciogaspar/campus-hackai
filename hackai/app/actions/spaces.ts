@@ -1,5 +1,6 @@
 /* Lo que se hace en el espacio de la materia: publicar, responder, marcar una
-   consulta resuelta, crear un canal y subir y organizar el material. Quién
+   consulta resuelta, crear un canal, subir y organizar el material y abrir un
+   canal directo con un docente. Quién
    puede hacer qué lo decide Espacios; estas acciones validan lo que llega del
    navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
    Se usan con useActionState: devuelven el estado que muestra el formulario. */
@@ -27,6 +28,7 @@ type SpaceError =
   | ErrorOf<Spaces['createChannel']>
   | ErrorOf<Spaces['addMaterial']>
   | ErrorOf<Spaces['organizeMaterial']>
+  | ErrorOf<Spaces['openDirect']>
 
 const ERRORS: Record<SpaceError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
@@ -42,7 +44,9 @@ const ERRORS: Record<SpaceError, string> = {
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano o compartí un enlace.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
   'nombre-invalido': 'Usá letras, números y guiones, sin espacios: por ejemplo «parciales-viejos».',
-  'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.'
+  'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.',
+  'solo-alumno-docente': 'Los mensajes directos son solo entre un alumno y un docente.',
+  'sin-comision-en-comun': 'Solo podés escribirle en privado a los docentes de tu comisión.'
 }
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
@@ -198,4 +202,18 @@ export async function organizeMaterial(_prev: SpaceActionState, form: FormData):
   }
   refresh(subjectId)
   return done()
+}
+
+/** Abre el canal directo con un docente (o, para el docente, con un alumno) y lleva a él. */
+export async function openDirect(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const spaceId = text(form, 'spaceId')
+  const otherPersonId = text(form, 'otherPersonId')
+  if (!subjectId || !spaceId || !otherPersonId) return failed(UNEXPECTED)
+
+  const result = await system().spaces.openDirect(session.personId, spaceId, otherPersonId)
+  if (!result.ok) return failed(ERRORS[result.error])
+  refresh(subjectId)
+  redirect(spaceHref(subjectId, { canal: result.value.id }))
 }

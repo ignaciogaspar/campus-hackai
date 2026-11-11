@@ -1,9 +1,11 @@
 /* Panel de contexto del espacio, solo en compu (a la derecha, como el de
-   detalles de Slack): el material reciente y los docentes de tu comisión. En
-   el celular no va: el material tiene su pestaña. */
+   detalles de Slack): el material reciente y los docentes de tu comisión,
+   con «Escribirle» para el alumno. En el celular no va: el material tiene su
+   pestaña y los docentes están en Directos. */
 import type { ReactNode } from 'react'
 import { initialsOf } from '@/components/spaces/format'
 import { MaterialRow } from '@/components/spaces/material-panel'
+import { StartDirect } from '@/components/spaces/start-direct'
 import type { MaterialItem, SpaceSection } from '@/lib/core/spaces'
 
 /** Las comisiones que se muestran: las actuales, o todas si no hay ninguna actual. */
@@ -12,7 +14,8 @@ export function shownSections(sections: SpaceSection[]): SpaceSection[] {
   return current.length ? current : sections
 }
 
-function teachersOf(sections: SpaceSection[]) {
+/** Los docentes de esas comisiones, sin repetir, cada uno con su comisión. */
+export function teachersOf(sections: SpaceSection[]) {
   const seen = new Set<string>()
   return sections.flatMap((s) =>
     s.teachers.flatMap((t) => {
@@ -35,7 +38,14 @@ function ContextCard({ id, title, children }: { id: string; title: string; child
   )
 }
 
-export function ContextPanel({ recent, sections }: { recent: MaterialItem[]; sections: SpaceSection[] }) {
+type Props = {
+  recent: MaterialItem[]
+  sections: SpaceSection[]
+  /** Solo para el alumno: el espacio donde se abre el canal directo con cada docente. */
+  directsIn: { subjectId: string; spaceId: string } | null
+}
+
+export function ContextPanel({ recent, sections, directsIn }: Props) {
   const shown = shownSections(sections)
   const teachers = teachersOf(shown)
   return (
@@ -65,10 +75,11 @@ export function ContextPanel({ recent, sections }: { recent: MaterialItem[]; sec
                 >
                   {initialsOf(t.name)}
                 </span>
-                <span className='flex min-w-0 flex-col'>
+                <span className='flex min-w-0 flex-1 flex-col'>
                   <span className='truncate text-[0.875rem] font-semibold'>{t.name}</span>
                   <span className='text-xs text-muted-foreground'>Comisión {t.section}</span>
                 </span>
+                {directsIn && t.personId && <StartDirect {...directsIn} personId={t.personId} name={t.name} compact />}
               </li>
             ))}
           </ul>
