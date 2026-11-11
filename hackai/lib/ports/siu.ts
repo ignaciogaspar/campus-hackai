@@ -114,16 +114,23 @@ export type SiuAssessment = {
 
 export type SiuHistoryResult = 'promocionado' | 'aprobado' | 'regular' | 'desaprobado' | 'ausente' | 'libre'
 
-/** Renglón de la historia académica (el «datosanalitico» de la API). */
+/** Renglón de la historia académica (el «datosanalitico» de la API). Además de
+    cursadas, exámenes, promociones y equivalencias, trae las notas de
+    evaluaciones (parciales, recuperatorios, TP) que el docente cargó en la
+    historia y no en un acta abierta. Que el SIU de la Austral las muestre así es
+    una hipótesis (docs/product/preguntas-abiertas.md). */
 export type SiuHistoryEntry = {
   id: string
   personId: string
   subjectId: string
-  type: 'cursada' | 'examen' | 'promocion' | 'equivalencia'
+  type: 'cursada' | 'examen' | 'promocion' | 'equivalencia' | 'evaluacion'
   date: string
   grade: number | null
   result: SiuHistoryResult
   gradeRecord: string
+  /** Comisión y evaluación del cronograma. Solo en los renglones `evaluacion`; en los demás, `null`. */
+  sectionId: string | null
+  assessmentId: string | null
 }
 
 /** Nota cargada en un acta todavía abierta. */

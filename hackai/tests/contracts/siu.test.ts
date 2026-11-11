@@ -128,12 +128,33 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       value: syntheticData.siu.history.filter((h) => h.personId === nicolas)
     })
 
-    const provisional = await siu.provisionalResults(siuId('p-sdominguez'))
+    // Sofía tiene el TP integrador de Programación I en la historia (sin nota) y
+    // el primer parcial de Análisis Matemático I en actuación provisoria.
+    const sofia = siuId('p-sdominguez')
+    const tp = syntheticData.siu.assessments.find((a) => a.sectionId === 'sec-pr1-fi-a' && a.name === 'TP integrador')!
+    const history = await siu.history(sofia)
+    assert.ok(history.ok)
+    assert.deepEqual(
+      history.value.map((h) => [h.type, h.sectionId, h.assessmentId, h.grade, h.result]),
+      [['evaluacion', 'sec-pr1-fi-a', tp.id, null, 'ausente']]
+    )
+    const provisional = await siu.provisionalResults(sofia)
     assert.ok(provisional.ok)
-    assert.deepEqual(provisional.value.map((r) => r.grade).sort(), [9, null])
+    assert.deepEqual(
+      provisional.value.map((r) => [r.sectionId, r.grade]),
+      [['sec-am1-fi-b', 9]]
+    )
 
     assert.deepEqual(await siu.meetsCertificateConditions(nicolas, 'alumno-regular'), { ok: true, value: true })
     assert.deepEqual(await siu.meetsCertificateConditions(nicolas, 'examen-final'), { ok: true, value: false })
+    assert.deepEqual(await siu.meetsCertificateConditions(siuId('p-taguirre'), 'examen-final'), {
+      ok: true,
+      value: true
+    })
+    assert.deepEqual(await siu.meetsCertificateConditions(siuId('p-fjuarez'), 'alumno-regular'), {
+      ok: true,
+      value: false
+    })
   })
 
   it('rechaza inscripciones sin cupo, fuera de período o a lo que no existe', async (siu) => {

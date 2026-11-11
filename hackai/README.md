@@ -105,8 +105,8 @@ Por eso sus migraciones y su seed van **aparte** de las propias, en `supabase/si
 
 | Archivo | Qué hace |
 | --- | --- |
-| `supabase/simulados/0001_siu.sql` | Crea las tablas `siu_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
-| `supabase/simulados/siu_seed.sql` | Carga el set sintético. Idempotente: pisa cada fila por su clave y borra las inscripciones hechas durante la demo. Se genera con `npm run siu:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el SIU en memoria; no se edita a mano. |
+| `supabase/simulados/0001_siu.sql` | Crea las tablas `siu_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. Sobre una base ya creada, agrega lo que falte (por ejemplo, las columnas de las evaluaciones de la historia del issue #14). |
+| `supabase/simulados/siu_seed.sql` | Carga el set sintético. Idempotente: pisa cada fila por su clave y borra las inscripciones hechas durante la demo y las notas que el set ya no tiene. Se genera con `npm run siu:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el SIU en memoria; no se edita a mano. |
 
 Para cargarlas en el Supabase del equipo:
 
@@ -114,7 +114,7 @@ Para cargarlas en el Supabase del equipo:
 psql "$DATABASE_URL" -f supabase/simulados/0001_siu.sql -f supabase/simulados/siu_seed.sql
 ```
 
-Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: un test avisa si quedó viejo.
+Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: un test avisa si quedó viejo. Si cambia `0001_siu.sql`, volvé a correr los dos archivos con el mismo comando.
 
 La batería de contrato del SIU (`tests/contracts/siu.test.ts`) corre siempre contra el SIU en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice.
 
@@ -234,6 +234,7 @@ No las imprimas en logs ni en reportes.
 | `app/page.tsx`, `app/actions/session.ts`, `components/session/` | El ingreso de demo: la lista de personas por rol, y las acciones para entrar y salir. |
 | `components/shell/` | Lo que comparten las pantallas: `PageHeader` (encabezado navy con la marca), `Brand`, `AppShell` y `AppNav` (la navegación), y `Avatar` (iniciales). |
 | `app/(app)/hoy/`, `components/today/` | Inicio de los dos roles. Al alumno, en una llamada a Hoy: el próximo parcial o final, las fechas de las próximas 2 semanas (en compu, un calendario de esta semana y la próxima), las inscripciones que cierran pronto y el acceso a Mis materias. Si el SIU o Moodle no responden, cada parte muestra lo último leído con el aviso de `components/ui/stale-banner.tsx` o su error. Las novedades sin leer llegan con Espacios (#12). Al docente, por ahora, lo saluda y lo lleva a Mis materias. |
+| `app/(app)/academico/`, `components/academic/` | Académico, del alumno: las notas de parciales juntas (la última destacada), la historia con las materias aprobadas por año y el promedio, y las constancias con el enlace a la Autogestión o el motivo por el que todavía no se puede pedir. |
 | `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con el enlace a su aula de Moodle y sus tareas con fecha. Si el SIU o Moodle no responden, muestra lo último leído con el aviso de desactualizado. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 

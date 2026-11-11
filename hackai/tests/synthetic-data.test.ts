@@ -49,6 +49,28 @@ test('hay notas en historia académica y en actuación provisoria', () => {
   assert.ok(siu.provisionalResults.length >= 1)
 })
 
+test('un alumno tiene notas de parciales del cuatrimestre actual en la historia y en actuación provisoria', () => {
+  const current = siu.terms.find((t) => t.start <= syntheticData.now && syntheticData.now <= t.end)!
+  const inCurrentTerm = (sectionId: string | null) =>
+    siu.sections.find((s) => s.id === sectionId)?.termId === current.id
+  const both = siu.persons.filter(
+    (p) =>
+      siu.history.some((h) => h.personId === p.id && h.type === 'evaluacion' && inCurrentTerm(h.sectionId)) &&
+      siu.provisionalResults.some((r) => r.personId === p.id && inCurrentTerm(r.sectionId))
+  )
+  assert.ok(both.length >= 1)
+})
+
+test('hay materias aprobadas por promoción, por final y por equivalencia', () => {
+  assert.ok(siu.history.some((h) => h.type === 'promocion' && h.result === 'promocionado'))
+  assert.ok(siu.history.some((h) => h.type === 'examen' && h.result === 'aprobado'))
+  assert.ok(siu.history.some((h) => h.type === 'equivalencia'))
+})
+
+test('hay un alumno que no cumple las condiciones de la constancia de alumno regular', () => {
+  assert.ok(siu.certificates.some((c) => c.type === 'alumno-regular' && !c.meetsConditions))
+})
+
 test('un alumno tiene materias de un cuatrimestre anterior', () => {
   const current = siu.terms.find((t) => t.start <= syntheticData.now && syntheticData.now <= t.end)!
   const previous = siu.terms.filter((t) => t.end < current.start).map((t) => t.id)
@@ -85,5 +107,22 @@ test('todas las referencias del set apuntan a algo que existe', () => {
   const discordIds = new Set(people.map((p) => p.discordId).filter(Boolean))
   for (const c of discord.channels) {
     for (const m of c.messages) assert.ok(m.author.isBot || discordIds.has(m.author.id), m.id)
+  }
+})
+
+test('las notas de la historia y de actuación provisoria apuntan a materias, comisiones y evaluaciones que existen', () => {
+  const personIds = new Set(siu.persons.map((p) => p.id))
+  const subjectIds = new Set(siu.subjects.map((s) => s.id))
+  const assessmentOf = (id: string | null) => siu.assessments.find((a) => a.id === id)
+  for (const h of siu.history) {
+    assert.ok(personIds.has(h.personId) && subjectIds.has(h.subjectId), h.id)
+    if (h.type !== 'evaluacion') continue
+    const assessment = assessmentOf(h.assessmentId)
+    assert.equal(assessment?.sectionId, h.sectionId, h.id)
+    assert.equal(siu.sections.find((s) => s.id === h.sectionId)?.subjectId, h.subjectId, h.id)
+  }
+  for (const r of siu.provisionalResults) {
+    assert.ok(personIds.has(r.personId), r.id)
+    assert.equal(assessmentOf(r.assessmentId)?.sectionId, r.sectionId, r.id)
   }
 })

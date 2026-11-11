@@ -136,16 +136,31 @@ create table if not exists siu_assessments (
 );
 
 -- Historia académica (/personas/{persona}/datosanalitico, esquema Historia).
+-- Los renglones 'evaluacion' son notas de parciales o TP que el docente cargó
+-- en la historia y no en un acta abierta: llevan su comisión y su evaluación.
+-- Que el SIU de la Austral las muestre así es una hipótesis.
 create table if not exists siu_history (
   id text primary key,
   person_id text not null references siu_persons (id),
   subject_id text not null references siu_subjects (id),   -- actividad_codigo
-  type text not null check (type in ('cursada', 'examen', 'promocion', 'equivalencia')),  -- tipo
+  type text not null,                 -- tipo
   date timestamptz not null,          -- fecha
   grade numeric,                      -- nota
   result text not null check (result in ('promocionado', 'aprobado', 'regular', 'desaprobado', 'ausente', 'libre')),  -- resultado
-  grade_record text not null          -- acta_resolucion
+  grade_record text not null,         -- acta_resolucion
+  section_id text references siu_sections (id),
+  assessment_id text references siu_assessments (id)
 );
+
+-- Para una base creada antes de que existieran los renglones 'evaluacion'.
+alter table siu_history add column if not exists section_id text references siu_sections (id);
+alter table siu_history add column if not exists assessment_id text references siu_assessments (id);
+alter table siu_history drop constraint if exists siu_history_type_check;
+alter table siu_history add constraint siu_history_type_check
+  check (type in ('cursada', 'examen', 'promocion', 'equivalencia', 'evaluacion'));
+alter table siu_history drop constraint if exists siu_history_evaluation_check;
+alter table siu_history add constraint siu_history_evaluation_check
+  check ((type = 'evaluacion') = (section_id is not null and assessment_id is not null));
 
 -- Notas cargadas en actas todavía abiertas (actuación provisoria).
 create table if not exists siu_provisional_results (

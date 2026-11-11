@@ -11,9 +11,15 @@
    - Inscripciones a cursada del cuatrimestre actual, del anterior y de verano
      (con la inscripción abierta; Física I de verano está sin cupo).
    - Mesas de examen con cupo en el turno de diciembre, con la inscripción abierta.
-   - Cronograma de parciales, notas en actuación provisoria y en historia académica.
-   - Tomás Aguirre y Valentina Funes cursaron Álgebra en el 1er cuatrimestre;
-     Nicolás Herrera, Introducción a la Economía.
+   - Cronograma de parciales. Las notas de parciales están repartidas como en
+     el SIU: Arrieta (Programación I) las carga en la historia académica y los
+     demás docentes en actuación provisoria (acta abierta).
+   - Tomás Aguirre y Valentina Funes cursaron Álgebra en el 1er cuatrimestre,
+     con sus parciales en la historia; Nicolás Herrera, Introducción a la
+     Economía. Tomás aprobó tres materias en 2025, una de ellas con final, y
+     Nicolás tiene una equivalencia.
+   - Federico Juárez tiene la propuesta pasiva: no cumple las condiciones de la
+     constancia de alumno regular.
    - Cursos de Moodle por comisión (Sofía Domínguez todavía no está matriculada
      en Programación I) y canales de Discord del servidor del equipo. */
 import type {
@@ -31,6 +37,7 @@ import type {
   SiuExamBoard,
   SiuExamEnrollment,
   SiuHistoryEntry,
+  SiuHistoryResult,
   SiuPerson,
   SiuProgram,
   SiuProvisionalResult,
@@ -116,7 +123,7 @@ const rows: Row[] = [
   ['p-agimenez', '30107', '407', null, 'Giménez', 'Agustina', 'alumno', fce, [administracion]],
   ['p-nherrera', '30108', '408', null, 'Herrera', 'Nicolás', 'alumno', fce, [contador]],
   ['p-cibarra', '30109', '409', null, 'Ibarra', 'Camila', 'alumno', fce, [administracion]],
-  ['p-fjuarez', '30110', '410', null, 'Juárez', 'Federico', 'alumno', fce, [contador]]
+  ['p-fjuarez', '30110', '410', null, 'Juárez', 'Federico', 'alumno', fce, [{ ...contador, status: 'pasiva' }]]
 ]
 
 function slug(text: string): string {
@@ -191,7 +198,12 @@ const subjects: SiuSubject[] = [
   { id: 'pr1', code: 'PR1', name: 'Programación I' },
   { id: 'fi1', code: 'FI1', name: 'Física I' },
   { id: 'iec', code: 'IEC', name: 'Introducción a la Economía' },
-  { id: 'co1', code: 'CO1', name: 'Contabilidad I' }
+  { id: 'co1', code: 'CO1', name: 'Contabilidad I' },
+  // Solo en la historia académica: se aprobaron antes de los períodos del set.
+  { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería' },
+  { id: 'qui', code: 'QUI', name: 'Química General' },
+  { id: 'an1', code: 'AN1', name: 'Antropología I' },
+  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' }
 ]
 
 // Comisiones
@@ -468,40 +480,61 @@ function assessmentId(sectionId: string, name: string): string {
   return assessments.find((a) => a.sectionId === sectionId && a.name === name)!.id
 }
 
-// Historia académica
+// Historia académica: cursadas, exámenes, promociones y equivalencias, por materia
+
+type HistoryRow = [string, string, SiuHistoryEntry['type'], string, number | null, SiuHistoryResult, string]
+
+const subjectRows: HistoryRow[] = [
+  ['p-taguirre', 'aga', 'cursada', '2026-07-08', 6, 'regular', 'C-2026-0412'],
+  ['p-vfunes', 'aga', 'cursada', '2026-07-08', 7, 'regular', 'C-2026-0412'],
+  ['p-nherrera', 'iec', 'promocion', '2026-07-06', 9, 'promocionado', 'P-2026-0087'],
+  ['p-taguirre', 'iin', 'promocion', '2025-07-04', 8, 'promocionado', 'P-2025-0101'],
+  ['p-taguirre', 'qui', 'promocion', '2025-12-05', 7, 'promocionado', 'P-2025-0230'],
+  ['p-taguirre', 'an1', 'examen', '2025-12-15', 9, 'aprobado', 'E-2025-0318'],
+  ['p-nherrera', 'iad', 'equivalencia', '2026-03-20', 8, 'aprobado', 'R-2026-0014']
+]
+
+// Notas de evaluaciones cargadas en la historia: [persona, comisión, evaluación, nota, resultado, registro]
+
+const evaluationRows: [string, string, string, number | null, SiuHistoryResult, string][] = [
+  ['p-taguirre', 'sec-aga-fi-a', 'Primer parcial', 6, 'aprobado', 'EV-2026-0103'],
+  ['p-taguirre', 'sec-aga-fi-a', 'Segundo parcial', 7, 'aprobado', 'EV-2026-0188'],
+  ['p-vfunes', 'sec-aga-fi-a', 'Primer parcial', 8, 'aprobado', 'EV-2026-0103'],
+  ['p-vfunes', 'sec-aga-fi-a', 'Segundo parcial', 6, 'aprobado', 'EV-2026-0188'],
+  ['p-taguirre', 'sec-pr1-fi-a', 'TP integrador', 9, 'aprobado', 'EV-2026-0412'],
+  ['p-lbenitez', 'sec-pr1-fi-a', 'TP integrador', 8, 'aprobado', 'EV-2026-0412'],
+  ['p-sdominguez', 'sec-pr1-fi-a', 'TP integrador', null, 'ausente', 'EV-2026-0412']
+]
 
 const history: SiuHistoryEntry[] = [
-  {
-    id: 'ha-1',
-    personId: siu('p-taguirre'),
-    subjectId: 'aga',
-    type: 'cursada',
-    date: at('2026-07-08'),
-    grade: 6,
-    result: 'regular',
-    gradeRecord: 'C-2026-0412'
-  },
-  {
-    id: 'ha-2',
-    personId: siu('p-vfunes'),
-    subjectId: 'aga',
-    type: 'cursada',
-    date: at('2026-07-08'),
-    grade: 7,
-    result: 'regular',
-    gradeRecord: 'C-2026-0412'
-  },
-  {
-    id: 'ha-3',
-    personId: siu('p-nherrera'),
-    subjectId: 'iec',
-    type: 'promocion',
-    date: at('2026-07-06'),
-    grade: 9,
-    result: 'promocionado',
-    gradeRecord: 'P-2026-0087'
-  }
-]
+  ...subjectRows.map(
+    ([personId, subjectId, type, date, grade, result, gradeRecord]): Omit<SiuHistoryEntry, 'id'> => ({
+      personId: siu(personId),
+      subjectId,
+      type,
+      date: at(date),
+      grade,
+      result,
+      gradeRecord,
+      sectionId: null,
+      assessmentId: null
+    })
+  ),
+  ...evaluationRows.map(([personId, sectionId, name, grade, result, gradeRecord]): Omit<SiuHistoryEntry, 'id'> => {
+    const id = assessmentId(sectionId, name)
+    return {
+      personId: siu(personId),
+      subjectId: sections.find((s) => s.id === sectionId)!.subjectId,
+      type: 'evaluacion',
+      date: assessments.find((a) => a.id === id)!.date,
+      grade,
+      result,
+      gradeRecord,
+      sectionId,
+      assessmentId: id
+    }
+  })
+].map((entry, i) => ({ id: `ha-${i + 1}`, ...entry }))
 
 // Actuación provisoria: [persona, comisión, evaluación, nota]
 
@@ -515,9 +548,6 @@ const provisionalRows: [string, string, string, number | null][] = [
   ['p-agimenez', 'sec-am1-fce-a', 'Primer parcial', 8],
   ['p-nherrera', 'sec-am1-fce-a', 'Primer parcial', 7],
   ['p-cibarra', 'sec-am1-fce-a', 'Primer parcial', 6],
-  ['p-taguirre', 'sec-pr1-fi-a', 'TP integrador', 9],
-  ['p-lbenitez', 'sec-pr1-fi-a', 'TP integrador', 8],
-  ['p-sdominguez', 'sec-pr1-fi-a', 'TP integrador', null],
   ['p-agimenez', 'sec-co1-fce-a', 'Primer parcial', 6],
   ['p-nherrera', 'sec-co1-fce-a', 'Primer parcial', 8],
   ['p-fjuarez', 'sec-co1-fce-a', 'Primer parcial', 7]
@@ -535,13 +565,22 @@ const provisionalResults: SiuProvisionalResult[] = provisionalRows.map(([personI
   }
 })
 
-// Constancias: todos los alumnos son regulares; nadie rindió un final todavía.
+// Constancias: cumple la de alumno regular quien tiene una propuesta activa
+// (todos menos Federico Juárez), y la de examen final quien rindió un final.
 
 const certificates = persons
   .filter((p) => p.role === 'alumno')
   .flatMap((p) => [
-    { personId: p.id, type: 'alumno-regular' as const, meetsConditions: true },
-    { personId: p.id, type: 'examen-final' as const, meetsConditions: false }
+    {
+      personId: p.id,
+      type: 'alumno-regular' as const,
+      meetsConditions: p.programs.some((pr) => pr.status === 'activa')
+    },
+    {
+      personId: p.id,
+      type: 'examen-final' as const,
+      meetsConditions: history.some((h) => h.personId === p.id && h.type === 'examen' && h.result !== 'ausente')
+    }
   ])
 
 // Moodle: un curso por comisión
