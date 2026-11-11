@@ -3,16 +3,10 @@
    lo que devuelve Cursada a un estado que la pantalla sabe mostrar: las reglas
    (todo o nada, cupo, período, autogestión) son de Cursada. */
 import { revalidatePath } from 'next/cache'
+import type { EnrollmentState } from '@/components/enrollment/state'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { DropError, EnrollError } from '@/lib/core/studies'
-
-export type EnrollmentState =
-  | { kind: 'inicial' }
-  | { kind: 'inscripto'; transactionNumber: string }
-  | { kind: 'baja'; transactionNumber: string }
-  | { kind: 'requiere-autogestion'; url: string; action: 'inscribirte' | 'darte de baja' }
-  | { kind: 'error'; message: string }
 
 type Failure = EnrollError | DropError | 'persona-desconocida' | 'no-implementado'
 
@@ -24,6 +18,10 @@ const ENROLL_ERRORS: Record<Exclude<Failure, 'no-inscripto'>, string> = {
   'falla-externa':
     'El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada. Probá de nuevo en un rato.',
   'persona-desconocida': 'No encontramos tus datos en el SIU.',
+  'sin-cuenta-del-aula':
+    'No encontramos tu usuario del Campus Virtual, así que no te inscribimos en nada. Escribile a la secretaría de tu facultad para que lo revisen.',
+  'a-medias':
+    'Quedaste inscripto en el SIU, pero no pudimos sumarte al aula del Campus Virtual. Escribile a la secretaría de tu facultad para que lo completen.',
   'no-implementado': 'Todavía no podemos inscribirte desde HackAI.'
 }
 
@@ -33,6 +31,10 @@ const DROP_ERRORS: Record<Failure, string> = {
   'fuera-de-periodo': 'Ya no te podés dar de baja: el período de inscripción cerró.',
   'falla-externa':
     'El SIU o el Campus Virtual no respondieron, así que seguís inscripto como antes. Probá de nuevo en un rato.',
+  'sin-cuenta-del-aula':
+    'No encontramos tu usuario del Campus Virtual, así que seguís inscripto como antes. Escribile a la secretaría de tu facultad para que lo revisen.',
+  'a-medias':
+    'Seguís inscripto en el SIU, pero quedaste afuera del aula del Campus Virtual. Escribile a la secretaría de tu facultad para que lo completen.',
   'no-implementado': 'Todavía no podemos darte de baja desde HackAI.'
 }
 
@@ -54,7 +56,7 @@ export async function enrollAction(_prev: EnrollmentState, formData: FormData): 
   const result = await system().studies.enroll(session.personId, { kind: 'comision', sectionId })
   if (!result.ok) return { kind: 'error', message: ENROLL_ERRORS[result.error] }
   if (result.value.kind === 'requiere-autogestion')
-    return { kind: 'requiere-autogestion', url: result.value.url, action: 'inscribirte' }
+    return { kind: 'requiere-autogestion', url: result.value.url, step: 'inscripcion' }
   refresh()
   return { kind: 'inscripto', transactionNumber: result.value.receipt.transactionNumber }
 }
@@ -67,7 +69,7 @@ export async function dropAction(_prev: EnrollmentState, formData: FormData): Pr
   const result = await system().studies.drop(session.personId, { kind: 'comision', sectionId })
   if (!result.ok) return { kind: 'error', message: DROP_ERRORS[result.error] }
   if (result.value.kind === 'requiere-autogestion')
-    return { kind: 'requiere-autogestion', url: result.value.url, action: 'darte de baja' }
+    return { kind: 'requiere-autogestion', url: result.value.url, step: 'baja' }
   refresh()
   return { kind: 'baja', transactionNumber: result.value.receipt.transactionNumber }
 }

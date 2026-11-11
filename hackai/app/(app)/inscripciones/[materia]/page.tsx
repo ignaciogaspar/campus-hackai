@@ -7,18 +7,15 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
 import { capacityText, modalityName, scheduleLine, shortDate } from '@/components/enrollment/format'
+import { readErrorText } from '@/components/enrollment/read-error'
 import { SectionActions } from '@/components/enrollment/section-actions'
+import { ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { OfferItem, StudiesReadError } from '@/lib/core/studies'
+import type { OfferItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Comisiones · Campus HackAI' }
-
-const ERRORS: Partial<Record<StudiesReadError, string>> = {
-  'falla-externa': 'No pudimos traer las comisiones del SIU. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU.'
-}
 
 function WindowNote({ item }: { item: OfferItem }) {
   if (item.enrollmentOpen) {
@@ -135,9 +132,7 @@ export default async function OfertaPage({ params }: { params: Promise<{ materia
       </header>
 
       {!result.ok ? (
-        <p role='alert' className='rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm'>
-          {ERRORS[result.error] ?? 'Algo salió mal al traer las comisiones.'}
-        </p>
+        <ErrorNotice>{readErrorText(result.error, 'las comisiones')}</ErrorNotice>
       ) : result.value.length === 0 ? (
         <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
           Esta materia no tiene comisiones abiertas en tu facultad.

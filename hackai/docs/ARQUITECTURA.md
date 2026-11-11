@@ -34,7 +34,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
-| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `falla-externa` |
+| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
 | `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
@@ -45,7 +45,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Invariantes de `enroll`:**
 
-- **Todo o nada.** Si el SIU inscribe y Moodle falla, deshace la inscripción del SIU antes de devolver `falla-externa`.
+- **Todo o nada.** Si el SIU inscribe y Moodle falla, deshace la inscripción del SIU antes de devolver `falla-externa`. Si deshacerla también falla, devuelve `a-medias`: el SIU y el aula quedaron distintos y no se le puede decir al alumno que no pasó nada. Sin usuario de Moodle no se inscribe y devuelve `sin-cuenta-del-aula`, porque reintentar no lo arregla.
 - **Una comisión vigente por materia.** Con una inscripción aceptada o pendiente a una comisión de un período que no terminó, inscribirse a otra comisión de la misma materia devuelve `ya-inscripto`, aunque sea de otro período. La oferta lo marca y las inscripciones abiertas no ofrecen esa materia.
 - **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
 - **La baja es el camino inverso.** Desmatricula de las aulas y después da de baja en el SIU. Si el SIU la rechaza (fuera de período, caído), vuelve a matricular: lo que se deshace sin riesgo es la matrícula, no la inscripción.

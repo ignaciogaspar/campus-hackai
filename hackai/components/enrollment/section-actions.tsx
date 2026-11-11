@@ -3,14 +3,17 @@
    baja (con confirmación), y lo que pasó después: el comprobante, el paso que
    falta en la Autogestión del SIU o el error. Solo muestra lo que devuelve la
    server action. */
-import { CheckCircle2, ExternalLink, Info, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Info } from 'lucide-react'
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
-import type { EnrollmentState } from '@/app/(app)/inscripciones/actions'
+import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { ErrorNotice } from '@/components/ui/states'
 import { cn } from '@/lib/utils'
 
 const INITIAL: EnrollmentState = { kind: 'inicial' }
+
+const STEP_TEXT: Record<EnrollmentStep, string> = { inscripcion: 'inscribirte', baja: 'darte de baja' }
 
 function Outcome({ state }: { state: EnrollmentState }) {
   if (state.kind === 'inscripto') {
@@ -19,7 +22,7 @@ function Outcome({ state }: { state: EnrollmentState }) {
         <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
         <div className='flex flex-col gap-2'>
           <p>
-            <b>Listo, quedaste inscripto.</b> Ya estás en el aula del Campus Virtual y en el espacio de la materia.
+            <b>Listo, quedaste inscripto.</b> Ya estás en el SIU y en el aula del Campus Virtual.
           </p>
           <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {state.transactionNumber}</p>
           <Link
@@ -51,8 +54,8 @@ function Outcome({ state }: { state: EnrollmentState }) {
         <Info aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
         <div className='flex flex-col gap-2'>
           <p>
-            <b>Te falta un paso.</b> Para {state.action} hay que confirmarlo en la Autogestión del SIU. Te llevamos
-            directo a esta comisión.
+            <b>Te falta un paso.</b> Para {STEP_TEXT[state.step]} hay que confirmarlo en la Autogestión del SIU. Te
+            llevamos directo a esta comisión.
           </p>
           <a
             href={state.url}
@@ -69,17 +72,10 @@ function Outcome({ state }: { state: EnrollmentState }) {
     )
   }
   if (state.kind === 'error') {
-    return (
-      <p role='alert' className='flex gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm'>
-        <TriangleAlert aria-hidden className='mt-0.5 size-5 shrink-0 text-destructive' />
-        <span>{state.message}</span>
-      </p>
-    )
+    return <ErrorNotice>{state.message}</ErrorNotice>
   }
   return null
 }
-
-type EnrollmentAction = (prev: EnrollmentState, formData: FormData) => Promise<EnrollmentState>
 
 type Props = {
   sectionId: string
@@ -110,22 +106,22 @@ export function SectionActions({
   const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL)
   const [dropState, drop, dropping] = useActionState(dropAction, INITIAL)
   const [confirming, setConfirming] = useState(false)
-  const [last, setLast] = useState<'enroll' | 'drop' | null>(null)
+  const [lastAction, setLastAction] = useState<'enroll' | 'drop' | null>(null)
   if (!open) return null
 
-  const shown = last === 'drop' ? dropState : last === 'enroll' ? enrollState : INITIAL
-  const justEnrolled = shown.kind === 'inscripto'
+  const visibleOutcome = lastAction === 'drop' ? dropState : lastAction === 'enroll' ? enrollState : INITIAL
+  const justEnrolled = visibleOutcome.kind === 'inscripto'
 
   return (
     <div className='flex flex-col gap-3'>
-      {!enrolled && enrolledElsewhere && shown.kind !== 'baja' && (
+      {!enrolled && enrolledElsewhere && visibleOutcome.kind !== 'baja' && (
         <p className='text-sm text-muted-foreground'>
           Ya estás inscripto en la comisión {enrolledElsewhere}. Para cambiarte, primero date de baja de esa.
         </p>
       )}
 
       {!enrolled && !enrolledElsewhere && (
-        <form action={enroll} onSubmit={() => setLast('enroll')}>
+        <form action={enroll} onSubmit={() => setLastAction('enroll')}>
           <input type='hidden' name='sectionId' value={sectionId} />
           <Button type='submit' size='lg' disabled={enrolling} className='min-h-11 w-full sm:w-auto'>
             {enrolling ? 'Inscribiéndote…' : 'Inscribirme'}
@@ -140,7 +136,7 @@ export function SectionActions({
           <form
             action={drop}
             onSubmit={() => {
-              setLast('drop')
+              setLastAction('drop')
               setConfirming(false)
             }}
             className='flex flex-col gap-2 rounded-lg border border-border p-3'
@@ -170,7 +166,7 @@ export function SectionActions({
           </Button>
         ))}
 
-      <Outcome state={shown} />
+      <Outcome state={visibleOutcome} />
     </div>
   )
 }

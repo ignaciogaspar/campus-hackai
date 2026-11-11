@@ -98,6 +98,8 @@ export type OfferItem = {
   /** Cupo. `null` es «sin definir»: no se llena. */
   capacity: number | null
   enrolled: number
+  /** Lugares que quedan. `0` es sin cupo; `null`, sin tope. */
+  spotsLeft: number | null
   enrollmentStart: string
   enrollmentEnd: string
   /** La ventana de inscripción está abierta según el reloj. */
@@ -116,8 +118,21 @@ export type EnrollOutcome =
 
 export type DropOutcome = { kind: 'baja'; receipt: Receipt } | { kind: 'requiere-autogestion'; url: string }
 
-export type EnrollError = 'sin-cupo' | 'fuera-de-periodo' | 'ya-inscripto' | 'objetivo-desconocido' | ExternalFailure
-export type DropError = 'no-inscripto' | 'fuera-de-periodo' | 'objetivo-desconocido' | ExternalFailure
+/** Errores de inscribir o dar de baja que no son del SIU:
+    - `sin-cuenta-del-aula`: la persona no tiene usuario de Moodle, así que no
+      se la puede matricular ni desmatricular. Reintentar no sirve.
+    - `a-medias`: un paso falló y el que lo deshacía también. El SIU quedó
+      distinto del aula y alguien tiene que mirarlo. */
+export type TwoSystemsError = 'sin-cuenta-del-aula' | 'a-medias'
+
+export type EnrollError =
+  | 'sin-cupo'
+  | 'fuera-de-periodo'
+  | 'ya-inscripto'
+  | 'objetivo-desconocido'
+  | TwoSystemsError
+  | ExternalFailure
+export type DropError = 'no-inscripto' | 'fuera-de-periodo' | 'objetivo-desconocido' | TwoSystemsError | ExternalFailure
 
 /** Parcial, final o, como complemento, una entrega con fecha de Moodle. */
 export type UpcomingItem = {
@@ -204,6 +219,13 @@ export type StudiesDeps = {
 }
 
 /** Una comisión de la persona con su materia y su período lectivo. */
+/** La persona en el SIU: su id y su facultad. */
+type SiuPersonRef = { siuId: string; schoolId: string }
+
+/** Lo que hace falta del aula para inscribir o dar de baja. Sin `moodleId`,
+    HackAI no toca el aula (el SIU matricula solo, o es una mesa). */
+type ClassroomPlan = { courseIds: string[]; moodleId: string | null }
+
 type SectionInTerm = { section: SiuSection; subject: SiuSubject; term: SiuTerm; current: boolean }
 
 type MySectionsInTerms = { role: Role; sections: SectionInTerm[] }
@@ -382,7 +404,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   }
 
   /** El id del SIU de la persona y su facultad. */
-  async function siuPersonOf(personId: PersonId): Promise<Result<{ siuId: string; schoolId: string }, ReadError>> {
+  async function siuPersonOf(personId: PersonId): Promise<Result<SiuPersonRef, ReadError>> {
     const siuId = await people.accountIn(personId, 'siu')
     if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
     const person = await siu.person(siuId.value)
@@ -391,6 +413,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   }
 
   const isOpenAt = (at: string, start: string, end: string) => start <= at && at <= end
+  const spotsLeft = (capacity: number | null, enrolled: number) =>
+    capacity === null ? null : Math.max(capacity - enrolled, 0)
 
   /** Comisiones de la materia en la facultad, de períodos que no terminaron. */
   async function sectionOffer(
@@ -407,19 +431,19 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!terms.ok) return terms
     if (!sections.ok) return sections
     if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
-    const placed = sections.value
+    const currentSections = sections.value
       .flatMap((section) => {
         const term = terms.value.find((t) => t.id === section.termId)
         return term && term.end >= at ? [{ section, term }] : []
       })
       .sort((a, b) => a.term.start.localeCompare(b.term.start) || a.section.name.localeCompare(b.section.name, 'es'))
-    const teachers = all(await Promise.all(placed.map((p) => teachersOf(p.section))))
+    const teachers = all(await Promise.all(currentSections.map((p) => teachersOf(p.section))))
     if (!teachers.ok) return teachers
     const enrolledIds = new Set(enrollments.value.map((e) => e.sectionId))
     const enrolledElsewhere = (sectionId: string) =>
-      placed.find((p) => p.section.id !== sectionId && enrolledIds.has(p.section.id))?.section.name ?? null
+      currentSections.find((p) => p.section.id !== sectionId && enrolledIds.has(p.section.id))?.section.name ?? null
     return ok(
-      placed.map(
+      currentSections.map(
         ({ section, term }, i): OfferItem => ({
           target: { kind: 'comision', sectionId: section.id },
           subjectId: subject.id,
@@ -433,6 +457,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           teachers: teachers.value[i],
           capacity: section.capacity,
           enrolled: section.enrolled,
+          spotsLeft: spotsLeft(section.capacity, section.enrolled),
           enrollmentStart: term.enrollmentStart,
           enrollmentEnd: term.enrollmentEnd,
           enrollmentOpen: isOpenAt(at, term.enrollmentStart, term.enrollmentEnd),
@@ -474,6 +499,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           teachers: teachers.value[i],
           capacity: board.capacity,
           enrolled: board.enrolled,
+          spotsLeft: spotsLeft(board.capacity, board.enrolled),
           enrollmentStart: board.enrollmentStart,
           enrollmentEnd: board.enrollmentEnd,
           enrollmentOpen: isOpenAt(at, board.enrollmentStart, board.enrollmentEnd),
@@ -487,11 +513,11 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   /** Comisiones de la materia en la facultad de la persona, de períodos que no
       terminaron; o mesas de la materia en su facultad que todavía no se tomaron. */
   async function offer(personId: PersonId, query: OfferQuery): Promise<Result<OfferItem[], ReadError>> {
-    const mine = await siuPersonOf(personId)
-    if (!mine.ok) return mine
+    const siuPerson = await siuPersonOf(personId)
+    if (!siuPerson.ok) return siuPerson
     const subject = await siu.subject(query.subjectId)
     if (!subject.ok) return subject.error === 'no-encontrado' ? ok([]) : fail(subject.error)
-    const { siuId, schoolId } = mine.value
+    const { siuId, schoolId } = siuPerson.value
     return query.kind === 'cursada'
       ? sectionOffer(siuId, schoolId, subject.value)
       : boardOffer(siuId, schoolId, subject.value)
@@ -531,9 +557,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     personId: PersonId,
     target: Target
   ): Promise<Result<{ siuId: string; subjectId: string }, ReadError | TargetError>> {
-    const mine = await siuPersonOf(personId)
-    if (!mine.ok) return mine
-    const { siuId, schoolId } = mine.value
+    const siuPerson = await siuPersonOf(personId)
+    if (!siuPerson.ok) return siuPerson
+    const { siuId, schoolId } = siuPerson.value
     const subjectId =
       target.kind === 'comision'
         ? await sectionSubject(target.sectionId, schoolId)
@@ -548,46 +574,43 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return courses.ok ? courses.value.map((c) => c.id) : []
   }
 
-  /** Lo que hace falta del aula para inscribir en una comisión: sus cursos y,
-      si HackAI tiene que matricular, el id de Moodle de la persona. Se lee
-      antes de tocar el SIU, así un Moodle caído no deja nada a medias. */
+  /** Lo que hace falta del aula para inscribir en una comisión o dar de baja:
+      sus cursos y, si HackAI tiene que matricular, el id de Moodle de la
+      persona. Se lee antes de tocar el SIU, así un Moodle caído o una persona
+      sin usuario de Moodle no dejan nada a medias. */
   async function classroomPlan(
     personId: PersonId,
     target: Target
-  ): Promise<Result<{ courseIds: string[]; moodleId: string | null }, ExternalFailure>> {
+  ): Promise<Result<ClassroomPlan, 'sin-cuenta-del-aula' | ExternalFailure>> {
     if (target.kind !== 'comision') return ok({ courseIds: [], moodleId: null })
     const mustEnrol = !siu.capabilities.enrolsInClassroom && classroom.capabilities.canEnrol
     if (!mustEnrol) return ok({ courseIds: await sectionCourseIds(target.sectionId), moodleId: null })
     const courses = await classroom.coursesForSection(target.sectionId)
     if (!courses.ok) return courses
     if (!courses.value.length) return ok({ courseIds: [], moodleId: null })
-    // Sin cuenta de Moodle no se lo puede matricular, y sin matrícula no se inscribe: todo o nada.
     const moodleId = await people.accountIn(personId, 'moodle')
-    if (!moodleId.ok) return fail('falla-externa')
+    if (!moodleId.ok) return fail(moodleId.error === 'falla-externa' ? 'falla-externa' : 'sin-cuenta-del-aula')
     return ok({ courseIds: courses.value.map((c) => c.id), moodleId: moodleId.value })
   }
 
-  /** Matricula en cada curso. Si uno falla, desmatricula los anteriores: todo o nada. */
-  async function enrolAll(moodleId: string, courseIds: string[]): Promise<Result<null, ExternalFailure>> {
-    const done: string[] = []
-    for (const courseId of courseIds) {
-      const result = await classroom.enrol(moodleId, courseId, 'student')
-      if (!result.ok) {
-        await Promise.all(done.map((id) => classroom.unenrol(moodleId, id)))
-        return fail('falla-externa')
-      }
-      done.push(courseId)
-    }
-    return ok(null)
-  }
+  type CourseStep = (moodleId: string, courseId: string) => Promise<Result<unknown, string>>
+  const enrolIn: CourseStep = (moodleId, courseId) => classroom.enrol(moodleId, courseId, 'student')
+  const unenrolFrom: CourseStep = (moodleId, courseId) => classroom.unenrol(moodleId, courseId)
 
-  /** Desmatricula de cada curso. Si uno falla, vuelve a matricular los anteriores: todo o nada. */
-  async function unenrolAll(moodleId: string, courseIds: string[]): Promise<Result<null, ExternalFailure>> {
+  /** Aplica `step` a cada curso. Si uno falla, aplica `undo` a los que ya
+      pasaron, del último al primero: todo o nada en el aula. */
+  async function eachCourse(
+    plan: ClassroomPlan,
+    step: CourseStep,
+    undo: CourseStep
+  ): Promise<Result<null, ExternalFailure>> {
+    const { moodleId, courseIds } = plan
+    if (!moodleId) return ok(null)
     const done: string[] = []
     for (const courseId of courseIds) {
-      const result = await classroom.unenrol(moodleId, courseId)
+      const result = await step(moodleId, courseId)
       if (!result.ok) {
-        await Promise.all(done.map((id) => classroom.enrol(moodleId, id, 'student')))
+        for (const id of done.reverse()) await undo(moodleId, id)
         return fail('falla-externa')
       }
       done.push(courseId)
@@ -604,8 +627,6 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return error === 'no-encontrado' ? 'objetivo-desconocido' : (error as Exclude<E, 'no-encontrado'>)
   }
 
-  type Plan = { courseIds: string[]; moodleId: string | null }
-
   /** Si se puede pedir la inscripción: el objetivo existe, es de su facultad y,
       si es una comisión, no tiene otra vigente de la misma materia. Devuelve su id del SIU. */
   async function enrollable(personId: PersonId, target: Target): Promise<Result<string, EnrollError | ReadError>> {
@@ -613,26 +634,29 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!resolved.ok) return resolved
     const { siuId, subjectId } = resolved.value
     if (target.kind !== 'comision') return ok(siuId)
-    const taken = await subjectsInCourse(siuId)
-    if (!taken.ok) return taken
-    return taken.value.has(subjectId) ? fail('ya-inscripto') : ok(siuId)
+    const subjectsTaken = await subjectsInCourse(siuId)
+    if (!subjectsTaken.ok) return subjectsTaken
+    return subjectsTaken.value.has(subjectId) ? fail('ya-inscripto') : ok(siuId)
   }
 
-  /** Inscribe en el SIU y matricula en el aula. Si el aula falla, deshace la del SIU. */
-  async function enrollBoth(siuId: string, target: Target, plan: Plan): Promise<Result<EnrollOutcome, EnrollError>> {
+  /** Inscribe en el SIU y matricula en el aula. Si el aula falla, deshace la
+      del SIU; si eso también falla, devuelve `a-medias`. */
+  async function enrollBoth(
+    siuId: string,
+    target: Target,
+    plan: ClassroomPlan
+  ): Promise<Result<EnrollOutcome, EnrollError>> {
     const receipt = await siu.enroll(siuId, target)
     if (!receipt.ok) return receipt.error === 'no-soportado' ? selfService(target) : fail(siuFailure(receipt.error))
-    const enrolled = plan.moodleId ? await enrolAll(plan.moodleId, plan.courseIds) : ok(null)
+    const enrolled = await eachCourse(plan, enrolIn, unenrolFrom)
     if (enrolled.ok) return ok({ kind: 'inscripto', receipt: receipt.value, classroomCourseIds: plan.courseIds })
-    // Todo o nada: el aula ya se deshizo; falta la inscripción del SIU.
     const undone = await siu.drop(siuId, target)
-    if (!undone.ok) {
-      console.error('enroll: no se pudo deshacer la inscripción del SIU', {
-        transaction: receipt.value.transactionNumber,
-        error: undone.error
-      })
-    }
-    return enrolled
+    if (undone.ok) return enrolled
+    console.error('enroll: no se pudo deshacer la inscripción del SIU', {
+      transaction: receipt.value.transactionNumber,
+      error: undone.error
+    })
+    return fail('a-medias')
   }
 
   async function enroll(
@@ -647,40 +671,42 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return enrollBoth(siuId.value, target, plan.value)
   }
 
-  /** Si la persona tiene una inscripción vigente a la comisión o la mesa. */
-  async function isEnrolled(
-    siuId: string,
-    target: Target
-  ): Promise<Result<boolean, 'persona-desconocida' | ExternalFailure>> {
-    const enrollments =
-      target.kind === 'comision' ? await siu.courseEnrollments(siuId) : await siu.examEnrollments(siuId)
+  /** Si la persona tiene una inscripción vigente a la comisión. */
+  async function isInSection(siuId: string, sectionId: string): Promise<Result<boolean, ReadError>> {
+    const enrollments = await siu.courseEnrollments(siuId)
     if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
-    return ok(
-      enrollments.value.some((e) =>
-        target.kind === 'comision'
-          ? 'sectionId' in e && e.sectionId === target.sectionId
-          : 'examBoardId' in e && e.examBoardId === target.examBoardId
-      )
-    )
+    return ok(enrollments.value.some((e) => e.sectionId === sectionId))
+  }
+
+  /** Si la persona tiene una inscripción vigente a la mesa. */
+  async function isInBoard(siuId: string, examBoardId: string): Promise<Result<boolean, ReadError>> {
+    const enrollments = await siu.examEnrollments(siuId)
+    if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+    return ok(enrollments.value.some((e) => e.examBoardId === examBoardId))
   }
 
   /** Si se puede pedir la baja: el objetivo existe, es de su facultad y está inscripto. Devuelve su id del SIU. */
   async function droppable(personId: PersonId, target: Target): Promise<Result<string, DropError | ReadError>> {
     const resolved = await resolveTarget(personId, target)
     if (!resolved.ok) return resolved
-    const enrolled = await isEnrolled(resolved.value.siuId, target)
+    const { siuId } = resolved.value
+    const enrolled =
+      target.kind === 'comision'
+        ? await isInSection(siuId, target.sectionId)
+        : await isInBoard(siuId, target.examBoardId)
     if (!enrolled.ok) return enrolled
-    return enrolled.value ? ok(resolved.value.siuId) : fail('no-inscripto')
+    return enrolled.value ? ok(siuId) : fail('no-inscripto')
   }
 
-  /** Desmatricula del aula y da de baja en el SIU. Si el SIU la rechaza, vuelve a matricular. */
-  async function dropBoth(siuId: string, target: Target, plan: Plan): Promise<Result<DropOutcome, DropError>> {
-    const { courseIds, moodleId } = plan
-    const unenrolled = moodleId ? await unenrolAll(moodleId, courseIds) : ok(null)
+  /** Desmatricula del aula y da de baja en el SIU. Si el SIU la rechaza, vuelve
+      a matricular; si eso también falla, devuelve `a-medias`. */
+  async function dropBoth(siuId: string, target: Target, plan: ClassroomPlan): Promise<Result<DropOutcome, DropError>> {
+    const unenrolled = await eachCourse(plan, unenrolFrom, enrolIn)
     if (!unenrolled.ok) return unenrolled
     const receipt = await siu.drop(siuId, target)
     if (receipt.ok) return ok({ kind: 'baja', receipt: receipt.value })
-    if (moodleId) await Promise.all(courseIds.map((id) => classroom.enrol(moodleId, id, 'student')))
+    const restored = await eachCourse(plan, enrolIn, unenrolFrom)
+    if (!restored.ok) return fail('a-medias')
     return receipt.error === 'no-soportado' ? selfService(target) : fail(siuFailure(receipt.error))
   }
 
@@ -707,14 +733,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       materia. Por ahora solo cursada: las mesas de examen que le sirven entran
       con la inscripción a finales (#20). */
   async function openEnrollments(personId: PersonId): Promise<Result<OpenEnrollment[], ReadError>> {
-    const mine = await siuPersonOf(personId)
-    if (!mine.ok) return mine
-    const { siuId, schoolId } = mine.value
+    const siuPerson = await siuPersonOf(personId)
+    if (!siuPerson.ok) return siuPerson
+    const { siuId, schoolId } = siuPerson.value
     const at = clock.now().toISOString()
-    const [terms, taken] = await Promise.all([siu.terms(), subjectsInCourse(siuId)])
+    const [terms, subjectsTaken] = await Promise.all([siu.terms(), subjectsInCourse(siuId)])
     if (!terms.ok) return terms
-    if (!taken.ok) return taken
-    const open = terms.value.filter((t) => t.enrollmentStart <= at && at <= t.enrollmentEnd)
+    if (!subjectsTaken.ok) return subjectsTaken
+    const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd))
     const offered = all(await Promise.all(open.map((t) => siu.sections({ schoolId, termId: t.id }))))
     if (!offered.ok) return offered
 
@@ -722,7 +748,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     open.forEach((term, i) => {
       const sections = offered.value[i]
       for (const subjectId of new Set(sections.map((s) => s.subjectId))) {
-        if (!taken.value.has(subjectId)) items.push({ term, subjectId })
+        if (!subjectsTaken.value.has(subjectId)) items.push({ term, subjectId })
       }
     })
     const subjects = await Promise.all(items.map((item) => siu.subject(item.subjectId)))

@@ -481,6 +481,7 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
     teachers: [{ personId: 'p-darrieta', name: 'Diego Arrieta' }],
     capacity: null,
     enrolled: 0,
+    spotsLeft: null,
     enrollmentStart: '2026-11-02T03:00:00.000Z',
     enrollmentEnd: '2026-12-19T02:59:00.000Z',
     enrollmentOpen: true,
@@ -886,4 +887,67 @@ test('las inscripciones abiertas con el SIU caído devuelven lo último que se l
   siuState.down = true
 
   assert.deepEqual(await studies.openEnrollments('p-taguirre'), { ok: true, value: { ...first.value, stale: true } })
+})
+
+test('si Moodle falla y el SIU tampoco deja deshacer la inscripción, vuelve «a medias» y no «falla externa»', async () => {
+  const { studies, siu } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: { enrol: async () => fail('falla-externa') },
+      siuOverrides: { drop: async () => fail('falla-externa') }
+    }
+  )
+
+  assert.deepEqual(await studies.enroll('p-vfunes', PR1_VERANO), { ok: false, error: 'a-medias' })
+  // Quedó inscripta en el SIU y sin aula: eso es lo que tiene que saber.
+  assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b', 'sec-pr1-fi-v'])
+})
+
+test('si el SIU rechaza la baja y Moodle no deja volver a matricular, vuelve «a medias»', async () => {
+  const { studies, siu } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: { enrol: async () => fail('falla-externa') },
+      siuOverrides: { drop: async () => fail('falla-externa') }
+    }
+  )
+
+  assert.deepEqual(await studies.drop('p-mcabrera', FI1_VERANO), { ok: false, error: 'a-medias' })
+  assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b', 'sec-fi1-fi-v'])
+})
+
+test('sin cuenta del Campus Virtual no se inscribe en nada y vuelve «sin cuenta del aula», no «falla externa»', async () => {
+  const data = structuredClone(syntheticData)
+  data.people.find((p) => p.id === 'p-vfunes')!.moodleId = ''
+  const { studies, siu } = build(data)
+
+  assert.deepEqual(await studies.enroll('p-vfunes', PR1_VERANO), { ok: false, error: 'sin-cuenta-del-aula' })
+  assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b'])
+})
+
+test('la oferta dice cuántos lugares quedan: ninguno si se llenó, y sin tope si el cupo no está definido', async () => {
+  const { studies } = build()
+
+  const fi1 = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'fi1' })
+  const am1 = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'am1' })
+  const pr1 = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'pr1' })
+
+  assert.ok(fi1.ok && am1.ok && pr1.ok)
+  assert.deepEqual(
+    fi1.value.map((o) => o.spotsLeft),
+    [0]
+  )
+  assert.deepEqual(
+    am1.value.map((o) => [o.name, o.capacity, o.enrolled, o.spotsLeft]),
+    [
+      ['A', 40, 3, 37],
+      ['B', 40, 3, 37]
+    ]
+  )
+  assert.deepEqual(
+    pr1.value.map((o) => o.spotsLeft),
+    [27, null]
+  )
 })

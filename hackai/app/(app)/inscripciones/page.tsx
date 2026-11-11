@@ -5,16 +5,12 @@ import { ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { readTime, shortDate } from '@/components/enrollment/format'
+import { readErrorText } from '@/components/enrollment/read-error'
+import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { StudiesReadError } from '@/lib/core/studies'
 
 export const metadata: Metadata = { title: 'Inscripciones · Campus HackAI' }
-
-const ERRORS: Partial<Record<StudiesReadError, string>> = {
-  'falla-externa': 'No pudimos traer las inscripciones del SIU. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU.'
-}
 
 export default async function InscripcionesPage() {
   const session = await requireSession('alumno')
@@ -26,21 +22,19 @@ export default async function InscripcionesPage() {
         <p className='text-xs font-bold tracking-widest text-primary uppercase'>Campus HackAI</p>
         <h1 className='mt-1 text-2xl leading-tight font-bold'>Inscripciones abiertas</h1>
         <p className='mt-1 text-sm text-muted-foreground'>
-          Te inscribís en un paso: quedás en el SIU, en el aula del Campus Virtual y en el espacio de la materia.
+          Te inscribís en un paso: quedás en el SIU y en el aula del Campus Virtual.
         </p>
       </header>
 
       {!result.ok ? (
-        <p role='alert' className='rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm'>
-          {ERRORS[result.error] ?? 'Algo salió mal al traer las inscripciones.'}
-        </p>
+        <ErrorNotice>{readErrorText(result.error, 'las inscripciones')}</ErrorNotice>
       ) : (
         <>
           {result.value.stale && (
-            <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
+            <StaleNotice>
               El SIU no responde. Te mostramos lo que trajimos el {readTime(result.value.readAt)}: puede estar
               desactualizado.
-            </p>
+            </StaleNotice>
           )}
 
           {result.value.data.length === 0 ? (
