@@ -18,6 +18,11 @@ export function approvalDate(date: string): string {
   return new Date(date).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, month: 'short', year: 'numeric' })
 }
 
+/** «2025»: el año en que se aprobó, para agrupar la historia. */
+export function approvalYear(date: string): string {
+  return new Date(date).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, year: 'numeric' })
+}
+
 /** «8,5»: el promedio con coma decimal y sin ceros de más. */
 export function average(value: number): string {
   return value.toLocaleString('es-AR', { maximumFractionDigits: 2 })

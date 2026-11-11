@@ -658,3 +658,46 @@ test('la constancia de una persona que no existe devuelve «persona desconocida�
   siuState.down = true
   assert.deepEqual(await studies.certificate('p-taguirre', 'alumno-regular'), { ok: false, error: 'falla-externa' })
 })
+
+test('a un docente no le inventa motivos de alumno para la constancia de alumno regular', async () => {
+  const { studies } = build()
+
+  const result = await studies.certificate('p-mledesma', 'alumno-regular')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.meetsConditions, false)
+  assert.deepEqual(result.value.reasons, [])
+})
+
+test('una inscripción pendiente cuenta como vigente para el motivo de la constancia', async () => {
+  const data = withoutConditions('p-lbenitez', 'alumno-regular')
+  const lucia = data.people.find((p) => p.id === 'p-lbenitez')!.siuId
+  for (const e of data.siu.courseEnrollments) if (e.personId === lucia) e.status = 'pendiente'
+  const { studies } = build(data)
+
+  const result = await studies.certificate('p-lbenitez', 'alumno-regular')
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.reasons, [])
+})
+
+test('una materia con dos renglones aprobados sale una vez, con el más reciente, y cuenta una vez en el promedio', async () => {
+  const data = structuredClone(syntheticData)
+  const tomas = data.people.find((p) => p.id === 'p-taguirre')!.siuId
+  const final = data.siu.history.find((h) => h.personId === tomas && h.subjectId === 'an1')!
+  data.siu.history.push({ ...final, id: 'ha-rectificada', date: '2026-02-20T03:00:00.000Z', grade: 10 })
+  const { studies } = build(data)
+
+  const result = await studies.record('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.history.map((h) => [h.subjectId, h.grade]),
+    [
+      ['an1', 10],
+      ['qui', 7],
+      ['iin', 8]
+    ]
+  )
+  assert.equal(result.value.data.average, 8.33)
+})

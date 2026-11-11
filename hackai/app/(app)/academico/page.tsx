@@ -96,7 +96,7 @@ function StudentAcademic({
         <Block
           id='notas'
           title='Notas de parciales'
-          hint='Todas juntas, las haya cargado el docente en la historia académica o en un acta todavía abierta.'
+          hint='Todas juntas, estén en la historia académica o en un acta abierta.'
           className='lg:col-start-1'
         >
           {record.ok ? <GradeList grades={record.value.data.grades} /> : <ErrorNotice>{recordError}</ErrorNotice>}
@@ -105,7 +105,7 @@ function StudentAcademic({
         <Block
           id='constancias'
           title='Constancias'
-          hint='Se piden y se descargan en la Autogestión del SIU. Te llevamos directo al formulario.'
+          hint='Se piden en la Autogestión del SIU: te la abrimos en otra pestaña.'
           className='lg:sticky lg:top-8 lg:col-start-2 lg:row-span-2 lg:row-start-1'
         >
           {certificates.map((result, i) =>
@@ -143,7 +143,7 @@ export default async function AcademicoPage() {
     <>
       <PageHeader
         title='Académico'
-        kicker={program?.name ?? person?.school.name}
+        kicker={program?.name}
         school={person?.school.name}
         actions={
           person ? (

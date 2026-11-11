@@ -120,7 +120,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 ### 15. ¿Qué condiciones pide la constancia de alumno regular?
 
 - **Por qué importa:** la API del SIU solo dice si el alumno cumple las condiciones (`cumple_condiciones`), sin el motivo, y Académico tiene que decir por qué no puede pedirla.
-- **Hipótesis:** Cursada deduce el motivo con lo que la API también da: sin propuesta activa o sin inscripción a cursada aceptada en un período vigente. Para la de examen final, sin finales rendidos. Si no encuentra un motivo, no inventa uno y manda a la Autogestión. Así quedó en el issue #14.
+- **Hipótesis:** Cursada deduce el motivo con lo que la API también da: sin propuesta activa o sin inscripción a cursada aceptada o pendiente en un período vigente. A un docente no se le deduce ningún motivo. Para la de examen final, sin finales rendidos. Si no encuentra un motivo, no inventa uno y manda a la Autogestión. Así quedó en el issue #14.
 - **Opciones:** como está; sumar otras condiciones de la Austral (por ejemplo, deuda o documentación pendiente) cuando se confirmen.
 - **Estado:** abierta
 - **Decisión:** pendiente

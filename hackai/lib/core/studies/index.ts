@@ -37,7 +37,9 @@ import type { ClockPort } from '@/lib/ports/clock'
 import type {
   SiuAssessment,
   SiuCertificateType,
+  SiuEnrollmentStatus,
   SiuHistoryEntry,
+  SiuPerson,
   SiuPort,
   SiuProvisionalResult,
   SiuReadError,
@@ -146,7 +148,8 @@ export type OpenEnrollment = {
 
 /** Nota de un parcial, venga de la historia académica o de la actuación provisoria. */
 export type AssessmentGrade = {
-  subjectId: string
+  /** `null` si el SIU no dice de qué materia es (una comisión que ya no encuentra). */
+  subjectId: string | null
   subjectName: string
   assessmentName: string
   grade: number | null
@@ -260,6 +263,20 @@ function approvalOf(entry: SiuHistoryEntry): Approval | null {
   return null
 }
 
+type Approved = { entry: SiuHistoryEntry; approval: Approval }
+
+/** Un renglón aprobado por materia. Si hay más de uno (por ejemplo, un acta
+    rectificada), vale el más reciente, así la materia sale y cuenta una vez. */
+function approvedSubjects(history: SiuHistoryEntry[]): Approved[] {
+  const bySubject = new Map<string, Approved>()
+  for (const entry of history) {
+    const approval = approvalOf(entry)
+    const kept = bySubject.get(entry.subjectId)
+    if (approval && (!kept || entry.date > kept.entry.date)) bySubject.set(entry.subjectId, { entry, approval })
+  }
+  return [...bySubject.values()]
+}
+
 function averageOf(items: HistoryItem[]): number | null {
   const grades = items.flatMap((i) => (i.grade === null ? [] : [i.grade]))
   if (grades.length === 0) return null
@@ -295,7 +312,12 @@ function rawGrades(history: SiuHistoryEntry[], provisional: SiuProvisionalResult
   return [...fromHistory, ...fromProvisional]
 }
 
-const newestFirst = (a: { date: string }, b: { date: string }) => b.date.localeCompare(a.date)
+/** La más reciente primero y, a igual fecha, por materia. */
+const newestFirst = (a: { date: string; subjectName: string }, b: { date: string; subjectName: string }) =>
+  b.date.localeCompare(a.date) || a.subjectName.localeCompare(b.subjectName, 'es')
+
+/** Inscripciones a cursada que cuentan como vigentes, como en `subjectsOf`. */
+const ACTIVE_ENROLLMENT: SiuEnrollmentStatus[] = ['aceptada', 'pendiente']
 
 /** Un id del SIU o un vínculo que no existe es una persona que Cursada no conoce. */
 function asUnknownPerson<E extends string>(
@@ -345,9 +367,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       const enrollments = await siu.courseEnrollments(siuId.value, { historic: true })
       if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
       const ids = [
-        ...new Set(
-          enrollments.value.filter((e) => e.status === 'aceptada' || e.status === 'pendiente').map((e) => e.sectionId)
-        )
+        ...new Set(enrollments.value.filter((e) => ACTIVE_ENROLLMENT.includes(e.status)).map((e) => e.sectionId))
       ]
       const found = await Promise.all(ids.map((id) => siu.section(id)))
       if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
@@ -454,7 +474,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
 
   /** Los nombres de materias y evaluaciones que hacen falta para mostrar la
       historia y las notas, con lo que el SIU sepa. Las notas de actuación
-      provisoria no traen la materia: sale de su comisión. */
+      provisoria no traen la materia: sale de su comisión. Si el SIU no responde
+      estas lecturas, falla todo `record` (y se ve lo último leído), como en
+      `subjectsOf`: una nota sin materia ni evaluación no le sirve al alumno. */
   async function namesFor(raw: RawGrade[], subjectIds: string[]) {
     const sections = await lookup(unique(raw.filter((r) => r.subjectId === null).map((r) => r.sectionId)), (id) =>
       siu.section(id)
@@ -486,10 +508,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!provisional.ok) return fail(asUnknownPerson(provisional.error))
 
     const raw = rawGrades(history.value, provisional.value)
-    const approved = history.value.flatMap((h) => {
-      const approval = approvalOf(h)
-      return approval ? [{ entry: h, approval }] : []
-    })
+    const approved = approvedSubjects(history.value)
     const names = await namesFor(
       raw,
       approved.map((a) => a.entry.subjectId)
@@ -500,7 +519,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       .map((r): AssessmentGrade => {
         const subjectId = names.value.subjectOf(r)
         return {
-          subjectId: subjectId ?? '',
+          subjectId,
           subjectName: names.value.subjectName(subjectId),
           assessmentName: names.value.assessmentName(r),
           grade: r.grade,
@@ -508,12 +527,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           source: r.source
         }
       })
-      .sort(
-        (a, b) =>
-          newestFirst(a, b) ||
-          a.subjectName.localeCompare(b.subjectName, 'es') ||
-          a.assessmentName.localeCompare(b.assessmentName, 'es')
-      )
+      .sort((a, b) => newestFirst(a, b) || a.assessmentName.localeCompare(b.assessmentName, 'es'))
     const items = approved
       .map(
         ({ entry, approval }): HistoryItem => ({
@@ -524,25 +538,32 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           approval
         })
       )
-      .sort((a, b) => newestFirst(a, b) || a.subjectName.localeCompare(b.subjectName, 'es'))
+      .sort(newestFirst)
     return ok({ grades, history: items, average: averageOf(items) })
   }
 
-  /** Por qué no cumple, con lo que la API real del SIU también da: propuestas,
-      inscripciones vigentes e historia. Si una lectura falla, ese motivo no se
-      dice: el veredicto ya lo dio el SIU. */
-  async function reasonsWhy(siuId: string, type: CertificateType): Promise<CertificateReason[]> {
-    if (type === 'examen-final') {
-      const history = await siu.history(siuId)
-      const tookAnExam = history.ok && history.value.some((h) => h.type === 'examen' && h.result !== 'ausente')
-      return history.ok && !tookAnExam ? ['sin-examenes-rendidos'] : []
-    }
-    const [person, enrollments] = await Promise.all([siu.person(siuId), siu.courseEnrollments(siuId)])
+  /** Por qué no cumple la de alumno regular: sin propuesta activa o sin
+      inscripción a cursada vigente (aceptada o pendiente, como en `subjectsOf`). */
+  async function regularStudentReasons(siuId: string, person: SiuPerson): Promise<CertificateReason[]> {
     const reasons: CertificateReason[] = []
-    if (person.ok && !person.value.programs.some((p) => p.status === 'activa')) reasons.push('sin-propuesta-activa')
-    if (enrollments.ok && !enrollments.value.some((e) => e.status === 'aceptada'))
+    if (!person.programs.some((p) => p.status === 'activa')) reasons.push('sin-propuesta-activa')
+    const enrollments = await siu.courseEnrollments(siuId)
+    if (enrollments.ok && !enrollments.value.some((e) => ACTIVE_ENROLLMENT.includes(e.status)))
       reasons.push('sin-inscripcion-vigente')
     return reasons
+  }
+
+  /** Por qué no cumple, con lo que la API real del SIU también da: propuestas,
+      inscripciones vigentes e historia. Los motivos son de alumno: a un docente
+      no se le deduce ninguno. Si una lectura falla, ese motivo no se dice: el
+      veredicto ya lo dio el SIU. */
+  async function reasonsWhy(siuId: string, type: CertificateType): Promise<CertificateReason[]> {
+    const person = await siu.person(siuId)
+    if (!person.ok || person.value.role !== 'alumno') return []
+    if (type === 'alumno-regular') return regularStudentReasons(siuId, person.value)
+    const history = await siu.history(siuId)
+    if (!history.ok) return []
+    return history.value.some((h) => h.type === 'examen' && h.result !== 'ausente') ? [] : ['sin-examenes-rendidos']
   }
 
   async function certificate(personId: PersonId, type: CertificateType): Promise<Result<CertificateStatus, ReadError>> {
