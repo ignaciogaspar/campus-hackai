@@ -1,0 +1,117 @@
+/* Variantes de Consultas en el celular. Solo suma lo que cada propuesta
+   necesita; colores, radios y tipografía salen de ../../mocks/tokens.css. */
+
+/* Datos que comparten las tres: consultas como lista plana */
+
+.consulta { display: flex; gap: var(--s-3); padding: var(--s-4); text-decoration: none; color: inherit; }
+.consulta + .consulta { border-top: 1px solid var(--line); }
+.consulta p { font-size: var(--fs-md); line-height: 1.4; }
+.estado { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; }
+.estado.ok { color: var(--ok); }
+.estado.abierta { color: var(--alerta); }
+.punto { width: 8px; height: 8px; border-radius: 50%; background: var(--azul-claro); flex: none; margin-top: 6px; }
+
+/* A · Riel: dos controles en un riel gris con el elegido en relieve */
+
+.riel {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 5px;
+  background: var(--surface-2); border-radius: var(--r-lg);
+  box-shadow: inset 0 1px 3px rgba(11, 17, 80, .08);
+}
+.riel button, .riel a {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 56px; border: 0; background: transparent; border-radius: calc(var(--r-lg) - 5px);
+  font: inherit; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); cursor: pointer; text-decoration: none;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.riel [aria-selected='true'] {
+  background: var(--surface); color: var(--azul);
+  box-shadow: 0 1px 2px rgba(11, 17, 80, .08), 0 4px 10px rgba(11, 17, 80, .10);
+}
+.riel [aria-selected='true'] .icon { stroke-width: 2.2; }
+.riel .count { position: absolute; top: 4px; right: calc(50% - 28px); }
+.riel.chico { border-radius: var(--r-pill); padding: 4px; }
+.riel.chico button { min-height: 40px; flex-direction: row; gap: 6px; font-size: var(--fs-sm); border-radius: var(--r-pill); }
+.riel.chico .seg-n { font-weight: 700; }
+
+.hoja-fondo { position: fixed; inset: 0; z-index: 20; background: rgba(11, 17, 80, .45); display: flex; align-items: flex-end; }
+.hoja-fondo[hidden] { display: none; }
+.hoja { width: 100%; background: var(--surface); border-radius: 24px 24px 0 0; padding: var(--s-3) var(--gutter) calc(var(--s-6) + 64px); display: flex; flex-direction: column; gap: var(--s-3); }
+.hoja-asa { width: 40px; height: 4px; border-radius: 4px; background: var(--borde-fuerte); margin: 0 auto; }
+.hoja h2 { font-size: var(--fs-lg); }
+.hoja .canal { min-height: 48px; border-radius: var(--r-md); }
+.hoja .canal:hover { background: var(--surface-2); }
+
+/* B · Discord: barra del canal, cajón de canales y chat plano */
+
+.canal-bar {
+  position: relative; display: flex; align-items: center; gap: var(--s-2); margin: calc(-1 * var(--s-4)) calc(-1 * var(--gutter)) 0;
+  padding: 0 var(--gutter); min-height: 52px; background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.canal-bar button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; border: 0; background: transparent; font: inherit; font-weight: 800; font-size: var(--fs-md); color: var(--text); cursor: pointer; padding: 0; }
+.canal-bar .icon-hash { color: var(--gris-claro); }
+.canal-bar button .icon-sm { transform: rotate(90deg); color: var(--muted); }
+.canal-bar .sub { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
+.canal-bar .icon-btn { margin-left: auto; color: var(--muted); }
+.canal-bar .icon-btn[aria-pressed='true'] { color: var(--azul); background: var(--accent-soft); }
+
+.chat { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--gutter)); }
+.chat-msg { display: flex; gap: var(--s-3); padding: var(--s-3) var(--gutter); }
+.chat-msg:hover { background: var(--surface-2); }
+.chat-msg .avatar { width: 40px; height: 40px; font-size: 13px; }
+.chat-head { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-sm); }
+.chat-head b { font-size: var(--fs-md); }
+.chat-head .docente-tag { color: var(--azul); font-weight: 700; }
+.hilo-link { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-top: 2px; font-size: var(--fs-sm); font-weight: 700; color: var(--azul); text-decoration: none; }
+.hilo-link .linea { width: 18px; height: 14px; border-left: 2px solid var(--borde-fuerte); border-bottom: 2px solid var(--borde-fuerte); border-bottom-left-radius: 8px; margin-top: -10px; }
+.separador { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--gutter); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
+.separador::before, .separador::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.separador.nuevo { color: var(--error); }
+.separador.nuevo::before, .separador.nuevo::after { background: var(--error); opacity: .5; }
+
+.cajon-fondo { position: fixed; inset: 0; z-index: 20; background: rgba(11, 17, 80, .45); }
+.cajon-fondo[hidden] { display: none; }
+.cajon { position: absolute; inset: 0 64px 0 0; background: var(--surface); display: flex; flex-direction: column; overflow-y: auto; }
+.cajon-head { background: var(--navy); color: #fff; padding: var(--s-6) var(--s-4) var(--s-4); }
+.cajon-head p { font-size: var(--fs-xs); color: var(--header-sub); }
+.cajon-head h2 { font-size: var(--fs-lg); margin-top: 2px; }
+.cajon-grupo { padding: var(--s-4) var(--s-2) 0; }
+.cajon-grupo h3 { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 0 var(--s-2) var(--s-2); }
+.cajon-canal { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--s-2); border-radius: var(--r-sm); color: var(--muted); font-weight: 600; text-decoration: none; }
+.cajon-canal .icon { color: var(--gris-claro); }
+.cajon-canal.sin-leer { color: var(--text); font-weight: 800; }
+.cajon-canal[aria-current='page'] { background: var(--accent-soft); color: var(--azul); }
+.cajon-canal .count { margin-left: auto; }
+.cajon-canal.crear { color: var(--azul); }
+
+.filtro-menu { position: absolute; right: var(--gutter); top: 50px; z-index: 6; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--card-shadow); padding: 6px; display: flex; flex-direction: column; min-width: 200px; }
+.filtro-menu button { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--s-3); border: 0; background: transparent; border-radius: var(--r-sm); font: inherit; font-size: var(--fs-sm); font-weight: 600; color: var(--text); cursor: pointer; }
+.filtro-menu button[aria-checked='true'] { color: var(--azul); background: var(--accent-soft); }
+
+/* C · Propia: los canales en el encabezado y las consultas agrupadas por estado */
+
+.hdr-tabs { display: flex; gap: var(--s-5); margin: var(--s-4) calc(-1 * var(--gutter)) calc(-1 * var(--s-6)); padding: 0 var(--gutter); overflow-x: auto; scrollbar-width: none; }
+.hdr-tabs::-webkit-scrollbar { display: none; }
+.hdr-tabs a {
+  flex: none; position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 48px;
+  color: var(--header-sub); font-weight: 600; font-size: var(--fs-sm); text-decoration: none;
+}
+.hdr-tabs a[aria-current='page'] { color: #fff; font-weight: 800; }
+.hdr-tabs a[aria-current='page']::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--cian); }
+.hdr-tabs .count { box-shadow: none; }
+.hdr-tabs .mas { color: var(--header-sub); }
+
+.grupo { display: flex; flex-direction: column; gap: var(--s-2); }
+.grupo-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--s-1); min-height: 32px; }
+.grupo-head h2 { font-size: var(--fs-sm); font-weight: 800; }
+.grupo-head .n { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
+details.grupo > summary { list-style: none; cursor: pointer; }
+details.grupo > summary::-webkit-details-marker { display: none; }
+details.grupo > summary .icon { transition: transform var(--t-fast) var(--ease); color: var(--muted); }
+details.grupo[open] > summary .icon { transform: rotate(90deg); }
+.preguntar { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); min-height: 56px; text-decoration: none; color: var(--muted); font-size: var(--fs-md); }
+.preguntar .icon { color: var(--azul); }
+.resolver { margin-left: auto; }
+.consulta[hidden] { display: none; }
+.grupo-head h2 { display: inline-flex; align-items: center; gap: 6px; }
+.composer-box .btn-sm { min-height: 40px; min-width: 40px; }

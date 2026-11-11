@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<title>Consultas, variante Discord · HackAI</title>
+<link rel="stylesheet" href="../../mocks/tokens.css">
+<link rel="stylesheet" href="../../mocks/ui.css">
+<link rel="stylesheet" href="variante.css">
+<script src="../../mocks/data.js"></script>
+<script src="datos.js"></script>
+<script src="../../mocks/app.js"></script>
+</head>
+<body data-active="materias" data-back="#" data-kicker="AM1 · Comisión A" data-title="Análisis Matemático I" class="con-composer">
+<main id="page"></main>
+<script>
+/* Variante B, «Discord»: una sola barra con el canal en el que estás
+   («# consultas · Comisión A ▾»). Tocarla abre el cajón de canales agrupados
+   por alcance, como los servidores de Discord, con lo no leído en negrita.
+   Los mensajes son un chat plano, del más viejo al más nuevo, con la línea
+   «Nuevos» donde empieza lo que no leíste; cada consulta muestra su hilo
+   abajo. El filtro queda detrás de un ícono.
+   ?cajon=1 abre el cajón, ?filtro=1 el menú del filtro, ?rol=docente suma
+   «Crear canal». */
+/* Ícono de filtro (tres líneas que se achican), que no está en app.js. */
+const FILTRO = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>'
+
+window.render = function (P) {
+  const { icon } = UI
+  const C = window.CONSULTAS
+  const docente = P.rol === 'docente'
+  const chat = [4, 3, 2, 0, 1].map((i) => C.lista[i])
+  const abiertas = C.lista.filter((c) => !c.resuelta).length
+
+  const barra = `
+    <div class="canal-bar">
+      <button type="button" data-abrir-cajon aria-haspopup="dialog" aria-label="Cambiar de canal: estás en consultas de la Comisión A">
+        ${icon('hash', 'icon-hash')}consultas ${icon('chevron', 'icon-sm')}
+      </button>
+      <span class="sub">Comisión A</span>
+      <button class="icon-btn" type="button" data-abrir-filtro aria-haspopup="menu" aria-label="Filtrar consultas: todas" aria-pressed="${P.get('filtro') === '1'}">${FILTRO}</button>
+    ${P.get('filtro') === '1' ? `
+    <div class="filtro-menu" role="menu" aria-label="Filtrar consultas">
+      <button type="button" role="menuitemradio" aria-checked="true">Todas <span class="seg-n">${C.lista.length}</span></button>
+      <button type="button" role="menuitemradio" aria-checked="false">Abiertas <span class="seg-n">${abiertas}</span></button>
+      <button type="button" role="menuitemradio" aria-checked="false">Resueltas <span class="seg-n">${C.lista.length - abiertas}</span></button>
+    </div>` : ''}
+    </div>`
+
+  const mensaje = (c) => `
+    <article class="chat-msg">
+      <span class="avatar ${c.externo ? 'externo' : ''}">${c.iniciales}</span>
+      <div class="msg-body">
+        <span class="chat-head"><b>${c.autor}</b>${c.externo ? '<span class="xs muted">sin cuenta vinculada</span>' : ''}<span class="xs muted">${c.hace}</span></span>
+        <p>${c.texto}</p>
+        <a class="hilo-link" href="#"><span class="linea" aria-hidden="true"></span>
+          ${c.respuestas ? `${c.respuestas === 1 ? '1 respuesta' : `${c.respuestas} respuestas`}` : 'Responder'}
+          ${c.resuelta ? `<span class="estado ok">${icon('check', 'icon-sm')} Resuelta</span>` : '<span class="estado abierta">· Abierta</span>'}
+        </a>
+      </div>
+    </article>`
+
+  const grupo = (titulo, canales) => `
+    <div class="cajon-grupo"><h3>${titulo}</h3>
+      ${canales.map((c) => `
+        <a class="cajon-canal ${c.noLeidos ? 'sin-leer' : ''}" href="#" ${c.id === 'consultas' ? 'aria-current="page"' : ''}>
+          ${icon(c.id === 'avisos' ? 'megaphone' : c.id === 'material' ? 'file' : 'hash')}${c.nombre}
+          ${c.noLeidos && c.id !== 'consultas' ? `<span class="count" aria-label="${c.noLeidos} sin leer">${c.noLeidos}</span>` : ''}
+        </a>`).join('')}
+    </div>`
+
+  const cajon = `
+    <div class="cajon-fondo" data-cajon ${P.get('cajon') === '1' ? '' : 'hidden'}>
+      <nav class="cajon" aria-label="Canales del espacio">
+        <div class="cajon-head"><p>Facultad de Ingeniería</p><h2>Análisis Matemático I</h2></div>
+        ${grupo('Toda la materia', C.canales.filter((c) => c.alcance === 'Toda la materia'))}
+        ${grupo('Comisión A', C.canales.filter((c) => c.alcance === 'Comisión A'))}
+        ${docente ? `<div class="cajon-grupo"><a class="cajon-canal crear" href="#">${icon('plus')}Crear canal</a></div>` : ''}
+      </nav>
+    </div>`
+
+  return `
+    ${barra}
+    <div class="chat">
+      <p class="separador">jue 5/11</p>
+      ${mensaje(chat[0])}
+      <p class="separador">lun 9/11</p>
+      ${mensaje(chat[1])}
+      <p class="separador">Hoy</p>
+      ${mensaje(chat[2])}
+      <p class="separador nuevo">Nuevos</p>
+      ${mensaje(chat[3])}${mensaje(chat[4])}
+    </div>
+    <div class="composer"><form class="composer-box" onsubmit="return false">
+      <button class="icon-btn" type="button" aria-label="Adjuntar archivo">${icon('clip')}</button>
+      <label class="sr" for="in">Escribí en #consultas</label><input id="in" placeholder="Escribí en #consultas">
+      <button class="btn btn-primary btn-sm" type="submit" aria-label="Enviar">${icon('send', 'icon-sm')}</button>
+    </form></div>
+    ${cajon}`
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const cajon = document.querySelector('[data-cajon]')
+  document.querySelector('[data-abrir-cajon]').addEventListener('click', () => { cajon.hidden = false })
+  cajon.addEventListener('click', (e) => { if (e.target === cajon) cajon.hidden = true })
+  document.querySelector('[data-abrir-filtro]').addEventListener('click', () => {
+    const q = new URLSearchParams(location.search)
+    q.get('filtro') === '1' ? q.delete('filtro') : q.set('filtro', '1')
+    location.search = q.toString()
+  })
+})
+</script>
+</body>
+</html>

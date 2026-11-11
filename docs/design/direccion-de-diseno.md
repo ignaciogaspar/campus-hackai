@@ -17,6 +17,7 @@ Lenguaje visual de HackAI y referencia de las pantallas de la demo. Los valores 
 - **Superficies.** Tarjetas blancas sin borde, con sombra suave. Radios de 8, 14 y 22 px.
 - **Primero el celular.** Se diseña a 390 px. Encabezado navy rectangular, de borde a borde, con la marca «Universidad Austral» y la facultad, campana de novedades con contador y navegación inferior con Hoy, Materias y Académico. Áreas táctiles de 40 a 44 px en los controles principales; los secundarios, como el botón chico, el selector segmentado o el botón «Instalar», pueden bajar a 32-36 px. Sin barra de scroll visible.
 - **Estados.** Vacío que dice qué es lo próximo, cargando con skeleton, error que afecta solo al bloque que falló y desactualizado con la hora de la última lectura.
+- **Riel.** Las opciones de lo mismo (canales, filtros, modos) van en un carril gris con la elegida en relieve, blanca y con sombra: `components/ui/rail.tsx`. Hay tres formas: con ícono arriba del nombre (los canales en el celular), de una línea (filtros y selectores) y en columna con el ícono al costado (los canales en compu). No se usan pastillas sueltas una al lado de la otra.
 - **Movimiento.** Uno solo: el contador de no leídos entra con un pulso corto. Se apaga con `prefers-reduced-motion`.
 - **Accesibilidad.** Foco visible en todo control, pestañas con flechas del teclado, contraste AA y textos de estado con `role="status"` o `role="alert"`.
 
@@ -73,6 +74,8 @@ Salen de los comentarios del equipo sobre la v1.
 | «En quinto año las aprobadas se mezclan con las que falta final»; «disponibles y archivadas no son intuitivas» | Materias tiene tres vistas: **Cursando**, **Falta final** (solo las regularizadas sin final, con la mesa en la que estás inscripto o la próxima abierta) y **Aprobadas** (lista compacta por año de la carrera, plegada salvo el último año, con la nota del acta). |
 | «Las instrucciones para instalar ocupan espacio y rompen el diseño práctico» | Nada de tarjetas en Hoy: un botoncito en el encabezado abre los pasos en una hoja desde abajo. |
 | «Que el header no tenga borde curvo y sea rectangular»; «que el contenido cubra lo ancho y no haya tanto margen» (11/11) | El encabezado navy es rectangular, sin borde redondeado. El contenido usa todo el ancho, con márgenes de 24 px en compu y 16 px en el celular, en todas las pantallas. Mis materias suma el mismo encabezado y muestra las materias en mosaico. |
+| «La parte de consultas en mobile está rara: quedan como 7 chips juntos» (11/11, se eligió la variante A de `variantes/consultas/`) | Los canales van en un riel con íconos: en el celular, Avisos, Consultas, Material y «Más», que abre una hoja con el resto y «Crear canal»; en compu, un riel en columna a la izquierda con todos. El filtro de consultas y el modo de organizar el material son rieles de una línea. |
+| «No entendí la parte donde ves los alumnos: pensar cómo se vería con muchos alumnos de distintas carreras» (11/11) | El ingreso es una sola lista de personas que se filtra: riel Todos · Alumnos · Docentes, buscador por nombre, carrera o facultad, y la facultad y la carrera como selectores. Los filtros quedan pegados arriba al bajar. En compu, la lista va en tres columnas. |
 
 ## Cambios que esto pide en los tickets
 
