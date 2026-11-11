@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
-import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -12,6 +11,7 @@ import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data
 import { createPeople } from '@/lib/core/people'
 import { type Channel, createSpaces, type SpaceView } from '@/lib/core/spaces'
 import { createStudies } from '@/lib/core/studies'
+import type { ClockPort } from '@/lib/ports/clock'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
 
@@ -34,7 +34,12 @@ function fallibleSiu(siu: SiuPort) {
 }
 
 function build(data: SyntheticData = syntheticData) {
-  const clock = createFixedClock(data.now)
+  let now = data.now
+  // Reloj que se puede mover, para subir material en distintas semanas.
+  const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(now) }
+  const setNow = (iso: string) => {
+    now = iso
+  }
   const { port: siu, state: siuState } = fallibleSiu(createMemorySiu(data, clock))
   const classroom = createMemoryClassroom(data)
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
@@ -49,7 +54,7 @@ function build(data: SyntheticData = syntheticData) {
     clock,
     store
   })
-  return { spaces, store, siuState }
+  return { spaces, store, siuState, setNow }
 }
 
 /** Copia del set sintético con una inscripción a cursada de más. */
@@ -555,4 +560,151 @@ test('el nombre de un canal nuevo se normaliza y no puede repetir uno que vean l
   assert.equal(await create('p-gferreyra', 'consultas', sectionB), 'nombre-repetido')
   assert.equal(await create('p-gferreyra', 'Ñandú álgebra 2_bis', sectionB), 'nombre-repetido')
   assert.equal(await create('p-gferreyra', 'grupo', materia), 'nombre-repetido')
+})
+
+const pdf = (name: string, section: string | null = null) => ({
+  name,
+  contentType: 'application/pdf',
+  bytes: new Uint8Array([1, 2]),
+  section
+})
+
+test('el docente sube material, que se guarda con Archivos y aparece con su origen y sin ver para los alumnos', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+
+  const added = await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf', '  Unidad 2 '))
+  assert.ok(added.ok)
+  assert.deepEqual(
+    { ...added.value, id: undefined },
+    {
+      id: undefined,
+      name: 'Guía 4.pdf',
+      url: 'data:application/pdf;base64,AQI=',
+      contentType: 'application/pdf',
+      size: 2,
+      origin: 'hackai',
+      section: 'Unidad 2',
+      addedBy: { personId: 'p-mledesma', name: 'Mariana Ledesma' },
+      addedAt: NOW,
+      unread: false
+    }
+  )
+
+  // Lo ven las dos comisiones; el docente de la B también sube.
+  const fromB = await spaces.addMaterial('p-gferreyra', ids.spaceId, pdf('Resumen.pdf'))
+  assert.ok(fromB.ok)
+  assert.deepEqual(await unreadOf(spaces, 'p-taguirre'), { 'avisos (A)': 0, 'consultas (A)': 0, material: 2 })
+  assert.deepEqual(await unreadOf(spaces, 'p-mledesma'), { 'avisos (A)': 0, 'consultas (A)': 0, material: 1 })
+  const opened = await spaces.open('p-mcabrera', 'am1')
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.material.recent.map((m) => [m.name, m.origin, m.unread]),
+    [
+      ['Resumen.pdf', 'hackai', true],
+      ['Guía 4.pdf', 'hackai', true]
+    ]
+  )
+
+  // Abrir el canal de material muestra qué era nuevo y lo marca visto.
+  const seen = await spaces.channel('p-mcabrera', ids.material)
+  assert.ok(seen.ok)
+  assert.deepEqual(seen.value.threads, [])
+  assert.equal(seen.value.channel.unread, 0)
+  assert.deepEqual(
+    seen.value.material?.recent.map((m) => m.unread),
+    [true, true]
+  )
+  const again = await spaces.open('p-mcabrera', 'am1')
+  assert.ok(again.ok)
+  assert.equal(named(again.value, 'material').unread, 0)
+  assert.deepEqual(
+    again.value.material.recent.map((m) => m.unread),
+    [false, false]
+  )
+})
+
+test('solo los docentes de la materia suben material y un archivo vacío o enorme no entra', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+
+  assert.deepEqual(await spaces.addMaterial('p-taguirre', ids.spaceId, pdf('Mío.pdf')), {
+    ok: false,
+    error: 'solo-docentes'
+  })
+  assert.deepEqual(await spaces.addMaterial('p-cbustos', ids.spaceId, pdf('Otro.pdf')), {
+    ok: false,
+    error: 'sin-acceso'
+  })
+  assert.deepEqual(await spaces.addMaterial('p-mledesma', 'sp-nada', pdf('Otro.pdf')), {
+    ok: false,
+    error: 'espacio-desconocido'
+  })
+  assert.deepEqual(
+    await spaces.addMaterial('p-mledesma', ids.spaceId, { ...pdf('Vacío.pdf'), bytes: new Uint8Array() }),
+    { ok: false, error: 'archivo-vacio' }
+  )
+  assert.deepEqual(
+    await spaces.addMaterial('p-mledesma', ids.spaceId, {
+      ...pdf('Enorme.pdf'),
+      bytes: new Uint8Array(11 * 1024 * 1024)
+    }),
+    { ok: false, error: 'demasiado-grande' }
+  )
+})
+
+test('el material se muestra por unidad, por semana o todo junto, como lo organice el docente', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  const upload = async (iso: string, name: string, section: string | null = null) => {
+    setNow(iso)
+    const added = await spaces.addMaterial('p-mledesma', ids.spaceId, pdf(name, section))
+    assert.ok(added.ok)
+  }
+  // Lunes 2/11, domingo 15/11 a la noche (lunes en UTC), lunes 16/11 y martes 10/11, hora de Buenos Aires.
+  await upload('2026-11-02T13:00:00.000Z', 'Programa.pdf', 'Unidad 10')
+  await upload('2026-11-16T02:30:00.000Z', 'Guía 2.pdf', 'Unidad 2')
+  await upload('2026-11-16T03:10:00.000Z', 'Guía 3.pdf')
+  await upload('2026-11-10T15:00:00.000Z', 'Guía 1.pdf', 'Unidad 2')
+  const sections = (view: { sections: { title: string; items: { name: string }[] }[] }) =>
+    view.sections.map((s) => [s.title, s.items.map((i) => i.name)])
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+  assert.ok(opened.ok)
+  assert.equal(opened.value.material.layout, 'unidad')
+  assert.deepEqual(sections(opened.value.material), [
+    ['Unidad 2', ['Guía 1.pdf', 'Guía 2.pdf']],
+    ['Unidad 10', ['Programa.pdf']],
+    ['Sin unidad', ['Guía 3.pdf']]
+  ])
+  assert.deepEqual(opened.value.material.sectionNames, ['Unidad 2', 'Unidad 10'])
+  assert.deepEqual(
+    opened.value.material.recent.map((m) => m.name),
+    ['Guía 1.pdf', 'Guía 3.pdf', 'Guía 2.pdf']
+  )
+
+  const byWeek = await spaces.organizeMaterial('p-mledesma', ids.spaceId, 'semana')
+  assert.ok(byWeek.ok)
+  assert.deepEqual(sections(byWeek.value), [
+    ['Semana del 16 de noviembre', ['Guía 3.pdf']],
+    ['Semana del 9 de noviembre', ['Guía 1.pdf', 'Guía 2.pdf']],
+    ['Semana del 2 de noviembre', ['Programa.pdf']]
+  ])
+  const all = await spaces.organizeMaterial('p-gferreyra', ids.spaceId, 'todo')
+  assert.ok(all.ok)
+  assert.deepEqual(sections(all.value), [
+    ['Todo el material', ['Guía 1.pdf', 'Guía 3.pdf', 'Guía 2.pdf', 'Programa.pdf']]
+  ])
+  const reopened = await spaces.open('p-mcabrera', 'am1')
+  assert.ok(reopened.ok)
+  assert.equal(reopened.value.material.layout, 'todo')
+
+  assert.deepEqual(await spaces.organizeMaterial('p-taguirre', ids.spaceId, 'semana'), {
+    ok: false,
+    error: 'solo-docentes'
+  })
+  assert.deepEqual(await spaces.organizeMaterial('p-mledesma', 'sp-nada', 'semana'), {
+    ok: false,
+    error: 'espacio-desconocido'
+  })
 })

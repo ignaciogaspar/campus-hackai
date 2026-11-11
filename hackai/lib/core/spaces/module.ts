@@ -13,7 +13,9 @@ import type {
   AccessError,
   Attachment,
   Channel,
+  ChannelId,
   ChannelView,
+  MaterialView,
   Message,
   MessageId,
   NewChannel,
@@ -122,20 +124,15 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
 
   /** El material del espacio, con lo que la persona no había visto; marca visto hasta el último. */
   async function readMaterial({ channel, space, member }: InChannel): Promise<Result<ChannelView, SpacesStoreError>> {
-    const [marks, stored] = await Promise.all([
-      store.readMarks(member.personId, [channel.id]),
-      store.material([space.id])
-    ])
-    if (!marks.ok) return marks
-    if (!stored.ok) return stored
-    const items = await materialItems(stored.value, authorsFrom(people), member.personId, marks.value[channel.id] ?? 0)
-    const marked = await store.markRead(member.personId, channel.id, maxSeq(stored.value))
+    const material = await materialFor(member, space, channel.id)
+    if (!material.ok) return material
+    const marked = await store.markRead(member.personId, channel.id, material.value.lastSeq)
     if (!marked.ok) return marked
     return ok({
       space: toSpace(space),
       channel: toChannel(member, channel, 0),
       threads: [],
-      material: materialView(space.materialLayout, items)
+      material: material.value.view
     })
   }
 
@@ -306,6 +303,72 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return addChannel(member, space, wanted)
   }
 
+  /** El material del espacio como lo ve la persona, con lo que no había visto según
+      su marca en el canal de material, y el `seq` del último archivo. */
+  async function materialFor(
+    member: Membership,
+    space: StoredSpace,
+    channelId: ChannelId | null
+  ): Promise<Result<{ view: MaterialView; lastSeq: number }, SpacesStoreError>> {
+    const [marks, stored] = await Promise.all([
+      store.readMarks(member.personId, channelId ? [channelId] : []),
+      store.material([space.id])
+    ])
+    if (!marks.ok) return marks
+    if (!stored.ok) return stored
+    const mark = channelId ? (marks.value[channelId] ?? 0) : 0
+    const items = await materialItems(stored.value, authorsFrom(people), member.personId, mark)
+    return ok({ view: materialView(space.materialLayout, items), lastSeq: maxSeq(stored.value) })
+  }
+
+  /** El espacio, si la persona es docente de la materia. */
+  async function managing(
+    personId: PersonId,
+    spaceId: SpaceId
+  ): Promise<
+    Result<{ space: StoredSpace; member: Membership }, 'espacio-desconocido' | 'solo-docentes' | AccessError>
+  > {
+    const found = await inSpace(personId, spaceId)
+    if (!found.ok) return found
+    return canManage(found.value.member) ? found : fail('solo-docentes')
+  }
+
+  const addMaterial: Spaces['addMaterial'] = async (personId, spaceId, material) => {
+    const found = await managing(personId, spaceId)
+    if (!found.ok) return found
+    if (material.bytes.byteLength === 0) return fail('archivo-vacio')
+    const file = await files.save(material)
+    if (!file.ok) return file
+    const added = await store.addMaterial({
+      spaceId,
+      name: file.value.name,
+      url: file.value.url,
+      contentType: file.value.contentType,
+      size: file.value.size,
+      section: material.section?.trim() || null,
+      origin: 'hackai',
+      externalId: null,
+      addedBy: personId,
+      addedAt: clock.now().toISOString()
+    })
+    if (!added.ok) return fail('falla-externa')
+    const [item] = await materialItems([added.value], authorsFrom(people), personId, 0)
+    return ok(item)
+  }
+
+  const organizeMaterial: Spaces['organizeMaterial'] = async (personId, spaceId, layout) => {
+    const found = await managing(personId, spaceId)
+    if (!found.ok) return found
+    const space = await store.setMaterialLayout(spaceId, layout)
+    if (!space.ok) return space
+    if (!space.value) return fail('espacio-desconocido')
+    const channels = await store.channels([spaceId])
+    if (!channels.ok) return channels
+    const channel = channels.value.find((c) => c.kind === 'material')
+    const material = await materialFor(found.value.member, space.value, channel?.id ?? null)
+    return material.ok ? ok(material.value.view) : material
+  }
+
   return {
     open,
     resolve,
@@ -316,8 +379,8 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     },
     post,
     createChannel,
-    addMaterial: pending,
-    organizeMaterial: pending,
+    addMaterial,
+    organizeMaterial,
     openDirect: notImplemented,
     link: notImplemented,
     syncAll: notImplemented,
