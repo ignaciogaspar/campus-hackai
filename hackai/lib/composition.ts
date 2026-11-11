@@ -167,7 +167,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     clock,
     store: adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore()
   })
-  const today = createToday({ studies, spaces })
+  const today = createToday({ studies, spaces, clock })
 
   return { adapters, ports, people, studies, spaces, today }
 }

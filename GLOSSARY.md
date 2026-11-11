@@ -122,7 +122,7 @@ _Avoid_: «planilla»; guardar en un acta una nota que escribió un agente sin q
 Nota cargada en un acta todavía abierta. El SIU la muestra en un reporte aparte, separado de la historia académica.
 
 **Historia académica (AcademicHistory)**:
-Registro completo de un alumno en una propuesta: cursadas, exámenes, promociones, equivalencias y aprobaciones por resolución, con nota, resultado y fecha.
+Registro completo de un alumno en una propuesta: cursadas, exámenes, promociones, equivalencias y aprobaciones por resolución, con nota, resultado y fecha. Hipótesis: también trae notas de evaluaciones (parciales, TP) que el docente cargó ahí y no en un acta abierta (pregunta 14 de `docs/product/preguntas-abiertas.md`).
 _Avoid_: «analítico» (es el documento que se emite a partir de ella).
 
 **Equivalencia (Equivalence)**:

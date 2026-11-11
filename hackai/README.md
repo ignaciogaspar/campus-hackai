@@ -124,8 +124,8 @@ Por eso sus migraciones y su seed van **aparte** de las propias, en `supabase/si
 
 | Archivo | Qué hace |
 | --- | --- |
-| `supabase/simulados/0001_siu.sql` | Crea las tablas `siu_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
-| `supabase/simulados/siu_seed.sql` | Carga el set sintético. Idempotente: pisa cada fila por su clave y borra las inscripciones hechas durante la demo. Se genera con `npm run siu:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el SIU en memoria; no se edita a mano. |
+| `supabase/simulados/0001_siu.sql` | Crea las tablas `siu_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. Sobre una base ya creada, agrega lo que falte (por ejemplo, las columnas de las evaluaciones de la historia del issue #14). |
+| `supabase/simulados/siu_seed.sql` | Carga el set sintético. Idempotente: pisa cada fila por su clave y borra las inscripciones hechas durante la demo y las notas que el set ya no tiene. Se genera con `npm run siu:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el SIU en memoria; no se edita a mano. |
 
 Para cargarlas en el Supabase del equipo:
 
@@ -133,7 +133,7 @@ Para cargarlas en el Supabase del equipo:
 psql "$DATABASE_URL" -f supabase/simulados/0001_siu.sql -f supabase/simulados/siu_seed.sql
 ```
 
-Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: un test avisa si quedó viejo.
+Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: un test avisa si quedó viejo. Si cambia `0001_siu.sql`, volvé a correr los dos archivos con el mismo comando.
 
 La batería de contrato del SIU (`tests/contracts/siu.test.ts`) corre siempre contra el SIU en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice.
 
@@ -172,6 +172,43 @@ Las variables se leen de `.env.local` al arrancar el contenedor, nunca se copian
 
 `GET /api/health` responde `{ "status": "ok" }` sin tocar la base. El `HEALTHCHECK` de la imagen lo consulta, y `docker compose ps` muestra el estado (`healthy` o `unhealthy`).
 
+## Corrida periódica
+
+Los espacios se sincronizan con sus canales externos aunque nadie los abra: un cron del hosting pide `/api/cron/sync`, que llama a `syncAll` de Espacios. La ruta acepta `GET` y `POST`, y solo deja pasar el pedido que trae `Authorization: Bearer <valor de CRON_SECRET>`. Compara el secreto en tiempo constante, y ni el secreto ni lo que trajo el pedido van a la respuesta o al log. El log de cada corrida lleva solo el resultado y los números del resumen.
+
+| Responde | Cuándo |
+| --- | --- |
+| 200 con el resumen: `channels`, `imported`, `sent`, `pending` | Sincronizó |
+| 401 `no-autorizado` | El pedido no trae el secreto o trae otro |
+| 501 `no-implementado` | Espacios todavía no sincroniza: llega con #15, y entonces la ruta responde 200 sin cambios |
+| 503 `sin-configurar` | Falta `CRON_SECRET` en el entorno: la ruta queda cerrada para todos |
+
+Para probarla a mano, con el servidor andando y `CRON_SECRET` en `.env.local`:
+
+```bash
+curl -i -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/sync
+```
+
+**Con Vercel Cron.** Cargá `CRON_SECRET` en las variables del proyecto, en Production: Vercel la manda sola en el header `Authorization` al llamar al cron. Después sumá el cron al `vercel.json` del proyecto y desplegá:
+
+```json
+{ "crons": [{ "path": "/api/cron/sync", "schedule": "*/5 * * * *" }] }
+```
+
+Según la [documentación de Vercel](https://vercel.com/docs/cron-jobs/usage-and-pricing), consultada el 11/11/2026, el cron corre solo en el deployment de producción, y en el plan Hobby corre una vez por día como mucho, en algún momento de la hora indicada. Una expresión más frecuente, como la de arriba, hace fallar el deploy, así que en Hobby va una diaria, por ejemplo `0 9 * * *`. El repo no trae `vercel.json` porque el hosting no está decidido y la sincronización todavía no existe.
+
+**Con otro hosting o con Docker.** Sirve cualquier cron que pida la ruta con el header, por ejemplo una línea de crontab en una máquina que tenga `CRON_SECRET` en su entorno:
+
+```text
+*/5 * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://<dominio>/api/cron/sync
+```
+
+## Si el SIU o Moodle no responden
+
+Las lecturas de Cursada (`subjectsOf`, `sectionsOf`, `upcoming`, `openEnrollments`) toleran caídas. El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy y Mis materias lo muestran con el aviso de `components/ui/stale-banner.tsx`. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló. Los parciales y finales (`upcoming`) salen solo del SIU: si se cae Moodle, Hoy los muestra igual y avisa que faltan las entregas. Lo que pasó y las inscripciones que cerraron se miran contra el reloj al armar Hoy, aunque la lectura sea vieja.
+
+Lo último leído vive en la memoria del proceso. Si el hosting levanta un proceso nuevo, por ejemplo una función serverless fría, la copia se pierde y la primera lectura con el sistema caído devuelve el error.
+
 ## Variables de entorno
 
 Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin valores.
@@ -182,6 +219,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `SUPABASE_SERVICE_ROLE_KEY` | Acceso a datos desde el servidor. Nunca llega al cliente. |
 | `DATABASE_URL` | Solo para correr migraciones con psql. |
 | `SESSION_SECRET` | Firma la cookie de sesión `hackai_session`. Sin ella no se puede entrar. |
+| `CRON_SECRET` | Secreto de la corrida periódica (`/api/cron/sync`). Sin ella la ruta queda cerrada. Ver «Corrida periódica». |
 | `ANTHROPIC_API_KEY` | API de Claude. |
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES`, `HACKAI_CLOCK` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
@@ -214,8 +252,10 @@ No las imprimas en logs ni en reportes.
 | `lib/adapters/supabase/` | Lo que comparten los adaptadores sobre Supabase: `client.ts` (cliente con service role), `query.ts` (consultas con tiempo máximo) y `sql.ts` (literales y `upsert` que usan los generadores de seed). Además, los almacenes de Personas y de Espacios, el generador del seed de Personas y Archivos sobre Supabase Storage. |
 | `app/page.tsx`, `app/actions/session.ts`, `components/session/` | El ingreso de demo: la lista de personas por rol, y las acciones para entrar y salir. |
 | `components/shell/` | Lo que comparten las pantallas: `PageHeader` (encabezado navy con la marca), `Brand`, `AppShell` y `AppNav` (la navegación), y `Avatar` (iniciales). |
-| `app/(app)/hoy/` | Inicio de los dos roles. Por ahora saluda y lleva a Mis materias; el resto llega con Hoy (#18). |
-| `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con su espacio, el enlace a su aula de Moodle y sus tareas con fecha. En `[subjectId]/`, el espacio de la materia. |
+| `app/(app)/hoy/`, `components/today/` | Inicio de los dos roles. Al alumno, en una llamada a Hoy: el próximo parcial o final, las fechas de las próximas 2 semanas (en compu, un calendario de esta semana y la próxima), las inscripciones que cierran pronto y el acceso a Mis materias. Si el SIU o Moodle no responden, cada parte muestra lo último leído con el aviso de `components/ui/stale-banner.tsx` o su error. Las novedades sin leer de todos sus espacios llegan a la campana. Al docente, por ahora, lo saluda y lo lleva a Mis materias. |
+| `app/(app)/academico/`, `components/academic/` | Académico, del alumno: las notas de parciales juntas (la última destacada), la historia con las materias aprobadas por año y el promedio, y las constancias con el enlace a la Autogestión o el motivo por el que todavía no se puede pedir. |
+| `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con su espacio, el enlace a su aula de Moodle y sus tareas con fecha. Si el SIU o Moodle no responden, muestra lo último leído con el aviso de desactualizado. En `[subjectId]/`, el espacio de la materia. |
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales y subir y organizar el material. |
+| `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).

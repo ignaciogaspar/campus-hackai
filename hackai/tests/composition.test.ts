@@ -20,25 +20,21 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   assert.equal(system.ports.clock.now().toISOString(), NOW.toISOString())
 
   const alumno = syntheticData.people.find((p) => p.id === 'p-taguirre')!
-  assert.deepEqual(await system.today.today(alumno.id), { ok: false, error: 'no-implementado' })
+  assert.equal((await system.today.today(alumno.id)).ok, true)
   assert.equal((await system.people.get(alumno.id)).ok, true)
   assert.equal((await system.studies.subjectsOf(alumno.id)).ok, true)
-  assert.deepEqual(await system.studies.record(alumno.id), { ok: false, error: 'no-implementado' })
+  assert.equal((await system.studies.record(alumno.id)).ok, true)
   assert.equal((await system.spaces.open(alumno.id, 'am1')).ok, true)
   assert.deepEqual(await system.spaces.syncAll(), { ok: false, error: 'no-implementado' })
 })
 
 test('cada módulo expone su interfaz completa y lo que falta devuelve «no implementado»', async () => {
-  const { studies, spaces, today } = compose({})
+  const { spaces } = compose({})
   const p = 'persona'
   const calls = [
-    studies.upcoming(p),
-    studies.record(p),
-    studies.certificate(p, 'alumno-regular'),
     spaces.openDirect(p, 'otra'),
     spaces.link(p, 'c', { system: 'discord', channelId: 'd' }),
-    spaces.syncAll(),
-    today.today(p)
+    spaces.syncAll()
   ]
   for (const result of await Promise.all(calls)) {
     assert.deepEqual(result, { ok: false, error: 'no-implementado' })

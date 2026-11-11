@@ -23,22 +23,60 @@
      con fecha por orden de fecha (las sin fecha no se muestran). Si el aula
      declara que no tiene tareas, salen vacías sin error.
 
+   - Próximos (`upcoming`): parciales, recuperatorios y TP del cronograma de sus
+     materias actuales y los finales de las mesas de su facultad a las que está
+     inscripto, desde que empezó su período lectivo actual, todo por fecha y con
+     los pasados marcados según el reloj. Salen solo del SIU, así que una caída
+     de Moodle no los toca: las tareas con fecha vienen con `subjectsOf` y las
+     suma Hoy. Sin cronograma en el SIU (la API real) salen solo los finales.
+   - Inscripciones abiertas (`openEnrollments`), las que cierran antes primero,
+     una por materia. Qué le sirve al alumno es una hipótesis, sin confirmar
+     con el equipo (docs/product/preguntas-abiertas.md, pregunta 16):
+     - cursada: comisiones de su facultad con la inscripción del período
+       abierta, de materias que no cursa en ninguna facultad (una sola
+       comisión vigente por materia, como en `enroll`), no tiene regulares ni
+       aprobó;
+     - examen: mesas de su facultad con la inscripción abierta, de materias
+       que no aprobó y tiene regulares o está cursando (puede regularizar
+       antes de la mesa, y entonces se marca `needsRegularity`), si no está
+       inscripto ya a una mesa de esa materia.
+     Salen tengan o no cupo: cuántos lugares quedan lo dice la oferta.
+     Se muestran aunque el SIU no deje inscribir por API: se completan en la
+     Autogestión. Un docente no tiene.
+   - Notas: las de parciales, recuperatorios y TP salen juntas, vengan de la
+     historia (renglones `evaluacion`) o de actuación provisoria, cada una con
+     su origen y la más reciente primero. Sin cronograma en el SIU (la API
+     real), salen igual con el nombre «Evaluación».
+   - Historia: solo las materias aprobadas (promoción, final o equivalencia) y
+     su promedio. Las cursadas regulares y las evaluaciones no entran.
+   - Constancias: si cumple las condiciones lo dice el SIU. Si no cumple,
+     Cursada deduce el motivo con lo que la API real también da (propuesta
+     activa, inscripción vigente, finales rendidos); si no lo encuentra, no
+     inventa uno.
+
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
+  SiuAssessment,
   SiuCertificateType,
   SiuCourseEnrollment,
+  SiuEnrollmentStatus,
+  SiuExamBoard,
   SiuExamEnrollment,
+  SiuHistoryEntry,
+  SiuPerson,
   SiuPort,
+  SiuProvisionalResult,
+  SiuReadError,
   SiuSchedule,
   SiuSection,
   SiuSubject,
   SiuTerm
 } from '@/lib/ports/siu'
-import { all, type ExternalFailure, fail, type NotImplemented, notImplemented, ok, type Result } from '@/lib/result'
+import { all, type ExternalFailure, fail, type NotImplemented, ok, type Result } from '@/lib/result'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
@@ -58,7 +96,7 @@ export type Teacher = { personId: PersonId | null; name: string }
 export type MyClassroom = { courseId: string; name: string; url: string }
 
 /** Tarea con fecha límite de un curso de Moodle. `past` si la fecha ya pasó según el reloj. */
-export type MyAssignment = { name: string; dueDate: string; source: 'moodle'; past: boolean }
+export type MyAssignment = { id: string; name: string; dueDate: string; source: 'moodle'; past: boolean }
 
 /** Una materia de la persona, en una comisión y un período lectivo. */
 export type MySubject = {
@@ -148,16 +186,24 @@ export type EnrollError =
   | ExternalFailure
 export type DropError = 'no-inscripto' | 'fuera-de-periodo' | 'objetivo-desconocido' | TwoSystemsError | ExternalFailure
 
-/** Parcial, final o, como complemento, una entrega con fecha de Moodle. */
+/** Parcial o final del SIU, o, como complemento, una entrega con fecha de Moodle (esas las suma Hoy). */
 export type UpcomingItem = {
+  /** Único entre los próximos: el tipo de origen y su id (`evaluacion:…`, `mesa:…`, `tarea:…`). */
+  id: string
   kind: 'parcial' | 'recuperatorio' | 'tp' | 'final' | 'entrega'
   source: 'siu' | 'moodle'
   subjectId: string
+  /** La sigla de la materia, para el calendario. */
+  subjectCode: string
   subjectName: string
   name: string
   date: string
   past: boolean
 }
+
+/** El orden de los próximos: por fecha; el mismo día, por materia y por nombre. Lo usa también Hoy al sumarles las entregas. */
+export const compareUpcoming = (a: UpcomingItem, b: UpcomingItem) =>
+  a.date.localeCompare(b.date) || a.subjectName.localeCompare(b.subjectName, 'es') || a.name.localeCompare(b.name, 'es')
 
 export type OpenEnrollment = {
   kind: 'cursada' | 'examen'
@@ -165,11 +211,14 @@ export type OpenEnrollment = {
   subjectName: string
   opensAt: string
   closesAt: string
+  /** Examen de una materia que está cursando y todavía no tiene regular: necesita regularizarla antes de la mesa. */
+  needsRegularity: boolean
 }
 
 /** Nota de un parcial, venga de la historia académica o de la actuación provisoria. */
 export type AssessmentGrade = {
-  subjectId: string
+  /** `null` si el SIU no dice de qué materia es (una comisión que ya no encuentra). */
+  subjectId: string | null
   subjectName: string
   assessmentName: string
   grade: number | null
@@ -177,22 +226,40 @@ export type AssessmentGrade = {
   source: 'historia' | 'actuacion-provisoria'
 }
 
+/** Cómo se aprobó una materia: promoción, final o equivalencia. */
+export type Approval = 'promocion' | 'examen' | 'equivalencia'
+
+/** Materia aprobada de la historia académica. */
 export type HistoryItem = {
   subjectId: string
   subjectName: string
-  type: 'cursada' | 'examen' | 'promocion' | 'equivalencia'
   date: string
   grade: number | null
-  result: 'promocionado' | 'aprobado' | 'regular' | 'desaprobado' | 'ausente' | 'libre'
+  approval: Approval
 }
 
 export type AcademicRecord = {
+  /** Notas de parciales, recuperatorios y TP, la más reciente primero. */
   grades: AssessmentGrade[]
+  /** Materias aprobadas, la más reciente primero. */
   history: HistoryItem[]
+  /** Promedio de las materias aprobadas con nota, a dos decimales. */
   average: number | null
 }
 
-export type CertificateStatus = { type: CertificateType; meetsConditions: boolean; url: string }
+/** Por qué no cumple las condiciones de una constancia, según lo que Cursada
+    puede deducir del SIU. La API real solo dice si cumple, sin el motivo. */
+export type CertificateReason = 'sin-propuesta-activa' | 'sin-inscripcion-vigente' | 'sin-examenes-rendidos'
+
+/** Si cumple las condiciones de una constancia y dónde pedirla en la
+    Autogestión del SIU. `reasons` vacío cuando cumple, o cuando no cumple y
+    Cursada no sabe por qué. */
+export type CertificateStatus = {
+  type: CertificateType
+  meetsConditions: boolean
+  reasons: CertificateReason[]
+  url: string
+}
 
 /** Por qué una lectura de Cursada no pudo responder. */
 export type StudiesReadError = 'persona-desconocida' | ExternalFailure | NotImplemented
@@ -232,8 +299,8 @@ export type StudiesDeps = {
   clock: ClockPort
 }
 
-/** La persona en el SIU: su id y su facultad. */
-type SiuPersonRef = { siuId: string; schoolId: string }
+/** La persona en el SIU con el id que le da Personas: su id, su facultad y sus datos (rol incluido). */
+type SiuPersonRef = { siuId: string; schoolId: string; person: SiuPerson }
 
 /** Lo que hace falta del aula para inscribir o dar de baja. Sin `moodleId`,
     HackAI no toca el aula (el SIU matricula solo, o es una mesa). */
@@ -243,6 +310,148 @@ type ClassroomPlan = { courseIds: string[]; moodleId: string | null }
 type SectionInTerm = { section: SiuSection; subject: SiuSubject; term: SiuTerm; current: boolean }
 
 type MySectionsInTerms = { role: Role; sections: SectionInTerm[] }
+
+/** Las mesas de su facultad, con cuántos inscriptos tienen, y los ids de aquellas en las que la persona tiene una inscripción vigente. */
+type ExamBoardsOf = { boards: (SiuExamBoard & { enrolled: number })[]; enrolledIn: Set<string> }
+
+const isActive = (status: SiuEnrollmentStatus) => status === 'aceptada' || status === 'pendiente'
+
+const unique = (values: string[]) => [...new Set(values)]
+
+/** Los campos de la materia que lleva cada próximo. */
+const subjectRef = (subject: SiuSubject) => ({
+  subjectId: subject.id,
+  subjectCode: subject.code,
+  subjectName: subject.name
+})
+
+/** Cómo viene el alumno en cada materia, por id: la está cursando (o ya se
+    inscribió en un período que no terminó), la tiene regular o la aprobó. */
+type SubjectProgress = { taking: Set<string>; regular: Set<string>; approved: Set<string> }
+
+/** Una inscripción abierta antes de ponerle el nombre a la materia. */
+type Opening = Omit<OpenEnrollment, 'subjectName'>
+
+const isRegular = (h: SiuHistoryEntry) => h.type === 'cursada' && h.result === 'regular'
+
+const isApproved = (h: SiuHistoryEntry) => approvalOf(h) !== null
+
+const isOpenAt = (at: string, start: string, end: string) => start <= at && at <= end
+
+/** Le sirve cursarla si no la está cursando, no la tiene regular y no la aprobó. */
+const needsCourseAttempt = (subjectId: string, p: SubjectProgress) =>
+  !p.taking.has(subjectId) && !p.regular.has(subjectId) && !p.approved.has(subjectId)
+
+/** Le sirve rendirla si no la aprobó y la tiene regular o la está cursando (puede regularizarla antes de la mesa). */
+const needsExam = (subjectId: string, p: SubjectProgress) =>
+  !p.approved.has(subjectId) && (p.regular.has(subjectId) || p.taking.has(subjectId))
+
+/** La que cierra antes primero; el mismo día, por materia. */
+const byClosing = (a: OpenEnrollment, b: OpenEnrollment) =>
+  a.closesAt.localeCompare(b.closesAt) ||
+  a.subjectName.localeCompare(b.subjectName, 'es') ||
+  a.kind.localeCompare(b.kind)
+
+/** Una por materia y tipo: la que cierra antes. Espera la lista ya ordenada. */
+function onePerSubject(items: OpenEnrollment[]): OpenEnrollment[] {
+  const seen = new Set<string>()
+  return items.filter((i) => {
+    const key = `${i.kind}:${i.subjectId}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/** Actuales primero (por inicio del período) y archivadas después (la más reciente primero), cada grupo por materia. */
+function inTermOrder(placed: SectionInTerm[]): SectionInTerm[] {
+  const byName = (a: SectionInTerm, b: SectionInTerm) =>
+    a.subject.name.localeCompare(b.subject.name, 'es') || a.section.name.localeCompare(b.section.name, 'es')
+  const current = placed
+    .filter((p) => p.current)
+    .sort((a, b) => a.term.start.localeCompare(b.term.start) || byName(a, b))
+  const archived = placed.filter((p) => !p.current).sort((a, b) => b.term.end.localeCompare(a.term.end) || byName(a, b))
+  return [...current, ...archived]
+}
+
+/** Una nota de evaluación tal como la da el SIU, antes de ponerle nombres. */
+type RawGrade = {
+  sectionId: string
+  assessmentId: string
+  /** La historia la trae; la actuación provisoria no, sale de la comisión. */
+  subjectId: string | null
+  grade: number | null
+  date: string
+  source: AssessmentGrade['source']
+}
+
+/** Nombre de una evaluación cuando el SIU no expone el cronograma (la API real). */
+const GENERIC_ASSESSMENT = 'Evaluación'
+/** Nombre de una materia que el SIU no devolvió. */
+const UNKNOWN_SUBJECT = 'Materia'
+
+/** Forma de aprobación de un renglón de la historia, o `null` si no aprueba la
+    materia: una cursada regular, una evaluación o un examen desaprobado. */
+function approvalOf(entry: SiuHistoryEntry): Approval | null {
+  if (entry.type === 'promocion' && entry.result === 'promocionado') return 'promocion'
+  if (entry.type === 'examen' && entry.result === 'aprobado') return 'examen'
+  if (entry.type === 'equivalencia' && (entry.result === 'aprobado' || entry.result === 'promocionado'))
+    return 'equivalencia'
+  return null
+}
+
+type Approved = { entry: SiuHistoryEntry; approval: Approval }
+
+/** Un renglón aprobado por materia. Si hay más de uno (por ejemplo, un acta
+    rectificada), vale el más reciente, así la materia sale y cuenta una vez. */
+function approvedSubjects(history: SiuHistoryEntry[]): Approved[] {
+  const bySubject = new Map<string, Approved>()
+  for (const entry of history) {
+    const approval = approvalOf(entry)
+    const kept = bySubject.get(entry.subjectId)
+    if (approval && (!kept || entry.date > kept.entry.date)) bySubject.set(entry.subjectId, { entry, approval })
+  }
+  return [...bySubject.values()]
+}
+
+function averageOf(items: HistoryItem[]): number | null {
+  const grades = items.flatMap((i) => (i.grade === null ? [] : [i.grade]))
+  if (grades.length === 0) return null
+  return Math.round((grades.reduce((sum, g) => sum + g, 0) / grades.length) * 100) / 100
+}
+
+/** Las notas de evaluaciones de la historia y de actuación provisoria, sin nombres todavía. */
+function rawGrades(history: SiuHistoryEntry[], provisional: SiuProvisionalResult[]): RawGrade[] {
+  const fromHistory = history.flatMap((h): RawGrade[] =>
+    h.type === 'evaluacion' && h.sectionId && h.assessmentId
+      ? [
+          {
+            sectionId: h.sectionId,
+            assessmentId: h.assessmentId,
+            subjectId: h.subjectId,
+            grade: h.grade,
+            date: h.date,
+            source: 'historia'
+          }
+        ]
+      : []
+  )
+  const fromProvisional = provisional.map(
+    (r): RawGrade => ({
+      sectionId: r.sectionId,
+      assessmentId: r.assessmentId,
+      subjectId: null,
+      grade: r.grade,
+      date: r.date,
+      source: 'actuacion-provisoria'
+    })
+  )
+  return [...fromHistory, ...fromProvisional]
+}
+
+/** La más reciente primero y, a igual fecha, por materia. */
+const newestFirst = (a: { date: string; subjectName: string }, b: { date: string; subjectName: string }) =>
+  b.date.localeCompare(a.date) || a.subjectName.localeCompare(b.subjectName, 'es')
 
 /** Un id del SIU o un vínculo que no existe es una persona que Cursada no conoce. */
 function asUnknownPerson<E extends string>(
@@ -272,57 +481,53 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return result
   }
 
-  /** Las comisiones de la persona, actuales primero (por inicio del período) y
-      archivadas después (la más reciente primero), cada grupo por materia. El
-      rol y la facultad salen del SIU, con el id que da Personas. */
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 18 (máximo 15). Se refactoriza después de la demo (#30).
-  async function sectionsInTermsOf(personId: PersonId): Promise<Result<MySectionsInTerms, ReadError>> {
+  /** La persona en el SIU, con su rol y su facultad, por el id que da Personas. */
+  async function siuPersonOf(personId: PersonId): Promise<Result<SiuPersonRef, ReadError>> {
     const siuId = await people.accountIn(personId, 'siu')
     if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
     const person = await siu.person(siuId.value)
     if (!person.ok) return fail(asUnknownPerson(person.error))
-    const { role, school } = person.value
+    return ok({ siuId: siuId.value, schoolId: person.value.school.id, person: person.value })
+  }
 
-    let sections: SiuSection[]
-    if (role === 'profesor') {
-      const taught = await siu.teacherSections(siuId.value)
-      if (!taught.ok) return fail(asUnknownPerson(taught.error))
-      sections = taught.value
-    } else {
-      const enrollments = await siu.courseEnrollments(siuId.value, { historic: true })
-      if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
-      const ids = [
-        ...new Set(
-          enrollments.value.filter((e) => e.status === 'aceptada' || e.status === 'pendiente').map((e) => e.sectionId)
-        )
-      ]
-      const found = await Promise.all(ids.map((id) => siu.section(id)))
-      if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
-      sections = found.flatMap((r) => (r.ok ? [r.value] : [])).filter((s) => s.schoolId === school.id)
+  /** Materias del SIU por id. Una que el SIU no encuentra se saltea; si no responde, falla. */
+  async function subjectsById(ids: string[]): Promise<Result<Map<string, SiuSubject>, ExternalFailure>> {
+    const found = await Promise.all(unique(ids).map((id) => siu.subject(id)))
+    if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+    return ok(new Map(found.flatMap((r) => (r.ok ? [[r.value.id, r.value] as const] : []))))
+  }
+
+  /** Las comisiones que dicta un docente, o las de las inscripciones aceptadas o
+      pendientes (de cualquier período) de un alumno, solo de su facultad. */
+  async function siuSectionsOf({ siuId, person }: SiuPersonRef): Promise<Result<SiuSection[], ReadError>> {
+    if (person.role === 'profesor') {
+      const taught = await siu.teacherSections(siuId)
+      return taught.ok ? ok(taught.value) : fail(asUnknownPerson(taught.error))
     }
+    const enrollments = await siu.courseEnrollments(siuId, { historic: true })
+    if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+    const ids = unique(enrollments.value.filter((e) => isActive(e.status)).map((e) => e.sectionId))
+    const found = await Promise.all(ids.map((id) => siu.section(id)))
+    if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+    return ok(found.flatMap((r) => (r.ok ? [r.value] : [])).filter((s) => s.schoolId === person.school.id))
+  }
 
-    const terms = await siu.terms()
+  /** Sus comisiones con su materia y su período, en el orden de `inTermOrder`. */
+  async function sectionsInTermsOf(who: SiuPersonRef): Promise<Result<MySectionsInTerms, ReadError>> {
+    const sections = await siuSectionsOf(who)
+    if (!sections.ok) return sections
+    const [terms, subjects] = await Promise.all([siu.terms(), subjectsById(sections.value.map((s) => s.subjectId))])
     if (!terms.ok) return terms
-    const subjectIds = [...new Set(sections.map((s) => s.subjectId))]
-    const subjects = await Promise.all(subjectIds.map((id) => siu.subject(id)))
-    if (subjects.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+    if (!subjects.ok) return subjects
 
     const at = clock.now().toISOString()
-    const placed = sections.flatMap((section): SectionInTerm[] => {
+    const placed = sections.value.flatMap((section): SectionInTerm[] => {
       const term = terms.value.find((t) => t.id === section.termId)
-      const subject = subjects.find((r) => r.ok && r.value.id === section.subjectId)
-      if (!term || !subject?.ok) return []
-      return [{ section, subject: subject.value, term, current: term.end >= at }]
+      const subject = subjects.value.get(section.subjectId)
+      if (!term || !subject) return []
+      return [{ section, subject, term, current: term.end >= at }]
     })
-    const byName = (a: SectionInTerm, b: SectionInTerm) =>
-      a.subject.name.localeCompare(b.subject.name, 'es') || a.section.name.localeCompare(b.section.name, 'es')
-    const current = placed
-      .filter((p) => p.current)
-      .sort((a, b) => a.term.start.localeCompare(b.term.start) || byName(a, b))
-    const archived = placed
-      .filter((p) => !p.current)
-      .sort((a, b) => b.term.end.localeCompare(a.term.end) || byName(a, b))
-    return ok({ role, sections: [...current, ...archived] })
+    return ok({ role: who.person.role, sections: inTermOrder(placed) })
   }
 
   /** Tareas con fecha de los cursos, por fecha. Que el aula no tenga tareas (o no
@@ -341,14 +546,16 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok(
       lists
         .flat()
-        .flatMap((a) => (a.dueDate === null ? [] : [{ name: a.name, dueDate: a.dueDate }]))
+        .flatMap((a) => (a.dueDate === null ? [] : [{ id: a.id, name: a.name, dueDate: a.dueDate }]))
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name, 'es'))
         .map((a): MyAssignment => ({ ...a, source: 'moodle', past: a.dueDate < at }))
     )
   }
 
   async function subjectsOf(personId: PersonId): Promise<Result<MySubjects, ReadError>> {
-    const mine = await sectionsInTermsOf(personId)
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    const mine = await sectionsInTermsOf(who.value)
     if (!mine.ok) return mine
     const courses = all(await Promise.all(mine.value.sections.map((p) => classroom.coursesForSection(p.section.id))))
     if (!courses.ok) return courses
@@ -384,6 +591,127 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
+  /** Lee cada id con `read` y arma un mapa de los que existen. Que uno no exista
+      (o que el SIU no lo soporte) no es un error; que el SIU no responda, sí. */
+  async function lookup<T>(
+    ids: string[],
+    read: (id: string) => Promise<Result<T, SiuReadError | 'no-soportado'>>
+  ): Promise<Result<Map<string, T>, ExternalFailure>> {
+    const found = await Promise.all(ids.map((id) => read(id)))
+    const map = new Map<string, T>()
+    for (const [i, result] of found.entries()) {
+      if (result.ok) map.set(ids[i], result.value)
+      else if (result.error === 'falla-externa') return fail('falla-externa')
+    }
+    return ok(map)
+  }
+
+  /** Los nombres de materias y evaluaciones que hacen falta para mostrar la
+      historia y las notas, con lo que el SIU sepa. Las notas de actuación
+      provisoria no traen la materia: sale de su comisión. Si el SIU no responde
+      estas lecturas, falla todo `record` (y se ve lo último leído), como en
+      `subjectsOf`: una nota sin materia ni evaluación no le sirve al alumno. */
+  async function namesFor(raw: RawGrade[], subjectIds: string[]) {
+    const sections = await lookup(unique(raw.filter((r) => r.subjectId === null).map((r) => r.sectionId)), (id) =>
+      siu.section(id)
+    )
+    if (!sections.ok) return sections
+    const schedules = siu.capabilities.hasAssessmentSchedule
+      ? await lookup(unique(raw.map((r) => r.sectionId)), (id) => siu.assessments(id))
+      : ok(new Map<string, SiuAssessment[]>())
+    if (!schedules.ok) return schedules
+    const subjectOf = (r: RawGrade) => r.subjectId ?? sections.value.get(r.sectionId)?.subjectId ?? null
+    const subjects = await lookup(unique([...subjectIds, ...raw.flatMap((r) => subjectOf(r) ?? [])]), (id) =>
+      siu.subject(id)
+    )
+    if (!subjects.ok) return subjects
+    return ok({
+      subjectOf,
+      subjectName: (id: string | null) => (id && subjects.value.get(id)?.name) || UNKNOWN_SUBJECT,
+      assessmentName: (r: RawGrade) =>
+        schedules.value.get(r.sectionId)?.find((a) => a.id === r.assessmentId)?.name ?? GENERIC_ASSESSMENT
+    })
+  }
+
+  /** Notas de parciales de la historia y de actuación provisoria, y materias aprobadas con su promedio. */
+  async function record(personId: PersonId): Promise<Result<AcademicRecord, ReadError>> {
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
+    const [history, provisional] = await Promise.all([siu.history(siuId.value), siu.provisionalResults(siuId.value)])
+    if (!history.ok) return fail(asUnknownPerson(history.error))
+    if (!provisional.ok) return fail(asUnknownPerson(provisional.error))
+
+    const raw = rawGrades(history.value, provisional.value)
+    const approved = approvedSubjects(history.value)
+    const names = await namesFor(
+      raw,
+      approved.map((a) => a.entry.subjectId)
+    )
+    if (!names.ok) return names
+
+    const grades = raw
+      .map((r): AssessmentGrade => {
+        const subjectId = names.value.subjectOf(r)
+        return {
+          subjectId,
+          subjectName: names.value.subjectName(subjectId),
+          assessmentName: names.value.assessmentName(r),
+          grade: r.grade,
+          date: r.date,
+          source: r.source
+        }
+      })
+      .sort((a, b) => newestFirst(a, b) || a.assessmentName.localeCompare(b.assessmentName, 'es'))
+    const items = approved
+      .map(
+        ({ entry, approval }): HistoryItem => ({
+          subjectId: entry.subjectId,
+          subjectName: names.value.subjectName(entry.subjectId),
+          date: entry.date,
+          grade: entry.grade,
+          approval
+        })
+      )
+      .sort(newestFirst)
+    return ok({ grades, history: items, average: averageOf(items) })
+  }
+
+  /** Por qué no cumple la de alumno regular: sin propuesta activa o sin
+      inscripción a cursada vigente (aceptada o pendiente, como en `subjectsOf`). */
+  async function regularStudentReasons(siuId: string, person: SiuPerson): Promise<CertificateReason[]> {
+    const reasons: CertificateReason[] = []
+    if (!person.programs.some((p) => p.status === 'activa')) reasons.push('sin-propuesta-activa')
+    const enrollments = await siu.courseEnrollments(siuId)
+    if (enrollments.ok && !enrollments.value.some((e) => isActive(e.status))) reasons.push('sin-inscripcion-vigente')
+    return reasons
+  }
+
+  /** Por qué no cumple, con lo que la API real del SIU también da: propuestas,
+      inscripciones vigentes e historia. Los motivos son de alumno: a un docente
+      no se le deduce ninguno. Si una lectura falla, ese motivo no se dice: el
+      veredicto ya lo dio el SIU. */
+  async function reasonsWhy(siuId: string, type: CertificateType): Promise<CertificateReason[]> {
+    const person = await siu.person(siuId)
+    if (!person.ok || person.value.role !== 'alumno') return []
+    if (type === 'alumno-regular') return regularStudentReasons(siuId, person.value)
+    const history = await siu.history(siuId)
+    if (!history.ok) return []
+    return history.value.some((h) => h.type === 'examen' && h.result !== 'ausente') ? [] : ['sin-examenes-rendidos']
+  }
+
+  async function certificate(personId: PersonId, type: CertificateType): Promise<Result<CertificateStatus, ReadError>> {
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
+    const meets = await siu.meetsCertificateConditions(siuId.value, type)
+    if (!meets.ok) return fail(asUnknownPerson(meets.error))
+    return ok({
+      type,
+      meetsConditions: meets.value,
+      reasons: meets.value ? [] : await reasonsWhy(siuId.value, type),
+      url: siu.selfServiceUrl({ kind: 'constancia', type })
+    })
+  }
+
   /** Docentes de una comisión, con su persona de HackAI si la tienen. */
   async function teachersOf(section: {
     teacherIds: string[]
@@ -399,7 +727,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   }
 
   async function sectionsOf(personId: PersonId): Promise<Result<MySection[], ReadError>> {
-    const mine = await sectionsInTermsOf(personId)
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    const mine = await sectionsInTermsOf(who.value)
     if (!mine.ok) return mine
     const teachers = all(await Promise.all(mine.value.sections.map((p) => teachersOf(p.section))))
     if (!teachers.ok) return teachers
@@ -421,16 +751,6 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     )
   }
 
-  /** El id del SIU de la persona y su facultad. */
-  async function siuPersonOf(personId: PersonId): Promise<Result<SiuPersonRef, ReadError>> {
-    const siuId = await people.accountIn(personId, 'siu')
-    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
-    const person = await siu.person(siuId.value)
-    if (!person.ok) return fail(asUnknownPerson(person.error))
-    return ok({ siuId: siuId.value, schoolId: person.value.school.id })
-  }
-
-  const isOpenAt = (at: string, start: string, end: string) => start <= at && at <= end
   const spotsLeft = (capacity: number | null, enrolled: number) =>
     capacity === null ? null : Math.max(capacity - enrolled, 0)
 
@@ -799,49 +1119,184 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return dropBoth(siuId.value, target, plan.value)
   }
 
-  /** Materias de su facultad con comisiones en un período lectivo con la
-      inscripción abierta, sin las que ya cursa: una sola comisión vigente por
-      materia. Por ahora solo cursada: las mesas de examen que le sirven entran
-      con la inscripción a finales (#20). */
-  async function openEnrollments(personId: PersonId): Promise<Result<OpenEnrollment[], ReadError>> {
-    const siuPerson = await siuPersonOf(personId)
-    if (!siuPerson.ok) return siuPerson
-    const { siuId, schoolId } = siuPerson.value
-    const at = clock.now().toISOString()
-    const [terms, subjectsTaken] = await Promise.all([siu.terms(), subjectsInCourse(siuId)])
-    if (!terms.ok) return terms
-    if (!subjectsTaken.ok) return subjectsTaken
-    const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd))
-    const offered = all(await Promise.all(open.map((t) => siu.sections({ schoolId, termId: t.id }))))
-    if (!offered.ok) return offered
-
-    const items: { term: SiuTerm; subjectId: string }[] = []
-    open.forEach((term, i) => {
-      const sections = offered.value[i]
-      for (const subjectId of new Set(sections.map((s) => s.subjectId))) {
-        if (!subjectsTaken.value.has(subjectId)) items.push({ term, subjectId })
-      }
-    })
-    const subjects = await Promise.all(items.map((item) => siu.subject(item.subjectId)))
-    if (subjects.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
-
-    return ok(
-      items
-        .flatMap(({ term }, i): OpenEnrollment[] => {
-          const subject = subjects[i]
-          if (!subject.ok) return []
-          return [
-            {
-              kind: 'cursada',
-              subjectId: subject.value.id,
-              subjectName: subject.value.name,
-              opensAt: term.enrollmentStart,
-              closesAt: term.enrollmentEnd
-            }
-          ]
+  /** Parciales, recuperatorios y TP del cronograma de sus comisiones. Sin
+      cronograma en el SIU (la API real) no hay, y no es un error. */
+  async function assessmentsOf(
+    sections: SectionInTerm[],
+    at: string
+  ): Promise<Result<UpcomingItem[], ExternalFailure>> {
+    if (!siu.capabilities.hasAssessmentSchedule) return ok([])
+    const found = await Promise.all(sections.map((s) => siu.assessments(s.section.id)))
+    const items: UpcomingItem[] = []
+    for (const [i, result] of found.entries()) {
+      if (!result.ok && result.error === 'falla-externa') return fail('falla-externa')
+      if (!result.ok) continue
+      for (const a of result.value) {
+        items.push({
+          id: `evaluacion:${a.id}`,
+          kind: a.kind,
+          source: 'siu',
+          ...subjectRef(sections[i].subject),
+          name: a.name,
+          date: a.date,
+          past: a.date < at
         })
-        .sort((a, b) => a.closesAt.localeCompare(b.closesAt) || a.subjectName.localeCompare(b.subjectName, 'es'))
+      }
+    }
+    return ok(items)
+  }
+
+  /** Las mesas de su facultad y en cuáles está inscripto. Con `historic`, cuentan también las inscripciones a mesas que ya se tomaron. */
+  async function examBoardsOf(
+    { siuId, person }: SiuPersonRef,
+    historic: boolean
+  ): Promise<Result<ExamBoardsOf, ReadError>> {
+    const [boards, enrollments] = await Promise.all([
+      siu.examBoards({ schoolId: person.school.id }),
+      siu.examEnrollments(siuId, { historic })
+    ])
+    if (!boards.ok) return boards
+    if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+    return ok({
+      boards: boards.value,
+      enrolledIn: new Set(enrollments.value.filter((e) => isActive(e.status)).map((e) => e.examBoardId))
+    })
+  }
+
+  /** Finales: las mesas de su facultad a las que está inscripto, desde `since` (el inicio de su período actual). */
+  async function finalsOf(who: SiuPersonRef, since: string, at: string): Promise<Result<UpcomingItem[], ReadError>> {
+    const exams = await examBoardsOf(who, true)
+    if (!exams.ok) return exams
+    const mine = exams.value.boards.filter((b) => exams.value.enrolledIn.has(b.id) && b.date >= since)
+    const subjects = await subjectsById(mine.map((b) => b.subjectId))
+    if (!subjects.ok) return subjects
+    return ok(
+      mine.flatMap((board): UpcomingItem[] => {
+        const subject = subjects.value.get(board.subjectId)
+        if (!subject) return []
+        return [
+          {
+            id: `mesa:${board.id}`,
+            kind: 'final',
+            source: 'siu',
+            ...subjectRef(subject),
+            name: 'Final',
+            date: board.date,
+            past: board.date < at
+          }
+        ]
+      })
     )
+  }
+
+  async function upcoming(personId: PersonId): Promise<Result<UpcomingItem[], ReadError>> {
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    const mine = await sectionsInTermsOf(who.value)
+    if (!mine.ok) return mine
+    const at = clock.now().toISOString()
+    const current = mine.value.sections.filter((s) => s.current)
+    // Lo que ya pasó cuenta desde que empezó su período actual. Un período que todavía
+    // no empezó (el de verano) o no tener materias actuales no esconde nada de lo que viene.
+    const since = [at, ...current.map((s) => s.term.start)].sort()[0]
+    const [assessments, finals] = await Promise.all([assessmentsOf(current, at), finalsOf(who.value, since, at)])
+    if (!assessments.ok) return assessments
+    if (!finals.ok) return finals
+    return ok([...assessments.value, ...finals.value].sort(compareUpcoming))
+  }
+
+  /** Qué cursa (con el mismo criterio que la inscripción: una comisión vigente en cualquier facultad), qué tiene regular y qué aprobó. */
+  async function progressOf(who: SiuPersonRef): Promise<Result<SubjectProgress, ReadError>> {
+    const [taking, history] = await Promise.all([subjectsInCourse(who.siuId), siu.history(who.siuId)])
+    if (!taking.ok) return taking
+    if (!history.ok) return fail(asUnknownPerson(history.error))
+    return ok({
+      taking: taking.value,
+      regular: new Set(history.value.filter(isRegular).map((h) => h.subjectId)),
+      approved: new Set(history.value.filter(isApproved).map((h) => h.subjectId))
+    })
+  }
+
+  /** Comisiones de su facultad con la inscripción del período abierta, de materias que le falta cursar. Tengan o no cupo: lo dice la oferta. */
+  async function openCourseEnrollments(
+    schoolId: string,
+    progress: SubjectProgress,
+    at: string
+  ): Promise<Result<Opening[], ExternalFailure>> {
+    const terms = await siu.terms()
+    if (!terms.ok) return terms
+    const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd))
+    const found = all(await Promise.all(open.map((t) => siu.sections({ schoolId, termId: t.id }))))
+    if (!found.ok) return found
+    return ok(
+      found.value.flatMap((sections, i) =>
+        sections
+          .filter((s) => needsCourseAttempt(s.subjectId, progress))
+          .map(
+            (s): Opening => ({
+              kind: 'cursada',
+              subjectId: s.subjectId,
+              opensAt: open[i].enrollmentStart,
+              closesAt: open[i].enrollmentEnd,
+              needsRegularity: false
+            })
+          )
+      )
+    )
+  }
+
+  /** Mesas de su facultad con la inscripción abierta, de materias que le sirve rendir y en las que no está inscripto. Tengan o no cupo. */
+  async function openExamEnrollments(
+    who: SiuPersonRef,
+    progress: SubjectProgress,
+    at: string
+  ): Promise<Result<Opening[], ReadError>> {
+    const exams = await examBoardsOf(who, false)
+    if (!exams.ok) return exams
+    const { boards, enrolledIn } = exams.value
+    const enrolledSubjects = new Set(boards.filter((b) => enrolledIn.has(b.id)).map((b) => b.subjectId))
+    return ok(
+      boards
+        .filter(
+          (b) =>
+            isOpenAt(at, b.enrollmentStart, b.enrollmentEnd) &&
+            !enrolledSubjects.has(b.subjectId) &&
+            needsExam(b.subjectId, progress)
+        )
+        .map(
+          (b): Opening => ({
+            kind: 'examen',
+            subjectId: b.subjectId,
+            opensAt: b.enrollmentStart,
+            closesAt: b.enrollmentEnd,
+            needsRegularity: !progress.regular.has(b.subjectId)
+          })
+        )
+    )
+  }
+
+  /** Inscripciones abiertas que le sirven, a cursada y a examen: la regla está en el encabezado. */
+  async function openEnrollments(personId: PersonId): Promise<Result<OpenEnrollment[], ReadError>> {
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    if (who.value.person.role === 'profesor') return ok([])
+    const progress = await progressOf(who.value)
+    if (!progress.ok) return progress
+    const at = clock.now().toISOString()
+    const [courses, exams] = await Promise.all([
+      openCourseEnrollments(who.value.schoolId, progress.value, at),
+      openExamEnrollments(who.value, progress.value, at)
+    ])
+    if (!courses.ok) return courses
+    if (!exams.ok) return exams
+    const openings = [...courses.value, ...exams.value]
+    const subjects = await subjectsById(openings.map((o) => o.subjectId))
+    if (!subjects.ok) return subjects
+    const named = openings.flatMap((o): OpenEnrollment[] => {
+      const subject = subjects.value.get(o.subjectId)
+      return subject ? [{ ...o, subjectName: subject.name }] : []
+    })
+    return ok(onePerSubject(named.sort(byClosing)))
   }
 
   return {
@@ -850,9 +1305,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     offer,
     enroll,
     drop,
-    upcoming: notImplemented,
+    upcoming: (personId) => fresh(`upcoming:${personId}`, () => upcoming(personId)),
     openEnrollments: (personId) => fresh(`openEnrollments:${personId}`, () => openEnrollments(personId)),
-    record: notImplemented,
-    certificate: notImplemented
+    record: (personId) => fresh(`record:${personId}`, () => record(personId)),
+    certificate
   }
 }

@@ -49,7 +49,7 @@ function Assignments({ assignments }: { assignments: MyAssignment[] }) {
       <ul className='mt-2 flex flex-col gap-2'>
         {assignments.map((a) => (
           <li
-            key={`${a.dueDate}-${a.name}`}
+            key={a.id}
             className={cn('flex items-start justify-between gap-3 text-sm', a.past && 'text-muted-foreground')}
           >
             <div className='min-w-0'>

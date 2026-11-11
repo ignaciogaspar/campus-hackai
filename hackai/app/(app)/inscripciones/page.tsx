@@ -1,6 +1,7 @@
 /* Inscripciones abiertas: las materias a las que el alumno se puede inscribir
    ahora, cada una con su oferta de comisiones. Qué está abierto y qué le sirve
-   lo decide Cursada.
+   lo decide Cursada. Por ahora solo cursada: Cursada también devuelve las mesas
+   de examen, que llegan a esta pantalla con la inscripción a finales (#20).
 
    En el celular es una lista. En compu, las materias van en una grilla. */
 import { CalendarX, ChevronRight } from 'lucide-react'
@@ -19,6 +20,7 @@ export const metadata: Metadata = { title: 'Inscripciones · Campus HackAI' }
 export default async function InscripcionesPage() {
   const session = await requireSession('alumno')
   const result = await system().studies.openEnrollments(session.personId)
+  const courses = result.ok ? result.value.data.filter((item) => item.kind === 'cursada') : []
 
   return (
     <>
@@ -40,13 +42,13 @@ export default async function InscripcionesPage() {
               </StaleNotice>
             )}
 
-            {result.value.data.length === 0 ? (
+            {courses.length === 0 ? (
               <EmptyState icon={CalendarX} title='No hay inscripciones abiertas'>
                 Ahora no hay inscripciones a cursada que te sirvan. Cuando abra una, aparece acá.
               </EmptyState>
             ) : (
               <ul className='grid gap-3 lg:grid-cols-2 xl:grid-cols-3'>
-                {result.value.data.map((item) => (
+                {courses.map((item) => (
                   <li key={`${item.kind}-${item.subjectId}`}>
                     <Card>
                       <Link

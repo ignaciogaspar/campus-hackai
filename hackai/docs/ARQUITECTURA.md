@@ -38,8 +38,8 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
 | `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
-| `record(persona)` | Notas de parciales unificadas e historia académica |
-| `certificate(persona, tipo)` | Si cumple las condiciones de la constancia y el enlace a la Autogestión del SIU |
+| `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
+| `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |
 
 `objetivo` es una comisión (cursada) o una mesa (examen).
 
@@ -50,6 +50,8 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 - **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
 - **La baja es el camino inverso.** Desmatricula de las aulas y después da de baja en el SIU. Si el SIU la rechaza (fuera de período, caído), vuelve a matricular: lo que se deshace sin riesgo es la matrícula, no la inscripción.
 - **Si el SIU no deja inscribir por API,** el adaptador lo declara y `enroll` devuelve `requiere-autogestion` con el enlace a la comisión en la Autogestión. Es el caso de la API real del SIU hoy. La pantalla lo muestra como un paso más, no como un error.
+
+**Constancias:** si cumple lo dice el SIU (en la API real, solo `cumple_condiciones`). El motivo lo deduce Cursada con lo que la API también da: propuesta activa, inscripción vigente, finales rendidos. Si no lo encuentra, no inventa uno.
 
 **Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta.
 
@@ -96,9 +98,9 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 | Operación | Qué hace |
 | --- | --- |
-| `today(persona)` | Todo lo de la pantalla en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle |
+| `today(persona)` | Todo lo de la pantalla en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle. Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
 
-Compone Cursada y Espacios. No tiene almacén propio.
+Compone Cursada y Espacios, y usa el reloj para el próximo parcial. No tiene almacén propio. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 
 ### Dependencias entre módulos
 
@@ -175,7 +177,7 @@ La demo y producción usan el mismo núcleo. Lo que cambia es qué adaptador eli
 - **Lo simulado se puede tirar.** Las tablas `siu_*` y `moodle_*`, sus migraciones y el seed sintético van aparte de las tablas propias de HackAI. En producción no se aplican, y nada de HackAI depende de ellas fuera de sus adaptadores.
 - **Ids de los sistemas de origen.** Las tablas propias guardan los ids del SIU, de Moodle y de Discord tal como vienen, mapeados por Personas. Así los datos de producción entran sin migrar nada.
 - **Adaptadores que se portan bien con sistemas lentos:** cada llamada tiene tiempo máximo, los reintentos esperan lo que pide el sistema (por ejemplo `retry_after` en un 429) y una caída devuelve un error como valor, que el núcleo convierte en «desactualizado».
-- **Corrida periódica.** `syncAll` lo llama un cron del hosting, por ejemplo Vercel Cron, a través de una ruta protegida por un secreto.
+- **Corrida periódica.** `syncAll` lo llama un cron del hosting, por ejemplo Vercel Cron, a través de una ruta protegida por un secreto: `/api/cron/sync` con `CRON_SECRET` (README, «Corrida periódica»).
 - **Logs sin datos personales:** se registran ids y resultados, nunca mensajes, notas ni nombres.
 - **Datos reales.** Antes de conectar un sistema de origen real hace falta un acuerdo con la Austral como encargado de tratamiento (Ley 25.326, art. 25; ver la [research de normativa](../../docs/research/2026-11-10-burocracia-academica-y-normativa.md)). Los espacios se archivan al cerrar el cuatrimestre y los datos se pueden suprimir a pedido.
 

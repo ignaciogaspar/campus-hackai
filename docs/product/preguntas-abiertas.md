@@ -109,6 +109,33 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 14. ¿Dónde aparecen las notas de parciales en el SIU de la Austral?
+
+- **Por qué importa:** T4 («encontrar la nota de mi último parcial») parte de que la nota puede estar en la historia académica o en actuación provisoria. Académico las junta, y para eso el puerto del SIU tiene que poder traer notas de parciales desde la historia.
+- **Hipótesis:** el docente puede cargar la nota de un parcial en la historia académica (como evaluación de la cursada) o en un acta que todavía no cerró (actuación provisoria). Desde el issue #14, el SIU simulado modela lo primero con renglones `evaluacion` en `siu_history`, ligados a la comisión y a la evaluación. La API real (`datosanalitico`) no confirma que existan.
+- **Opciones:** como está; las notas de parciales solo en actuación provisoria; otra forma, si el relevamiento del SIU real muestra algo distinto.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 15. ¿Qué condiciones pide la constancia de alumno regular?
+
+- **Por qué importa:** la API del SIU solo dice si el alumno cumple las condiciones (`cumple_condiciones`), sin el motivo, y Académico tiene que decir por qué no puede pedirla.
+- **Hipótesis:** Cursada deduce el motivo con lo que la API también da: sin propuesta activa o sin inscripción a cursada aceptada o pendiente en un período vigente. A un docente no se le deduce ningún motivo. Para la de examen final, sin finales rendidos. Si no encuentra un motivo, no inventa uno y manda a la Autogestión. Así quedó en el issue #14.
+- **Opciones:** como está; sumar otras condiciones de la Austral (por ejemplo, deuda o documentación pendiente) cuando se confirmen.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 16. ¿Qué inscripciones abiertas «le sirven» al alumno en Hoy?
+
+- **Por qué importa:** Hoy muestra las inscripciones que cierran pronto (#18) y la pantalla Inscripciones lista las materias a las que se puede inscribir (#17). Las dos leen `openEnrollments`. Si muestra de más, es ruido; si muestra de menos, el alumno se pierde una mesa o una cursada.
+- **Hipótesis:** así lo implementa Cursada desde los issues #17 y #18 (`openEnrollments`), siempre de su facultad, con la inscripción abierta, una por materia y las que cierran antes primero:
+  - cursada: materias que no cursa en ninguna facultad (una sola comisión vigente por materia, como en la inscripción), no tiene regulares ni aprobó;
+  - examen: materias que no aprobó y tiene regulares o está cursando (puede regularizar antes de la mesa, y entonces se avisa), si no está inscripto ya a una mesa de esa materia.
+  - Salen tengan o no cupo: la oferta muestra cuántos lugares quedan, así que una materia llena llega a «sin cupo» en vez de desaparecer. Inscripciones muestra solo las de cursada hasta la inscripción a finales (#20).
+- **Opciones:** como está; ocultar las que no tienen cupo en Hoy; solo mesas de materias ya regulares (sin las que está cursando); sumar correlatividades cuando el SIU las exponga.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
