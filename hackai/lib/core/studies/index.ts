@@ -183,6 +183,10 @@ export type UpcomingItem = {
   past: boolean
 }
 
+/** El orden de los próximos: por fecha; el mismo día, por materia y por nombre. Lo usa también Hoy al sumarles las entregas. */
+export const compareUpcoming = (a: UpcomingItem, b: UpcomingItem) =>
+  a.date.localeCompare(b.date) || a.subjectName.localeCompare(b.subjectName, 'es') || a.name.localeCompare(b.name, 'es')
+
 export type OpenEnrollment = {
   kind: 'cursada' | 'examen'
   subjectId: string
@@ -283,10 +287,6 @@ const subjectRef = (subject: SiuSubject) => ({
   subjectCode: subject.code,
   subjectName: subject.name
 })
-
-/** Por fecha; el mismo día, por materia y por nombre. */
-const byDate = (a: UpcomingItem, b: UpcomingItem) =>
-  a.date.localeCompare(b.date) || a.subjectName.localeCompare(b.subjectName, 'es') || a.name.localeCompare(b.name, 'es')
 
 /** Cómo viene el alumno en cada materia, por id: la está cursando (o ya se
     inscribió en un período que no terminó), la tiene regular o la aprobó. */
@@ -964,7 +964,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const [assessments, finals] = await Promise.all([assessmentsOf(current, at), finalsOf(who.value, since, at)])
     if (!assessments.ok) return assessments
     if (!finals.ok) return finals
-    return ok([...assessments.value, ...finals.value].sort(byDate))
+    return ok([...assessments.value, ...finals.value].sort(compareUpcoming))
   }
 
   /** Qué cursa (con el mismo criterio que la inscripción: una comisión vigente en cualquier facultad), qué tiene regular y qué aprobó. */

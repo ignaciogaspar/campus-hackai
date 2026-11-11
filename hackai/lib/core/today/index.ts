@@ -21,7 +21,14 @@
    Usa Cursada, Espacios y el reloj. */
 import type { PersonId } from '@/lib/core/people'
 import type { Spaces, UnreadItem } from '@/lib/core/spaces'
-import type { MySubject, MySubjects, OpenEnrollment, Studies, UpcomingItem } from '@/lib/core/studies'
+import {
+  compareUpcoming,
+  type MySubject,
+  type MySubjects,
+  type OpenEnrollment,
+  type Studies,
+  type UpcomingItem
+} from '@/lib/core/studies'
 import { daysBetween } from '@/lib/dates'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
@@ -78,10 +85,6 @@ function assignmentsAsUpcoming(subject: MySubject): UpcomingItem[] {
   }))
 }
 
-/** Por fecha; el mismo día, por materia y por nombre. */
-const byDate = (a: UpcomingItem, b: UpcomingItem) =>
-  a.date.localeCompare(b.date) || a.subjectName.localeCompare(b.subjectName, 'es') || a.name.localeCompare(b.name, 'es')
-
 function nextExam(upcoming: UpcomingItem[], now: string): NextExam | null {
   const item = upcoming.find((i) => NEXT_EXAM_KINDS.includes(i.kind) && !i.past)
   return item ? { ...item, daysLeft: daysBetween(now, item.date) } : null
@@ -109,7 +112,7 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
       const mySubjects = subjects.ok ? subjects.value.data : EMPTY_SUBJECTS
       const coming = [...(upcoming.ok ? upcoming.value.data : []), ...mySubjects.current.flatMap(assignmentsAsUpcoming)]
         .map((i) => ({ ...i, past: i.date < now }))
-        .sort(byDate)
+        .sort(compareUpcoming)
 
       return ok({
         now,
