@@ -5,7 +5,8 @@
 -- El material de un espacio lo ven solo sus miembros, así que el bucket es
 -- privado: ningún archivo tiene URL pública. El servidor sube y baja con el
 -- service role, y la app entrega cada archivo por su ruta propia
--- (/archivos/<id>/<nombre>) a quien tiene sesión. Por eso no hay políticas
+-- (/archivos/<id>/<nombre>) a quien ve su espacio o su canal, después de que
+-- Espacios lo chequea. Por eso no hay políticas
 -- sobre storage.objects: sin políticas, los roles públicos no ven nada.
 --
 -- El límite de tamaño (10 MB) es el mismo que declara el puerto de Archivos.
