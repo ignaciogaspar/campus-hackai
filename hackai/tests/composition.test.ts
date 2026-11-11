@@ -80,6 +80,24 @@ test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () =
   assert.throws(() => compose({ HACKAI_SIU: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
 })
 
+test('HACKAI_CLASSROOM=simulado usa el Moodle simulado sobre Supabase, que declara sus capacidades y arma el enlace al aula', () => {
+  const system = compose({
+    HACKAI_CLASSROOM: 'simulado',
+    NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+  })
+
+  assert.equal(system.adapters.classroom, 'simulado')
+  assert.equal(system.adapters.siu, 'memoria')
+  assert.deepEqual(system.ports.classroom.capabilities, { canEnrol: true, hasAssignments: true })
+  assert.equal(system.ports.classroom.courseUrl('c-am1-fi-a'), `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`)
+})
+
+test('HACKAI_CLASSROOM=simulado sin las variables de Supabase corta el arranque', () => {
+  assert.throws(() => compose({ HACKAI_CLASSROOM: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.throws(() => compose({ HACKAI_CLASSROOM: 'otro' }), /HACKAI_CLASSROOM/)
+})
+
 test('el canal externo de Discord se arma con el token del entorno y sin token no arranca', () => {
   const system = compose({ HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: 'token-de-prueba' })
   assert.equal(system.adapters.externalChannel, 'discord')
