@@ -70,9 +70,13 @@ Sin secreto, los dos workflows de Claude avisan y terminan en verde. `claude.yml
 
 ## Ingreso de demo
 
-En `/` se entra eligiendo una persona sintética de la lista, alumno o docente, sin clave. La sesión queda en la cookie firmada `hackai_session` y lleva a `/hoy`, el inicio de los dos roles; desde ahí se sale con «Salir». En producción se entra con la cuenta de Microsoft de la Austral: cambia el adaptador del puerto de identidad, no el núcleo.
+En `/` se entra eligiendo una persona sintética de la lista, alumno o docente, sin clave. La sesión queda en la cookie firmada `hackai_session` y lleva a `/hoy`, el inicio de los dos roles. Se sale con «Salir», que en el celular está en la hoja que abre el avatar. En producción se entra con la cuenta de Microsoft de la Austral: cambia el adaptador del puerto de identidad, no el núcleo.
 
 Para abrir sesiones hace falta `SESSION_SECRET` en el entorno. Sin esa variable la lista se ve, pero al elegir una persona el ingreso avisa que falta.
+
+El ingreso de demo queda abierto a propósito. La identidad en memoria es el único adaptador que hay, y el que se usa si falta `HACKAI_IDENTITY`: cualquiera que llegue a `/` entra como cualquier persona de la lista, también en el deploy público. Para la demo alcanza, porque todos los datos son sintéticos. Antes de cargar datos reales tiene que estar el adaptador de Microsoft.
+
+La cookie va marcada `Secure` solo si el pedido llegó por HTTPS, y eso se sabe por el header `x-forwarded-proto`. Si el hosting no lo manda, la cookie sale sin `Secure` y no avisa. La sesión no se guarda en el servidor: «Salir» borra la cookie, pero una copia de la cookie sigue valiendo hasta que vence, a los 30 días.
 
 ## Vínculos de Personas en Supabase
 
@@ -81,7 +85,7 @@ Personas guarda el id de cada persona en cada sistema (la identidad, el SIU, Moo
 | Archivo | Qué hace |
 | --- | --- |
 | `supabase/migrations/0001_people.sql` | Crea `people_accounts`. Es una tabla propia de HackAI: va también en producción. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
-| `supabase/simulados/people_seed.sql` | Carga los vínculos de las personas sintéticas. Es solo de la demo, por eso va con lo simulado. Idempotente: borra los vínculos de esas personas y los carga de nuevo. Se genera con `npm run people:seed` desde `lib/adapters/synthetic-data.ts`; no se edita a mano. |
+| `supabase/simulados/people_seed.sql` | Carga los vínculos de las personas sintéticas. Es solo de la demo, por eso va con lo simulado y no se aplica en producción. Idempotente: borra los vínculos de esas personas y los carga de nuevo. Se genera con `npm run people:seed` desde `lib/adapters/synthetic-data.ts`; no se edita a mano. |
 
 Para cargarlos en el Supabase del equipo:
 
