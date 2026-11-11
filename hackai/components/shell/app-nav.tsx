@@ -19,7 +19,7 @@ const isActive = (pathname: string, href: string) => pathname === href || pathna
 
 /* En el celular, barra inferior. En compu, barra lateral con la marca y las
    materias que cursa, que scrollean solas si son muchas. */
-export function AppNav({ school, subjects }: { school: string; subjects: NavSubject[] }) {
+export function AppNav({ school, subjects }: { school?: string; subjects: NavSubject[] }) {
   const pathname = usePathname()
   return (
     <nav

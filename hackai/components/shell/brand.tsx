@@ -2,7 +2,7 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 /* Logo horizontal de la Austral y la facultad. Sobre el navy, el logo va en blanco. */
-export function Brand({ school, tone = 'navy' }: { school: string; tone?: 'navy' | 'light' }) {
+export function Brand({ school, tone = 'navy' }: { school?: string; tone?: 'navy' | 'light' }) {
   return (
     <span className='inline-flex items-center gap-2.5'>
       <Image
@@ -13,14 +13,16 @@ export function Brand({ school, tone = 'navy' }: { school: string; tone?: 'navy'
         priority
         className={cn('h-9 w-auto', tone === 'navy' && 'brightness-0 invert')}
       />
-      <span
-        className={cn(
-          'border-l pl-2.5 text-[11px] leading-tight',
-          tone === 'navy' ? 'border-white/30 text-white/75' : 'border-border text-muted-foreground',
-        )}
-      >
-        {school}
-      </span>
+      {school && (
+        <span
+          className={cn(
+            'border-l pl-2.5 text-[11px] leading-tight',
+            tone === 'navy' ? 'border-white/30 text-white/75' : 'border-border text-muted-foreground',
+          )}
+        >
+          {school}
+        </span>
+      )}
     </span>
   )
 }

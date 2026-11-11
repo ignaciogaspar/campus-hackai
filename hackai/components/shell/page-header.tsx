@@ -9,7 +9,7 @@ type Props = {
   /** Línea chica arriba del título, por ejemplo la fecha o la facultad. */
   kicker?: string
   /** La facultad de quien entra, para la marca. */
-  school: string
+  school?: string
   /** Pantallas que no son de primer nivel: en la app instalada no hay atrás del navegador. */
   backHref?: string
   /** Arriba a la derecha: novedades, perfil. */
