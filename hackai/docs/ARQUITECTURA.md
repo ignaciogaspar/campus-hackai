@@ -89,9 +89,9 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 | Operación | Qué hace |
 | --- | --- |
-| `today(persona)` | Todo lo de la pantalla en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle |
+| `today(persona)` | Todo lo de la pantalla en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle. Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
 
-Compone Cursada y Espacios. No tiene almacén propio.
+Compone Cursada y Espacios, y usa el reloj para el próximo parcial. No tiene almacén propio. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 
 ### Dependencias entre módulos
 

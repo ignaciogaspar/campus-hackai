@@ -25,7 +25,7 @@
      cronograma en el SIU (la API real) salen solo finales y entregas.
    - Inscripciones abiertas (`openEnrollments`), las que cierran antes primero,
      una por materia. Qué le sirve al alumno es una hipótesis, sin confirmar
-     con el equipo:
+     con el equipo (docs/product/preguntas-abiertas.md, pregunta 16):
      - cursada: comisiones de su facultad con la inscripción del período
        abierta y cupo, de materias que no está cursando, no tiene regulares ni
        aprobó;

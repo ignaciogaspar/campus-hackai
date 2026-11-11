@@ -195,7 +195,7 @@ No las imprimas en logs ni en reportes.
 | `lib/adapters/supabase/` | Lo que comparten los adaptadores sobre Supabase: `client.ts` (cliente con service role), `query.ts` (consultas con tiempo máximo) y `sql.ts` (literales y `upsert` que usan los generadores de seed). Además, el almacén de Personas sobre `people_accounts` y el generador de su seed. |
 | `app/page.tsx`, `app/actions/session.ts`, `components/session/` | El ingreso de demo: la lista de personas por rol, y las acciones para entrar y salir. |
 | `components/shell/` | Lo que comparten las pantallas: `PageHeader` (encabezado navy con la marca), `Brand`, `AppShell` y `AppNav` (la navegación), y `Avatar` (iniciales). |
-| `app/(app)/hoy/` | Inicio de los dos roles. Por ahora saluda y lleva a Mis materias; el resto llega con Hoy (#18). |
+| `app/(app)/hoy/`, `components/today/` | Inicio de los dos roles. Al alumno, en una llamada a Hoy: el próximo parcial o final, las fechas de las próximas 2 semanas (en compu, un calendario de esta semana y la próxima), las inscripciones que cierran pronto y el acceso a Mis materias. Si el SIU o Moodle no responden, cada parte muestra lo último leído con el aviso de `components/ui/stale-banner.tsx` o su error. Las novedades sin leer llegan con Espacios (#12). Al docente, por ahora, lo saluda y lo lleva a Mis materias. |
 | `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con el enlace a su aula de Moodle y sus tareas con fecha. |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
