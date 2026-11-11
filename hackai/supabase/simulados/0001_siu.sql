@@ -1,7 +1,13 @@
 -- SIU simulado: tablas siu_* con la forma de la API REST v2 de Guaraní
 -- (docs/research/2026-11-10-siu-guarani-integracion.md, sección 3.2).
 -- Las columnas van en inglés, como los tipos del puerto (lib/ports/siu.ts);
--- al lado de cada una, el campo de la API que copia.
+-- cuando copian un campo de la API, al lado va su nombre. Las que no lo
+-- tienen no tienen un campo equivalente directo en la research.
+--
+-- Copian el subconjunto de cada esquema que usa el puerto. Quedan afuera,
+-- entre otros: catedra y turno de Comision; propuesta e id_actividad de
+-- Inscripcion; creditos, forma_aprobacion, folio_fisico, promedio y
+-- plan_alumno de Historia. Se suman cuando un ticket los necesite.
 --
 -- Son tablas de la demo: van aparte de las migraciones propias
 -- (supabase/migrations/) para no aplicarlas en producción, donde el SIU es la

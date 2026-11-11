@@ -43,6 +43,8 @@ Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: u
 
 La batería de contrato del SIU (`tests/contracts/siu.test.ts`) corre siempre contra el SIU en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice.
 
+Los tests que arman un cliente de Supabase (el SIU simulado y `composition` con `HACKAI_SIU=simulado`) necesitan Node 22: con Node 20, supabase-js falla por no tener `WebSocket` nativo.
+
 ## Con Docker
 
 Necesita Docker Engine 25 o más nuevo y Docker Compose 2.24 o más nuevo (`docker compose version`). Qué hace cada etapa del build está en los comentarios del [Dockerfile](Dockerfile).

@@ -6,10 +6,11 @@ import type { Metadata } from 'next'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import type { StudiesReadError } from '@/lib/core/studies'
 
 export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
 
-const ERRORS: Record<string, string> = {
+const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'falla-externa': 'No pudimos traer tus materias del SIU. Probá de nuevo en un rato.',
   'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.',
 }
@@ -42,7 +43,7 @@ export default async function MateriasPage() {
       ) : (
         <>
           {result.value.stale && (
-            <p role='status' className='rounded-lg border border-[var(--naranja)] bg-[#fff4ea] p-3 text-sm'>
+            <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
               El SIU no responde. Te mostramos lo que trajimos el {readTime(result.value.readAt)}: puede estar desactualizado.
             </p>
           )}

@@ -31,7 +31,7 @@ export function CurrentSubjects({ subjects }: { subjects: MySubject[] }) {
   if (!subjects.length) {
     return (
       <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
-        No tenés materias en este período lectivo.
+        No tenés materias en curso ni del próximo período.
       </p>
     )
   }

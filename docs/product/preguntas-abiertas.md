@@ -93,6 +93,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
   - **Primer caso de sincronización:** de Discord a HackAI, el material y los avisos; de HackAI a Discord, las consultas, con la respuesta de vuelta. Registrado en el [ADR 0005](../adr/0005-sincronizacion-con-canales-externos.md).
   - **WhatsApp** queda afuera de la demo.
 
+### 12. ¿Las materias de un período que todavía no empezó van con las actuales?
+
+- **Por qué importa:** Mis materias muestra las actuales arriba y archiva el resto. Un alumno ya inscripto al próximo período (por ejemplo, el de verano) tiene que verlas en algún lado, y si se archivan quedan mezcladas con las viejas.
+- **Hipótesis:** van con las actuales, ordenadas por inicio del período y con el nombre del período en cada tarjeta. Así lo implementa Cursada desde el issue #10 (`subjectsOf`: actual es todo período que no terminó).
+- **Opciones:** como está; una sección «Próximas» aparte en la pantalla; o solo el período en curso como actual.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

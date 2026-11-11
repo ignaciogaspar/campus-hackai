@@ -40,6 +40,15 @@ export type SimulatedSiuOptions = {
 
 const ACTIVE: SiuEnrollmentStatus[] = ['aceptada', 'pendiente']
 
+/** Dónde se guardan las inscripciones de cada tipo de objetivo: tabla y columna
+    del objetivo viajan juntas para que no se mezclen. */
+const ENROLLMENTS = {
+  comision: { table: 'siu_course_enrollments', column: 'section_id' },
+  mesa: { table: 'siu_exam_enrollments', column: 'exam_board_id' },
+} as const
+
+type TargetKind = SiuTarget['kind']
+
 /** Postgres devuelve `+00:00`; el puerto habla en ISO 8601 de `toISOString`. */
 const iso = (value: string) => new Date(value).toISOString()
 
@@ -135,6 +144,7 @@ type Response<T> = { data: T | null; error: DbError | null }
 type QueryError = ExternalFailure | 'duplicado'
 
 export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutMs = 5000, log = console.warn }: SimulatedSiuOptions): SiuPort {
+  /** Fijas: el simulado siempre inscribe y tiene cronograma, a diferencia de la API real. */
   const capabilities: SiuCapabilities = { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false }
   const now = () => clock.now().toISOString()
 
@@ -175,9 +185,11 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     return result.ok ? ok(result.value ?? []) : result
   }
 
-  async function personExists(personId: string): Promise<Result<boolean, ExternalFailure>> {
+  /** Que la persona exista en el SIU: `no-encontrado` si no. */
+  async function requirePerson(personId: string): Promise<Result<true, ExternalFailure | 'no-encontrado'>> {
     const found = await read('persona', (s) => client.from('siu_persons').select('id').eq('id', personId).abortSignal(s).maybeSingle())
-    return found.ok ? ok(found.value !== null) : found
+    if (!found.ok) return found
+    return found.value ? ok(true) : fail('no-encontrado')
   }
 
   async function terms(): Promise<Result<SiuTerm[], ExternalFailure>> {
@@ -185,7 +197,9 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     return rows.ok ? ok(rows.value.map(toTerm)) : rows
   }
 
-  async function activeCount(table: 'siu_course_enrollments' | 'siu_exam_enrollments', column: 'section_id' | 'exam_board_id', ids: string[]) {
+  /** Inscriptos vigentes por objetivo. */
+  async function activeCount(kind: TargetKind, ids: string[]) {
+    const { table, column } = ENROLLMENTS[kind]
     const rows = await list<Record<string, string>>('inscriptos', (s) =>
       client.from(table).select(column).in(column, ids).in('status', ACTIVE).abortSignal(s))
     if (!rows.ok) return rows
@@ -194,41 +208,47 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     return ok(counts)
   }
 
-  /** Ventana de inscripción, cupo, inscriptos y la inscripción vigente de la persona. */
-  async function lookup(personId: string, target: SiuTarget) {
+  /** Inscripciones vigentes de un objetivo. */
+  async function activeEnrollments(kind: TargetKind, targetId: string) {
+    const { table, column } = ENROLLMENTS[kind]
+    return list<EnrollmentRow>('inscripciones-vigentes', (s) =>
+      client.from(table).select('*').eq(column, targetId).in('status', ACTIVE).abortSignal(s))
+  }
+
+  /** Ventana de inscripción y cupo del objetivo, o `null` si no existe. */
+  async function windowOf(target: SiuTarget) {
     if (target.kind === 'comision') {
       const section = await read<SectionRow & { term: TermRow | null }>('comision', (s) =>
         client.from('siu_sections').select('*, term:siu_terms(*)').eq('id', target.sectionId).abortSignal(s).maybeSingle())
       if (!section.ok) return section
-      if (!section.value?.term) return ok(null)
-      const enrollments = await list<CourseEnrollmentRow>('inscripciones', (s) =>
-        client.from('siu_course_enrollments').select('*').eq('section_id', target.sectionId).in('status', ACTIVE).abortSignal(s))
-      if (!enrollments.ok) return enrollments
-      return ok({
-        start: iso(section.value.term.enrollment_start),
-        end: iso(section.value.term.enrollment_end),
-        capacity: section.value.capacity,
-        enrolled: enrollments.value.length,
-        active: enrollments.value.find((e) => e.person_id === personId) ?? null,
-      })
+      const term = section.value?.term
+      return ok(term ? { id: target.sectionId, start: term.enrollment_start, end: term.enrollment_end, capacity: section.value!.capacity } : null)
     }
     const board = await read<ExamBoardRow>('mesa', (s) =>
       client.from('siu_exam_boards').select('*').eq('id', target.examBoardId).abortSignal(s).maybeSingle())
     if (!board.ok) return board
-    if (!board.value) return ok(null)
-    const enrollments = await list<ExamEnrollmentRow>('inscripciones-mesas', (s) =>
-      client.from('siu_exam_enrollments').select('*').eq('exam_board_id', target.examBoardId).in('status', ACTIVE).abortSignal(s))
+    const found = board.value
+    return ok(found ? { id: target.examBoardId, start: found.enrollment_start, end: found.enrollment_end, capacity: found.capacity } : null)
+  }
+
+  /** Ventana de inscripción, cupo, inscriptos y la inscripción vigente de la persona. */
+  async function lookup(personId: string, target: SiuTarget) {
+    const opening = await windowOf(target)
+    if (!opening.ok) return opening
+    if (!opening.value) return ok(null)
+    const enrollments = await activeEnrollments(target.kind, opening.value.id)
     if (!enrollments.ok) return enrollments
     return ok({
-      start: iso(board.value.enrollment_start),
-      end: iso(board.value.enrollment_end),
-      capacity: board.value.capacity,
+      start: iso(opening.value.start),
+      end: iso(opening.value.end),
+      capacity: opening.value.capacity,
       enrolled: enrollments.value.length,
       active: enrollments.value.find((e) => e.person_id === personId) ?? null,
     })
   }
 
-  function transaction() {
+  /** Id de la fila y número de transacción de un comprobante nuevo. */
+  function newReceiptIds() {
     return { id: randomUUID(), number: `T-S${String(randomInt(0, 1_000_000_000)).padStart(9, '0')}` }
   }
 
@@ -264,24 +284,22 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
         return query.order('id').abortSignal(s)
       })
       if (!rows.ok) return rows
-      const counts = await activeCount('siu_course_enrollments', 'section_id', rows.value.map((r) => r.id))
+      const counts = await activeCount('comision', rows.value.map((r) => r.id))
       if (!counts.ok) return counts
       return ok(rows.value.map((r) => ({ ...toSection(r), enrolled: counts.value.get(r.id) ?? 0 })))
     },
 
     async teacherSections(personId) {
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const rows = await list<SectionRow>('comisiones-docente', (s) =>
         client.from('siu_sections').select('*').contains('teacher_ids', [personId]).order('id').abortSignal(s))
       return rows.ok ? ok(rows.value.map(toSection)) : rows
     },
 
     async courseEnrollments(personId, options = {}) {
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const rows = await list<CourseEnrollmentRow & { section: { term: { end_at: string } | null } | null }>('inscripciones', (s) =>
         client.from('siu_course_enrollments').select('*, section:siu_sections(term:siu_terms(end_at))').eq('person_id', personId).order('id').abortSignal(s))
       if (!rows.ok) return rows
@@ -299,15 +317,14 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
         return query.order('date').abortSignal(s)
       })
       if (!rows.ok) return rows
-      const counts = await activeCount('siu_exam_enrollments', 'exam_board_id', rows.value.map((r) => r.id))
+      const counts = await activeCount('mesa', rows.value.map((r) => r.id))
       if (!counts.ok) return counts
       return ok(rows.value.map((r) => ({ ...toExamBoard(r), enrolled: counts.value.get(r.id) ?? 0 })))
     },
 
     async examEnrollments(personId, options = {}) {
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const rows = await list<ExamEnrollmentRow & { board: { date: string } | null }>('inscripciones-mesas', (s) =>
         client.from('siu_exam_enrollments').select('*, board:siu_exam_boards(date)').eq('person_id', personId).order('id').abortSignal(s))
       if (!rows.ok) return rows
@@ -318,7 +335,6 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     },
 
     async assessments(sectionId) {
-      if (!capabilities.hasAssessmentSchedule) return fail('no-soportado')
       const section = await read<{ id: string }>('comision', (s) => client.from('siu_sections').select('id').eq('id', sectionId).abortSignal(s).maybeSingle())
       if (!section.ok) return section
       if (!section.value) return fail('no-encontrado')
@@ -329,9 +345,8 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     },
 
     async history(personId) {
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const rows = await list<HistoryRow>('historia', (s) =>
         client.from('siu_history').select('*').eq('person_id', personId).order('id').abortSignal(s))
       if (!rows.ok) return rows
@@ -341,9 +356,8 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     },
 
     async provisionalResults(personId) {
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const rows = await list<ProvisionalRow>('actuacion-provisoria', (s) =>
         client.from('siu_provisional_results').select('*').eq('person_id', personId).order('id').abortSignal(s))
       if (!rows.ok) return rows
@@ -353,9 +367,8 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     },
 
     async meetsCertificateConditions(personId, type) {
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const row = await read<{ meets_conditions: boolean }>('certificado', (s) =>
         client.from('siu_certificates').select('meets_conditions').eq('person_id', personId).eq('type', type).abortSignal(s).maybeSingle())
       if (!row.ok) return row
@@ -363,10 +376,8 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     },
 
     async enroll(personId, target) {
-      if (!capabilities.canEnroll) return fail('no-soportado')
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const found = await lookup(personId, target)
       if (!found.ok) return found
       if (!found.value) return fail('no-encontrado')
@@ -375,7 +386,7 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
       if (found.value.active) return fail('ya-inscripto')
       if (found.value.capacity !== null && found.value.enrolled >= found.value.capacity) return fail('sin-cupo')
 
-      const { id, number } = transaction()
+      const { id, number } = newReceiptIds()
       const base = { transaction_number: number, person_id: personId, enrolled_at: at, status: 'aceptada' }
       const inserted = target.kind === 'comision'
         ? await run('inscribir', (s) => client.from('siu_course_enrollments').insert({ id: `ic-${id}`, section_id: target.sectionId, ...base }).abortSignal(s))
@@ -386,10 +397,8 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
     },
 
     async drop(personId, target) {
-      if (!capabilities.canEnroll) return fail('no-soportado')
-      const exists = await personExists(personId)
+      const exists = await requirePerson(personId)
       if (!exists.ok) return exists
-      if (!exists.value) return fail('no-encontrado')
       const found = await lookup(personId, target)
       if (!found.ok) return found
       if (!found.value) return fail('no-encontrado')
@@ -397,11 +406,11 @@ export function createSimulatedSiu({ client, clock, selfServiceBaseUrl, timeoutM
       const at = now()
       if (at < found.value.start || at > found.value.end) return fail('fuera-de-periodo')
 
-      const table = target.kind === 'comision' ? 'siu_course_enrollments' : 'siu_exam_enrollments'
+      const { table } = ENROLLMENTS[target.kind]
       const activeId = found.value.active.id
-      const updated = await read('baja', (s) => client.from(table).update({ status: 'baja' }).eq('id', activeId).abortSignal(s))
-      if (!updated.ok) return updated
-      return ok({ transactionNumber: transaction().number, date: at, target: { ...target } })
+      const updated = await run('baja', (s) => client.from(table).update({ status: 'baja' }).eq('id', activeId).abortSignal(s))
+      if (!updated.ok) return fail('falla-externa')
+      return ok({ transactionNumber: newReceiptIds().number, date: at, target: { ...target } })
     },
 
     selfServiceUrl(target) {
