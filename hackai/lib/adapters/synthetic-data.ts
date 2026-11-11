@@ -413,7 +413,7 @@ const assignments: ClassroomAssignment[] = [
 
 // Discord: canales del servidor del equipo
 
-const cdn = 'https://cdn.discordapp.example/attachments'
+const cdn = 'https://cdn.discordapp.com/attachments'
 
 const avisosAm1FiA = '1301000000000000001'
 const consultasAm1FiA = '1301000000000000002'

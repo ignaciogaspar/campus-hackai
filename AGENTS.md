@@ -10,6 +10,7 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - `docs/research/`: notas con fuentes, incluido el relevamiento de SIU y Campus.
 - `docs/campus-upstream.md`: de dónde salió `campus/`, cómo se actualiza y sus problemas conocidos.
 - `docs/agents/workflows.md`: índice de los workflows guardados y cuándo usar cada uno.
+- `hackai/docs/discord.md`: bot de Discord: crearlo, cargar su token y probar el adaptador contra el servidor del equipo, paso a paso con los comandos.
 - `hackai/`: nuestro sistema. Cómo correrlo: `hackai/README.md`. Módulos, puertos, carpetas y tests: `hackai/docs/ARQUITECTURA.md`.
 - `scripts/sync-campus.sh`: reemplaza el snapshot de `campus/`.
 
