@@ -278,3 +278,28 @@ test('un docente tiene Hoy con sus comisiones y sin inscripciones abiertas', asy
   assert.deepEqual(result.value.openEnrollments, [])
   assert.deepEqual(result.value.unavailable, [])
 })
+
+test('el final al que se acaba de inscribir sale entre los próximos de Hoy y su mesa deja de estar entre las inscripciones abiertas', async () => {
+  const { today, studies } = build()
+  const before = await today.today('p-vfunes')
+  assert.ok(before.ok)
+  assert.equal(
+    before.value.upcoming.some((i) => i.kind === 'final'),
+    false
+  )
+  assert.ok(before.value.openEnrollments.some((i) => i.kind === 'examen' && i.subjectId === 'aga'))
+
+  assert.equal((await studies.enroll('p-vfunes', { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' })).ok, true)
+  const after = await today.today('p-vfunes')
+
+  assert.ok(after.ok)
+  assert.deepEqual(
+    after.value.upcoming.filter((i) => i.kind === 'final').map((i) => [i.id, i.subjectCode, i.name, i.date, i.past]),
+    [['mesa:mesa-aga-fi-dic', 'AGA', 'Final', '2026-12-09T12:00:00.000Z', false]]
+  )
+  assert.equal(
+    after.value.openEnrollments.some((i) => i.kind === 'examen' && i.subjectId === 'aga'),
+    false
+  )
+  assert.equal(after.value.staleSince, null)
+})
