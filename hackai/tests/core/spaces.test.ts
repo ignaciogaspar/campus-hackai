@@ -202,6 +202,13 @@ test('una materia archivada se sigue abriendo', async () => {
     opened.value.viewer.sections.map((s) => [s.name, s.current]),
     [['A', false]]
   )
+  // El alumno conserva el acceso a los canales y al material.
+  const seen = await spaces.channel('p-vfunes', named(opened.value, 'material').id)
+  assert.ok(seen.ok)
+  const asked = await spaces.post('p-vfunes', named(opened.value, 'consultas', 'A').id, {
+    text: '¿Cuándo es el final?'
+  })
+  assert.ok(asked.ok)
 })
 
 test('si el SIU no responde, la membresía sale de la última lectura y se marca desactualizada', async () => {
@@ -707,4 +714,123 @@ test('el material se muestra por unidad, por semana o todo junto, como lo organi
     ok: false,
     error: 'espacio-desconocido'
   })
+})
+
+test('las novedades sin leer de todos sus espacios, la más nueva primero', async () => {
+  const { spaces, store, setNow, siuState } = build()
+
+  // Sin espacios abiertos no hay novedades, y pedirlas no crea ninguno.
+  assert.deepEqual(await spaces.unreadFor('p-taguirre'), { ok: true, value: [] })
+  const none = await store.spacesFor([{ subjectId: 'am1', schoolId: 'fi' }])
+  assert.deepEqual(none, { ok: true, value: [] })
+
+  const ids = await am1(spaces)
+  const pr1 = await spaces.open('p-darrieta', 'pr1')
+  const aga = await spaces.open('p-mledesma', 'aga')
+  assert.ok(pr1.ok && aga.ok)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'El jueves no hay clase.' })
+  setNow('2026-11-09T13:00:00.000Z')
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+  await spaces.post('p-taguirre', ids.consultasA, { text: 'Lo mío no cuenta' })
+  setNow('2026-11-09T14:00:00.000Z')
+  await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Entra límites?' })
+  setNow('2026-11-10T09:00:00.000Z')
+  await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf'))
+  await spaces.post('p-darrieta', named(pr1.value, 'avisos', 'A').id, { text: 'Entrega del TP el viernes.' })
+  // Álgebra está archivada: sus novedades no cuentan.
+  await spaces.post('p-mledesma', named(aga.value, 'avisos', 'A').id, { text: 'Notas finales cargadas.' })
+
+  const unread = await spaces.unreadFor('p-taguirre')
+
+  assert.ok(unread.ok)
+  assert.deepEqual(
+    unread.value.map((u) => [u.subjectName, u.channelName, u.kind, u.count, u.latest]),
+    [
+      [
+        'Análisis Matemático I',
+        'material',
+        'material',
+        1,
+        { text: 'Guía 4.pdf', origin: 'hackai', createdAt: '2026-11-10T09:00:00.000Z' }
+      ],
+      [
+        'Programación I',
+        'avisos',
+        'avisos',
+        1,
+        { text: 'Entrega del TP el viernes.', origin: 'hackai', createdAt: '2026-11-10T09:00:00.000Z' }
+      ],
+      [
+        'Análisis Matemático I',
+        'consultas',
+        'consultas',
+        1,
+        { text: '¿Entra límites?', origin: 'hackai', createdAt: '2026-11-09T14:00:00.000Z' }
+      ],
+      [
+        'Análisis Matemático I',
+        'avisos',
+        'avisos',
+        2,
+        { text: 'Parcial el 16.', origin: 'hackai', createdAt: '2026-11-09T13:00:00.000Z' }
+      ]
+    ]
+  )
+  assert.deepEqual(
+    { ...unread.value[3], latest: undefined },
+    {
+      spaceId: ids.spaceId,
+      subjectId: 'am1',
+      subjectName: 'Análisis Matemático I',
+      channelId: ids.avisosA,
+      channelName: 'avisos',
+      kind: 'avisos',
+      count: 2,
+      latest: undefined
+    }
+  )
+
+  // Leer un canal lo saca de las novedades.
+  await spaces.channel('p-taguirre', ids.avisosA)
+  const after = await spaces.unreadFor('p-taguirre')
+  assert.ok(after.ok)
+  assert.equal(
+    after.value.some((u) => u.channelId === ids.avisosA),
+    false
+  )
+
+  assert.deepEqual(await spaces.unreadFor('p-nadie'), { ok: false, error: 'persona-desconocida' })
+  siuState.down = true
+  assert.deepEqual(await spaces.unreadFor('p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('un mensaje de un canal externo sin persona lleva el nombre con que llegó, y uno de alguien sin datos se muestra igual', async () => {
+  const { spaces, store } = build()
+  const ids = await am1(spaces)
+  // Mensajes que ya están en el almacén, como los dejaría la sincronización con el canal externo.
+  const external = {
+    channelId: ids.consultasA,
+    text: '¿Alguien tiene la guía?',
+    attachments: [],
+    origin: 'discord' as const,
+    externalId: 'd-1',
+    status: 'publicado' as const,
+    replyTo: null,
+    resolved: null,
+    createdAt: NOW
+  }
+  await store.addMessage({ ...external, authorId: null, authorName: 'tomi.aguirre' })
+  await store.addMessage({ ...external, externalId: 'd-2', authorId: 'p-borrada', authorName: null })
+
+  const seen = await spaces.channel('p-taguirre', ids.consultasA)
+
+  assert.ok(seen.ok)
+  assert.deepEqual(
+    seen.value.threads.map((t) => [t.message.author, t.message.origin, t.message.externalId]),
+    [
+      [{ personId: null, name: 'tomi.aguirre', role: null }, 'discord', 'd-1'],
+      [{ personId: 'p-borrada', name: 'Persona sin datos', role: null }, 'discord', 'd-2']
+    ]
+  )
 })

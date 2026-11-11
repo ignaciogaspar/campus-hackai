@@ -24,6 +24,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   assert.equal((await system.people.get(alumno.id)).ok, true)
   assert.equal((await system.studies.subjectsOf(alumno.id)).ok, true)
   assert.deepEqual(await system.studies.record(alumno.id), { ok: false, error: 'no-implementado' })
+  assert.equal((await system.spaces.open(alumno.id, 'am1')).ok, true)
   assert.deepEqual(await system.spaces.syncAll(), { ok: false, error: 'no-implementado' })
 })
 

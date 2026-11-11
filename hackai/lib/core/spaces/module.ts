@@ -46,6 +46,7 @@ import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } fr
 import { materialItems, materialView } from './material'
 import { threadsOf, toMessage } from './messages'
 import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from './reading'
+import { unreadFor } from './unread'
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
 type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }
@@ -59,7 +60,6 @@ const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(m
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
   const { people, studies, files, clock, store } = deps
-  const pending = async () => fail('falla-externa' as const)
 
   /** El espacio de la materia y facultad de la membresía; lo crea si no existe. */
   async function spaceOf(member: Membership): Promise<Result<StoredSpace, SpacesStoreError>> {
@@ -102,6 +102,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!space.ok) return space
     const channels = await ensureChannels(store, space.value, member.value)
     if (!channels.ok) return channels
+    // Acá va a ir traer lo nuevo del canal externo vinculado y de Moodle (#15 y #16).
     return spaceView(member.value, space.value, channels.value)
   }
 
@@ -384,6 +385,6 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     openDirect: notImplemented,
     link: notImplemented,
     syncAll: notImplemented,
-    unreadFor: pending
+    unreadFor: (personId) => unreadFor(studies, store, personId)
   }
 }
