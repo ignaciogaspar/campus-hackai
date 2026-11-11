@@ -1,0 +1,6 @@
+#!/bin/sh
+# Antes de cada commit: las reglas de AGENTS.md sobre lo que está en stage.
+# CI corre lo mismo en cada PR. Se activa solo con npm install en hackai/
+# (script prepare). Para saltearlo: git commit --no-verify.
+
+exec sh "$(git rev-parse --show-toplevel)/scripts/checks/reglas.sh" --staged
