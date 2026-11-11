@@ -6,22 +6,21 @@
    | -------------- | ------------------------- | ------------------ |
    | Identidad      | `HACKAI_IDENTITY`         | memoria            |
    | SIU            | `HACKAI_SIU`              | memoria, simulado  |
-   | Aula virtual   | `HACKAI_CLASSROOM`        | memoria            |
+   | Aula virtual   | `HACKAI_CLASSROOM`        | memoria, simulado  |
    | Canal externo  | `HACKAI_EXTERNAL_CHANNEL` | memoria, discord   |
    | Archivos       | `HACKAI_FILES`            | memoria            |
    | Reloj          | `HACKAI_CLOCK`            | memoria, sistema   |
 
-   `simulado` es el SIU simulado sobre las tablas siu_* de Supabase: necesita
-   NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas
-   (hackai/README.md).
+   `simulado` es el SIU simulado sobre las tablas siu_* de Supabase, o el Moodle
+   simulado sobre las moodle_*: necesita NEXT_PUBLIC_SUPABASE_URL y
+   SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas (hackai/README.md).
 
    Con `discord`, el token del bot va en `DISCORD_BOT_TOKEN` (guía:
    docs/discord.md).
 
-   Cada ticket que suma un adaptador (moodle-simulado, supabase…) lo agrega a
-   su lista acá. Un valor desconocido o una variable que falta corta el
-   arranque: es un error de configuración, no algo que el núcleo pueda
-   resolver. */
+   Cada ticket que suma un adaptador (supabase…) lo agrega a su lista acá. Un
+   valor desconocido o una variable que falta corta el arranque: es un error
+   de configuración, no algo que el núcleo pueda resolver. */
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
@@ -30,6 +29,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
@@ -50,7 +50,7 @@ export type Env = Record<string, string | undefined>
 const ADAPTERS = {
   identity: { variable: 'HACKAI_IDENTITY', values: ['memoria'] },
   siu: { variable: 'HACKAI_SIU', values: ['memoria', 'simulado'] },
-  classroom: { variable: 'HACKAI_CLASSROOM', values: ['memoria'] },
+  classroom: { variable: 'HACKAI_CLASSROOM', values: ['memoria', 'simulado'] },
   externalChannel: { variable: 'HACKAI_EXTERNAL_CHANNEL', values: ['memoria', 'discord'] },
   files: { variable: 'HACKAI_FILES', values: ['memoria'] },
   clock: { variable: 'HACKAI_CLOCK', values: ['memoria', 'sistema'] },
@@ -115,7 +115,9 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     siu: adapters.siu === 'simulado'
       ? createSimulatedSiu({ client: supabaseFromEnv(env), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
       : createMemorySiu(data, clock),
-    classroom: createMemoryClassroom(data),
+    classroom: adapters.classroom === 'simulado'
+      ? createSimulatedMoodle({ client: supabaseFromEnv(env), baseUrl: data.moodle.baseUrl })
+      : createMemoryClassroom(data),
     externalChannel: adapters.externalChannel === 'discord'
       ? createDiscordExternalChannel({ token: required(env, 'DISCORD_BOT_TOKEN', 'HACKAI_EXTERNAL_CHANNEL=discord') })
       : createMemoryExternalChannel(data, clock),

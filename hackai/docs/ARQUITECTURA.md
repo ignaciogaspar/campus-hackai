@@ -31,7 +31,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 | Operación | Qué hace |
 | --- | --- |
-| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas |
+| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `falla-externa` |
@@ -114,7 +114,7 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | --- | --- | --- |
 | **Identidad** | Validar una credencial y devolver quién es | Selector de demo, en memoria. En producción, Microsoft Entra ID (OpenID Connect) |
 | **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
-| **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha | Moodle simulado sobre tablas `moodle_*`, en memoria |
+| **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
 | **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, responder en un hilo, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
 | **Archivos** | Guardar un archivo y obtener su URL | Supabase Storage, en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |

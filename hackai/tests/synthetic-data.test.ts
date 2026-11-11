@@ -67,6 +67,9 @@ test('todas las referencias del set apuntan a algo que existe', () => {
   const courseIds = new Set(moodle.courses.map((c) => c.id))
   for (const c of moodle.courses) for (const s of c.siuSectionIds) assert.ok(sectionIds.has(s), c.id)
   for (const e of moodle.enrolments) assert.ok(moodleUsers.has(e.userId) && courseIds.has(e.courseId), e.userId)
+  for (const a of moodle.announcements) assert.ok(moodleUsers.has(a.authorId) && courseIds.has(a.courseId), a.id)
+  for (const c of moodle.contents) assert.ok(courseIds.has(c.courseId), c.id)
+  for (const a of moodle.assignments) assert.ok(courseIds.has(a.courseId), a.id)
 
   for (const p of people) assert.ok(personIds.has(p.siuId), p.id)
   const discordIds = new Set(people.map((p) => p.discordId).filter(Boolean))

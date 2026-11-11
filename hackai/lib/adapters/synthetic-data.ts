@@ -1,5 +1,5 @@
-/* Set único de datos sintéticos. Alimenta los adaptadores en memoria y, más
-   adelante, el seed de los simulados del SIU y de Moodle. Todo es inventado:
+/* Set único de datos sintéticos. Alimenta los adaptadores en memoria y el seed
+   de los simulados del SIU y de Moodle. Todo es inventado:
    nombres, mails, notas e ids. Las fechas giran alrededor de `now`, el «hoy»
    del reloj fijo, en el 2do cuatrimestre de 2026.
 
@@ -61,6 +61,7 @@ export type SyntheticData = {
     certificates: { personId: string; type: SiuCertificateType; meetsConditions: boolean }[]
   }
   moodle: {
+    baseUrl: string
     courses: ClassroomCourse[]
     enrolments: ClassroomEnrolment[]
     announcements: ClassroomAnnouncement[]
@@ -491,6 +492,7 @@ export const syntheticData: SyntheticData = {
     certificates,
   },
   moodle: {
+    baseUrl: 'https://moodle.example.edu.ar',
     courses,
     enrolments: [...teacherEnrolments, ...studentEnrolments],
     announcements,

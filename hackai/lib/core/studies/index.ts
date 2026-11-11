@@ -14,11 +14,14 @@
      actuales las de un período lectivo que no terminó (el que está en curso y
      los que ya tienen inscriptos, como el de verano) y archivadas las de
      períodos que ya terminaron.
+   - Cada materia lleva el enlace a su aula de Moodle y, si es actual, sus tareas
+     con fecha por orden de fecha (las sin fecha no se muestran). Si el aula
+     declara que no tiene tareas, salen vacías sin error.
 
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import type { ClassroomPort } from '@/lib/ports/classroom'
+import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { SiuCertificateType, SiuPort, SiuSchedule, SiuSection, SiuSubject, SiuTerm } from '@/lib/ports/siu'
 import { all, fail, notImplemented, ok, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
@@ -39,6 +42,12 @@ export type CertificateType = SiuCertificateType
 
 export type Teacher = { personId: PersonId | null; name: string }
 
+/** Aula de la materia en el Campus Virtual: el curso de Moodle y el enlace para entrar. */
+export type MyClassroom = { courseId: string; name: string; url: string }
+
+/** Tarea con fecha límite de un curso de Moodle. `past` si la fecha ya pasó según el reloj. */
+export type MyAssignment = { name: string; dueDate: string; source: 'moodle'; past: boolean }
+
 /** Una materia de la persona, en una comisión y un período lectivo. */
 export type MySubject = {
   subjectId: string
@@ -50,8 +59,10 @@ export type MySubject = {
   sectionId: string
   sectionName: string
   role: Role
-  /** Cursos de Moodle vinculados a la comisión. */
-  classroomCourseIds: string[]
+  /** Cursos de Moodle vinculados a la comisión, con el enlace a cada aula. */
+  classrooms: MyClassroom[]
+  /** Tareas con fecha de esos cursos, por fecha. Solo las de materias actuales; las archivadas, vacío. */
+  assignments: MyAssignment[]
 }
 
 export type MySubjects = { current: MySubject[]; archived: MySubject[] }
@@ -246,11 +257,32 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok({ role, sections: [...current, ...archived] })
   }
 
+  /** Tareas con fecha de los cursos, por fecha. Que el aula no tenga tareas (o no
+      tenga el curso) no es un error; que no responda, sí. */
+  async function assignmentsOf(courses: ClassroomCourse[], at: string): Promise<Result<MyAssignment[], ExternalFailure>> {
+    if (!classroom.capabilities.hasAssignments) return ok([])
+    const found = await Promise.all(courses.map((c) => classroom.assignments(c.id)))
+    const lists: ClassroomAssignment[][] = []
+    for (const result of found) {
+      if (result.ok) lists.push(result.value)
+      else if (result.error === 'falla-externa') return fail('falla-externa')
+    }
+    return ok(lists
+      .flat()
+      .flatMap((a) => a.dueDate === null ? [] : [{ name: a.name, dueDate: a.dueDate }])
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name, 'es'))
+      .map((a): MyAssignment => ({ ...a, source: 'moodle', past: a.dueDate < at })))
+  }
+
   async function subjectsOf(personId: PersonId): Promise<Result<MySubjects, ReadError>> {
     const mine = await sectionsInTermsOf(personId)
     if (!mine.ok) return mine
     const courses = all(await Promise.all(mine.value.sections.map((p) => classroom.coursesForSection(p.section.id))))
     if (!courses.ok) return courses
+    const at = clock.now().toISOString()
+    const assignments = all(await Promise.all(mine.value.sections.map((p, i) =>
+      p.current ? assignmentsOf(courses.value[i], at) : Promise.resolve(ok<MyAssignment[]>([])))))
+    if (!assignments.ok) return assignments
 
     const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
       const item: MySubject = {
@@ -263,7 +295,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
         sectionId: section.id,
         sectionName: section.name,
         role: mine.value.role,
-        classroomCourseIds: courses.value[i].map((c) => c.id),
+        classrooms: courses.value[i].map((c) => ({ courseId: c.id, name: c.fullName, url: classroom.courseUrl(c.id) })),
+        assignments: assignments.value[i],
       }
       return { item, current }
     })

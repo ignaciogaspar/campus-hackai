@@ -6,38 +6,8 @@
    Es idempotente: cada fila se inserta o se pisa por su clave. Las
    inscripciones que no están en el set (las que se hicieron durante la demo)
    se borran, así correrlo de nuevo deja el SIU como en el set sintético. */
+import { bool, json, num, text, textArray, upsert, type Sql } from '@/lib/adapters/supabase/sql'
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
-
-/** Un valor ya escrito como literal de SQL. */
-type Sql = string
-
-function text(value: string | null): Sql {
-  return value === null ? 'null' : `'${value.replace(/'/g, "''")}'`
-}
-
-function num(value: number | null): Sql {
-  return value === null ? 'null' : String(value)
-}
-
-function bool(value: boolean): Sql {
-  return value ? 'true' : 'false'
-}
-
-function json(value: unknown): Sql {
-  return `${text(JSON.stringify(value))}::jsonb`
-}
-
-function textArray(values: string[]): Sql {
-  return values.length ? `array[${values.map(text).join(', ')}]::text[]` : `'{}'::text[]`
-}
-
-function upsert(table: string, key: string[], rows: Record<string, Sql>[]): Sql {
-  if (!rows.length) return `-- ${table}: sin filas\n`
-  const columns = Object.keys(rows[0])
-  const values = rows.map((row) => `  (${columns.map((c) => row[c]).join(', ')})`).join(',\n')
-  const updates = columns.filter((c) => !key.includes(c)).map((c) => `${c} = excluded.${c}`).join(', ')
-  return `insert into ${table} (${columns.join(', ')}) values\n${values}\non conflict (${key.join(', ')}) do update set ${updates};\n`
-}
 
 export function siuSeedSql(data: SyntheticData): string {
   const { siu } = data
