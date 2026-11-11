@@ -1,103 +1,195 @@
 'use client'
 
-/* Lista de personas del ingreso de demo, agrupadas por rol y, adentro, por
-   facultad. Cada persona es una fila que abre su sesión. Solo muestra lo que
-   le da Personas.
-
-   En el celular se ve un rol por vez, y se cambia con las pastillas de arriba.
-   En pantallas anchas entran los dos: alumnos a la izquierda, en dos columnas,
-   y docentes a la derecha. */
-import { useState } from 'react'
+/* Lista de personas del ingreso de demo. Todas en una sola lista, que se
+   filtra en vez de venir partida por rol y por facultad, así sigue siendo
+   cómoda con muchas personas de distintas carreras:
+   - un riel con Todos, Alumnos y Docentes;
+   - un buscador por nombre, carrera o facultad;
+   - la facultad y, para los alumnos, la carrera.
+   Los filtros quedan pegados arriba al bajar. Cada persona es una fila que
+   abre su sesión. Solo muestra lo que le da Personas; filtrar es de la
+   pantalla. */
+import { Search, SearchX } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { signInAsDemoPerson } from '@/app/actions/session'
 import { PersonRow } from '@/components/session/person-row'
 import { activeProgram } from '@/components/session/person-text'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { List } from '@/components/ui/list'
+import { railItem, railTrack } from '@/components/ui/rail'
+import { EmptyState } from '@/components/ui/states'
 import type { Person, Role } from '@/lib/core/people'
-import { cn } from '@/lib/utils'
 
-const GROUPS: { role: Role; title: string; wide: boolean }[] = [
-  { role: 'alumno', title: 'Alumnos', wide: true },
-  { role: 'profesor', title: 'Docentes', wide: false }
+type RoleFilter = Role | 'todos'
+
+const ROLES: { value: RoleFilter; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'alumno', label: 'Alumnos' },
+  { value: 'profesor', label: 'Docentes' }
 ]
 
-type School = Person['school'] & { members: Person[] }
+const ALL = ''
 
-/** Las personas de un rol, por facultad, en el orden en que aparecen. */
-function bySchool(people: Person[]): School[] {
-  const schools = new Map<string, School>()
-  for (const person of people) {
-    const school = schools.get(person.school.id) ?? { ...person.school, members: [] }
-    school.members.push(person)
-    schools.set(person.school.id, school)
-  }
-  return [...schools.values()]
+const FIELD =
+  'min-h-11 w-full min-w-0 rounded-[14px] border border-border bg-card px-3 text-[0.9375rem] text-foreground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring'
+
+/** Para buscar sin que importen mayúsculas ni tildes. */
+function plain(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+/** «Facultad de Ingeniería» → «Ingeniería», para la línea de cada persona. */
+function shortSchool(name: string): string {
+  return name.replace(/^Facultad de /, '')
+}
+
+function detailOf(person: Person): string {
+  const school = shortSchool(person.school.name)
+  if (person.role === 'profesor') return `Docente · ${school}`
+  const program = activeProgram(person)
+  return program ? `${program.name} · ${school}` : school
+}
+
+/** Alumnos primero y, adentro, por apellido. */
+function byRoleAndSurname(a: Person, b: Person): number {
+  if (a.role !== b.role) return a.role === 'alumno' ? -1 : 1
+  const surname = (p: Person) => p.name.split(' ').at(-1) ?? p.name
+  return surname(a).localeCompare(surname(b), 'es') || a.name.localeCompare(b.name, 'es')
+}
+
+function options(values: { id: string; name: string }[]): { id: string; name: string }[] {
+  const unique = new Map(values.map((v) => [v.id, v]))
+  return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+type Filters = { role: RoleFilter; query: string; school: string; program: string }
+
+function matches(person: Person, { role, query, school, program }: Filters): boolean {
+  if (role !== 'todos' && person.role !== role) return false
+  if (school && person.school.id !== school) return false
+  if (program && activeProgram(person)?.id !== program) return false
+  if (!query) return true
+  return plain(`${person.name} ${detailOf(person)} ${person.school.name}`).includes(plain(query))
 }
 
 export function PersonPicker({ people }: { people: Person[] }) {
-  const groups = GROUPS.map((g) => ({
-    ...g,
-    schools: bySchool(people.filter((p) => p.role === g.role)),
-    count: people.filter((p) => p.role === g.role).length
-  })).filter((g) => g.count)
-  const [shown, setShown] = useState<Role | undefined>(groups[0]?.role)
+  const sorted = useMemo(() => [...people].sort(byRoleAndSurname), [people])
+  const [filters, setFilters] = useState<Filters>({ role: 'todos', query: '', school: ALL, program: ALL })
+  const set = (change: Partial<Filters>) => setFilters((f) => ({ ...f, ...change }))
+
+  const schools = options(people.map((p) => p.school))
+  const programs = options(
+    people.flatMap((p) => {
+      const program = activeProgram(p)
+      return p.role === 'alumno' && program && (!filters.school || p.school.id === filters.school) ? [program] : []
+    })
+  )
+  const shown = sorted.filter((p) => matches(p, filters))
+  const count = (role: RoleFilter) => people.filter((p) => role === 'todos' || p.role === role).length
+  const filtered = filters.query || filters.school || filters.program || filters.role !== 'todos'
 
   return (
-    <div className='flex flex-col gap-5 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-6'>
-      {groups.length > 1 && (
-        <fieldset aria-label='Qué personas ver' className='flex gap-2 lg:hidden'>
-          {groups.map(({ role, title, count }) => (
+    <div className='flex flex-col gap-3'>
+      <div className='sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-background/95 px-4 py-2 backdrop-blur-sm lg:-mx-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_14rem_16rem] lg:items-center lg:gap-3 lg:px-6'>
+        <fieldset aria-label='Qué personas ver' className={railTrack({ size: 'sm', className: 'lg:w-80' })}>
+          {ROLES.map(({ value, label }) => (
             <button
-              key={role}
+              key={value}
               type='button'
-              aria-pressed={shown === role}
-              onClick={() => setShown(role)}
-              className='inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-card px-4 text-[0.8125rem] font-semibold text-muted-foreground shadow-[0_1px_2px_rgb(11_17_80/0.08)] transition-colors duration-150 focus-ring aria-pressed:bg-blue aria-pressed:text-white'
+              aria-pressed={filters.role === value}
+              onClick={() => set({ role: value, program: value === 'profesor' ? ALL : filters.program })}
+              className={railItem({ size: 'sm' })}
             >
-              {title}
-              <span className={cn('text-[11px] font-bold', shown === role ? 'text-white/75' : 'text-gray-light')}>
-                {count}
-              </span>
+              {label}
+              <span className='text-[11px] font-bold opacity-70'>{count(value)}</span>
             </button>
           ))}
         </fieldset>
-      )}
 
-      {groups.map(({ role, title, wide, schools, count }) => (
-        <section
-          key={role}
-          aria-labelledby={`grupo-${role}`}
-          className={cn(
-            'flex-col gap-4 lg:flex',
-            shown === role ? 'flex' : 'hidden',
-            wide ? 'lg:col-span-2' : 'lg:col-span-1'
-          )}
-        >
-          <h2 id={`grupo-${role}`} className='sr-only text-lg leading-tight font-extrabold lg:not-sr-only'>
-            {title} <span className='text-[0.8125rem] font-semibold text-muted-foreground'>{count}</span>
-          </h2>
-          <div className={cn('grid gap-5', wide && 'sm:grid-cols-2 sm:gap-x-6')}>
-            {schools.map((school) => (
-              <div key={school.id} className='flex flex-col gap-2'>
-                <h3 className='px-1 text-xs font-bold tracking-[.08em] text-muted-foreground uppercase lg:flex lg:min-h-8 lg:items-end'>
-                  {school.name}
-                </h3>
-                <Card>
-                  <List>
-                    {school.members.map((person) => (
-                      <li key={person.id}>
-                        <form action={signInAsDemoPerson.bind(null, person.id)}>
-                          <PersonRow person={person} detail={activeProgram(person)?.name} />
-                        </form>
-                      </li>
-                    ))}
-                  </List>
-                </Card>
-              </div>
+        <label className='relative block'>
+          <span className='sr-only'>Buscar por nombre, carrera o facultad</span>
+          <Search
+            aria-hidden='true'
+            className='pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground'
+            strokeWidth={1.8}
+          />
+          <input
+            type='search'
+            value={filters.query}
+            onChange={(e) => set({ query: e.target.value })}
+            placeholder='Buscá por nombre, carrera o facultad'
+            className={`${FIELD} pl-10`}
+          />
+        </label>
+
+        <div className='grid grid-cols-2 gap-2 lg:contents'>
+          <label className='block min-w-0'>
+            <span className='sr-only'>Facultad</span>
+            <select
+              value={filters.school}
+              onChange={(e) => set({ school: e.target.value, program: ALL })}
+              className={FIELD}
+            >
+              <option value={ALL}>Facultad</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {shortSchool(s.name)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className='block min-w-0'>
+            <span className='sr-only'>Carrera</span>
+            <select
+              value={filters.program}
+              onChange={(e) => set({ program: e.target.value })}
+              disabled={filters.role === 'profesor' || !programs.length}
+              className={`${FIELD} disabled:opacity-50`}
+            >
+              <option value={ALL}>Carrera</option>
+              {programs.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <p role='status' className='px-1 text-[0.8125rem] text-muted-foreground'>
+        {shown.length === people.length ? `${people.length} personas` : `${shown.length} de ${people.length} personas`}
+      </p>
+
+      {shown.length ? (
+        <Card>
+          <ul className='-mb-px grid sm:grid-cols-2 xl:grid-cols-3'>
+            {shown.map((person) => (
+              <li
+                key={person.id}
+                className='border-b border-border sm:odd:border-r xl:border-r xl:[&:nth-child(3n)]:border-r-0'
+              >
+                <form action={signInAsDemoPerson.bind(null, person.id)}>
+                  <PersonRow person={person} detail={detailOf(person)} />
+                </form>
+              </li>
             ))}
-          </div>
-        </section>
-      ))}
+          </ul>
+        </Card>
+      ) : (
+        <EmptyState icon={SearchX} title='Nadie coincide con esos filtros'>
+          Probá con otro nombre o sacá algún filtro.
+        </EmptyState>
+      )}
+      {filtered && !shown.length && (
+        <Button
+          variant='outline'
+          className='self-center'
+          onClick={() => setFilters({ role: 'todos', query: '', school: ALL, program: ALL })}
+        >
+          Limpiar filtros
+        </Button>
+      )}
     </div>
   )
 }
