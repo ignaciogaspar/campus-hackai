@@ -19,11 +19,16 @@
   --hielo: #eef0fb;
   --tinta: #10142c;
   --gris: #5f6474;
+  --gris-claro: #8a8fa0;
   --borde: #e4e7f0;
   --fondo: #f2f4fb;
   /* Avisos: algo para tener en cuenta, que no es un error. */
   --warning: var(--naranja);
   --warning-background: #fff4ea;
+  --warning-icon: #b45309;
+  --warning-foreground: #5c2c04;
+  --error-background: #fdecea;
+  --error-foreground: #5e130c;
   --success: #0f7b4a;
   --success-background: #e3f5ec;
   /* Origen de un material o una fecha: texto oscuro sobre fondo suave (AA). */
@@ -135,12 +140,19 @@ body {
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
   --color-warning-background: var(--warning-background);
+  --color-warning-icon: var(--warning-icon);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-error-background: var(--error-background);
+  --color-error-foreground: var(--error-foreground);
   --color-success: var(--success);
   --color-success-background: var(--success-background);
   --color-navy: var(--navy);
   --color-azul: var(--azul);
   --color-naranja: var(--naranja);
   --color-tinta: var(--tinta);
+  --color-cian: var(--cian);
+  --color-hielo: var(--hielo);
+  --color-gris-claro: var(--gris-claro);
   --color-azul-claro: var(--azul-claro);
   --color-azul-hondo: var(--azul-hondo);
   --color-origin-hackai: var(--origin-hackai);

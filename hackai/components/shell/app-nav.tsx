@@ -38,7 +38,7 @@ export function AppNav({ school, subjects }: { school: string; subjects: NavSubj
             aria-current={active ? 'page' : undefined}
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-muted-foreground focus-visible:ring-3 focus-visible:ring-azul-claro focus-visible:outline-none lg:flex-row lg:gap-3 lg:p-3 lg:text-[0.9375rem]',
-              active && 'text-azul-claro lg:bg-accent',
+              active && 'text-azul-claro lg:bg-accent lg:text-azul',
             )}
           >
             <Icon aria-hidden='true' className='size-5' strokeWidth={active ? 2.3 : 1.8} />

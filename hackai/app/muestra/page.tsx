@@ -1,9 +1,16 @@
 /* Página de muestra del sistema visual (ticket #8): la estructura y los
    componentes base con datos de ejemplo. No pide sesión ni lee datos. */
-import { Bell } from 'lucide-react'
+import { Bell, CalendarDays, CircleCheck, FileText, Megaphone, MessageSquare, RotateCw } from 'lucide-react'
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
 import { PageHeader } from '@/components/shell/page-header'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { List, ListItem } from '@/components/ui/list'
+import { OriginBadge } from '@/components/ui/origin-badge'
+import { EmptyState, ErrorNotice, OfflineNotice, Skeleton, StaleNotice } from '@/components/ui/states'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UnreadCount } from '@/components/ui/unread-count'
 
 export const metadata: Metadata = { title: 'Muestra del sistema visual · Campus HackAI' }
@@ -14,6 +21,19 @@ const SUBJECTS = [
   { href: '/muestra/am1', code: 'AM1', name: 'Análisis Matemático I', unread: 3 },
   { href: '/muestra/pr1', code: 'PR1', name: 'Programación I', unread: 1 },
 ]
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className='flex flex-col gap-3'>
+      <h2 className='text-lg font-extrabold'>{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function RowIcon({ children }: { children: ReactNode }) {
+  return <span className='grid size-9 flex-none place-items-center rounded-full bg-accent text-azul-claro [&>svg]:size-5'>{children}</span>
+}
 
 export default function MuestraPage() {
   return (
@@ -29,8 +49,93 @@ export default function MuestraPage() {
           </a>
         }
       />
-      <main className='mx-auto flex max-w-280 flex-col gap-6 px-4 pt-5 pb-8 lg:px-10'>
-        <p className='text-sm text-muted-foreground'>Los componentes base se suman acá en el próximo paso.</p>
+      <main className='mx-auto flex max-w-280 flex-col gap-8 px-4 pt-5 pb-8 lg:px-10'>
+        <Section title='Botones'>
+          <div className='flex flex-wrap gap-2'>
+            <Button>Inscribirme</Button>
+            <Button variant='outline'>Ver hilo</Button>
+            <Button variant='ghost'>Ahora no</Button>
+            <Button disabled>Necesitás conexión</Button>
+          </div>
+        </Section>
+
+        <Section title='Etiquetas de origen y contador'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <OriginBadge origin='hackai' />
+            <OriginBadge origin='discord' />
+            <OriginBadge origin='moodle' />
+            <OriginBadge origin='siu' />
+            <UnreadCount count={3} />
+            <UnreadCount count={120} />
+          </div>
+        </Section>
+
+        <Section title='Tarjeta con lista'>
+          <Card>
+            <List>
+              <ListItem
+                start={<RowIcon><MessageSquare aria-hidden='true' /></RowIcon>}
+                title='Respondieron tu consulta'
+                description='Mariana Ledesma: «No, llega hasta derivadas y sus aplicaciones.»'
+                meta={<>Análisis Matemático I · Consultas · hace 40 min</>}
+                end={<span aria-label='Sin leer' className='mt-1.5 size-2 rounded-full bg-azul-claro' />}
+              />
+              <ListItem
+                start={<RowIcon><Megaphone aria-hidden='true' /></RowIcon>}
+                title='Cambio de aula para el segundo parcial'
+                description='El segundo parcial del lunes 16 se toma en el aula 20. Traigan DNI.'
+                meta={<>Análisis Matemático I · Avisos · vie 6/11</>}
+              />
+              <ListItem
+                start={<RowIcon><FileText aria-hidden='true' /></RowIcon>}
+                title='resumen-derivadas.pdf'
+                meta={<><OriginBadge origin='discord' /> 52 KB · jue 5/11</>}
+                end={<Button size='sm' variant='outline'>Abrir</Button>}
+              />
+            </List>
+          </Card>
+        </Section>
+
+        <Section title='Pestañas'>
+          <Tabs defaultValue='avisos' className='flex flex-col gap-3'>
+            <TabsList aria-label='Canales del espacio'>
+              <TabsTrigger value='avisos'>Avisos <UnreadCount count={1} /></TabsTrigger>
+              <TabsTrigger value='consultas'>Consultas <UnreadCount count={1} /></TabsTrigger>
+              <TabsTrigger value='material'>Material</TabsTrigger>
+              <TabsTrigger value='directos'>Directos</TabsTrigger>
+            </TabsList>
+            <TabsContent value='avisos' className='text-sm text-muted-foreground'>Los avisos de la comisión.</TabsContent>
+            <TabsContent value='consultas' className='text-sm text-muted-foreground'>Las consultas y sus respuestas.</TabsContent>
+            <TabsContent value='material' className='text-sm text-muted-foreground'>El material por secciones.</TabsContent>
+            <TabsContent value='directos' className='text-sm text-muted-foreground'>Los mensajes con los docentes.</TabsContent>
+          </Tabs>
+        </Section>
+
+        <Section title='Estados'>
+          <div className='grid items-start gap-4 lg:grid-cols-2'>
+            <EmptyState icon={CalendarDays} title='No tenés parciales ni entregas hasta el 24/11'>
+              Lo próximo es el final de Álgebra y Geometría Analítica, el miércoles 9/12.
+            </EmptyState>
+            <Card className='flex flex-col gap-3 p-4' aria-label='Cargando'>
+              <Skeleton className='h-4 w-2/3' />
+              <Skeleton className='h-3 w-1/2' />
+              <Skeleton className='h-3 w-3/4' />
+            </Card>
+            <StaleNotice>
+              <p><b>El SIU no responde.</b> Te mostramos lo que leímos hoy a las 11:40, hace 20 min. Puede haber cambios que todavía no vemos.</p>
+            </StaleNotice>
+            <ErrorNotice>
+              <p><b>No pudimos traer las entregas de Moodle.</b> El resto de la pantalla está al día.</p>
+              <Button size='sm' variant='outline'><RotateCw aria-hidden='true' /> Reintentar</Button>
+            </ErrorNotice>
+            <OfflineNotice>
+              <p><b>Sin conexión.</b> Te mostramos lo último que guardamos, de hoy a las 11:40. Para inscribirte, escribir o subir material necesitás internet.</p>
+            </OfflineNotice>
+            <EmptyState icon={CircleCheck} title='Estás al día'>
+              No hay avisos, material ni respuestas nuevas en tus materias desde ayer a las 18:40.
+            </EmptyState>
+          </div>
+        </Section>
       </main>
     </AppShell>
   )
