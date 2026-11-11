@@ -1,15 +1,16 @@
 /* Oferta de comisiones de una materia: cada una con su cupo, horario y
    docentes, y el botón para inscribirse en un paso o darse de baja. Qué
    comisiones se ofrecen, si la inscripción está abierta y si ya está
-   inscripto lo decide Cursada. */
+   inscripto lo decide Cursada. Las mesas de examen de la materia están en
+   `final/`. */
 import { CalendarClock, CalendarX, MapPin, UserRound, Users } from 'lucide-react'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
-import { shortDate } from '@/components/dates'
+import { subjectIdFrom } from '@/app/(app)/inscripciones/subject-param'
+import { EnrollmentActions } from '@/components/enrollment/enrollment-actions'
 import { capacityText, modalityName, scheduleLine } from '@/components/enrollment/format'
 import { readErrorText } from '@/components/enrollment/read-error'
-import { SectionActions } from '@/components/enrollment/section-actions'
+import { WindowNote } from '@/components/enrollment/window-note'
 import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -18,21 +19,6 @@ import type { OfferItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Comisiones · Campus HackAI' }
-
-function WindowNote({ item }: { item: OfferItem }) {
-  if (item.enrollmentOpen) {
-    return (
-      <>
-        Inscripción abierta hasta el <time dateTime={item.enrollmentEnd}>{shortDate(item.enrollmentEnd)}</time>
-      </>
-    )
-  }
-  return (
-    <>
-      Inscripción cerrada · fue del {shortDate(item.enrollmentStart)} al {shortDate(item.enrollmentEnd)}
-    </>
-  )
-}
 
 function SectionCard({ item }: { item: OfferItem }) {
   if (item.target.kind !== 'comision') return null
@@ -95,8 +81,8 @@ function SectionCard({ item }: { item: OfferItem }) {
         <WindowNote item={item} />
       </p>
 
-      <SectionActions
-        sectionId={item.target.sectionId}
+      <EnrollmentActions
+        target={item.target}
         subjectId={item.subjectId}
         label={label}
         status={item}
@@ -105,15 +91,6 @@ function SectionCard({ item }: { item: OfferItem }) {
       />
     </li>
   )
-}
-
-/** El id de la materia de la URL. Un `%` mal formado no es una materia: 404. */
-function subjectIdFrom(segment: string): string {
-  try {
-    return decodeURIComponent(segment)
-  } catch {
-    notFound()
-  }
 }
 
 export default async function OfertaPage({ params }: { params: Promise<{ materia: string }> }) {

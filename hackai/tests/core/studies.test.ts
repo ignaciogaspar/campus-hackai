@@ -1652,3 +1652,109 @@ test('si falla desmatricular la segunda aula y volver a matricular la primera ta
   assert.deepEqual(await studies.drop('p-mcabrera', FI1_VERANO), { ok: false, error: 'a-medias' })
   assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b', 'sec-fi1-fi-v'])
 })
+
+// Inscripción a finales (#20): el mismo flujo y los mismos errores que la cursada.
+
+/** La mesa de Álgebra de diciembre: cupo de 2, con Tomás ya inscripto. */
+const MESA_AGA = { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' } as const
+
+/** Mesas en las que el SIU tiene inscripta a una persona. */
+async function siuBoards(siu: SiuPort, siuId: string) {
+  const enrollments = await siu.examEnrollments(siuId)
+  assert.ok(enrollments.ok)
+  return enrollments.value.map((e) => e.examBoardId).sort()
+}
+
+test('inscribirse a una mesa la deja inscripta en el SIU, con el comprobante, y la oferta la marca con un lugar menos', async () => {
+  const { studies, siu } = build()
+
+  const result = await studies.enroll('p-vfunes', MESA_AGA)
+
+  assert.ok(result.ok && result.value.kind === 'inscripto')
+  assert.deepEqual(result.value.receipt.target, MESA_AGA)
+  assert.match(result.value.receipt.transactionNumber, /\S/)
+  assert.deepEqual(await siuBoards(siu, VALENTINA.siu), ['mesa-aga-fi-dic'])
+  const offer = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'aga' })
+  assert.ok(offer.ok)
+  assert.deepEqual(
+    offer.value.map((o) => [o.target, o.alreadyEnrolled, o.enrolled, o.spotsLeft]),
+    [[MESA_AGA, true, 2, 0]]
+  )
+})
+
+test('con la mesa llena, el siguiente vuelve «sin cupo», no queda inscripto y la oferta lo muestra sin lugares', async () => {
+  const { studies, siu } = build()
+  const LUCIA = { siu: '30102' }
+  assert.equal((await studies.enroll('p-vfunes', MESA_AGA)).ok, true)
+
+  assert.deepEqual(await studies.enroll('p-lbenitez', MESA_AGA), { ok: false, error: 'sin-cupo' })
+
+  assert.deepEqual(await siuBoards(siu, LUCIA.siu), [])
+  const offer = await studies.offer('p-lbenitez', { kind: 'examen', subjectId: 'aga' })
+  assert.ok(offer.ok)
+  assert.deepEqual(
+    offer.value.map((o) => [o.target, o.alreadyEnrolled, o.capacity, o.spotsLeft]),
+    [[MESA_AGA, false, 2, 0]]
+  )
+})
+
+test('darse de baja de una mesa devuelve el comprobante y libera el lugar para otro', async () => {
+  const { studies, siu } = build()
+  assert.equal((await studies.enroll('p-vfunes', MESA_AGA)).ok, true)
+
+  const result = await studies.drop('p-vfunes', MESA_AGA)
+
+  assert.ok(result.ok && result.value.kind === 'baja')
+  assert.deepEqual(result.value.receipt.target, MESA_AGA)
+  assert.deepEqual(await siuBoards(siu, VALENTINA.siu), [])
+  const lucia = await studies.enroll('p-lbenitez', MESA_AGA)
+  assert.ok(lucia.ok && lucia.value.kind === 'inscripto')
+})
+
+test('con una mesa, ya inscripto, no inscripto y una mesa de otra facultad vuelven los mismos errores que con una comisión', async () => {
+  const { studies, siu } = build()
+
+  assert.deepEqual(await studies.enroll('p-taguirre', MESA_AGA), { ok: false, error: 'ya-inscripto' })
+  assert.deepEqual(await studies.drop('p-vfunes', MESA_AGA), { ok: false, error: 'no-inscripto' })
+  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'mesa', examBoardId: 'mesa-iec-fce-dic' }), {
+    ok: false,
+    error: 'objetivo-desconocido'
+  })
+  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'mesa', examBoardId: 'mesa-nada' }), {
+    ok: false,
+    error: 'objetivo-desconocido'
+  })
+  assert.deepEqual(await siuBoards(siu, VALENTINA.siu), [])
+})
+
+test('cuando cierra la inscripción a la mesa, inscribirse y darse de baja vuelven «fuera de período» sin tocar el SIU', async () => {
+  const { studies, siu, advance } = build()
+  assert.equal((await studies.enroll('p-vfunes', MESA_AGA)).ok, true)
+  // La inscripción al turno de diciembre cierra el 4/12 a las 23:59; la mesa es el 9/12.
+  advance(25 * 24 * 60)
+
+  assert.deepEqual(await studies.drop('p-vfunes', MESA_AGA), { ok: false, error: 'fuera-de-periodo' })
+  assert.deepEqual(await studies.enroll('p-mcabrera', { kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' }), {
+    ok: false,
+    error: 'fuera-de-periodo'
+  })
+  assert.deepEqual(await siuBoards(siu, VALENTINA.siu), ['mesa-aga-fi-dic'])
+  assert.deepEqual(await siuBoards(siu, MARTIN.siu), [])
+})
+
+test('si el SIU no deja inscribir por API, la mesa devuelve «requiere autogestión» con el enlace a la mesa, al inscribirse y al darse de baja', async () => {
+  const { studies, siu } = build(syntheticData, {}, { siu: { capabilities: { canEnroll: false } } })
+  const TOMAS = { siu: '30101' }
+  const selfService = {
+    ok: true,
+    value: {
+      kind: 'requiere-autogestion',
+      url: `${syntheticData.siu.selfServiceBaseUrl}/examenes/inscripcion?mesa=mesa-aga-fi-dic`
+    }
+  }
+
+  assert.deepEqual(await studies.enroll('p-vfunes', MESA_AGA), selfService)
+  assert.deepEqual(await studies.drop('p-taguirre', MESA_AGA), selfService)
+  assert.deepEqual(await siuBoards(siu, VALENTINA.siu), [])
+  assert.deepEqual(await siuBoards(siu, TOMAS.siu), ['mesa-aga-fi-dic'])
+})
