@@ -1,9 +1,10 @@
 /* Los canales del espacio como pestañas: en el celular, pastillas arriba que
    se deslizan de costado, sin barra de scroll; en compu, una lista vertical a
    la izquierda, como los canales de Discord. Cada una lleva sus no leídos.
-   Son enlaces (`?canal=`), así que no cargan JavaScript en el navegador. */
+   Son enlaces (`?canal=`): en el navegador solo corre el manejo de las flechas. */
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
+import { ArrowKeysList } from '@/components/spaces/arrow-keys'
 import { channelLabel, hasSeveralSections, spaceHref } from '@/components/spaces/format'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Channel } from '@/lib/core/spaces'
@@ -25,7 +26,7 @@ export function ChannelTabs({ subjectId, channels, selectedId, canManage, creati
   const several = hasSeveralSections(channels)
   return (
     <nav aria-label='Canales del espacio' className='lg:sticky lg:top-4'>
-      <ul className='-mx-4 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:rounded-[22px] lg:bg-card lg:p-2 lg:shadow-card [&::-webkit-scrollbar]:hidden'>
+      <ArrowKeysList className='-mx-4 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:rounded-[22px] lg:bg-card lg:p-2 lg:shadow-card [&::-webkit-scrollbar]:hidden'>
         {channels.map((c) => {
           const selected = c.id === selectedId && !creating
           return (
@@ -67,7 +68,7 @@ export function ChannelTabs({ subjectId, channels, selectedId, canManage, creati
             </Link>
           </li>
         )}
-      </ul>
+      </ArrowKeysList>
     </nav>
   )
 }

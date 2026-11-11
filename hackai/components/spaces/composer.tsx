@@ -9,7 +9,6 @@ import { Paperclip, SendHorizontal, X } from 'lucide-react'
 import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { postMessage } from '@/app/actions/spaces'
 import { FormFeedback, useSpaceAction } from '@/components/spaces/action-form'
-import { cn } from '@/lib/utils'
 
 const MAX_HEIGHT = 160
 
@@ -95,7 +94,7 @@ export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) 
               <button
                 type='button'
                 onClick={clearFile}
-                className='grid size-6 flex-none place-items-center rounded-full hover:bg-card focus-ring'
+                className='grid size-8 flex-none place-items-center rounded-full hover:bg-card focus-ring'
               >
                 <X aria-hidden='true' className='size-3.5' />
                 <span className='sr-only'>Quitar {file.name}</span>
@@ -122,10 +121,7 @@ export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) 
           type='submit'
           disabled={empty || pending}
           aria-busy={pending || undefined}
-          className={cn(
-            'grid size-10 flex-none place-items-center rounded-[10px] bg-primary text-primary-foreground transition-opacity focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none',
-            pending && 'motion-safe:animate-pulse'
-          )}
+          className='grid size-10 flex-none place-items-center rounded-[10px] bg-primary text-primary-foreground transition-opacity focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none'
         >
           <SendHorizontal aria-hidden='true' className='size-5' strokeWidth={2} />
           <span className='sr-only'>{pending ? 'Enviando…' : 'Enviar'}</span>

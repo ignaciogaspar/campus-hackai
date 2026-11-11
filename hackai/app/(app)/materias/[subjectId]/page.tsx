@@ -60,16 +60,16 @@ const CHANNEL_ERRORS: Record<ChannelError, string> = {
   'falla-externa': 'No pudimos traer los mensajes de este canal. Probá de nuevo en un rato.'
 }
 
-function one(value: string | string[] | undefined): string | undefined {
+function singleParam(value: string | string[] | undefined): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 
 function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQuery {
   return {
-    canal: one(raw.canal),
-    hilo: one(raw.hilo),
-    filtro: one(raw.filtro),
-    nuevo: one(raw.nuevo) === 'canal' ? 'canal' : undefined
+    canal: singleParam(raw.canal),
+    hilo: singleParam(raw.hilo),
+    filtro: singleParam(raw.filtro),
+    nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined
   }
 }
 
@@ -203,7 +203,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        <div className='grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start lg:gap-6'>
+        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start lg:gap-6'>
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}

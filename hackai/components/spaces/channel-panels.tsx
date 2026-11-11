@@ -2,10 +2,12 @@
    y los canales que crea un docente, más el hilo de una consulta. Lo que puede
    hacer cada uno (escribir, marcar resuelta) lo dicen `canPost` y
    `canResolve` del canal: acá no se decide nada. */
+
 import { ArrowLeft, Check, Megaphone, MessagesSquare } from 'lucide-react'
 import Link from 'next/link'
 import { resolveQuestion } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import { ArrowKeysList } from '@/components/spaces/arrow-keys'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
 import { spaceHref } from '@/components/spaces/format'
@@ -110,11 +112,7 @@ export function AnnouncementsPanel({ subjectId, channel, threads }: PanelProps) 
       )}
       <ComposerDock>
         {channel.canPost ? (
-          <Composer
-            subjectId={subjectId}
-            channelId={channel.id}
-            placeholder={`Escribí un aviso para ${audience(channel)}`}
-          />
+          <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Aviso para ${audience(channel)}`} />
         ) : (
           <LockedNote>Solo los docentes publican avisos. Si tenés una duda, usá Consultas.</LockedNote>
         )}
@@ -146,7 +144,7 @@ function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & {
   ]
   return (
     <nav aria-label='Filtrar consultas'>
-      <ul className='-mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:px-0'>
+      <ArrowKeysList className='-mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:px-0'>
         {options.map(([value, label]) => (
           <li key={value} className='flex'>
             <Link
@@ -158,7 +156,7 @@ function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & {
             </Link>
           </li>
         ))}
-      </ul>
+      </ArrowKeysList>
     </nav>
   )
 }

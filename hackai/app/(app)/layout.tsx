@@ -8,6 +8,7 @@
 import type { ReactNode } from 'react'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
+import { spaceHref } from '@/components/spaces/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 
@@ -29,7 +30,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (subjects.ok) {
     for (const s of subjects.value.data.current) {
       const count = unreadBySubject.get(s.subjectId) ?? 0
-      nav.set(s.subjectId, { href: `/materias/${s.subjectId}`, code: s.code, name: s.name, unread: count })
+      nav.set(s.subjectId, { href: spaceHref(s.subjectId), code: s.code, name: s.name, unread: count })
     }
   }
 

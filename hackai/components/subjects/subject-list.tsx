@@ -4,6 +4,7 @@
    da Cursada. */
 import { ChevronRight, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { spaceHref } from '@/components/spaces/format'
 import { buttonVariants } from '@/components/ui/button'
 import type { MyAssignment, MySubject } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
@@ -25,7 +26,7 @@ function SubjectActions({ subject }: { subject: MySubject }) {
   return (
     <div className='mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap'>
       <Link
-        href={`/materias/${subjectId}`}
+        href={spaceHref(subjectId)}
         className={cn(buttonVariants({ size: 'lg' }), 'min-h-11 w-full justify-center font-semibold sm:w-auto')}
       >
         Abrir espacio
