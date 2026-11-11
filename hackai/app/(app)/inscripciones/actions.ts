@@ -3,21 +3,26 @@
    lo que devuelve Cursada a un estado que la pantalla sabe mostrar: las reglas
    (todo o nada, cupo, período, autogestión) son de Cursada. */
 import { revalidatePath } from 'next/cache'
-import type { EnrollmentState } from '@/components/enrollment/state'
+import type { EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { DropError, EnrollError } from '@/lib/core/studies'
+import type { DropError, DropOutcome, EnrollError, EnrollOutcome } from '@/lib/core/studies'
+import type { Result } from '@/lib/result'
 
-type Failure = EnrollError | DropError | 'persona-desconocida' | 'no-implementado'
+type Common = 'objetivo-desconocido' | 'persona-desconocida'
 
-const ENROLL_ERRORS: Record<Exclude<Failure, 'no-inscripto'>, string> = {
+const COMMON_ERRORS: Record<Common, string> = {
+  'objetivo-desconocido': 'No encontramos esta comisión en el SIU.',
+  'persona-desconocida': 'No encontramos tus datos en el SIU.'
+}
+
+const ENROLL_ERRORS: Record<EnrollError | Common | 'no-implementado', string> = {
+  ...COMMON_ERRORS,
   'sin-cupo': 'La comisión se quedó sin cupo. Probá con otra comisión.',
   'fuera-de-periodo': 'La inscripción a esta comisión no está abierta.',
   'ya-inscripto': 'Ya estás inscripto en esta materia. Para cambiarte de comisión, primero date de baja de la otra.',
-  'objetivo-desconocido': 'No encontramos esta comisión en el SIU.',
   'falla-externa':
     'El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU.',
   'sin-cuenta-del-aula':
     'No encontramos tu usuario del Campus Virtual, así que no te inscribimos en nada. Escribile a la secretaría de tu facultad para que lo revisen.',
   'a-medias':
@@ -25,8 +30,8 @@ const ENROLL_ERRORS: Record<Exclude<Failure, 'no-inscripto'>, string> = {
   'no-implementado': 'Todavía no podemos inscribirte desde HackAI.'
 }
 
-const DROP_ERRORS: Record<Failure, string> = {
-  ...ENROLL_ERRORS,
+const DROP_ERRORS: Record<DropError | Common | 'no-implementado', string> = {
+  ...COMMON_ERRORS,
   'no-inscripto': 'No estás inscripto en esta comisión.',
   'fuera-de-periodo': 'Ya no te podés dar de baja: el período de inscripción cerró.',
   'falla-externa':
@@ -38,38 +43,49 @@ const DROP_ERRORS: Record<Failure, string> = {
   'no-implementado': 'Todavía no podemos darte de baja desde HackAI.'
 }
 
-function sectionFrom(formData: FormData): string | null {
-  const sectionId = formData.get('sectionId')
-  return typeof sectionId === 'string' && sectionId ? sectionId : null
-}
+type Outcome = EnrollOutcome | DropOutcome
 
-function refresh() {
+/** El paso común de las dos acciones: sesión, comisión del formulario, llamada
+    a Cursada y traducción del resultado. `done` arma el estado si salió bien. */
+async function runSectionAction<E extends string, O extends Outcome>(
+  formData: FormData,
+  step: EnrollmentStep,
+  errors: Record<E, string> & Record<'objetivo-desconocido', string>,
+  call: (personId: string, sectionId: string) => Promise<Result<O, E>>,
+  done: (outcome: Exclude<O, { kind: 'requiere-autogestion' }>) => EnrollmentState
+): Promise<EnrollmentState> {
+  const session = await requireSession('alumno')
+  const sectionId = formData.get('sectionId')
+  if (typeof sectionId !== 'string' || !sectionId) return { kind: 'error', message: errors['objetivo-desconocido'] }
+
+  const result = await call(session.personId, sectionId)
+  if (!result.ok) return { kind: 'error', message: errors[result.error] }
+  if (result.value.kind === 'requiere-autogestion') return { kind: 'requiere-autogestion', url: result.value.url, step }
   revalidatePath('/inscripciones', 'layout')
   revalidatePath('/materias')
+  return done(result.value as Exclude<O, { kind: 'requiere-autogestion' }>)
 }
 
 export async function enrollAction(_prev: EnrollmentState, formData: FormData): Promise<EnrollmentState> {
-  const session = await requireSession('alumno')
-  const sectionId = sectionFrom(formData)
-  if (!sectionId) return { kind: 'error', message: ENROLL_ERRORS['objetivo-desconocido'] }
-
-  const result = await system().studies.enroll(session.personId, { kind: 'comision', sectionId })
-  if (!result.ok) return { kind: 'error', message: ENROLL_ERRORS[result.error] }
-  if (result.value.kind === 'requiere-autogestion')
-    return { kind: 'requiere-autogestion', url: result.value.url, step: 'inscripcion' }
-  refresh()
-  return { kind: 'inscripto', transactionNumber: result.value.receipt.transactionNumber }
+  return runSectionAction(
+    formData,
+    'inscripcion',
+    ENROLL_ERRORS,
+    (personId, sectionId) => system().studies.enroll(personId, { kind: 'comision', sectionId }),
+    (outcome) => ({
+      kind: 'inscripto',
+      transactionNumber: outcome.receipt.transactionNumber,
+      inClassroom: outcome.classroomCourseIds.length > 0
+    })
+  )
 }
 
 export async function dropAction(_prev: EnrollmentState, formData: FormData): Promise<EnrollmentState> {
-  const session = await requireSession('alumno')
-  const sectionId = sectionFrom(formData)
-  if (!sectionId) return { kind: 'error', message: DROP_ERRORS['objetivo-desconocido'] }
-
-  const result = await system().studies.drop(session.personId, { kind: 'comision', sectionId })
-  if (!result.ok) return { kind: 'error', message: DROP_ERRORS[result.error] }
-  if (result.value.kind === 'requiere-autogestion')
-    return { kind: 'requiere-autogestion', url: result.value.url, step: 'baja' }
-  refresh()
-  return { kind: 'baja', transactionNumber: result.value.receipt.transactionNumber }
+  return runSectionAction(
+    formData,
+    'baja',
+    DROP_ERRORS,
+    (personId, sectionId) => system().studies.drop(personId, { kind: 'comision', sectionId }),
+    (outcome) => ({ kind: 'baja', transactionNumber: outcome.receipt.transactionNumber })
+  )
 }

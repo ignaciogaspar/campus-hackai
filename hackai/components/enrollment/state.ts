@@ -5,7 +5,8 @@ export type EnrollmentStep = 'inscripcion' | 'baja'
 
 export type EnrollmentState =
   | { kind: 'inicial' }
-  | { kind: 'inscripto'; transactionNumber: string }
+  /** `inClassroom`: también quedó en el aula del Campus Virtual (la comisión tiene curso). */
+  | { kind: 'inscripto'; transactionNumber: string; inClassroom: boolean }
   | { kind: 'baja'; transactionNumber: string }
   | { kind: 'requiere-autogestion'; url: string; step: EnrollmentStep }
   | { kind: 'error'; message: string }

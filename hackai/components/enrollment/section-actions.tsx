@@ -22,7 +22,10 @@ function Outcome({ state }: { state: EnrollmentState }) {
         <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
         <div className='flex flex-col gap-2'>
           <p>
-            <b>Listo, quedaste inscripto.</b> Ya estás en el SIU y en el aula del Campus Virtual.
+            <b>Listo, quedaste inscripto.</b>{' '}
+            {state.inClassroom
+              ? 'Ya estás en el SIU y en el aula del Campus Virtual.'
+              : 'Ya estás en el SIU. Esta comisión todavía no tiene aula en el Campus Virtual.'}
           </p>
           <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {state.transactionNumber}</p>
           <Link
@@ -110,7 +113,6 @@ export function SectionActions({
   if (!open) return null
 
   const visibleOutcome = lastAction === 'drop' ? dropState : lastAction === 'enroll' ? enrollState : INITIAL
-  const justEnrolled = visibleOutcome.kind === 'inscripto'
 
   return (
     <div className='flex flex-col gap-3'>
@@ -130,8 +132,9 @@ export function SectionActions({
         </form>
       )}
 
+      <Outcome state={visibleOutcome} />
+
       {enrolled &&
-        !justEnrolled &&
         (confirming ? (
           <form
             action={drop}
@@ -165,8 +168,6 @@ export function SectionActions({
             <span className='sr-only'> de {label}</span>
           </Button>
         ))}
-
-      <Outcome state={visibleOutcome} />
     </div>
   )
 }

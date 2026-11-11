@@ -951,3 +951,34 @@ test('la oferta dice cuántos lugares quedan: ninguno si se llenó, y sin tope s
     [27, null]
   )
 })
+
+test('si el SIU no deja dar de baja por API pero no está inscripto, vuelve «no inscripto» y no el enlace', async () => {
+  const { studies } = build(syntheticData, {}, { siu: { capabilities: { canEnroll: false } } })
+
+  assert.deepEqual(await studies.drop('p-vfunes', PR1_VERANO), { ok: false, error: 'no-inscripto' })
+})
+
+test('la oferta marca la comisión vigente de la materia aunque sea de otra facultad, igual que la inscripción', async () => {
+  // Valentina cursa Análisis Matemático I en la comisión A de Ciencias Empresariales, no en la B de Ingeniería.
+  const data = structuredClone(syntheticData)
+  const valentinaAm1 = data.siu.courseEnrollments.find(
+    (e) => e.personId === VALENTINA.siu && e.sectionId === 'sec-am1-fi-b'
+  )!
+  valentinaAm1.sectionId = 'sec-am1-fce-a'
+  const { studies } = build(data)
+
+  const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'am1' })
+
+  assert.ok(offer.ok)
+  assert.deepEqual(
+    offer.value.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
+    [
+      ['A', false, 'A'],
+      ['B', false, 'A']
+    ]
+  )
+  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fi-b' }), {
+    ok: false,
+    error: 'ya-inscripto'
+  })
+})
