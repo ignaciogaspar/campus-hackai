@@ -1,6 +1,7 @@
-# Review de Claude en cada PR que no es draft, con el plugin oficial code-review:
-# revisa contra CLAUDE.md (que importa AGENTS.md) y busca bugs en el diff.
-# Deja un comentario en línea por hallazgo, o un resumen si no encuentra nada.
+# Review de Claude en cada PR que no es draft, siguiendo docs/agents/review.md:
+# contrasta el PR con la issue que cierra, las reglas de AGENTS.md y los bugs,
+# deja un comentario en línea por hallazgo y un resumen al final. Para que
+# revise mejor, se corrige la guía, no este archivo.
 #
 # Corre una vez al abrir o reabrir el PR y cuando pasa de draft a listo, no en
 # cada push, para cuidar el costo. Para otra review, comentá @claude en el PR
@@ -42,19 +43,19 @@ jobs:
             echo '::notice::Falta el secreto ANTHROPIC_API_KEY o CLAUDE_CODE_OAUTH_TOKEN: la review de Claude no corre. Cómo cargarlo: hackai/README.md, «CI».'
           fi
 
+      # Historia completa, para comparar el PR contra main.
       - uses: actions/checkout@v7
         if: steps.credenciales.outputs.hay == 'si'
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
         if: steps.credenciales.outputs.hay == 'si'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-plugins-official.git'
-          plugins: 'code-review@claude-plugins-official'
-          prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          prompt: |
+            Revisá el PR #${{ github.event.pull_request.number }} de ${{ github.repository }}.
+            Seguí docs/agents/review.md de punta a punta: juntá el contexto, mirá los seis puntos en orden y comentá como dice la guía.
           claude_args: >-
-            --allowedTools "mcp__github_inline_comment__create_inline_comment"
-            --append-system-prompt "Escribí los comentarios de la review en español rioplatense, con voseo, como el resto del repo."
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checks:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),mcp__github_inline_comment__create_inline_comment"

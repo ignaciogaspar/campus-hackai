@@ -36,8 +36,10 @@ Cada PR a `main` corre en GitHub Actions (`.github/workflows/`):
 | --- | --- | --- |
 | `ci.yml` | Si cambia código de `hackai/` | `npm ci`, Biome (con anotaciones en el diff), typecheck, tests, build y una prueba de humo: levanta el servidor standalone y pide `/api/health` y `/`. Sin secretos: usa los adaptadores en memoria. |
 | `reglas.yml` | En todos los PRs, también los de docs | `scripts/checks/reglas.sh`: las reglas duras de `AGENTS.md` que se ven en git. Un commit que toca `campus/` no toca nada más, no hay tablas `siu_*` ni `moodle_*` en `supabase/migrations/`, cada tabla activa RLS sin políticas, un paquete nuevo viene con su ADR y no hay `.env` ni claves en el diff. Antes corre `reglas.test.sh`, que prueba cada regla. |
-| `claude-review.yml` | Al abrir o reabrir un PR, o al pasarlo de draft a listo | Review de Claude con el plugin oficial `code-review`, contra `CLAUDE.md` y `AGENTS.md`: un comentario en línea por hallazgo. Corre una vez por PR. |
-| `claude.yml` | Cuando alguien comenta `@claude` en un PR o una issue | Claude responde: «@claude revisá de nuevo» pide otra review. |
+| `claude-review.yml` | Al abrir o reabrir un PR, o al pasarlo de draft a listo | Review de Claude según [`docs/agents/review.md`](../docs/agents/review.md): contra la issue que cierra el PR, las reglas de `AGENTS.md` y los bugs, con un comentario en línea por hallazgo y un resumen. Corre una vez por PR. |
+| `claude.yml` | Cuando alguien comenta `@claude` en un PR o una issue | Claude responde: «@claude revisá de nuevo» pide otra review con la misma guía. |
+
+Para que la review mejore se corrige la guía, `docs/agents/review.md`: lo que marcó de más va en «Qué queda afuera» y lo que se le escapó, en «Qué mirar». Se puede pedir en el mismo PR: «@claude sumá a docs/agents/review.md que…».
 
 Si una regla falla, el mensaje dice cuál es y cómo arreglarla. Para correrlas a mano:
 
