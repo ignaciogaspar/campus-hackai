@@ -6,7 +6,7 @@
 import { CheckCircle2, ExternalLink, Info, TriangleAlert } from 'lucide-react'
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
-import type { EnrollmentState } from '@/app/inscripciones/actions'
+import type { EnrollmentState } from '@/app/(app)/inscripciones/actions'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -22,7 +22,10 @@ function Outcome({ state }: { state: EnrollmentState }) {
             <b>Listo, quedaste inscripto.</b> Ya estás en el aula del Campus Virtual y en el espacio de la materia.
           </p>
           <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {state.transactionNumber}</p>
-          <Link href='/materias' className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 self-start')}>
+          <Link
+            href='/materias'
+            className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 self-start')}
+          >
             Ver en Mis materias
           </Link>
         </div>
@@ -34,7 +37,9 @@ function Outcome({ state }: { state: EnrollmentState }) {
       <div role='status' className='flex gap-3 rounded-lg border border-border bg-muted p-3 text-sm'>
         <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-muted-foreground' />
         <div>
-          <p><b>Te diste de baja.</b> Saliste de la comisión y de su aula del Campus Virtual.</p>
+          <p>
+            <b>Te diste de baja.</b> Saliste de la comisión y de su aula del Campus Virtual.
+          </p>
           <p className='mt-1 text-xs text-muted-foreground'>Comprobante del SIU n.º {state.transactionNumber}</p>
         </div>
       </div>
@@ -46,7 +51,8 @@ function Outcome({ state }: { state: EnrollmentState }) {
         <Info aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
         <div className='flex flex-col gap-2'>
           <p>
-            <b>Te falta un paso.</b> Para {state.action} hay que confirmarlo en la Autogestión del SIU. Te llevamos directo a esta comisión.
+            <b>Te falta un paso.</b> Para {state.action} hay que confirmarlo en la Autogestión del SIU. Te llevamos
+            directo a esta comisión.
           </p>
           <a
             href={state.url}
@@ -92,7 +98,15 @@ type Props = {
 
 /** Los dos estados viven acá porque, al inscribirse, la página se vuelve a
     cargar con `enrolled` y el comprobante no se tiene que perder. */
-export function SectionActions({ sectionId, label, enrolled, open, enrolledElsewhere, enrollAction, dropAction }: Props) {
+export function SectionActions({
+  sectionId,
+  label,
+  enrolled,
+  open,
+  enrolledElsewhere,
+  enrollAction,
+  dropAction
+}: Props) {
   const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL)
   const [dropState, drop, dropping] = useActionState(dropAction, INITIAL)
   const [confirming, setConfirming] = useState(false)
@@ -120,25 +134,41 @@ export function SectionActions({ sectionId, label, enrolled, open, enrolledElsew
         </form>
       )}
 
-      {enrolled && !justEnrolled && (confirming ? (
-        <form
-          action={drop}
-          onSubmit={() => { setLast('drop'); setConfirming(false) }}
-          className='flex flex-col gap-2 rounded-lg border border-border p-3'
-        >
-          <input type='hidden' name='sectionId' value={sectionId} />
-          <p className='text-sm'>¿Te das de baja de {label}? Vas a salir de la comisión y de su aula.</p>
-          <div className='flex flex-wrap gap-2'>
-            <Button type='submit' variant='destructive' size='lg' className='min-h-11'>Sí, darme de baja</Button>
-            <Button type='button' variant='ghost' size='lg' className='min-h-11' onClick={() => setConfirming(false)}>Cancelar</Button>
-          </div>
-        </form>
-      ) : (
-        <Button type='button' variant='outline' size='lg' disabled={dropping} className='min-h-11 self-start' onClick={() => setConfirming(true)}>
-          {dropping ? 'Dándote de baja…' : 'Darme de baja'}
-          <span className='sr-only'> de {label}</span>
-        </Button>
-      ))}
+      {enrolled &&
+        !justEnrolled &&
+        (confirming ? (
+          <form
+            action={drop}
+            onSubmit={() => {
+              setLast('drop')
+              setConfirming(false)
+            }}
+            className='flex flex-col gap-2 rounded-lg border border-border p-3'
+          >
+            <input type='hidden' name='sectionId' value={sectionId} />
+            <p className='text-sm'>¿Te das de baja de {label}? Vas a salir de la comisión y de su aula.</p>
+            <div className='flex flex-wrap gap-2'>
+              <Button type='submit' variant='destructive' size='lg' className='min-h-11'>
+                Sí, darme de baja
+              </Button>
+              <Button type='button' variant='ghost' size='lg' className='min-h-11' onClick={() => setConfirming(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <Button
+            type='button'
+            variant='outline'
+            size='lg'
+            disabled={dropping}
+            className='min-h-11 self-start'
+            onClick={() => setConfirming(true)}
+          >
+            {dropping ? 'Dándote de baja…' : 'Darme de baja'}
+            <span className='sr-only'> de {label}</span>
+          </Button>
+        ))}
 
       <Outcome state={shown} />
     </div>

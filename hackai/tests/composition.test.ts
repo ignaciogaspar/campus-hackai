@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { compose } from '@/lib/composition'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
+import { compose } from '@/lib/composition'
 
 const NOW = new Date(syntheticData.now)
 
@@ -14,7 +14,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
     classroom: 'memoria',
     externalChannel: 'memoria',
     files: 'memoria',
-    clock: 'memoria',
+    clock: 'memoria'
   })
   assert.equal(system.ports.clock.now().toISOString(), NOW.toISOString())
 
@@ -44,7 +44,7 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
     spaces.link(p, 'c', { system: 'discord', channelId: 'd' }),
     spaces.syncAll(),
     spaces.unreadFor(p),
-    today.today(p),
+    today.today(p)
   ]
   for (const result of await Promise.all(calls)) {
     assert.deepEqual(result, { ok: false, error: 'no-implementado' })
@@ -65,11 +65,15 @@ test('HACKAI_SIU=simulado usa el SIU simulado sobre Supabase, que declara sus ca
   const system = compose({
     HACKAI_SIU: 'simulado',
     NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
-    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
   })
 
   assert.equal(system.adapters.siu, 'simulado')
-  assert.deepEqual(system.ports.siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
+  assert.deepEqual(system.ports.siu.capabilities, {
+    canEnroll: true,
+    hasAssessmentSchedule: true,
+    enrolsInClassroom: false
+  })
 })
 
 test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () => {
@@ -80,13 +84,16 @@ test('HACKAI_CLASSROOM=simulado usa el Moodle simulado sobre Supabase, que decla
   const system = compose({
     HACKAI_CLASSROOM: 'simulado',
     NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
-    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
   })
 
   assert.equal(system.adapters.classroom, 'simulado')
   assert.equal(system.adapters.siu, 'memoria')
   assert.deepEqual(system.ports.classroom.capabilities, { canEnrol: true, hasAssignments: true })
-  assert.equal(system.ports.classroom.courseUrl('c-am1-fi-a'), `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`)
+  assert.equal(
+    system.ports.classroom.courseUrl('c-am1-fi-a'),
+    `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`
+  )
 })
 
 test('HACKAI_CLASSROOM=simulado sin las variables de Supabase corta el arranque', () => {
@@ -118,8 +125,10 @@ test('cada armado tiene su propia copia de los datos sintéticos', async () => {
   const b = compose({})
   const section = syntheticData.siu.sections.find((s) => s.termId === 'verano-2027' && s.capacity === null)!
   const student = syntheticData.siu.persons.find(
-    (p) => p.role === 'alumno' && p.school.id === section.schoolId
-      && !syntheticData.siu.courseEnrollments.some((e) => e.personId === p.id && e.sectionId === section.id),
+    (p) =>
+      p.role === 'alumno' &&
+      p.school.id === section.schoolId &&
+      !syntheticData.siu.courseEnrollments.some((e) => e.personId === p.id && e.sectionId === section.id)
   )!
 
   const enrolled = await a.ports.siu.enroll(student.id, { kind: 'comision', sectionId: section.id })

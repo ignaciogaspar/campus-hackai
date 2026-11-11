@@ -25,9 +25,11 @@ test('el seed carga cursos, matrículas, avisos, contenidos y tareas del set', (
   const { moodle } = syntheticData
 
   for (const course of moodle.courses) assert.ok(sql.includes(`('${course.id}', '${course.shortName}'`), course.id)
-  for (const assignment of moodle.assignments) assert.ok(sql.includes(`('${assignment.id}', '${assignment.courseId}'`), assignment.id)
+  for (const assignment of moodle.assignments)
+    assert.ok(sql.includes(`('${assignment.id}', '${assignment.courseId}'`), assignment.id)
   for (const content of moodle.contents) assert.ok(sql.includes(`('${content.id}', '${content.courseId}'`), content.id)
-  for (const announcement of moodle.announcements) assert.ok(sql.includes(`('${announcement.id}', '${announcement.courseId}'`), announcement.id)
+  for (const announcement of moodle.announcements)
+    assert.ok(sql.includes(`('${announcement.id}', '${announcement.courseId}'`), announcement.id)
   assert.equal(sql.match(/, '(student|editingteacher)'\)/g)?.length, moodle.enrolments.length)
 })
 

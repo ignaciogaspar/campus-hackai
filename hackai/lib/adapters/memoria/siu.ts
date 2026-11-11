@@ -3,13 +3,7 @@
    pueden cambiar para probar el núcleo contra un SIU como el real. */
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 import type { ClockPort } from '@/lib/ports/clock'
-import type {
-  SiuCapabilities,
-  SiuEnrollmentStatus,
-  SiuPort,
-  SiuReceipt,
-  SiuTarget,
-} from '@/lib/ports/siu'
+import type { SiuCapabilities, SiuEnrollmentStatus, SiuPort, SiuReceipt, SiuTarget } from '@/lib/ports/siu'
 import { fail, ok } from '@/lib/result'
 
 export type MemorySiuOptions = { capabilities?: Partial<SiuCapabilities> }
@@ -22,7 +16,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
-    ...options.capabilities,
+    ...options.capabilities
   }
   let transactions = 0
 
@@ -50,7 +44,9 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
         end: term.enrollmentEnd,
         capacity: section.capacity,
         enrolled: sectionCount(section.id),
-        active: db.courseEnrollments.find((e) => e.personId === personId && e.sectionId === section.id && ACTIVE.includes(e.status)),
+        active: db.courseEnrollments.find(
+          (e) => e.personId === personId && e.sectionId === section.id && ACTIVE.includes(e.status)
+        )
       }
     }
     const board = db.examBoards.find((m) => m.id === target.examBoardId)
@@ -60,7 +56,9 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       end: board.enrollmentEnd,
       capacity: board.capacity,
       enrolled: boardCount(board.id),
-      active: db.examEnrollments.find((e) => e.personId === personId && e.examBoardId === board.id && ACTIVE.includes(e.status)),
+      active: db.examEnrollments.find(
+        (e) => e.personId === personId && e.examBoardId === board.id && ACTIVE.includes(e.status)
+      )
     }
   }
 
@@ -87,10 +85,12 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
     },
 
     async sections(filter) {
-      const found = db.sections.filter((s) =>
-        (!filter.subjectId || s.subjectId === filter.subjectId)
-        && (!filter.schoolId || s.schoolId === filter.schoolId)
-        && (!filter.termId || s.termId === filter.termId))
+      const found = db.sections.filter(
+        (s) =>
+          (!filter.subjectId || s.subjectId === filter.subjectId) &&
+          (!filter.schoolId || s.schoolId === filter.schoolId) &&
+          (!filter.termId || s.termId === filter.termId)
+      )
       return ok(found.map((s) => ({ ...copy(s), enrolled: sectionCount(s.id) })))
     },
 
@@ -102,16 +102,20 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
     async courseEnrollments(personId, options = {}) {
       if (!hasPerson(personId)) return fail('no-encontrado')
       const at = now()
-      const found = db.courseEnrollments.filter((e) =>
-        e.personId === personId
-        && (options.historic || (ACTIVE.includes(e.status) && (termOf(e.sectionId)?.end ?? '') >= at)))
+      const found = db.courseEnrollments.filter(
+        (e) =>
+          e.personId === personId &&
+          (options.historic || (ACTIVE.includes(e.status) && (termOf(e.sectionId)?.end ?? '') >= at))
+      )
       return ok(copy(found))
     },
 
     async examBoards(filter) {
-      const found = db.examBoards.filter((m) =>
-        (!filter.subjectId || m.subjectId === filter.subjectId)
-        && (!filter.schoolId || m.schoolId === filter.schoolId))
+      const found = db.examBoards.filter(
+        (m) =>
+          (!filter.subjectId || m.subjectId === filter.subjectId) &&
+          (!filter.schoolId || m.schoolId === filter.schoolId)
+      )
       return ok(found.map((m) => ({ ...copy(m), enrolled: boardCount(m.id) })))
     },
 
@@ -147,6 +151,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return ok(entry?.meetsConditions ?? false)
     },
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 17 (máximo 15). Se refactoriza después de la demo (#30).
     async enroll(personId, target) {
       if (!capabilities.canEnroll) return fail('no-soportado')
       if (!hasPerson(personId)) return fail('no-encontrado')
@@ -181,9 +186,10 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
 
     selfServiceUrl(target) {
       const base = db.selfServiceBaseUrl
-      if (target.kind === 'comision') return `${base}/cursada/inscripcion?comision=${encodeURIComponent(target.sectionId)}`
+      if (target.kind === 'comision')
+        return `${base}/cursada/inscripcion?comision=${encodeURIComponent(target.sectionId)}`
       if (target.kind === 'mesa') return `${base}/examenes/inscripcion?mesa=${encodeURIComponent(target.examBoardId)}`
       return `${base}/constancias/solicitar?tipo=${encodeURIComponent(target.type)}`
-    },
+    }
   }
 }

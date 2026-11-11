@@ -7,7 +7,7 @@
    que no están en el set (las que se hicieron durante la demo) se borran, así
    correrlo de nuevo deja el Moodle como en el set sintético. Va después de
    siu_seed.sql solo por prolijidad: no hay claves entre los dos. */
-import { json, text, textArray, upsert, type Sql } from '@/lib/adapters/supabase/sql'
+import { json, type Sql, text, textArray, upsert } from '@/lib/adapters/supabase/sql'
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 
 /** Borra las matrículas que no están en `pairs`: de (usuario, curso) hay una sola por par. */
@@ -28,52 +28,76 @@ export function moodleSeedSql(data: SyntheticData): string {
     '-- Generado por npm run moodle:seed desde lib/adapters/synthetic-data.ts. No lo edites a mano.\n',
     'begin;\n',
     deleteEnrolmentsOutside(moodle.enrolments),
-    upsert('moodle_users', ['id'], people.map((p) => {
-      const person = persons.get(p.siuId)!
-      return {
-        id: text(p.moodleId),
-        username: text(person.email.split('@')[0]),
-        first_name: text(person.names),
-        last_name: text(person.surname),
-        email: text(person.email),
-      }
-    })),
-    upsert('moodle_courses', ['id'], moodle.courses.map((c) => ({
-      id: text(c.id),
-      short_name: text(c.shortName),
-      full_name: text(c.fullName),
-      siu_section_ids: textArray(c.siuSectionIds),
-    }))),
-    upsert('moodle_enrolments', ['user_id', 'course_id'], moodle.enrolments.map((e) => ({
-      user_id: text(e.userId),
-      course_id: text(e.courseId),
-      role: text(e.role),
-    }))),
-    upsert('moodle_announcements', ['id'], moodle.announcements.map((a) => ({
-      id: text(a.id),
-      course_id: text(a.courseId),
-      author_id: text(a.authorId),
-      subject: text(a.subject),
-      message: text(a.message),
-      created_at: text(a.createdAt),
-      attachments: json(a.attachments),
-    }))),
-    upsert('moodle_contents', ['id'], moodle.contents.map((c) => ({
-      id: text(c.id),
-      course_id: text(c.courseId),
-      topic: text(c.topic),
-      name: text(c.name),
-      type: text(c.type),
-      url: text(c.url),
-      modified_at: text(c.modifiedAt),
-    }))),
-    upsert('moodle_assignments', ['id'], moodle.assignments.map((a) => ({
-      id: text(a.id),
-      course_id: text(a.courseId),
-      name: text(a.name),
-      due_date: text(a.dueDate),
-    }))),
-    'commit;\n',
+    upsert(
+      'moodle_users',
+      ['id'],
+      people.map((p) => {
+        const person = persons.get(p.siuId)!
+        return {
+          id: text(p.moodleId),
+          username: text(person.email.split('@')[0]),
+          first_name: text(person.names),
+          last_name: text(person.surname),
+          email: text(person.email)
+        }
+      })
+    ),
+    upsert(
+      'moodle_courses',
+      ['id'],
+      moodle.courses.map((c) => ({
+        id: text(c.id),
+        short_name: text(c.shortName),
+        full_name: text(c.fullName),
+        siu_section_ids: textArray(c.siuSectionIds)
+      }))
+    ),
+    upsert(
+      'moodle_enrolments',
+      ['user_id', 'course_id'],
+      moodle.enrolments.map((e) => ({
+        user_id: text(e.userId),
+        course_id: text(e.courseId),
+        role: text(e.role)
+      }))
+    ),
+    upsert(
+      'moodle_announcements',
+      ['id'],
+      moodle.announcements.map((a) => ({
+        id: text(a.id),
+        course_id: text(a.courseId),
+        author_id: text(a.authorId),
+        subject: text(a.subject),
+        message: text(a.message),
+        created_at: text(a.createdAt),
+        attachments: json(a.attachments)
+      }))
+    ),
+    upsert(
+      'moodle_contents',
+      ['id'],
+      moodle.contents.map((c) => ({
+        id: text(c.id),
+        course_id: text(c.courseId),
+        topic: text(c.topic),
+        name: text(c.name),
+        type: text(c.type),
+        url: text(c.url),
+        modified_at: text(c.modifiedAt)
+      }))
+    ),
+    upsert(
+      'moodle_assignments',
+      ['id'],
+      moodle.assignments.map((a) => ({
+        id: text(a.id),
+        course_id: text(a.courseId),
+        name: text(a.name),
+        due_date: text(a.dueDate)
+      }))
+    ),
+    'commit;\n'
   ]
   return parts.join('\n')
 }

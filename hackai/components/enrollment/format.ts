@@ -10,13 +10,13 @@ const DAYS: Record<OfferItem['schedule'][number]['day'], string> = {
   miercoles: 'Miércoles',
   jueves: 'Jueves',
   viernes: 'Viernes',
-  sabado: 'Sábado',
+  sabado: 'Sábado'
 }
 
 const MODALITIES: Record<NonNullable<OfferItem['modality']>, string> = {
   presencial: 'Presencial',
   virtual: 'Virtual',
-  hibrida: 'Híbrida',
+  hibrida: 'Híbrida'
 }
 
 /** «18 de dic.» */
@@ -26,7 +26,13 @@ export function shortDate(iso: string): string {
 
 /** «10 nov., 11:40» */
 export function readTime(iso: string): string {
-  return new Date(iso).toLocaleString('es-AR', { timeZone: TIME_ZONE, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString('es-AR', {
+    timeZone: TIME_ZONE,
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 /** «Martes 09:00 a 13:00» */

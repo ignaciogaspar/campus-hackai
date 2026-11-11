@@ -4,16 +4,16 @@
 import { ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { readTime, shortDate } from '@/components/enrollment/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError } from '@/lib/core/studies'
-import { readTime, shortDate } from '@/components/enrollment/format'
 
 export const metadata: Metadata = { title: 'Inscripciones · Campus HackAI' }
 
 const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'falla-externa': 'No pudimos traer las inscripciones del SIU. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU.',
+  'persona-desconocida': 'No encontramos tus datos en el SIU.'
 }
 
 export default async function InscripcionesPage() {
@@ -38,7 +38,8 @@ export default async function InscripcionesPage() {
         <>
           {result.value.stale && (
             <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
-              El SIU no responde. Te mostramos lo que trajimos el {readTime(result.value.readAt)}: puede estar desactualizado.
+              El SIU no responde. Te mostramos lo que trajimos el {readTime(result.value.readAt)}: puede estar
+              desactualizado.
             </p>
           )}
 
@@ -69,7 +70,10 @@ export default async function InscripcionesPage() {
         </>
       )}
 
-      <Link href='/materias' className='self-start text-sm font-semibold text-primary underline-offset-4 hover:underline'>
+      <Link
+        href='/materias'
+        className='self-start text-sm font-semibold text-primary underline-offset-4 hover:underline'
+      >
         Ver mis materias
       </Link>
     </main>

@@ -21,17 +21,19 @@ const ENROLL_ERRORS: Record<Exclude<Failure, 'no-inscripto'>, string> = {
   'fuera-de-periodo': 'La inscripción a esta comisión no está abierta.',
   'ya-inscripto': 'Ya estás inscripto en esta materia. Para cambiarte de comisión, primero date de baja de la otra.',
   'objetivo-desconocido': 'No encontramos esta comisión en el SIU.',
-  'falla-externa': 'El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada. Probá de nuevo en un rato.',
+  'falla-externa':
+    'El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada. Probá de nuevo en un rato.',
   'persona-desconocida': 'No encontramos tus datos en el SIU.',
-  'no-implementado': 'Todavía no podemos inscribirte desde HackAI.',
+  'no-implementado': 'Todavía no podemos inscribirte desde HackAI.'
 }
 
 const DROP_ERRORS: Record<Failure, string> = {
   ...ENROLL_ERRORS,
   'no-inscripto': 'No estás inscripto en esta comisión.',
   'fuera-de-periodo': 'Ya no te podés dar de baja: el período de inscripción cerró.',
-  'falla-externa': 'El SIU o el Campus Virtual no respondieron, así que seguís inscripto como antes. Probá de nuevo en un rato.',
-  'no-implementado': 'Todavía no podemos darte de baja desde HackAI.',
+  'falla-externa':
+    'El SIU o el Campus Virtual no respondieron, así que seguís inscripto como antes. Probá de nuevo en un rato.',
+  'no-implementado': 'Todavía no podemos darte de baja desde HackAI.'
 }
 
 function sectionFrom(formData: FormData): string | null {
@@ -51,7 +53,8 @@ export async function enrollAction(_prev: EnrollmentState, formData: FormData): 
 
   const result = await system().studies.enroll(session.personId, { kind: 'comision', sectionId })
   if (!result.ok) return { kind: 'error', message: ENROLL_ERRORS[result.error] }
-  if (result.value.kind === 'requiere-autogestion') return { kind: 'requiere-autogestion', url: result.value.url, action: 'inscribirte' }
+  if (result.value.kind === 'requiere-autogestion')
+    return { kind: 'requiere-autogestion', url: result.value.url, action: 'inscribirte' }
   refresh()
   return { kind: 'inscripto', transactionNumber: result.value.receipt.transactionNumber }
 }
@@ -63,7 +66,8 @@ export async function dropAction(_prev: EnrollmentState, formData: FormData): Pr
 
   const result = await system().studies.drop(session.personId, { kind: 'comision', sectionId })
   if (!result.ok) return { kind: 'error', message: DROP_ERRORS[result.error] }
-  if (result.value.kind === 'requiere-autogestion') return { kind: 'requiere-autogestion', url: result.value.url, action: 'darte de baja' }
+  if (result.value.kind === 'requiere-autogestion')
+    return { kind: 'requiere-autogestion', url: result.value.url, action: 'darte de baja' }
   refresh()
   return { kind: 'baja', transactionNumber: result.value.receipt.transactionNumber }
 }

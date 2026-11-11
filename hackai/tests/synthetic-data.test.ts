@@ -15,10 +15,18 @@ test('hay dos facultades y una misma materia dictada en las dos', () => {
 })
 
 test('la materia compartida tiene comisiones A y B con docentes distintos', () => {
-  const pairs = siu.sections.filter((a) => a.name === 'A').filter((a) =>
-    siu.sections.some((b) => b.name === 'B' && b.subjectId === a.subjectId && b.schoolId === a.schoolId
-      && b.termId === a.termId && !b.teacherIds.some((t) => a.teacherIds.includes(t))),
-  )
+  const pairs = siu.sections
+    .filter((a) => a.name === 'A')
+    .filter((a) =>
+      siu.sections.some(
+        (b) =>
+          b.name === 'B' &&
+          b.subjectId === a.subjectId &&
+          b.schoolId === a.schoolId &&
+          b.termId === a.termId &&
+          !b.teacherIds.some((t) => a.teacherIds.includes(t))
+      )
+    )
   assert.ok(pairs.length >= 1, 'faltan comisiones A y B de la misma materia con docentes distintos')
 })
 
@@ -45,10 +53,12 @@ test('un alumno tiene materias de un cuatrimestre anterior', () => {
   const current = siu.terms.find((t) => t.start <= syntheticData.now && syntheticData.now <= t.end)!
   const previous = siu.terms.filter((t) => t.end < current.start).map((t) => t.id)
   const withPrevious = siu.courseEnrollments.filter((e) =>
-    previous.includes(siu.sections.find((s) => s.id === e.sectionId)!.termId))
+    previous.includes(siu.sections.find((s) => s.id === e.sectionId)!.termId)
+  )
   assert.ok(withPrevious.length >= 1)
 })
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 23 (máximo 15). Se refactoriza después de la demo (#30).
 test('todas las referencias del set apuntan a algo que existe', () => {
   const personIds = new Set(siu.persons.map((p) => p.id))
   const sectionIds = new Set(siu.sections.map((s) => s.id))

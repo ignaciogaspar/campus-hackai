@@ -1,0 +1,5 @@
+# Commits de solo formato, que git blame y GitHub saltean.
+# Localmente: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: formatear hackai/ con Biome (#30)
+49cb7d51a45610654b59aec40725bb2fcac1eb5f

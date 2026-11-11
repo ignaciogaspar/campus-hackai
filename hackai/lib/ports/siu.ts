@@ -47,7 +47,11 @@ export type SiuTerm = {
 /** Materia («actividad» en el SIU). Se dicta en una o más facultades. */
 export type SiuSubject = { id: string; code: string; name: string }
 
-export type SiuSchedule = { day: 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado'; start: string; end: string }
+export type SiuSchedule = {
+  day: 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado'
+  start: string
+  end: string
+}
 
 /** Comisión: el dictado de una materia en un período lectivo y una facultad. */
 export type SiuSection = {
@@ -134,9 +138,7 @@ export type SiuProvisionalResult = {
 
 export type SiuCertificateType = 'alumno-regular' | 'examen-final'
 
-export type SiuTarget =
-  | { kind: 'comision'; sectionId: string }
-  | { kind: 'mesa'; examBoardId: string }
+export type SiuTarget = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
 
 export type SiuReceipt = {
   transactionNumber: string
@@ -144,7 +146,13 @@ export type SiuReceipt = {
   target: SiuTarget
 }
 
-export type SiuEnrollError = 'sin-cupo' | 'fuera-de-periodo' | 'ya-inscripto' | 'no-encontrado' | 'no-soportado' | ExternalFailure
+export type SiuEnrollError =
+  | 'sin-cupo'
+  | 'fuera-de-periodo'
+  | 'ya-inscripto'
+  | 'no-encontrado'
+  | 'no-soportado'
+  | ExternalFailure
 export type SiuDropError = 'no-inscripto' | 'fuera-de-periodo' | 'no-encontrado' | 'no-soportado' | ExternalFailure
 export type SiuReadError = 'no-encontrado' | ExternalFailure
 
@@ -166,9 +174,15 @@ export type SiuPort = {
   /** Comisiones que dicta un docente. */
   teacherSections(personId: string): Promise<Result<SiuSection[], SiuReadError>>
   /** Inscripciones a cursada. Por defecto las vigentes; con `historic`, todas. */
-  courseEnrollments(personId: string, options?: { historic?: boolean }): Promise<Result<SiuCourseEnrollment[], SiuReadError>>
+  courseEnrollments(
+    personId: string,
+    options?: { historic?: boolean }
+  ): Promise<Result<SiuCourseEnrollment[], SiuReadError>>
   examBoards(filter: SiuExamBoardFilter): Promise<Result<(SiuExamBoard & { enrolled: number })[], ExternalFailure>>
-  examEnrollments(personId: string, options?: { historic?: boolean }): Promise<Result<SiuExamEnrollment[], SiuReadError>>
+  examEnrollments(
+    personId: string,
+    options?: { historic?: boolean }
+  ): Promise<Result<SiuExamEnrollment[], SiuReadError>>
   /** Cronograma de una comisión. Sin `hasAssessmentSchedule` devuelve `no-soportado`. */
   assessments(sectionId: string): Promise<Result<SiuAssessment[], SiuReadError | 'no-soportado'>>
   history(personId: string): Promise<Result<SiuHistoryEntry[], SiuReadError>>

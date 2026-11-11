@@ -1,0 +1,51 @@
+#!/bin/sh
+# Antes de cada push: typecheck y tests de hackai, si lo que pushea toca hackai/.
+# CI corre lo mismo, más el build, en cada PR. Se activa solo con npm install en
+# hackai/ (script prepare). Para saltearlo: git push --no-verify.
+
+raiz=$(git rev-parse --show-toplevel) || exit 1
+
+es_cero() {
+  case $1 in *[!0]*) return 1 ;; *) return 0 ;; esac
+}
+
+toca_hackai=no
+# Git pasa una línea por cada ref: <ref local> <sha local> <ref remota> <sha remota>.
+while read -r _ref_local sha_local _ref_remota sha_remota; do
+  es_cero "$sha_local" && continue  # borra un branch remoto
+  if es_cero "$sha_remota"; then
+    desde=$(git merge-base "$sha_local" origin/main 2>/dev/null) || desde=''
+  else
+    desde=$sha_remota
+  fi
+  if [ -z "$desde" ]; then
+    toca_hackai=si
+  elif cambios=$(git diff --name-only "$desde" "$sha_local" -- hackai/ 2>/dev/null); then
+    [ -n "$cambios" ] && toca_hackai=si
+  else
+    toca_hackai=si  # no tengo el commit remoto: mejor chequear
+  fi
+done
+
+[ "$toca_hackai" = si ] || exit 0
+
+cd "$raiz/hackai" || exit 1
+if [ ! -d node_modules ]; then
+  echo 'pre-push: falta npm install en hackai/, así que salteo typecheck y tests. CI los corre igual.'
+  exit 0
+fi
+
+echo 'pre-push: typecheck y tests de hackai (para saltearlo: git push --no-verify)'
+if ! npm run --silent typecheck; then
+  echo 'pre-push: el typecheck falló. Arreglalo antes de pushear: CI va a fallar igual.'
+  exit 1
+fi
+# La salida de los tests es larga: se muestra solo si algo falla.
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+if ! npm test --silent > "$log" 2>&1; then
+  cat "$log"
+  echo 'pre-push: hay tests que fallan. Arreglalos antes de pushear: CI va a fallar igual.'
+  exit 1
+fi
+echo 'pre-push: typecheck y tests en verde.'

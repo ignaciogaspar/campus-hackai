@@ -4,7 +4,7 @@ import { createMemoryClassroom, type MemoryClassroomOptions } from '@/lib/adapte
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu, type MemorySiuOptions } from '@/lib/adapters/memoria/siu'
-import { syntheticData, type SyntheticData } from '@/lib/adapters/synthetic-data'
+import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
 import { createStudies, type MySubject } from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
@@ -18,7 +18,12 @@ const NOW = syntheticData.now
 function movableClock(start: string) {
   let current = new Date(start)
   const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(current) }
-  return { clock, advance: (minutes: number) => { current = new Date(current.getTime() + minutes * 60_000) } }
+  return {
+    clock,
+    advance: (minutes: number) => {
+      current = new Date(current.getTime() + minutes * 60_000)
+    }
+  }
 }
 
 /** Puerto en memoria que se puede «caer»: con `down`, toda llamada que devuelve una promesa devuelve `falla-externa`. */
@@ -29,10 +34,13 @@ function fallible<P extends object>(port: P) {
       const value = target[key as keyof P]
       if (typeof value !== 'function') return value
       return (...args: unknown[]) => {
-        if (key === 'courseUrl' || key === 'selfServiceUrl') return (value as (...a: unknown[]) => unknown).apply(target, args)
-        return state.down ? Promise.resolve(fail('falla-externa')) : (value as (...a: unknown[]) => unknown).apply(target, args)
+        if (key === 'courseUrl' || key === 'selfServiceUrl')
+          return (value as (...a: unknown[]) => unknown).apply(target, args)
+        return state.down
+          ? Promise.resolve(fail('falla-externa'))
+          : (value as (...a: unknown[]) => unknown).apply(target, args)
       }
-    },
+    }
   })
   return { port: wrapped, state }
 }
@@ -45,20 +53,36 @@ type BuildOptions = {
   classroomOverrides?: Partial<ClassroomPort>
 }
 
-function build(data: SyntheticData = syntheticData, classroomOptions: MemoryClassroomOptions = {}, options: BuildOptions = {}) {
+function build(
+  data: SyntheticData = syntheticData,
+  classroomOptions: MemoryClassroomOptions = {},
+  options: BuildOptions = {}
+) {
   const { clock, advance } = movableClock(data.now)
   const { port: siu, state } = fallible({ ...createMemorySiu(data, clock, options.siu), ...options.siuOverrides })
-  const { port: classroom, state: classroomState } = fallible({ ...createMemoryClassroom(data, classroomOptions), ...options.classroomOverrides })
+  const { port: classroom, state: classroomState } = fallible({
+    ...createMemoryClassroom(data, classroomOptions),
+    ...options.classroomOverrides
+  })
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
   const studies = createStudies({ people, siu, classroom, clock })
   return { studies, siu, classroom, siuState: state, classroomState, advance }
 }
 
 /** Copia del set sintético con una inscripción a cursada de más. */
-function withEnrollment(personSiuId: string, sectionId: string, status: 'aceptada' | 'baja' = 'aceptada'): SyntheticData {
+function withEnrollment(
+  personSiuId: string,
+  sectionId: string,
+  status: 'aceptada' | 'baja' = 'aceptada'
+): SyntheticData {
   const data = structuredClone(syntheticData)
   data.siu.courseEnrollments.push({
-    id: 'ic-extra', transactionNumber: 'T-999999', personId: personSiuId, sectionId, date: data.siu.courseEnrollments[0].date, status,
+    id: 'ic-extra',
+    transactionNumber: 'T-999999',
+    personId: personSiuId,
+    sectionId,
+    date: data.siu.courseEnrollments[0].date,
+    status
   })
   return data
 }
@@ -85,12 +109,14 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     sectionId: 'sec-am1-fi-a',
     sectionName: 'A',
     role: 'alumno',
-    classrooms: [{
-      courseId: 'c-am1-fi-a',
-      name: 'Análisis Matemático I - Comisión A (FI) - Grado 2do Cuatrimestre 2026',
-      url: `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`,
-    }],
-    assignments: [{ name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }],
+    classrooms: [
+      {
+        courseId: 'c-am1-fi-a',
+        name: 'Análisis Matemático I - Comisión A (FI) - Grado 2do Cuatrimestre 2026',
+        url: `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`
+      }
+    ],
+    assignments: [{ name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }]
   })
 })
 
@@ -101,7 +127,10 @@ test('un alumno no ve materias de otra facultad, aunque el SIU lo tenga inscript
   const result = await studies.subjectsOf('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.data.current.map((s) => s.sectionId), ['sec-am1-fi-a', 'sec-pr1-fi-a'])
+  assert.deepEqual(
+    result.value.data.current.map((s) => s.sectionId),
+    ['sec-am1-fi-a', 'sec-pr1-fi-a']
+  )
 })
 
 test('las comisiones de la otra facultad son las de sus propios alumnos', async () => {
@@ -110,8 +139,14 @@ test('las comisiones de la otra facultad son las de sus propios alumnos', async 
   const result = await studies.subjectsOf('p-nherrera')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.data.current.map((s) => s.sectionId), ['sec-am1-fce-a', 'sec-co1-fce-a'])
-  assert.deepEqual(result.value.data.archived.map((s) => s.sectionId), ['sec-iec-fce-a'])
+  assert.deepEqual(
+    result.value.data.current.map((s) => s.sectionId),
+    ['sec-am1-fce-a', 'sec-co1-fce-a']
+  )
+  assert.deepEqual(
+    result.value.data.archived.map((s) => s.sectionId),
+    ['sec-iec-fce-a']
+  )
 })
 
 test('una inscripción dada de baja no aparece entre sus materias', async () => {
@@ -131,7 +166,10 @@ test('una materia de un período lectivo que todavía no empezó va con las actu
   const result = await studies.subjectsOf('p-mcabrera')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.data.current.map((s) => s.termId), ['2c-2026', 'verano-2027'])
+  assert.deepEqual(
+    result.value.data.current.map((s) => s.termId),
+    ['2c-2026', 'verano-2027']
+  )
   assert.deepEqual(result.value.data.archived, [])
 })
 
@@ -141,8 +179,14 @@ test('un docente ve las materias de las comisiones que dicta', async () => {
   const result = await studies.subjectsOf('p-mledesma')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.data.current.map((s) => [s.sectionId, s.role]), [['sec-am1-fi-a', 'profesor']])
-  assert.deepEqual(result.value.data.archived.map((s) => [s.sectionId, s.role]), [['sec-aga-fi-a', 'profesor']])
+  assert.deepEqual(
+    result.value.data.current.map((s) => [s.sectionId, s.role]),
+    [['sec-am1-fi-a', 'profesor']]
+  )
+  assert.deepEqual(
+    result.value.data.archived.map((s) => [s.sectionId, s.role]),
+    [['sec-aga-fi-a', 'profesor']]
+  )
 })
 
 test('con el SIU caído devuelve lo último que leyó, con su hora y marcado como desactualizado', async () => {
@@ -179,7 +223,10 @@ test('sectionsOf devuelve las comisiones del alumno con sus docentes como person
 
   assert.ok(result.ok)
   assert.equal(result.value.stale, false)
-  assert.deepEqual(result.value.data.map((s) => s.sectionId), ['sec-am1-fi-a', 'sec-pr1-fi-a', 'sec-aga-fi-a'])
+  assert.deepEqual(
+    result.value.data.map((s) => s.sectionId),
+    ['sec-am1-fi-a', 'sec-pr1-fi-a', 'sec-aga-fi-a']
+  )
   assert.deepEqual(result.value.data[0], {
     sectionId: 'sec-am1-fi-a',
     name: 'A',
@@ -187,7 +234,7 @@ test('sectionsOf devuelve las comisiones del alumno con sus docentes como person
     schoolId: 'fi',
     termId: '2c-2026',
     role: 'alumno',
-    teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }],
+    teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }]
   })
 })
 
@@ -196,11 +243,20 @@ test('sectionsOf de un docente devuelve las comisiones que dicta, y de un alumno
 
   const docente = await studies.sectionsOf('p-gferreyra')
   assert.ok(docente.ok)
-  assert.deepEqual(docente.value.data.map((s) => [s.sectionId, s.role]), [['sec-am1-fi-b', 'profesor'], ['sec-fi1-fi-v', 'profesor']])
+  assert.deepEqual(
+    docente.value.data.map((s) => [s.sectionId, s.role]),
+    [
+      ['sec-am1-fi-b', 'profesor'],
+      ['sec-fi1-fi-v', 'profesor']
+    ]
+  )
 
   const alumno = await studies.sectionsOf('p-taguirre')
   assert.ok(alumno.ok)
-  assert.equal(alumno.value.data.some((s) => s.schoolId !== 'fi'), false)
+  assert.equal(
+    alumno.value.data.some((s) => s.schoolId !== 'fi'),
+    false
+  )
 })
 
 test('sectionsOf con el SIU caído devuelve lo último que leyó, marcado como desactualizado', async () => {
@@ -211,7 +267,10 @@ test('sectionsOf con el SIU caído devuelve lo último que leyó, marcado como d
   advance(5)
   siuState.down = true
 
-  assert.deepEqual(await studies.sectionsOf('p-lbenitez'), { ok: true, value: { data: first.value.data, readAt: NOW, stale: true } })
+  assert.deepEqual(await studies.sectionsOf('p-lbenitez'), {
+    ok: true,
+    value: { data: first.value.data, readAt: NOW, stale: true }
+  })
 })
 
 // Aula virtual: el enlace a Moodle y las tareas con fecha de cada materia.
@@ -226,12 +285,18 @@ test('cada materia lleva el enlace al aula de su comisión, actual o archivada',
 
   assert.ok(result.ok)
   const { current, archived } = result.value.data
-  assert.deepEqual([...current, ...archived].map((s) => [s.sectionId, s.classrooms.map((c) => c.url)]), [
-    ['sec-am1-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`]],
-    ['sec-pr1-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-pr1-fi-a`]],
-    ['sec-aga-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-aga-fi-a`]],
-  ])
-  assert.deepEqual(archived.map((s) => s.classrooms[0].name), ['Álgebra y Geometría Analítica - Comisión A (FI) - Grado 1er Cuatrimestre 2026'])
+  assert.deepEqual(
+    [...current, ...archived].map((s) => [s.sectionId, s.classrooms.map((c) => c.url)]),
+    [
+      ['sec-am1-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`]],
+      ['sec-pr1-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-pr1-fi-a`]],
+      ['sec-aga-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-aga-fi-a`]]
+    ]
+  )
+  assert.deepEqual(
+    archived.map((s) => s.classrooms[0].name),
+    ['Álgebra y Geometría Analítica - Comisión A (FI) - Grado 1er Cuatrimestre 2026']
+  )
 })
 
 test('las tareas con fecha van ordenadas por fecha, con las vencidas marcadas según el reloj', async () => {
@@ -244,7 +309,7 @@ test('las tareas con fecha van ordenadas por fecha, con las vencidas marcadas se
   assert.deepEqual(tasks(am1), [['Guía 3 resuelta', false]])
   assert.deepEqual(pr1.assignments, [
     { name: 'Entrega del TP integrador', dueDate: '2026-10-17T02:59:00.000Z', source: 'moodle', past: true },
-    { name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false },
+    { name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false }
   ])
 })
 
@@ -252,22 +317,33 @@ test('una tarea pasa a vencida cuando el reloj llega a su fecha', async () => {
   const { studies, advance } = build()
   const before = await studies.subjectsOf('p-taguirre')
   assert.ok(before.ok)
-  assert.deepEqual(tasks(before.value.data.current[1]), [['Entrega del TP integrador', true], ['Ejercicios de recursión', false]])
+  assert.deepEqual(tasks(before.value.data.current[1]), [
+    ['Entrega del TP integrador', true],
+    ['Ejercicios de recursión', false]
+  ])
 
   advance(12 * 24 * 60)
   const after = await studies.subjectsOf('p-taguirre')
 
   assert.ok(after.ok)
-  assert.deepEqual(tasks(after.value.data.current[1]), [['Entrega del TP integrador', true], ['Ejercicios de recursión', true]])
+  assert.deepEqual(tasks(after.value.data.current[1]), [
+    ['Entrega del TP integrador', true],
+    ['Ejercicios de recursión', true]
+  ])
   assert.deepEqual(tasks(after.value.data.current[0]), [['Guía 3 resuelta', true]])
 })
 
 test('las tareas de varios cursos de una misma comisión se juntan y se ordenan por fecha', async () => {
   const data = structuredClone(syntheticData)
-  data.moodle.courses.push({ id: 'c-am1-fi-a-lab', shortName: 'AM1-LAB', fullName: 'Laboratorio de AM1', siuSectionIds: ['sec-am1-fi-a'] })
+  data.moodle.courses.push({
+    id: 'c-am1-fi-a-lab',
+    shortName: 'AM1-LAB',
+    fullName: 'Laboratorio de AM1',
+    siuSectionIds: ['sec-am1-fi-a']
+  })
   data.moodle.assignments.push(
     { id: 't-9', courseId: 'c-am1-fi-a-lab', name: 'Informe de laboratorio', dueDate: '2026-11-12T20:00:00.000Z' },
-    { id: 't-10', courseId: 'c-am1-fi-a', name: 'Guía 4 resuelta', dueDate: '2026-12-01T20:00:00.000Z' },
+    { id: 't-10', courseId: 'c-am1-fi-a', name: 'Guía 4 resuelta', dueDate: '2026-12-01T20:00:00.000Z' }
   )
   const { studies } = build(data)
 
@@ -276,7 +352,11 @@ test('las tareas de varios cursos de una misma comisión se juntan y se ordenan 
   assert.ok(result.ok)
   const am1 = result.value.data.current[0]
   assert.deepEqual(classroomOf(am1), ['c-am1-fi-a', 'c-am1-fi-a-lab'])
-  assert.deepEqual(tasks(am1), [['Informe de laboratorio', false], ['Guía 3 resuelta', false], ['Guía 4 resuelta', false]])
+  assert.deepEqual(tasks(am1), [
+    ['Informe de laboratorio', false],
+    ['Guía 3 resuelta', false],
+    ['Guía 4 resuelta', false]
+  ])
 })
 
 test('las tareas sin fecha no aparecen', async () => {
@@ -292,13 +372,21 @@ test('las tareas sin fecha no aparecen', async () => {
 
 test('las materias archivadas llevan el enlace al aula pero no las tareas', async () => {
   const data = structuredClone(syntheticData)
-  data.moodle.assignments.push({ id: 't-8', courseId: 'c-aga-fi-a', name: 'Entrega final de Álgebra', dueDate: '2026-12-20T20:00:00.000Z' })
+  data.moodle.assignments.push({
+    id: 't-8',
+    courseId: 'c-aga-fi-a',
+    name: 'Entrega final de Álgebra',
+    dueDate: '2026-12-20T20:00:00.000Z'
+  })
   const { studies } = build(data)
 
   const result = await studies.subjectsOf('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.data.archived.map((s) => [s.sectionId, classroomOf(s), s.assignments]), [['sec-aga-fi-a', ['c-aga-fi-a'], []]])
+  assert.deepEqual(
+    result.value.data.archived.map((s) => [s.sectionId, classroomOf(s), s.assignments]),
+    [['sec-aga-fi-a', ['c-aga-fi-a'], []]]
+  )
 })
 
 test('un docente ve el aula y las tareas de las comisiones que dicta', async () => {
@@ -308,7 +396,10 @@ test('un docente ve el aula y las tareas de las comisiones que dicta', async () 
 
   assert.ok(result.ok)
   const [am1] = result.value.data.current
-  assert.deepEqual([am1.sectionId, classroomOf(am1), tasks(am1)], ['sec-am1-fi-a', ['c-am1-fi-a'], [['Guía 3 resuelta', false]]])
+  assert.deepEqual(
+    [am1.sectionId, classroomOf(am1), tasks(am1)],
+    ['sec-am1-fi-a', ['c-am1-fi-a'], [['Guía 3 resuelta', false]]]
+  )
 })
 
 test('una comisión sin curso de Moodle no lleva aula ni tareas', async () => {
@@ -332,7 +423,13 @@ test('si el aula no tiene tareas con fecha, las materias salen con el enlace y s
   assert.ok(result.ok)
   assert.equal(result.value.stale, false)
   const { current } = result.value.data
-  assert.deepEqual(current.map((s) => [classroomOf(s), s.assignments]), [[['c-am1-fi-a'], []], [['c-pr1-fi-a'], []]])
+  assert.deepEqual(
+    current.map((s) => [classroomOf(s), s.assignments]),
+    [
+      [['c-am1-fi-a'], []],
+      [['c-pr1-fi-a'], []]
+    ]
+  )
 })
 
 test('con Moodle caído devuelve lo último que leyó, marcado como desactualizado', async () => {
@@ -364,10 +461,13 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
   const result = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'pr1' })
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.map((o) => [o.target, o.alreadyEnrolled, o.enrollmentOpen]), [
-    [{ kind: 'comision', sectionId: 'sec-pr1-fi-a' }, true, false],
-    [{ kind: 'comision', sectionId: 'sec-pr1-fi-v' }, false, true],
-  ])
+  assert.deepEqual(
+    result.value.map((o) => [o.target, o.alreadyEnrolled, o.enrollmentOpen]),
+    [
+      [{ kind: 'comision', sectionId: 'sec-pr1-fi-a' }, true, false],
+      [{ kind: 'comision', sectionId: 'sec-pr1-fi-v' }, false, true]
+    ]
+  )
   assert.deepEqual(result.value[1], {
     target: { kind: 'comision', sectionId: 'sec-pr1-fi-v' },
     subjectId: 'pr1',
@@ -385,7 +485,7 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
     enrollmentEnd: '2026-12-19T02:59:00.000Z',
     enrollmentOpen: true,
     alreadyEnrolled: false,
-    enrolledElsewhere: 'A',
+    enrolledElsewhere: 'A'
   })
 })
 
@@ -397,8 +497,20 @@ test('la oferta nunca trae comisiones de otra facultad ni de períodos que ya te
   const aga = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'aga' })
 
   assert.ok(fi.ok && fce.ok && aga.ok)
-  assert.deepEqual(fi.value.map((o) => o.target), [{ kind: 'comision', sectionId: 'sec-am1-fi-a' }, { kind: 'comision', sectionId: 'sec-am1-fi-b' }])
-  assert.deepEqual(fce.value.map((o) => o.target), [{ kind: 'comision', sectionId: 'sec-am1-fce-a' }, { kind: 'comision', sectionId: 'sec-am1-fce-v' }])
+  assert.deepEqual(
+    fi.value.map((o) => o.target),
+    [
+      { kind: 'comision', sectionId: 'sec-am1-fi-a' },
+      { kind: 'comision', sectionId: 'sec-am1-fi-b' }
+    ]
+  )
+  assert.deepEqual(
+    fce.value.map((o) => o.target),
+    [
+      { kind: 'comision', sectionId: 'sec-am1-fce-a' },
+      { kind: 'comision', sectionId: 'sec-am1-fce-v' }
+    ]
+  )
   assert.deepEqual(aga.value, [])
 })
 
@@ -413,7 +525,10 @@ const VALENTINA_COURSES = ['c-aga-fi-a', 'c-am1-fi-b']
 async function studentCourses(classroom: ClassroomPort, moodleId: string) {
   const courses = await classroom.coursesOf(moodleId)
   assert.ok(courses.ok)
-  return courses.value.filter((c) => c.role === 'student').map((c) => c.id).sort()
+  return courses.value
+    .filter((c) => c.role === 'student')
+    .map((c) => c.id)
+    .sort()
 }
 
 /** Comisiones en las que el SIU tiene inscripta a una persona. */
@@ -433,8 +548,8 @@ test('inscribirse inscribe en el SIU, matricula en el aula de Moodle y devuelve 
     value: {
       kind: 'inscripto',
       receipt: { transactionNumber: 'T-M000001', date: NOW, target: PR1_VERANO },
-      classroomCourseIds: ['c-pr1-fi-v'],
-    },
+      classroomCourseIds: ['c-pr1-fi-v']
+    }
   })
   assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b', 'sec-pr1-fi-v'])
   assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), [...VALENTINA_COURSES, 'c-pr1-fi-v'])
@@ -451,14 +566,24 @@ test('después de inscribirse, la materia aparece en sus materias y en sus comis
   assert.ok(subjects.ok && sections.ok && offer.ok)
   assert.deepEqual(names(subjects.value.data.current), ['AM1 B', 'PR1 Verano'])
   assert.equal(subjects.value.data.current[1].classrooms[0].courseId, 'c-pr1-fi-v')
-  assert.equal(sections.value.data.some((s) => s.sectionId === 'sec-pr1-fi-v'), true)
-  assert.deepEqual(offer.value.map((o) => o.alreadyEnrolled), [false, true])
+  assert.equal(
+    sections.value.data.some((s) => s.sectionId === 'sec-pr1-fi-v'),
+    true
+  )
+  assert.deepEqual(
+    offer.value.map((o) => o.alreadyEnrolled),
+    [false, true]
+  )
 })
 
 test('si Moodle falla al matricular, se deshace la inscripción del SIU y vuelve «falla externa»', async () => {
-  const { studies, siu, classroom } = build(syntheticData, {}, {
-    classroomOverrides: { enrol: async () => fail('falla-externa') },
-  })
+  const { studies, siu, classroom } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: { enrol: async () => fail('falla-externa') }
+    }
+  )
 
   const result = await studies.enroll('p-vfunes', PR1_VERANO)
 
@@ -468,19 +593,32 @@ test('si Moodle falla al matricular, se deshace la inscripción del SIU y vuelve
   // Deshecha, se puede volver a intentar sin que el SIU diga «ya inscripto».
   const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'pr1' })
   assert.ok(offer.ok)
-  assert.deepEqual(offer.value.map((o) => o.alreadyEnrolled), [false, false])
+  assert.deepEqual(
+    offer.value.map((o) => o.alreadyEnrolled),
+    [false, false]
+  )
 })
 
 test('si la comisión tiene dos aulas y falla la segunda, se desmatricula de la primera y se deshace la del SIU', async () => {
   const data = structuredClone(syntheticData)
-  data.moodle.courses.push({ id: 'c-pr1-fi-v-lab', shortName: 'PR1-LAB', fullName: 'Laboratorio de PR1', siuSectionIds: ['sec-pr1-fi-v'] })
-  const memory = createMemoryClassroom(data)
-  const { studies, siu } = build(data, {}, {
-    classroomOverrides: {
-      ...memory,
-      enrol: async (userId, courseId, role) => courseId === 'c-pr1-fi-v-lab' ? fail('falla-externa') : memory.enrol(userId, courseId, role),
-    },
+  data.moodle.courses.push({
+    id: 'c-pr1-fi-v-lab',
+    shortName: 'PR1-LAB',
+    fullName: 'Laboratorio de PR1',
+    siuSectionIds: ['sec-pr1-fi-v']
   })
+  const memory = createMemoryClassroom(data)
+  const { studies, siu } = build(
+    data,
+    {},
+    {
+      classroomOverrides: {
+        ...memory,
+        enrol: async (userId, courseId, role) =>
+          courseId === 'c-pr1-fi-v-lab' ? fail('falla-externa') : memory.enrol(userId, courseId, role)
+      }
+    }
+  )
 
   const result = await studies.enroll('p-vfunes', PR1_VERANO)
 
@@ -501,7 +639,10 @@ test('sin cupo, fuera de período y ya inscripto vuelven como errores sin tocar 
   const { studies, classroom } = build()
 
   assert.deepEqual(await studies.enroll('p-vfunes', FI1_VERANO), { ok: false, error: 'sin-cupo' })
-  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-pr1-fi-a' }), { ok: false, error: 'fuera-de-periodo' })
+  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-pr1-fi-a' }), {
+    ok: false,
+    error: 'fuera-de-periodo'
+  })
   assert.deepEqual(await studies.enroll('p-mcabrera', FI1_VERANO), { ok: false, error: 'ya-inscripto' })
   assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), VALENTINA_COURSES)
 })
@@ -517,14 +658,26 @@ test('con una comisión vigente de la materia no se puede inscribir en otra, aun
 
   const offer = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'pr1' })
   assert.ok(offer.ok)
-  assert.deepEqual(offer.value.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]), [['A', true, null], ['Verano', false, 'A']])
+  assert.deepEqual(
+    offer.value.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
+    [
+      ['A', true, null],
+      ['Verano', false, 'A']
+    ]
+  )
 })
 
 test('una comisión que no existe o es de otra facultad vuelve «objetivo desconocido»', async () => {
   const { studies, siu } = build()
 
-  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-nada' }), { ok: false, error: 'objetivo-desconocido' })
-  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fce-v' }), { ok: false, error: 'objetivo-desconocido' })
+  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-nada' }), {
+    ok: false,
+    error: 'objetivo-desconocido'
+  })
+  assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fce-v' }), {
+    ok: false,
+    error: 'objetivo-desconocido'
+  })
   assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b'])
   assert.deepEqual(await studies.enroll('p-nadie', PR1_VERANO), { ok: false, error: 'persona-desconocida' })
 })
@@ -536,7 +689,10 @@ test('si el SIU no deja inscribir por API, devuelve «requiere autogestión» co
 
   assert.deepEqual(result, {
     ok: true,
-    value: { kind: 'requiere-autogestion', url: `${syntheticData.siu.selfServiceBaseUrl}/cursada/inscripcion?comision=sec-pr1-fi-v` },
+    value: {
+      kind: 'requiere-autogestion',
+      url: `${syntheticData.siu.selfServiceBaseUrl}/cursada/inscripcion?comision=sec-pr1-fi-v`
+    }
   })
   assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b'])
   assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), VALENTINA_COURSES)
@@ -544,10 +700,19 @@ test('si el SIU no deja inscribir por API, devuelve «requiere autogestión» co
 
 test('si el SIU ya matricula en Moodle, Cursada no matricula por su cuenta', async () => {
   let enrols = 0
-  const { studies } = build(syntheticData, {}, {
-    siu: { capabilities: { enrolsInClassroom: true } },
-    classroomOverrides: { enrol: async () => { enrols++; return fail('falla-externa') } },
-  })
+  const { studies } = build(
+    syntheticData,
+    {},
+    {
+      siu: { capabilities: { enrolsInClassroom: true } },
+      classroomOverrides: {
+        enrol: async () => {
+          enrols++
+          return fail('falla-externa')
+        }
+      }
+    }
+  )
 
   const result = await studies.enroll('p-vfunes', PR1_VERANO)
 
@@ -558,7 +723,18 @@ test('si el SIU ya matricula en Moodle, Cursada no matricula por su cuenta', asy
 
 test('inscribirse a una mesa de examen no matricula en ningún aula', async () => {
   let enrols = 0
-  const { studies } = build(syntheticData, {}, { classroomOverrides: { enrol: async () => { enrols++; return fail('falla-externa') } } })
+  const { studies } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: {
+        enrol: async () => {
+          enrols++
+          return fail('falla-externa')
+        }
+      }
+    }
+  )
 
   const result = await studies.enroll('p-taguirre', { kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' })
 
@@ -575,7 +751,10 @@ test('darse de baja da de baja en el SIU, desmatricula del aula y devuelve el co
 
   const result = await studies.drop('p-mcabrera', FI1_VERANO)
 
-  assert.deepEqual(result, { ok: true, value: { kind: 'baja', receipt: { transactionNumber: 'T-M000001', date: NOW, target: FI1_VERANO } } })
+  assert.deepEqual(result, {
+    ok: true,
+    value: { kind: 'baja', receipt: { transactionNumber: 'T-M000001', date: NOW, target: FI1_VERANO } }
+  })
   assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b'])
   assert.deepEqual(await studentCourses(classroom, MARTIN.moodle), ['c-am1-fi-b'])
   const subjects = await studies.subjectsOf('p-mcabrera')
@@ -598,14 +777,21 @@ test('sin inscripción o fuera de período, la baja vuelve como error sin tocar 
   const { studies, classroom } = build()
 
   assert.deepEqual(await studies.drop('p-vfunes', PR1_VERANO), { ok: false, error: 'no-inscripto' })
-  assert.deepEqual(await studies.drop('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fi-b' }), { ok: false, error: 'fuera-de-periodo' })
+  assert.deepEqual(await studies.drop('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fi-b' }), {
+    ok: false,
+    error: 'fuera-de-periodo'
+  })
   assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), VALENTINA_COURSES)
 })
 
 test('si Moodle falla al desmatricular, la inscripción del SIU queda como estaba y vuelve «falla externa»', async () => {
-  const { studies, siu, classroom } = build(syntheticData, {}, {
-    classroomOverrides: { unenrol: async () => fail('falla-externa') },
-  })
+  const { studies, siu, classroom } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: { unenrol: async () => fail('falla-externa') }
+    }
+  )
 
   assert.deepEqual(await studies.drop('p-mcabrera', FI1_VERANO), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b', 'sec-fi1-fi-v'])
@@ -613,9 +799,13 @@ test('si Moodle falla al desmatricular, la inscripción del SIU queda como estab
 })
 
 test('si el SIU falla al dar de baja, se vuelve a matricular en el aula y vuelve «falla externa»', async () => {
-  const { studies, siu, classroom } = build(syntheticData, {}, {
-    siuOverrides: { drop: async () => fail('falla-externa') },
-  })
+  const { studies, siu, classroom } = build(
+    syntheticData,
+    {},
+    {
+      siuOverrides: { drop: async () => fail('falla-externa') }
+    }
+  )
 
   assert.deepEqual(await studies.drop('p-mcabrera', FI1_VERANO), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b', 'sec-fi1-fi-v'])
@@ -629,17 +819,29 @@ test('si el SIU no deja dar de baja por API, devuelve «requiere autogestión» 
 
   assert.deepEqual(result, {
     ok: true,
-    value: { kind: 'requiere-autogestion', url: `${syntheticData.siu.selfServiceBaseUrl}/cursada/inscripcion?comision=sec-fi1-fi-v` },
+    value: {
+      kind: 'requiere-autogestion',
+      url: `${syntheticData.siu.selfServiceBaseUrl}/cursada/inscripcion?comision=sec-fi1-fi-v`
+    }
   })
   assert.deepEqual(await studentCourses(classroom, MARTIN.moodle), ['c-am1-fi-b', 'c-fi1-fi-v'])
 })
 
 test('si el SIU ya matricula en Moodle, la baja no desmatricula por su cuenta', async () => {
   let unenrols = 0
-  const { studies } = build(syntheticData, {}, {
-    siu: { capabilities: { enrolsInClassroom: true } },
-    classroomOverrides: { unenrol: async () => { unenrols++; return fail('falla-externa') } },
-  })
+  const { studies } = build(
+    syntheticData,
+    {},
+    {
+      siu: { capabilities: { enrolsInClassroom: true } },
+      classroomOverrides: {
+        unenrol: async () => {
+          unenrols++
+          return fail('falla-externa')
+        }
+      }
+    }
+  )
 
   const result = await studies.drop('p-mcabrera', FI1_VERANO)
 
@@ -657,11 +859,23 @@ test('las inscripciones abiertas son las materias de su facultad con un período
   assert.ok(tomas.ok && martin.ok && federico.ok)
   assert.equal(tomas.value.stale, false)
   assert.deepEqual(tomas.value.data, [
-    { kind: 'cursada', subjectId: 'fi1', subjectName: 'Física I', opensAt: '2026-11-02T03:00:00.000Z', closesAt: '2026-12-19T02:59:00.000Z' },
+    {
+      kind: 'cursada',
+      subjectId: 'fi1',
+      subjectName: 'Física I',
+      opensAt: '2026-11-02T03:00:00.000Z',
+      closesAt: '2026-12-19T02:59:00.000Z'
+    }
   ])
-  assert.deepEqual(martin.value.data.map((o) => o.subjectId), ['pr1'])
+  assert.deepEqual(
+    martin.value.data.map((o) => o.subjectId),
+    ['pr1']
+  )
   // Federico, de Ciencias Empresariales, no cursa Análisis Matemático I.
-  assert.deepEqual(federico.value.data.map((o) => o.subjectId), ['am1'])
+  assert.deepEqual(
+    federico.value.data.map((o) => o.subjectId),
+    ['am1']
+  )
 })
 
 test('las inscripciones abiertas con el SIU caído devuelven lo último que se leyó, marcado como desactualizado', async () => {

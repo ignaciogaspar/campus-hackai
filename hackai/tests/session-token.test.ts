@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { SESSION_COOKIE, forgeSessionCookie, verifySessionToken } from '@/lib/session-token'
+import { forgeSessionCookie, SESSION_COOKIE, verifySessionToken } from '@/lib/session-token'
 
 process.env.SESSION_SECRET = 'secreto-solo-para-tests'
 
@@ -17,7 +17,9 @@ test('una cookie forjada se verifica y devuelve persona y rol', () => {
 test('un token alterado o vacío no da sesión', () => {
   const token = tokenOf(forgeSessionCookie('persona-de-prueba', 'profesor'))
   const [body, mac] = token.split('.')
-  const otro = Buffer.from(JSON.stringify({ personId: 'otra', role: 'profesor', exp: 9999999999 })).toString('base64url')
+  const otro = Buffer.from(JSON.stringify({ personId: 'otra', role: 'profesor', exp: 9999999999 })).toString(
+    'base64url'
+  )
   assert.equal(verifySessionToken(`${otro}.${mac}`), null)
   assert.equal(verifySessionToken(`${body}.${mac}x`), null)
   assert.equal(verifySessionToken(''), null)

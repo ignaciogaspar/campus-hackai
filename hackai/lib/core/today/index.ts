@@ -3,7 +3,7 @@
 import type { PersonId } from '@/lib/core/people'
 import type { Spaces, UnreadItem } from '@/lib/core/spaces'
 import type { MySubjects, OpenEnrollment, Studies, UpcomingItem } from '@/lib/core/studies'
-import { notImplemented, type NotImplemented, type Result } from '@/lib/result'
+import { type NotImplemented, notImplemented, type Result } from '@/lib/result'
 
 export type TodayView = {
   subjects: MySubjects
@@ -26,6 +26,6 @@ export type TodayDeps = {
 
 export function createToday(_deps: TodayDeps): Today {
   return {
-    today: notImplemented,
+    today: notImplemented
   }
 }

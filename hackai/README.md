@@ -15,12 +15,58 @@ npm run dev                            # http://localhost:3000
 Chequeos:
 
 ```bash
+npm run lint           # Biome: formato, lint y orden de imports
+npm run lint:arreglar  # arregla lo que Biome puede arreglar solo
 npm run typecheck      # tsc --noEmit -p .
 npm test               # node:test + tsx sobre tests/**/*.test.ts
 npm run build
 ```
 
+La configuración de Biome está en `biome.json` y repite las convenciones de `AGENTS.md`; por qué Biome: ADR 0007. Una función con complejidad cognitiva mayor a 15 no pasa el lint: se parte en funciones más chicas. Las ocho que ya la superaban llevan un `biome-ignore` con su puntaje hasta que se refactoricen.
+
+Si tu branch venía de antes del formateo con Biome y choca con `main`, quedate con tu versión del archivo y corré `npm run lint:arreglar`.
+
 `npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22. El glob va entre comillas dobles para que lo expanda Node y no el shell: así funciona igual con cmd en Windows y con sh.
+
+## CI
+
+Cada PR a `main` corre en GitHub Actions (`.github/workflows/`):
+
+| Workflow | Cuándo | Qué hace |
+| --- | --- | --- |
+| `ci.yml` | Si cambia código de `hackai/` | `npm ci`, Biome (con anotaciones en el diff), typecheck, tests, build y una prueba de humo: levanta el servidor standalone y pide `/api/health` y `/`. Sin secretos: usa los adaptadores en memoria. |
+| `reglas.yml` | En todos los PRs, también los de docs | `scripts/checks/reglas.sh`: las reglas duras de `AGENTS.md` que se ven en git. Un commit que toca `campus/` no toca nada más, no hay tablas `siu_*` ni `moodle_*` en `supabase/migrations/`, cada tabla activa RLS sin políticas, un paquete nuevo viene con su ADR y no hay `.env` ni claves en el diff. Antes corre `reglas.test.sh`, que prueba cada regla. |
+| `claude-review.yml` | Al abrir o reabrir un PR, o al pasarlo de draft a listo | Review de Claude según [`docs/agents/review.md`](../docs/agents/review.md): contra la issue que cierra el PR, las reglas de `AGENTS.md` y los bugs, con un comentario en línea por hallazgo y un resumen. Corre una vez por PR. |
+| `claude.yml` | Cuando alguien comenta `@claude` en un PR o una issue | Claude responde: «@claude revisá de nuevo» pide otra review con la misma guía. |
+
+Para que la review mejore se corrige la guía, `docs/agents/review.md`: lo que marcó de más va en «Qué queda afuera» y lo que se le escapó, en «Qué mirar». Se puede pedir en el mismo PR: «@claude sumá a docs/agents/review.md que…».
+
+Si una regla falla, el mensaje dice cuál es y cómo arreglarla. Para correrlas a mano:
+
+```bash
+sh scripts/checks/reglas.sh origin/main   # los commits de tu branch
+sh scripts/checks/reglas.test.sh          # prueba cada regla
+```
+
+### Ganchos locales
+
+`npm install` en `hackai/` activa los ganchos de `.githooks/` con el script `prepare` (`git config core.hooksPath .githooks`). No hay que instalar nada más.
+
+- `pre-commit`: `reglas.sh --staged` sobre lo que vas a commitear y, si toca código de `hackai/`, Biome sobre esos archivos. Tarda menos de un segundo.
+- `pre-push`: typecheck y tests, si lo que pusheás toca `hackai/`. Unos 5 segundos.
+
+Se saltean con `--no-verify`. CI corre lo mismo en GitHub, así que un PR que rompe algo queda en rojo igual.
+
+### Activar la review de Claude
+
+Lo hace una vez un admin del repo:
+
+1. Instalar la GitHub App de Claude en el repo: <https://github.com/apps/claude>.
+2. Cargar uno de estos secretos en Settings → Secrets and variables → Actions:
+   - `ANTHROPIC_API_KEY`: una clave de la Console de Anthropic. Se paga por uso.
+   - `CLAUDE_CODE_OAUTH_TOKEN`: sale de `claude setup-token` y se descuenta de la suscripción de quien lo genera.
+
+Sin secreto, los dos workflows de Claude avisan y terminan en verde. `claude.yml` corre desde `main`: `@claude` empieza a responder cuando ese archivo está mergeado.
 
 ## SIU simulado
 

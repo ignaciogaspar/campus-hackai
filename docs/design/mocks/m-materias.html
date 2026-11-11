@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Materias · HackAI</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="ui.css">
+<script src="data.js"></script>
+<script src="app.js"></script>
+</head>
+<body data-active="materias" data-title="Tus materias" data-kicker="Grado 2do Cuatrimestre 2026">
+<main id="page"></main>
+<script>
+/* Materias, en tres vistas:
+   - Cursando: las del cuatrimestre, en mosaico.
+   - Falta final: regularizadas sin final aprobado; solo lo que falta para cerrarlas.
+   - Aprobadas: lista compacta por año de la carrera, plegada salvo el último año,
+     para que no sea una pared de materias en quinto año.
+   ?vista=cursando | final | aprobadas, ?carga=alta (7 materias) */
+window.render = function (P) {
+  const { icon, origen } = UI
+  const D = UI.set()
+  const vista = P.get('vista', 'cursando')
+  const totalAprobadas = D.aprobadas.reduce((n, a) => n + a.items.length, 0)
+
+  const cursando = `
+    <div class="mosaico">${D.materias.map((m, i) => `
+      <a class="materia" href="m-espacio.html">
+        <span class="materia-sigla ${i % 2 ? 'alt' : ''}">${m.sigla}</span>
+        ${m.noLeidos ? `<span class="count" aria-label="${m.noLeidos} sin leer">${m.noLeidos}</span>` : ''}
+        <span class="row-title">${m.nombre}</span>
+        <span class="xs muted">Comisión ${m.comision} · ${m.docente}</span>
+        <span class="xs muted">${m.proximo}</span>
+      </a>`).join('')}
+    </div>`
+
+  const final = D.faltaFinal.length === 0
+    ? `<div class="empty">${icon('check')}<strong>No te falta ningún final</strong>Cuando regularices una materia y te quede el final, aparece acá con la fecha de la próxima mesa.</div>`
+    : `<ul class="card list">${D.faltaFinal.map((m) => `
+      <li><div class="row">
+        <span class="materia-sigla archivada">${m.sigla}</span>
+        <span class="row-body">
+          <span class="row-title">${m.nombre}</span>
+          <span class="xs muted">${m.regular}</span>
+          <span class="row-meta">${origen('siu')}${m.mesa.inscripto ? `<span class="chip chip-ok">${icon('check', 'icon-sm')} ${P.carga === 'alta' ? 'Inscripta' : 'Inscripto'}</span>` : '<span class="chip chip-alerta">Mesa abierta</span>'}</span>
+          <span class="small">${m.mesa.texto}</span>
+          <span class="xs muted">${m.vence}</span>
+        </span>
+        ${m.mesa.inscripto ? `<a class="link small" href="m-espacio.html?tab=material">Material</a>` : '<a class="btn btn-sm btn-primary" href="#">Inscribirme</a>'}
+      </div></li>`).join('')}
+    </ul>
+    <p class="sec-note">Mientras te falte el final, seguís entrando al espacio de la materia y a su material.</p>`
+
+  const aprobadas = `
+    <div class="stack">${D.aprobadas.map((a, i) => `
+      <details class="card seccion-mat" ${i === 0 ? 'open' : ''}>
+        <summary>${icon('chevron', 'icon-sm')} ${a.anio}<span class="xs muted">${a.items.length} ${a.items.length === 1 ? 'materia' : 'materias'}</span></summary>
+        <ul class="list">${a.items.map((m) => `
+          <li><div class="aprobada">
+            <span class="row-body"><span class="row-title small">${m.nombre}</span><span class="xs muted">${m.como} · ${m.fecha}</span></span>
+            <span class="nota" aria-label="Nota ${m.nota}">${m.nota}</span>
+          </div></li>`).join('')}
+        </ul>
+      </details>`).join('')}
+    </div>
+    <p class="sec-note">Notas del acta del SIU. El promedio y la historia académica completa están en Académico.</p>`
+
+  const vistas = [['cursando', 'Cursando', D.materias.length], ['final', 'Falta final', D.faltaFinal.length], ['aprobadas', 'Aprobadas', totalAprobadas]]
+  const paneles = { cursando, final, aprobadas }
+  return `
+    <div class="segmentado" role="tablist" aria-label="Tus materias">
+      ${vistas.map(([id, t, n]) => `<button role="tab" id="tb-${id}" aria-controls="p-${id}" aria-selected="${id === vista}" type="button">${t} <span class="seg-n">${n}</span></button>`).join('')}
+    </div>
+    ${vistas.map(([id]) => `<div class="stack" id="p-${id}" role="tabpanel" aria-labelledby="tb-${id}" data-panel ${id === vista ? '' : 'hidden'}>${paneles[id]}</div>`).join('')}`
+}
+</script>
+</body>
+</html>

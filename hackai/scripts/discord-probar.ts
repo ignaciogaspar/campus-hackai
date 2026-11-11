@@ -11,6 +11,7 @@
    texto de los mensajes ni el token. */
 import { compose } from '@/lib/composition'
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 23 (máximo 15). Se refactoriza después de la demo (#30).
 async function main() {
   const [channelId, flag] = process.argv.slice(2)
   if (!channelId || !/^\d+$/.test(channelId)) {
@@ -28,7 +29,9 @@ async function main() {
   if (!page.ok) return stop('leer', page.error)
   console.log(`Leídos ${page.value.messages.length} mensajes; cursor ${page.value.cursor}`)
   for (const m of page.value.messages.slice(-10)) {
-    console.log(`  ${m.id}  autor ${m.author.id}${m.author.isBot ? ' (bot)' : ''}${m.viaWebhook ? ' (webhook)' : ''}  ${m.text.length} caracteres  ${m.attachments.length} adjuntos  hilo ${m.threadId ?? '-'}`)
+    console.log(
+      `  ${m.id}  autor ${m.author.id}${m.author.isBot ? ' (bot)' : ''}${m.viaWebhook ? ' (webhook)' : ''}  ${m.text.length} caracteres  ${m.attachments.length} adjuntos  hilo ${m.threadId ?? '-'}`
+    )
   }
   if (page.value.messages.length > 0 && page.value.messages.every((m) => m.text === '' && m.attachments.length === 0)) {
     console.warn('Todos los mensajes llegaron vacíos: falta activar el intent Message Content del bot.')
@@ -37,7 +40,11 @@ async function main() {
   const attachment = page.value.messages.flatMap((m) => m.attachments).at(-1)
   if (attachment) {
     const file = await discord.download(attachment)
-    console.log(file.ok ? `Adjunto ${attachment.id} bajado: ${file.value.bytes.byteLength} bytes` : `Adjunto ${attachment.id}: ${file.error}`)
+    console.log(
+      file.ok
+        ? `Adjunto ${attachment.id} bajado: ${file.value.bytes.byteLength} bytes`
+        : `Adjunto ${attachment.id}: ${file.error}`
+    )
   }
 
   if (flag === '--solo-leer') return
@@ -55,9 +62,11 @@ async function main() {
   if (!next.ok) return stop('releer', next.error)
   const ids = next.value.messages.map((m) => m.id)
   const both = ids.includes(posted.value.id) && ids.includes(reply.value.id)
-  console.log(both
-    ? `Releer desde el cursor trae el mensaje y la respuesta: OK (${ids.length} mensajes nuevos en total)`
-    : `Releer desde el cursor trajo ${ids.join(', ') || 'nada'}`)
+  console.log(
+    both
+      ? `Releer desde el cursor trae el mensaje y la respuesta: OK (${ids.length} mensajes nuevos en total)`
+      : `Releer desde el cursor trajo ${ids.join(', ') || 'nada'}`
+  )
   if (!both) process.exitCode = 1
 }
 

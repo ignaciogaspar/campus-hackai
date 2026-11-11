@@ -30,10 +30,10 @@ import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
-import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
+import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
-import { syntheticData, type SyntheticData } from '@/lib/adapters/synthetic-data'
+import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople, type People } from '@/lib/core/people'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
 import { createStudies, type Studies } from '@/lib/core/studies'
@@ -53,7 +53,7 @@ const ADAPTERS = {
   classroom: { variable: 'HACKAI_CLASSROOM', values: ['memoria', 'simulado'] },
   externalChannel: { variable: 'HACKAI_EXTERNAL_CHANNEL', values: ['memoria', 'discord'] },
   files: { variable: 'HACKAI_FILES', values: ['memoria'] },
-  clock: { variable: 'HACKAI_CLOCK', values: ['memoria', 'sistema'] },
+  clock: { variable: 'HACKAI_CLOCK', values: ['memoria', 'sistema'] }
 } as const
 
 type PortName = keyof typeof ADAPTERS
@@ -106,23 +106,26 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     classroom: choose(env, 'classroom'),
     externalChannel: choose(env, 'externalChannel'),
     files: choose(env, 'files'),
-    clock: choose(env, 'clock'),
+    clock: choose(env, 'clock')
   }
 
   const clock = adapters.clock === 'sistema' ? createSystemClock() : createFixedClock(data.now)
   const ports: Ports = {
     identity: createMemoryIdentity(data),
-    siu: adapters.siu === 'simulado'
-      ? createSimulatedSiu({ client: supabaseFromEnv(env), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
-      : createMemorySiu(data, clock),
-    classroom: adapters.classroom === 'simulado'
-      ? createSimulatedMoodle({ client: supabaseFromEnv(env), baseUrl: data.moodle.baseUrl })
-      : createMemoryClassroom(data),
-    externalChannel: adapters.externalChannel === 'discord'
-      ? createDiscordExternalChannel({ token: required(env, 'DISCORD_BOT_TOKEN', 'HACKAI_EXTERNAL_CHANNEL=discord') })
-      : createMemoryExternalChannel(data, clock),
+    siu:
+      adapters.siu === 'simulado'
+        ? createSimulatedSiu({ client: supabaseFromEnv(env), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
+        : createMemorySiu(data, clock),
+    classroom:
+      adapters.classroom === 'simulado'
+        ? createSimulatedMoodle({ client: supabaseFromEnv(env), baseUrl: data.moodle.baseUrl })
+        : createMemoryClassroom(data),
+    externalChannel:
+      adapters.externalChannel === 'discord'
+        ? createDiscordExternalChannel({ token: required(env, 'DISCORD_BOT_TOKEN', 'HACKAI_EXTERNAL_CHANNEL=discord') })
+        : createMemoryExternalChannel(data, clock),
     files: createMemoryFiles(),
-    clock,
+    clock
   }
 
   const people = createPeople({ identity: ports.identity, siu: ports.siu, store: createMemoryPeopleStore(data) })
@@ -133,7 +136,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     externalChannel: ports.externalChannel,
     classroom: ports.classroom,
     files: ports.files,
-    clock,
+    clock
   })
   const today = createToday({ studies, spaces })
 
