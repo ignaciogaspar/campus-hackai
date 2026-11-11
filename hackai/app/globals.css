@@ -76,14 +76,15 @@ body {
   line-height: 1.5;
 }
 
-a { color: var(--azul); }
+@layer base {
+  a { color: var(--azul); }
+}
 
 .page { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
 .page-head { margin-bottom: 24px; }
 .page-head h1 { margin: 4px 0 8px; font-size: 1.75rem; line-height: 1.2; }
 .seccion { margin-top: 32px; }
 .card { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
-.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .kicker { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--azul); }
@@ -137,6 +138,9 @@ a { color: var(--azul); }
   --color-success: var(--success);
   --color-success-background: var(--success-background);
   --color-navy: var(--navy);
+  --color-azul: var(--azul);
+  --color-naranja: var(--naranja);
+  --color-tinta: var(--tinta);
   --color-azul-claro: var(--azul-claro);
   --color-azul-hondo: var(--azul-hondo);
   --color-origin-hackai: var(--origin-hackai);
