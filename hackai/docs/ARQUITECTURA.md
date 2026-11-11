@@ -51,7 +51,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta.
 
-Usa los puertos del SIU, del aula virtual y el reloj.
+Usa Personas y los puertos del SIU, del aula virtual y el reloj.
 
 ### Espacios (`spaces`)
 
@@ -96,12 +96,13 @@ Compone Cursada y Espacios. No tiene almacén propio.
 ### Dependencias entre módulos
 
 ```text
-today ──► studies
-  │          ▲
-  └──► spaces ┘
-          │
-          └──► people
+today ──► studies ──► people
+  │          ▲          ▲
+  └──► spaces ┘          │
+          └──────────────┘
 ```
+
+Cursada usa Personas solo para traducir una persona a sus ids del SIU y de Moodle (`accountIn`), porque los puertos hablan en ids de cada sistema.
 
 No hay ciclos. Si un módulo nuevo necesita llamar a uno que lo llama, el diseño está mal: se revisa antes de escribir código.
 
