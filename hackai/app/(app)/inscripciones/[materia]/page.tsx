@@ -2,14 +2,14 @@
    docentes, y el botón para inscribirse en un paso o darse de baja. Qué
    comisiones se ofrecen, si la inscripción está abierta y si ya está
    inscripto lo decide Cursada. */
-import { ArrowLeft, CalendarClock, CalendarX, MapPin, UserRound, Users } from 'lucide-react'
+import { CalendarClock, CalendarX, MapPin, UserRound, Users } from 'lucide-react'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
 import { shortDate } from '@/components/dates'
 import { capacityText, modalityName, scheduleLine } from '@/components/enrollment/format'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { SectionActions } from '@/components/enrollment/section-actions'
+import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -43,7 +43,7 @@ function SectionCard({ item }: { item: OfferItem }) {
   return (
     <li
       className={cn(
-        'flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-xs',
+        'flex flex-col gap-3 rounded-[22px] bg-card p-4 shadow-card',
         !item.enrollmentOpen && 'bg-muted/60 shadow-none'
       )}
     >
@@ -115,34 +115,24 @@ export default async function OfertaPage({ params }: { params: Promise<{ materia
   const subjectName = result.ok ? result.value[0]?.subjectName : undefined
 
   return (
-    <main className='mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-6 pb-16'>
-      <header className='flex flex-col gap-2'>
-        <Link
-          href='/inscripciones'
-          className='-ml-1 inline-flex min-h-11 items-center gap-1 self-start text-sm font-semibold text-primary'
-        >
-          <ArrowLeft aria-hidden className='size-4' />
-          Inscripciones
-        </Link>
-        <div>
-          <p className='text-xs font-bold tracking-widest text-primary uppercase'>Elegí tu comisión</p>
-          <h1 className='mt-1 text-2xl leading-tight font-bold'>{subjectName ?? 'Comisiones'}</h1>
-        </div>
-      </header>
+    <>
+      <PageHeader title={subjectName ?? 'Comisiones'} kicker='Elegí tu comisión' backHref='/inscripciones' />
 
-      {!result.ok ? (
-        <ErrorNotice>{readErrorText(result.error, 'las comisiones')}</ErrorNotice>
-      ) : result.value.length === 0 ? (
-        <EmptyState icon={CalendarX} title='Sin comisiones'>
-          Esta materia no tiene comisiones abiertas en tu facultad.
-        </EmptyState>
-      ) : (
-        <ul className='flex flex-col gap-3'>
-          {result.value.map((item) => (
-            <SectionCard key={item.target.kind === 'comision' ? item.target.sectionId : item.name} item={item} />
-          ))}
-        </ul>
-      )}
-    </main>
+      <main className='mx-auto flex w-full max-w-280 flex-col gap-6 px-4 pt-5 pb-16 lg:px-10 lg:pt-8'>
+        {!result.ok ? (
+          <ErrorNotice>{readErrorText(result.error, 'las comisiones')}</ErrorNotice>
+        ) : result.value.length === 0 ? (
+          <EmptyState icon={CalendarX} title='Sin comisiones'>
+            Esta materia no tiene comisiones abiertas en tu facultad.
+          </EmptyState>
+        ) : (
+          <ul className='grid gap-3 lg:grid-cols-2 lg:items-start'>
+            {result.value.map((item) => (
+              <SectionCard key={item.target.kind === 'comision' ? item.target.sectionId : item.name} item={item} />
+            ))}
+          </ul>
+        )}
+      </main>
+    </>
   )
 }
