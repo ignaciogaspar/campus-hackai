@@ -26,7 +26,7 @@ export function ChannelTabs({ subjectId, channels, selectedId, canManage, creati
   const several = hasSeveralSections(channels)
   return (
     <nav aria-label='Canales del espacio' className='lg:sticky lg:top-4'>
-      <ArrowKeysList className='-mx-4 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:rounded-[22px] lg:bg-card lg:p-2 lg:shadow-card [&::-webkit-scrollbar]:hidden'>
+      <ArrowKeysList className='relative -mx-4 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:rounded-[22px] lg:bg-card lg:p-2 lg:shadow-card [&::-webkit-scrollbar]:hidden'>
         {channels.map((c) => {
           const selected = c.id === selectedId && !creating
           return (

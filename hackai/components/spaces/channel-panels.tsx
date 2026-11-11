@@ -144,7 +144,7 @@ function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & {
   ]
   return (
     <nav aria-label='Filtrar consultas'>
-      <ArrowKeysList className='-mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:px-0'>
+      <ArrowKeysList className='relative -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:px-0'>
         {options.map(([value, label]) => (
           <li key={value} className='flex'>
             <Link
