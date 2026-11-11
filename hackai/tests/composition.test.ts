@@ -31,11 +31,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
 test('cada módulo expone su interfaz completa y lo que falta devuelve «no implementado»', async () => {
   const { spaces } = compose({})
   const p = 'persona'
-  const calls = [
-    spaces.openDirect(p, 'otra'),
-    spaces.link(p, 'c', { system: 'discord', channelId: 'd' }),
-    spaces.syncAll()
-  ]
+  const calls = [spaces.link(p, 'c', { system: 'discord', channelId: 'd' }), spaces.syncAll()]
   for (const result of await Promise.all(calls)) {
     assert.deepEqual(result, { ok: false, error: 'no-implementado' })
   }

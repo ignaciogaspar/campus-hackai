@@ -136,6 +136,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 17. ¿Se puede escribir un mensaje directo en una materia archivada?
+
+- **Por qué importa:** quien ya terminó de cursar puede necesitar escribirle al docente, por ejemplo antes de rendir el final, pero los espacios y sus mensajes directos se archivan al cerrar el cuatrimestre (#7).
+- **Hipótesis:** desde el issue #19, `openDirect` acepta cualquier comisión en común del espacio, actual o archivada, como el resto del espacio: quien dictó una comisión archivada sigue escribiendo en sus `#avisos`. Como las novedades cuentan solo las comisiones actuales, un mensaje directo en una materia archivada no llega a la campana.
+- **Opciones:** como está; solo con una comisión actual en común; dejar leer pero no escribir en un espacio archivado.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

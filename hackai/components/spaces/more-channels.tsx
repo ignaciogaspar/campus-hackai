@@ -2,8 +2,8 @@
 
 /* «Más» del riel de canales en el celular: los canales que no entran en el
    riel, en una hoja que sube desde abajo, y «Crear canal» para el docente.
-   Si el canal elegido es uno de estos, la pieza del riel lo nombra y queda en
-   relieve. */
+   Si el canal elegido es uno de estos, la pieza del riel lo nombra, con su
+   ícono, y queda en relieve. */
 import { Hash, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { ChannelIcon } from '@/components/spaces/channel-icon'
@@ -38,7 +38,13 @@ export function MoreChannels({ channels, createHref, creating }: Props) {
   return (
     <Sheet>
       <SheetTrigger className={railItem({ size: 'md' })} aria-current={current ? 'page' : undefined}>
-        {creating ? <Plus aria-hidden='true' strokeWidth={1.8} /> : <Hash aria-hidden='true' strokeWidth={1.8} />}
+        {creating ? (
+          <Plus aria-hidden='true' strokeWidth={1.8} />
+        ) : selected ? (
+          <ChannelIcon kind={selected.kind} />
+        ) : (
+          <Hash aria-hidden='true' strokeWidth={1.8} />
+        )}
         <span className='max-w-full truncate px-1'>{creating ? 'Canal nuevo' : (selected?.label ?? 'Más')}</span>
         {!selected && <UnreadCount count={unread} className='absolute top-1 right-[calc(50%-28px)]' />}
       </SheetTrigger>

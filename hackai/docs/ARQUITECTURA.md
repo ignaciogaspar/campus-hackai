@@ -70,7 +70,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |
 | `addMaterial(persona, espacio, archivo)` | Sube un archivo al material, con Archivos, en la unidad o el tema que elige el docente |
 | `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
-| `openDirect(persona, otraPersona)` | Canal directo entre alumno y docente |
+| `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
 | `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |

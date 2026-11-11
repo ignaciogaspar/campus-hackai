@@ -583,7 +583,8 @@ test('el docente crea un canal de la materia, que ven todos, o de su comisión, 
       unread: 0,
       canPost: true,
       canResolve: true,
-      externalLink: null
+      externalLink: null,
+      counterpart: null
     }
   )
   const forSection = await spaces.createChannel('p-mledesma', ids.spaceId, {
@@ -1016,4 +1017,208 @@ test('quien se inscribe en una comisión ve enseguida los canales de su espacio'
   assert.deepEqual(labels(opened.value.channels), ['#avisos (Verano)', '#consultas (Verano)', '#material'])
   assert.equal(named(opened.value, 'avisos', 'Verano').kind, 'avisos')
   assert.equal(named(opened.value, 'consultas', 'Verano').kind, 'consultas')
+})
+
+// Canales directos (#19). En el set, Ledesma dicta la A de AM1 (Tomás, Lucía y
+// Joaquín) y Ferreyra la B (Martín, Sofía y Valentina). Joaquín y Martín
+// también cursan Física I de verano con Ferreyra.
+
+test('el alumno abre un canal directo con un docente de su comisión, le escribe y el docente le responde', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+
+  const opened = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    { ...opened.value, id: undefined },
+    {
+      id: undefined,
+      spaceId,
+      name: 'directo',
+      kind: 'directo',
+      scope: { kind: 'directo', personIds: ['p-mledesma', 'p-taguirre'] },
+      sectionName: null,
+      unread: 0,
+      canPost: true,
+      canResolve: false,
+      externalLink: null,
+      counterpart: { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }
+    }
+  )
+  const directId = opened.value.id
+  const asked = await spaces.post('p-taguirre', directId, { text: '¿Puedo rendir el recuperatorio otro día?' })
+  assert.ok(asked.ok)
+  assert.equal(asked.value.question, null)
+
+  const seen = await spaces.channel('p-mledesma', directId)
+  assert.ok(seen.ok)
+  assert.deepEqual(seen.value.channel.counterpart, { personId: 'p-taguirre', name: 'Tomás Aguirre', role: 'alumno' })
+  assert.deepEqual(
+    seen.value.threads.map((t) => [t.message.author.personId, t.message.text, t.message.unread]),
+    [['p-taguirre', '¿Puedo rendir el recuperatorio otro día?', true]]
+  )
+  const answered = await spaces.post('p-mledesma', directId, { text: 'Sí, escribime la semana que viene.' })
+  assert.ok(answered.ok)
+
+  const back = await spaces.channel('p-taguirre', directId)
+  assert.ok(back.ok)
+  assert.deepEqual(
+    back.value.threads.map((t) => [t.message.author.name, t.message.text]),
+    [
+      ['Tomás Aguirre', '¿Puedo rendir el recuperatorio otro día?'],
+      ['Mariana Ledesma', 'Sí, escribime la semana que viene.']
+    ]
+  )
+})
+
+test('no hay canal directo entre dos alumnos, entre dos docentes ni con un docente de otra comisión', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  const direct = async (personId: string, otherPersonId: string, space = spaceId) => {
+    const opened = await spaces.openDirect(personId, space, otherPersonId)
+    return opened.ok ? 'ok' : opened.error
+  }
+
+  // Lucía es de la misma comisión que Tomás, pero es alumna.
+  assert.equal(await direct('p-taguirre', 'p-lbenitez'), 'solo-alumno-docente')
+  assert.equal(await direct('p-mledesma', 'p-gferreyra'), 'solo-alumno-docente')
+  assert.equal(await direct('p-taguirre', 'p-taguirre'), 'solo-alumno-docente')
+  // Ferreyra dicta la B; Tomás es de la A.
+  assert.equal(await direct('p-taguirre', 'p-gferreyra'), 'sin-comision-en-comun')
+  assert.equal(await direct('p-gferreyra', 'p-taguirre'), 'sin-comision-en-comun')
+  // Joaquín y Ferreyra comparten Física I, no una comisión de AM1.
+  assert.equal(await direct('p-jescobar', 'p-gferreyra'), 'sin-comision-en-comun')
+  // Alguien de la materia en otra facultad, o que no existe.
+  assert.equal(await direct('p-taguirre', 'p-cbustos'), 'sin-comision-en-comun')
+  assert.equal(await direct('p-taguirre', 'p-nadie'), 'sin-comision-en-comun')
+  // Quien abre tiene que ser del espacio.
+  assert.equal(await direct('p-agimenez', 'p-mledesma'), 'sin-acceso')
+  assert.equal(await direct('p-nadie', 'p-mledesma'), 'persona-desconocida')
+  assert.equal(await direct('p-taguirre', 'p-mledesma', 'sp-nada'), 'espacio-desconocido')
+
+  // Ninguno de los intentos dejó un canal directo.
+  const opened = await spaces.open('p-taguirre', 'am1')
+  assert.ok(opened.ok)
+  assert.equal(
+    opened.value.channels.some((c) => c.kind === 'directo'),
+    false
+  )
+})
+
+test('el canal directo es uno por par y por espacio, lo abra quien lo abra', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+
+  const first = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  const again = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  const fromTeacher = await spaces.openDirect('p-mledesma', spaceId, 'p-taguirre')
+
+  assert.ok(first.ok && again.ok && fromTeacher.ok)
+  assert.equal(again.value.id, first.value.id)
+  assert.equal(fromTeacher.value.id, first.value.id)
+  assert.deepEqual(fromTeacher.value.counterpart, { personId: 'p-taguirre', name: 'Tomás Aguirre', role: 'alumno' })
+  // Martín y Ferreyra comparten AM1 B y Física I de verano: un canal en cada espacio.
+  const physics = await spaces.open('p-gferreyra', 'fi1')
+  assert.ok(physics.ok)
+  const inAm1 = await spaces.openDirect('p-mcabrera', spaceId, 'p-gferreyra')
+  const inPhysics = await spaces.openDirect('p-mcabrera', physics.value.space.id, 'p-gferreyra')
+  assert.ok(inAm1.ok && inPhysics.ok)
+  assert.notEqual(inAm1.value.id, inPhysics.value.id)
+  assert.equal(inPhysics.value.spaceId, physics.value.space.id)
+})
+
+test('el canal directo y sus adjuntos los ven solo sus dos personas', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  const opened = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  assert.ok(opened.ok)
+  const directId = opened.value.id
+  const posted = await spaces.post('p-taguirre', directId, {
+    text: 'Le mando el certificado.',
+    attachments: [{ name: 'certificado.pdf', contentType: 'application/pdf', bytes: new Uint8Array([7]) }]
+  })
+  assert.ok(posted.ok)
+  const fileId = posted.value.attachments[0].url.split('/')[2]
+
+  // Los dos lo ven al final de sus canales, con el nombre del otro.
+  const asStudent = await spaces.open('p-taguirre', 'am1')
+  const asTeacher = await spaces.open('p-mledesma', 'am1')
+  assert.ok(asStudent.ok && asTeacher.ok)
+  assert.equal(asStudent.value.channels.at(-1)?.counterpart?.name, 'Mariana Ledesma')
+  assert.equal(asTeacher.value.channels.at(-1)?.counterpart?.name, 'Tomás Aguirre')
+  assert.ok((await spaces.file('p-mledesma', fileId)).ok)
+
+  // Ni otra alumna de la comisión ni el docente de la otra lo ven.
+  for (const personId of ['p-lbenitez', 'p-gferreyra']) {
+    const other = await spaces.open(personId, 'am1')
+    assert.ok(other.ok)
+    assert.equal(
+      other.value.channels.some((c) => c.id === directId),
+      false,
+      personId
+    )
+    assert.deepEqual(await spaces.channel(personId, directId), { ok: false, error: 'sin-acceso' }, personId)
+    assert.deepEqual(await spaces.post(personId, directId, { text: 'Hola' }), { ok: false, error: 'sin-acceso' })
+    assert.deepEqual(await spaces.file(personId, fileId), { ok: false, error: 'sin-acceso' }, personId)
+  }
+})
+
+test('los mensajes directos sin leer aparecen como novedad solo para quien los recibe', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  const opened = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  assert.ok(opened.ok)
+  const directId = opened.value.id
+  await spaces.post('p-taguirre', directId, { text: '¿Puedo rendir el recuperatorio otro día?' })
+
+  const forTeacher = await spaces.unreadFor('p-mledesma')
+  assert.ok(forTeacher.ok)
+  assert.deepEqual(
+    forTeacher.value.filter((u) => u.kind === 'directo').map((u) => [u.channelId, u.subjectId, u.count, u.latest.text]),
+    [[directId, 'am1', 1, '¿Puedo rendir el recuperatorio otro día?']]
+  )
+  assert.equal((await unreadOf(spaces, 'p-mledesma')).directo, 1)
+  const fromTeacher = await spaces.openDirect('p-mledesma', spaceId, 'p-taguirre')
+  assert.ok(fromTeacher.ok)
+  assert.equal(fromTeacher.value.unread, 1)
+  for (const personId of ['p-taguirre', 'p-lbenitez']) {
+    const unread = await spaces.unreadFor(personId)
+    assert.ok(unread.ok)
+    assert.equal(
+      unread.value.some((u) => u.channelId === directId),
+      false,
+      personId
+    )
+  }
+
+  // Una vez leído, deja de ser novedad.
+  await spaces.channel('p-mledesma', directId)
+  const after = await spaces.unreadFor('p-mledesma')
+  assert.ok(after.ok)
+  assert.equal(
+    after.value.some((u) => u.channelId === directId),
+    false
+  )
+})
+
+test('si Cursada no responde por alguna de las dos personas, abrir un canal directo da falla externa', async () => {
+  const { spaces, siuState } = build()
+  const { spaceId } = await am1(spaces)
+  siuState.down = true
+
+  // Nunca se leyeron las comisiones de Tomás ni las de Joaquín.
+  assert.deepEqual(await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma'), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await spaces.openDirect('p-mledesma', spaceId, 'p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('un canal directo no le quita el nombre a un canal que crea el docente', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  assert.ok((await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')).ok)
+
+  const created = await spaces.createChannel('p-mledesma', spaceId, { name: 'directo', scope: { kind: 'materia' } })
+
+  assert.ok(created.ok)
+  assert.equal(created.value.kind, 'libre')
 })
