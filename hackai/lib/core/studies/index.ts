@@ -9,13 +9,19 @@
    - Las lecturas toleran caídas: devuelven lo último leído, marcado como
      desactualizado (`Fresh`).
 
+   - Materias y comisiones: un alumno ve las de sus inscripciones aceptadas o
+     pendientes, y nunca las de otra facultad; un docente, las que dicta. Son
+     actuales las de un período lectivo que no terminó (el que está en curso y
+     los que ya tienen inscriptos, como el de verano) y archivadas las de
+     períodos que ya terminaron.
+
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
-import type { SiuCertificateType, SiuPort, SiuSchedule } from '@/lib/ports/siu'
-import { notImplemented, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
+import type { SiuCertificateType, SiuPort, SiuSchedule, SiuSection, SiuSubject, SiuTerm } from '@/lib/ports/siu'
+import { fail, notImplemented, ok, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
@@ -166,10 +172,137 @@ export type StudiesDeps = {
   clock: ClockPort
 }
 
-export function createStudies(_deps: StudiesDeps): Studies {
+/** Una comisión de la persona con su materia y su período lectivo. */
+type Placed = { section: SiuSection; subject: SiuSubject; term: SiuTerm; current: boolean }
+
+type Placement = { role: Role; placed: Placed[] }
+
+export function createStudies({ people, siu, classroom, clock }: StudiesDeps): Studies {
+  /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
+  const lastRead = new Map<string, Fresh<unknown>>()
+
+  async function fresh<T>(key: string, read: () => Promise<Result<T, ReadError>>): Promise<Result<Fresh<T>, ReadError>> {
+    const result = await read()
+    if (result.ok) {
+      const value: Fresh<T> = { data: result.value, readAt: clock.now().toISOString(), stale: false }
+      lastRead.set(key, value)
+      return ok(value)
+    }
+    const last = lastRead.get(key) as Fresh<T> | undefined
+    if (result.error === 'falla-externa' && last) return ok({ ...last, stale: true })
+    return result
+  }
+
+  /** Las comisiones de la persona, actuales primero (por inicio del período) y
+      archivadas después (la más reciente primero), cada grupo por materia. */
+  async function placementOf(personId: PersonId): Promise<Result<Placement, ReadError>> {
+    const person = await people.get(personId)
+    if (!person.ok) return person
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(siuId.error === 'sin-cuenta' ? 'persona-desconocida' : siuId.error)
+    const { role, school } = person.value
+
+    let sections: SiuSection[]
+    if (role === 'profesor') {
+      const taught = await siu.teacherSections(siuId.value)
+      if (!taught.ok) return fail(taught.error === 'no-encontrado' ? 'persona-desconocida' : taught.error)
+      sections = taught.value
+    } else {
+      const enrollments = await siu.courseEnrollments(siuId.value, { historic: true })
+      if (!enrollments.ok) return fail(enrollments.error === 'no-encontrado' ? 'persona-desconocida' : enrollments.error)
+      const ids = [...new Set(enrollments.value
+        .filter((e) => e.status === 'aceptada' || e.status === 'pendiente')
+        .map((e) => e.sectionId))]
+      const found = await Promise.all(ids.map((id) => siu.section(id)))
+      const failed = found.find((r) => !r.ok && r.error === 'falla-externa')
+      if (failed) return fail('falla-externa')
+      sections = found.flatMap((r) => r.ok ? [r.value] : []).filter((s) => s.schoolId === school.id)
+    }
+
+    const terms = await siu.terms()
+    if (!terms.ok) return terms
+    const subjectIds = [...new Set(sections.map((s) => s.subjectId))]
+    const subjects = await Promise.all(subjectIds.map((id) => siu.subject(id)))
+    if (subjects.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+
+    const at = clock.now().toISOString()
+    const placed = sections.flatMap((section): Placed[] => {
+      const term = terms.value.find((t) => t.id === section.termId)
+      const subject = subjects.find((r) => r.ok && r.value.id === section.subjectId)
+      if (!term || !subject?.ok) return []
+      return [{ section, subject: subject.value, term, current: term.end >= at }]
+    })
+    const byName = (a: Placed, b: Placed) => a.subject.name.localeCompare(b.subject.name, 'es') || a.section.name.localeCompare(b.section.name, 'es')
+    const current = placed.filter((p) => p.current).sort((a, b) => a.term.start.localeCompare(b.term.start) || byName(a, b))
+    const archived = placed.filter((p) => !p.current).sort((a, b) => b.term.end.localeCompare(a.term.end) || byName(a, b))
+    return ok({ role, placed: [...current, ...archived] })
+  }
+
+  async function subjectsOf(personId: PersonId): Promise<Result<MySubjects, ReadError>> {
+    const placement = await placementOf(personId)
+    if (!placement.ok) return placement
+    const courses = await Promise.all(placement.value.placed.map((p) => classroom.coursesForSection(p.section.id)))
+    const failed = courses.find((r) => !r.ok)
+    if (failed && !failed.ok) return fail(failed.error)
+
+    const subjects = placement.value.placed.map(({ section, subject, term, current }, i) => {
+      const found = courses[i]
+      const item: MySubject = {
+        subjectId: subject.id,
+        code: subject.code,
+        name: subject.name,
+        schoolId: section.schoolId,
+        termId: term.id,
+        termName: term.name,
+        sectionId: section.id,
+        sectionName: section.name,
+        role: placement.value.role,
+        classroomCourseIds: found.ok ? found.value.map((c) => c.id) : [],
+      }
+      return { item, current }
+    })
+    return ok({
+      current: subjects.filter((s) => s.current).map((s) => s.item),
+      archived: subjects.filter((s) => !s.current).map((s) => s.item),
+    })
+  }
+
+  /** Docentes de una comisión, con su persona de HackAI si la tienen. */
+  async function teachersOf(section: SiuSection): Promise<Result<Teacher[], ExternalFailure | NotImplemented>> {
+    const teachers: Teacher[] = []
+    for (const siuId of section.teacherIds) {
+      const [person, owner] = await Promise.all([siu.person(siuId), people.byExternalAccount('siu', siuId)])
+      if (!person.ok && person.error === 'falla-externa') return fail('falla-externa')
+      if (!owner.ok) return owner
+      if (person.ok) teachers.push({ personId: owner.value, name: `${person.value.names} ${person.value.surname}` })
+    }
+    return ok(teachers)
+  }
+
+  async function sectionsOf(personId: PersonId): Promise<Result<MySection[], ReadError>> {
+    const placement = await placementOf(personId)
+    if (!placement.ok) return placement
+    const teachers = await Promise.all(placement.value.placed.map((p) => teachersOf(p.section)))
+    const failed = teachers.find((r) => !r.ok)
+    if (failed && !failed.ok) return fail(failed.error)
+
+    return ok(placement.value.placed.map(({ section }, i) => {
+      const found = teachers[i]
+      return {
+        sectionId: section.id,
+        name: section.name,
+        subjectId: section.subjectId,
+        schoolId: section.schoolId,
+        termId: section.termId,
+        role: placement.value.role,
+        teachers: found.ok ? found.value : [],
+      }
+    }))
+  }
+
   return {
-    subjectsOf: notImplemented,
-    sectionsOf: notImplemented,
+    subjectsOf: (personId) => fresh(`subjectsOf:${personId}`, () => subjectsOf(personId)),
+    sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     offer: notImplemented,
     enroll: notImplemented,
     drop: notImplemented,
