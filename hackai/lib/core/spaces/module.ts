@@ -1,14 +1,230 @@
 /* Implementación de Espacios. Se importa solo desde ./index.ts: desde afuera
-   del módulo se usa su interfaz. */
-import { fail, notImplemented } from '@/lib/result'
-import type { Spaces, SpacesDeps } from '.'
+   del módulo se usa su interfaz. Las piezas viven al lado: quién entra y qué
+   puede hacer (access), los canales (channels), lo leído (reading), los
+   autores (authors), los mensajes y sus hilos (messages) y el material
+   (material).
 
-export function createSpacesModule(_deps: SpacesDeps): Spaces {
+   Todavía no sincroniza con el canal externo ni con Moodle: `open` no trae lo
+   nuevo, `post` no envía al canal externo vinculado y `link` y `syncAll` no
+   están (#15 y #16). */
+import type { PersonId } from '@/lib/core/people'
+import { fail, notImplemented, ok, type Result } from '@/lib/result'
+import type {
+  AccessError,
+  Attachment,
+  ChannelView,
+  Message,
+  MessageId,
+  NewMessage,
+  Space,
+  Spaces,
+  SpacesDeps,
+  SpacesStoreError,
+  SpaceView,
+  StoredChannel,
+  StoredSpace
+} from '.'
+import { type Membership, membershipInSpace, membershipOf, postRefusal, sees, viewerOf } from './access'
+import { authorsFrom } from './authors'
+import { ensureChannels, toChannel, visibleChannels } from './channels'
+import { materialItems, materialView } from './material'
+import { threadsOf, toMessage } from './messages'
+import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from './reading'
+
+/** Un canal que la persona ve, con su espacio y su membresía. */
+type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }
+
+function toSpace(space: StoredSpace): Space {
+  const { id, subjectId, subjectCode, schoolId, name } = space
+  return { id, subjectId, subjectCode, schoolId, name }
+}
+
+const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(max, i.seq), 0)
+
+export function createSpacesModule(deps: SpacesDeps): Spaces {
+  const { people, studies, files, clock, store } = deps
   const pending = async () => fail('falla-externa' as const)
+
+  /** El espacio de la materia y facultad de la membresía; lo crea si no existe. */
+  async function spaceOf(member: Membership): Promise<Result<StoredSpace, SpacesStoreError>> {
+    const key = { subjectId: member.subjectId, schoolId: member.schoolId }
+    const found = await store.spacesFor([key])
+    if (!found.ok) return found
+    if (found.value[0]) return ok(found.value[0])
+    return store.createSpace({
+      ...key,
+      subjectCode: member.subjectCode,
+      name: member.subjectName,
+      materialLayout: 'unidad'
+    })
+  }
+
+  async function spaceView(
+    member: Membership,
+    space: StoredSpace,
+    channels: StoredChannel[]
+  ): Promise<Result<SpaceView, SpacesStoreError>> {
+    const visible = visibleChannels(member, channels)
+    const snapshot = await loadSnapshot(store, member.personId, visible, [space.id])
+    if (!snapshot.ok) return snapshot
+    const materialChannel = visible.find((c) => c.kind === 'material')
+    const mark = materialChannel ? markOf(snapshot.value, materialChannel.id) : 0
+    const items = await materialItems(snapshot.value.material, authorsFrom(people), member.personId, mark)
+    return ok({
+      space: toSpace(space),
+      viewer: viewerOf(member),
+      channels: visible.map((c) => toChannel(member, c, unreadIn(snapshot.value, c).count)),
+      material: materialView(space.materialLayout, items),
+      staleSince: member.staleSince
+    })
+  }
+
+  async function open(personId: PersonId, subjectId: string): Promise<Result<SpaceView, AccessError>> {
+    const member = await membershipOf(studies, personId, subjectId)
+    if (!member.ok) return member
+    const space = await spaceOf(member.value)
+    if (!space.ok) return space
+    const channels = await ensureChannels(store, space.value, member.value)
+    if (!channels.ok) return channels
+    return spaceView(member.value, space.value, channels.value)
+  }
+
+  /** El canal, si existe y la persona lo ve. */
+  async function inChannel(
+    personId: PersonId,
+    channelId: string
+  ): Promise<Result<InChannel, 'canal-desconocido' | AccessError>> {
+    const channel = await store.channel(channelId)
+    if (!channel.ok) return channel
+    if (!channel.value) return fail('canal-desconocido')
+    const space = await store.space(channel.value.spaceId)
+    if (!space.ok) return space
+    if (!space.value) return fail('canal-desconocido')
+    const member = await membershipInSpace(studies, personId, space.value)
+    if (!member.ok) return member
+    if (!sees(member.value, channel.value)) return fail('sin-acceso')
+    return ok({ channel: channel.value, space: space.value, member: member.value })
+  }
+
+  /** El material del espacio, con lo que la persona no había visto; marca visto hasta el último. */
+  async function readMaterial({ channel, space, member }: InChannel): Promise<Result<ChannelView, SpacesStoreError>> {
+    const [marks, stored] = await Promise.all([
+      store.readMarks(member.personId, [channel.id]),
+      store.material([space.id])
+    ])
+    if (!marks.ok) return marks
+    if (!stored.ok) return stored
+    const items = await materialItems(stored.value, authorsFrom(people), member.personId, marks.value[channel.id] ?? 0)
+    const marked = await store.markRead(member.personId, channel.id, maxSeq(stored.value))
+    if (!marked.ok) return marked
+    return ok({
+      space: toSpace(space),
+      channel: toChannel(member, channel, 0),
+      threads: [],
+      material: materialView(space.materialLayout, items)
+    })
+  }
+
+  /** Los hilos del canal, con lo que la persona no había leído; marca leído hasta el último. */
+  async function readMessages({ channel, space, member }: InChannel): Promise<Result<ChannelView, SpacesStoreError>> {
+    const [marks, stored] = await Promise.all([
+      store.readMarks(member.personId, [channel.id]),
+      store.messages([channel.id])
+    ])
+    if (!marks.ok) return marks
+    if (!stored.ok) return stored
+    const mark = marks.value[channel.id] ?? 0
+    const authors = authorsFrom(people)
+    const messages = await Promise.all(
+      stored.value.map((m) => toMessage(m, authors, isUnreadMessage(member.personId, mark, m)))
+    )
+    const marked = await store.markRead(member.personId, channel.id, maxSeq(stored.value))
+    if (!marked.ok) return marked
+    return ok({
+      space: toSpace(space),
+      channel: toChannel(member, channel, 0),
+      threads: threadsOf(messages),
+      material: null
+    })
+  }
+
+  /** La raíz del hilo al que responde: el mensaje tiene que ser de este canal. */
+  async function threadRoot(
+    channelId: string,
+    replyTo: MessageId | undefined
+  ): Promise<Result<MessageId | null, 'mensaje-desconocido' | SpacesStoreError>> {
+    if (replyTo === undefined) return ok(null)
+    const target = await store.message(replyTo)
+    if (!target.ok) return target
+    if (!target.value || target.value.channelId !== channelId) return fail('mensaje-desconocido')
+    return ok(target.value.replyTo ?? target.value.id)
+  }
+
+  /** Guarda los adjuntos con Archivos. Si uno falla, no se publica el mensaje. */
+  async function saveAttachments(
+    attachments: NonNullable<NewMessage['attachments']>
+  ): Promise<Result<Attachment[], 'demasiado-grande' | 'falla-externa'>> {
+    const saved: Attachment[] = []
+    for (const attachment of attachments) {
+      const file = await files.save(attachment)
+      if (!file.ok) return file
+      saved.push({
+        name: file.value.name,
+        contentType: file.value.contentType,
+        size: file.value.size,
+        url: file.value.url
+      })
+    }
+    return ok(saved)
+  }
+
+  /** Guarda un mensaje ya validado y lo marca leído para quien lo escribió. */
+  async function publish(
+    { channel, member }: InChannel,
+    draft: { text: string; replyTo: MessageId | null; attachments: Attachment[] }
+  ): Promise<Result<Message, SpacesStoreError>> {
+    // Un mensaje de primer nivel de un alumno en #consultas es una consulta.
+    const isQuestion = channel.kind === 'consultas' && draft.replyTo === null && member.role === 'alumno'
+    // El envío al canal externo vinculado llega con la sincronización (#15).
+    const added = await store.addMessage({
+      ...draft,
+      channelId: channel.id,
+      authorId: member.personId,
+      authorName: null,
+      origin: 'hackai',
+      externalId: null,
+      status: 'publicado',
+      resolved: isQuestion ? false : null,
+      createdAt: clock.now().toISOString()
+    })
+    if (!added.ok) return fail('falla-externa')
+    const marked = await store.markRead(member.personId, channel.id, added.value.seq)
+    if (!marked.ok) return marked
+    return ok(await toMessage(added.value, authorsFrom(people), false))
+  }
+
+  const post: Spaces['post'] = async (personId, channelId, message) => {
+    const found = await inChannel(personId, channelId)
+    if (!found.ok) return found
+    const refusal = postRefusal(found.value.member, found.value.channel)
+    if (refusal) return fail(refusal)
+    const text = message.text.trim()
+    if (text === '' && !message.attachments?.length) return fail('mensaje-vacio')
+    const replyTo = await threadRoot(channelId, message.replyTo)
+    if (!replyTo.ok) return replyTo
+    const attachments = await saveAttachments(message.attachments ?? [])
+    if (!attachments.ok) return attachments
+    return publish(found.value, { text, replyTo: replyTo.value, attachments: attachments.value })
+  }
+
   return {
-    open: pending,
-    channel: pending,
-    post: pending,
+    open,
+    async channel(personId, channelId) {
+      const found = await inChannel(personId, channelId)
+      if (!found.ok) return found
+      return found.value.channel.kind === 'material' ? readMaterial(found.value) : readMessages(found.value)
+    },
+    post,
     resolve: pending,
     createChannel: pending,
     addMaterial: pending,
