@@ -648,19 +648,33 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     plan: ClassroomPlan,
     step: CourseStep,
     undo: CourseStep
-  ): Promise<Result<null, ExternalFailure>> {
+  ): Promise<Result<null, ExternalFailure | 'a-medias'>> {
     const { moodleId, courseIds } = plan
     if (!moodleId) return ok(null)
     const done: string[] = []
     for (const courseId of courseIds) {
       const result = await step(moodleId, courseId)
-      if (!result.ok) {
-        for (const id of done.reverse()) await undo(moodleId, id)
-        return fail('falla-externa')
-      }
+      if (!result.ok) return undoAll(moodleId, done, undo)
       done.push(courseId)
     }
     return ok(null)
+  }
+
+  /** Deshace los cursos que ya pasaron, del último al primero. Si alguno no se
+      deja deshacer, el aula quedó distinta de como estaba: `a-medias`. */
+  async function undoAll(
+    moodleId: string,
+    done: string[],
+    undo: CourseStep
+  ): Promise<Result<never, ExternalFailure | 'a-medias'>> {
+    const stuck: string[] = []
+    for (const courseId of [...done].reverse()) {
+      const result = await undo(moodleId, courseId)
+      if (!result.ok) stuck.push(courseId)
+    }
+    if (!stuck.length) return fail('falla-externa')
+    console.error('aula: no se pudo deshacer la matrícula de algunos cursos', { courses: stuck })
+    return fail('a-medias')
   }
 
   const selfService = (target: Target) => ok({ kind: 'requiere-autogestion' as const, url: siu.selfServiceUrl(target) })
@@ -696,6 +710,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!receipt.ok) return receipt.error === 'no-soportado' ? selfService(target) : fail(siuFailure(receipt.error))
     const enrolled = await eachCourse(plan, enrolIn, unenrolFrom)
     if (enrolled.ok) return ok({ kind: 'inscripto', receipt: receipt.value, classroomCourseIds: plan.courseIds })
+    // El aula quedó a medias: se deja la inscripción del SIU, que es lo que el alumno quiso hacer.
+    if (enrolled.error === 'a-medias') return enrolled
     const undone = await siu.drop(siuId, target)
     if (undone.ok) return enrolled
     console.error('enroll: no se pudo deshacer la inscripción del SIU', {

@@ -4,6 +4,7 @@
    inscripto lo decide Cursada. */
 import { CalendarClock, CalendarX, MapPin, UserRound, Users } from 'lucide-react'
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
 import { shortDate } from '@/components/dates'
 import { capacityText, modalityName, scheduleLine } from '@/components/enrollment/format'
@@ -105,13 +106,19 @@ function SectionCard({ item }: { item: OfferItem }) {
   )
 }
 
+/** El id de la materia de la URL. Un `%` mal formado no es una materia: 404. */
+function subjectIdFrom(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    notFound()
+  }
+}
+
 export default async function OfertaPage({ params }: { params: Promise<{ materia: string }> }) {
   const session = await requireSession('alumno')
   const { materia } = await params
-  const result = await system().studies.offer(session.personId, {
-    kind: 'cursada',
-    subjectId: decodeURIComponent(materia)
-  })
+  const result = await system().studies.offer(session.personId, { kind: 'cursada', subjectId: subjectIdFrom(materia) })
   const subjectName = result.ok ? result.value[0]?.subjectName : undefined
 
   return (

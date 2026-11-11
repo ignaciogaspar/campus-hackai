@@ -5,7 +5,7 @@
    server action. */
 import { CheckCircle2, ExternalLink, Info } from 'lucide-react'
 import Link from 'next/link'
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ErrorNotice } from '@/components/ui/states'
@@ -102,6 +102,24 @@ export function SectionActions({ sectionId, label, status, enrollAction, dropAct
   const [dropState, drop, dropping] = useActionState(dropAction, INITIAL)
   const [confirming, setConfirming] = useState(false)
   const [lastAction, setLastAction] = useState<EnrollmentStep | null>(null)
+  // El foco sigue a la confirmación: al abrirla va a «Cancelar», la opción que
+  // no borra nada; al cerrarla vuelve a «Darme de baja». Así no se pierde con
+  // teclado ni con lector de pantalla cuando los botones se reemplazan.
+  const dropButton = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  const returnFocus = useRef(false)
+  useEffect(() => {
+    if (confirming) {
+      cancelButton.current?.focus()
+    } else if (returnFocus.current) {
+      returnFocus.current = false
+      dropButton.current?.focus()
+    }
+  }, [confirming])
+  const closeConfirmation = () => {
+    returnFocus.current = true
+    setConfirming(false)
+  }
   if (!open) return null
 
   const visibleOutcome = lastAction === 'baja' ? dropState : lastAction === 'inscripcion' ? enrollState : INITIAL
@@ -132,7 +150,7 @@ export function SectionActions({ sectionId, label, status, enrollAction, dropAct
             action={drop}
             onSubmit={() => {
               setLastAction('baja')
-              setConfirming(false)
+              closeConfirmation()
             }}
             className='flex flex-col gap-2 rounded-lg border border-border p-3'
           >
@@ -142,13 +160,21 @@ export function SectionActions({ sectionId, label, status, enrollAction, dropAct
               <Button type='submit' variant='destructive' size='lg' className='min-h-11'>
                 Sí, darme de baja
               </Button>
-              <Button type='button' variant='ghost' size='lg' className='min-h-11' onClick={() => setConfirming(false)}>
+              <Button
+                ref={cancelButton}
+                type='button'
+                variant='ghost'
+                size='lg'
+                className='min-h-11'
+                onClick={closeConfirmation}
+              >
                 Cancelar
               </Button>
             </div>
           </form>
         ) : (
           <Button
+            ref={dropButton}
             type='button'
             variant='outline'
             size='lg'

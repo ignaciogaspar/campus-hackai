@@ -1070,3 +1070,58 @@ test('fuera de período la baja vuelve como error antes de tocar el aula', async
   })
   assert.equal(unenrols, 0)
 })
+
+test('si falla la segunda aula y deshacer la primera también falla, vuelve «a medias» y la inscripción del SIU queda', async () => {
+  const data = structuredClone(syntheticData)
+  data.moodle.courses.push({
+    id: 'c-pr1-fi-v-lab',
+    shortName: 'PR1-LAB',
+    fullName: 'Laboratorio de PR1',
+    siuSectionIds: ['sec-pr1-fi-v']
+  })
+  const memory = createMemoryClassroom(data)
+  const { studies, siu } = build(
+    data,
+    {},
+    {
+      classroomOverrides: {
+        ...memory,
+        enrol: async (userId, courseId, role) =>
+          courseId === 'c-pr1-fi-v-lab' ? fail('falla-externa') : memory.enrol(userId, courseId, role),
+        unenrol: async () => fail('falla-externa')
+      }
+    }
+  )
+
+  assert.deepEqual(await studies.enroll('p-vfunes', PR1_VERANO), { ok: false, error: 'a-medias' })
+  // Quedó en la primera aula: no se le puede decir que no se inscribió en nada.
+  assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b', 'sec-pr1-fi-v'])
+  assert.deepEqual(await studentCourses(memory, VALENTINA.moodle), [...VALENTINA_COURSES, 'c-pr1-fi-v'])
+})
+
+test('si falla desmatricular la segunda aula y volver a matricular la primera también falla, la baja vuelve «a medias»', async () => {
+  const data = structuredClone(syntheticData)
+  data.moodle.courses.push({
+    id: 'c-fi1-fi-v-lab',
+    shortName: 'FI1-LAB',
+    fullName: 'Laboratorio de FI1',
+    siuSectionIds: ['sec-fi1-fi-v']
+  })
+  data.moodle.enrolments.push({ userId: MARTIN.moodle, courseId: 'c-fi1-fi-v-lab', role: 'student' })
+  const memory = createMemoryClassroom(data)
+  const { studies, siu } = build(
+    data,
+    {},
+    {
+      classroomOverrides: {
+        ...memory,
+        unenrol: async (userId, courseId) =>
+          courseId === 'c-fi1-fi-v-lab' ? fail('falla-externa') : memory.unenrol(userId, courseId),
+        enrol: async () => fail('falla-externa')
+      }
+    }
+  )
+
+  assert.deepEqual(await studies.drop('p-mcabrera', FI1_VERANO), { ok: false, error: 'a-medias' })
+  assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b', 'sec-fi1-fi-v'])
+})
