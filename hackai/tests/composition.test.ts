@@ -32,11 +32,7 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
   const calls = [
     people.signIn({ kind: 'demo', subject: 'demo' }),
     people.demoPeople(),
-    studies.offer(p, { kind: 'cursada', subjectId: 's' }),
-    studies.enroll(p, { kind: 'comision', sectionId: 's' }),
-    studies.drop(p, { kind: 'mesa', examBoardId: 'm' }),
     studies.upcoming(p),
-    studies.openEnrollments(p),
     studies.record(p),
     studies.certificate(p, 'alumno-regular'),
     spaces.open(p, 's'),

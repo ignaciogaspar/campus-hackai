@@ -4,6 +4,11 @@
    - `enroll` es todo o nada: si el SIU inscribe y Moodle falla, deshace la del
      SIU antes de devolver `falla-externa`.
    - Matricula en Moodle solo si el SIU no lo hace (capacidad `enrolsInClassroom`).
+   - Una sola comisión vigente por materia: con una inscripción aceptada o
+     pendiente a una comisión de un período que no terminó, inscribirse a otra
+     de la misma materia devuelve `ya-inscripto`.
+   - La baja es el camino inverso: desmatricula y después da de baja en el SIU;
+     si el SIU la rechaza, vuelve a matricular.
    - Si el SIU no deja inscribir por API, devuelve `requiere-autogestion` con el
      enlace: es un paso más, no un error.
    - Las lecturas toleran caídas: devuelven lo último leído, marcado como
@@ -82,16 +87,27 @@ export type OfferItem = {
   subjectId: string
   subjectName: string
   name: string
+  /** Comisión: el período lectivo. Mesa: el turno de examen. */
+  period: string
   /** Comisión: horarios. Mesa: vacío. */
   schedule: SiuSchedule[]
   /** Mesa: fecha del examen. Comisión: `null`. */
   date: string | null
   location: string
+  /** Comisión: presencial, virtual o híbrida. Mesa: `null`. */
+  modality: SiuSection['modality'] | null
   teachers: Teacher[]
+  /** Cupo. `null` es «sin definir»: no se llena. */
   capacity: number | null
   enrolled: number
+  enrollmentStart: string
   enrollmentEnd: string
+  /** La ventana de inscripción está abierta según el reloj. */
+  enrollmentOpen: boolean
   alreadyEnrolled: boolean
+  /** Comisión: el nombre de otra comisión de la materia en la que ya está
+      inscripto, que le impide inscribirse en esta. Mesa: `null`. */
+  enrolledElsewhere: string | null
 }
 
 export type Receipt = { transactionNumber: string; date: string; target: Target }
@@ -307,7 +323,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   }
 
   /** Docentes de una comisión, con su persona de HackAI si la tienen. */
-  async function teachersOf(section: SiuSection): Promise<Result<Teacher[], ExternalFailure | NotImplemented>> {
+  async function teachersOf(section: { teacherIds: string[] }): Promise<Result<Teacher[], ExternalFailure | NotImplemented>> {
     const teachers: Teacher[] = []
     for (const siuId of section.teacherIds) {
       const [person, owner] = await Promise.all([siu.person(siuId), people.byExternalAccount('siu', siuId)])
@@ -335,14 +351,271 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })))
   }
 
+  /** El id del SIU de la persona y su facultad. */
+  async function siuPersonOf(personId: PersonId): Promise<Result<{ siuId: string; schoolId: string }, ReadError>> {
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
+    const person = await siu.person(siuId.value)
+    if (!person.ok) return fail(asUnknownPerson(person.error))
+    return ok({ siuId: siuId.value, schoolId: person.value.school.id })
+  }
+
+  /** Comisiones de la materia en la facultad de la persona, de períodos que no
+      terminaron; o mesas de la materia en su facultad que todavía no se tomaron. */
+  async function offer(personId: PersonId, query: OfferQuery): Promise<Result<OfferItem[], ReadError>> {
+    const mine = await siuPersonOf(personId)
+    if (!mine.ok) return mine
+    const { siuId, schoolId } = mine.value
+    const subject = await siu.subject(query.subjectId)
+    if (!subject.ok) return subject.error === 'no-encontrado' ? ok([]) : fail(subject.error)
+    const at = clock.now().toISOString()
+    const isOpen = (start: string, end: string) => start <= at && at <= end
+
+    if (query.kind === 'cursada') {
+      const [terms, sections, enrollments] = await Promise.all([
+        siu.terms(),
+        siu.sections({ subjectId: query.subjectId, schoolId }),
+        siu.courseEnrollments(siuId),
+      ])
+      if (!terms.ok) return terms
+      if (!sections.ok) return sections
+      if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+      const placed = sections.value.flatMap((section) => {
+        const term = terms.value.find((t) => t.id === section.termId)
+        return term && term.end >= at ? [{ section, term }] : []
+      }).sort((a, b) => a.term.start.localeCompare(b.term.start) || a.section.name.localeCompare(b.section.name, 'es'))
+      const teachers = all(await Promise.all(placed.map((p) => teachersOf(p.section))))
+      if (!teachers.ok) return teachers
+      const enrolledIds = new Set(enrollments.value.map((e) => e.sectionId))
+      return ok(placed.map(({ section, term }, i): OfferItem => ({
+        target: { kind: 'comision', sectionId: section.id },
+        subjectId: subject.value.id,
+        subjectName: subject.value.name,
+        name: section.name,
+        period: term.name,
+        schedule: section.schedule,
+        date: null,
+        location: section.location,
+        modality: section.modality,
+        teachers: teachers.value[i],
+        capacity: section.capacity,
+        enrolled: section.enrolled,
+        enrollmentStart: term.enrollmentStart,
+        enrollmentEnd: term.enrollmentEnd,
+        enrollmentOpen: isOpen(term.enrollmentStart, term.enrollmentEnd),
+        alreadyEnrolled: enrolledIds.has(section.id),
+        enrolledElsewhere: placed.find((p) => p.section.id !== section.id && enrolledIds.has(p.section.id))?.section.name ?? null,
+      })))
+    }
+
+    const [boards, enrollments] = await Promise.all([
+      siu.examBoards({ subjectId: query.subjectId, schoolId }),
+      siu.examEnrollments(siuId),
+    ])
+    if (!boards.ok) return boards
+    if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+    const upcoming = boards.value.filter((b) => b.date >= at).sort((a, b) => a.date.localeCompare(b.date))
+    const teachers = all(await Promise.all(upcoming.map((b) => teachersOf(b))))
+    if (!teachers.ok) return teachers
+    return ok(upcoming.map((board, i): OfferItem => ({
+      target: { kind: 'mesa', examBoardId: board.id },
+      subjectId: subject.value.id,
+      subjectName: subject.value.name,
+      name: board.examPeriod,
+      period: board.examPeriod,
+      schedule: [],
+      date: board.date,
+      location: board.location,
+      modality: null,
+      teachers: teachers.value[i],
+      capacity: board.capacity,
+      enrolled: board.enrolled,
+      enrollmentStart: board.enrollmentStart,
+      enrollmentEnd: board.enrollmentEnd,
+      enrollmentOpen: isOpen(board.enrollmentStart, board.enrollmentEnd),
+      alreadyEnrolled: enrollments.value.some((e) => e.examBoardId === board.id),
+      enrolledElsewhere: null,
+    })))
+  }
+
+  /** Que la comisión o la mesa exista y sea de la facultad de la persona. */
+  /** Que la comisión o la mesa exista y sea de la facultad de la persona. Devuelve su materia. */
+  async function checkTarget(target: Target, schoolId: string): Promise<Result<{ subjectId: string }, 'objetivo-desconocido' | ExternalFailure>> {
+    if (target.kind === 'comision') {
+      const section = await siu.section(target.sectionId)
+      if (!section.ok) return fail(section.error === 'no-encontrado' ? 'objetivo-desconocido' : section.error)
+      return section.value.schoolId === schoolId ? ok({ subjectId: section.value.subjectId }) : fail('objetivo-desconocido')
+    }
+    const board = await siu.examBoards({ schoolId })
+    if (!board.ok) return board
+    const found = board.value.find((b) => b.id === target.examBoardId)
+    return found ? ok({ subjectId: found.subjectId }) : fail('objetivo-desconocido')
+  }
+
+  /** Materias de sus inscripciones vigentes a cursada (aceptadas o pendientes,
+      de períodos que no terminaron). */
+  async function subjectsInCourse(siuId: string): Promise<Result<Set<string>, 'persona-desconocida' | ExternalFailure>> {
+    const enrollments = await siu.courseEnrollments(siuId)
+    if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+    const sections = await Promise.all(enrollments.value.map((e) => siu.section(e.sectionId)))
+    if (sections.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+    return ok(new Set(sections.flatMap((r) => r.ok ? [r.value.subjectId] : [])))
+  }
+
+  /** Lo que hace falta del aula para inscribir en una comisión: sus cursos y,
+      si HackAI tiene que matricular, el id de Moodle de la persona. Se lee
+      antes de tocar el SIU, así un Moodle caído no deja nada a medias. */
+  async function classroomPlan(personId: PersonId, target: Target): Promise<Result<{ courseIds: string[]; moodleId: string | null }, ExternalFailure>> {
+    if (target.kind !== 'comision') return ok({ courseIds: [], moodleId: null })
+    const mustEnrol = !siu.capabilities.enrolsInClassroom && classroom.capabilities.canEnrol
+    const courses = await classroom.coursesForSection(target.sectionId)
+    if (!mustEnrol) return ok({ courseIds: courses.ok ? courses.value.map((c) => c.id) : [], moodleId: null })
+    if (!courses.ok) return courses
+    if (!courses.value.length) return ok({ courseIds: [], moodleId: null })
+    // Sin cuenta de Moodle no se lo puede matricular, y sin matrícula no se inscribe: todo o nada.
+    const moodleId = await people.accountIn(personId, 'moodle')
+    if (!moodleId.ok) return fail('falla-externa')
+    return ok({ courseIds: courses.value.map((c) => c.id), moodleId: moodleId.value })
+  }
+
+  async function enroll(personId: PersonId, target: Target): Promise<Result<EnrollOutcome, EnrollError | 'persona-desconocida' | NotImplemented>> {
+    const mine = await siuPersonOf(personId)
+    if (!mine.ok) return mine
+    const { siuId, schoolId } = mine.value
+    const checked = await checkTarget(target, schoolId)
+    if (!checked.ok) return checked
+    // Una sola comisión vigente por materia: con una, no se inscribe en otra.
+    if (target.kind === 'comision') {
+      const taken = await subjectsInCourse(siuId)
+      if (!taken.ok) return taken
+      if (taken.value.has(checked.value.subjectId)) return fail('ya-inscripto')
+    }
+    if (!siu.capabilities.canEnroll) return ok({ kind: 'requiere-autogestion', url: siu.selfServiceUrl(target) })
+
+    const plan = await classroomPlan(personId, target)
+    if (!plan.ok) return plan
+    const { courseIds, moodleId } = plan.value
+
+    const receipt = await siu.enroll(siuId, target)
+    if (!receipt.ok) {
+      if (receipt.error === 'no-soportado') return ok({ kind: 'requiere-autogestion', url: siu.selfServiceUrl(target) })
+      return fail(receipt.error === 'no-encontrado' ? 'objetivo-desconocido' : receipt.error)
+    }
+
+    if (moodleId) {
+      const enrolled: string[] = []
+      for (const courseId of courseIds) {
+        const result = await classroom.enrol(moodleId, courseId, 'student')
+        if (result.ok) {
+          enrolled.push(courseId)
+          continue
+        }
+        // Todo o nada: se deshace lo que se hizo, del último paso al primero.
+        await Promise.all(enrolled.map((id) => classroom.unenrol(moodleId, id)))
+        const undone = await siu.drop(siuId, target)
+        if (!undone.ok) console.error('enroll: no se pudo deshacer la inscripción del SIU', { transaction: receipt.value.transactionNumber, error: undone.error })
+        return fail('falla-externa')
+      }
+    }
+
+    return ok({ kind: 'inscripto', receipt: receipt.value, classroomCourseIds: courseIds })
+  }
+
+  /** Si la persona tiene una inscripción vigente a la comisión o la mesa. */
+  async function isEnrolled(siuId: string, target: Target): Promise<Result<boolean, 'persona-desconocida' | ExternalFailure>> {
+    if (target.kind === 'comision') {
+      const enrollments = await siu.courseEnrollments(siuId)
+      if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+      return ok(enrollments.value.some((e) => e.sectionId === target.sectionId))
+    }
+    const enrollments = await siu.examEnrollments(siuId)
+    if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+    return ok(enrollments.value.some((e) => e.examBoardId === target.examBoardId))
+  }
+
+  /** El camino inverso de `enroll`: primero desmatricula del aula y después da
+      de baja en el SIU. Si el SIU rechaza la baja, vuelve a matricular: lo que
+      se deshace sin riesgo es la matrícula, no la inscripción. */
+  async function drop(personId: PersonId, target: Target): Promise<Result<DropOutcome, DropError | 'persona-desconocida' | NotImplemented>> {
+    const mine = await siuPersonOf(personId)
+    if (!mine.ok) return mine
+    const { siuId, schoolId } = mine.value
+    const checked = await checkTarget(target, schoolId)
+    if (!checked.ok) return checked
+    if (!siu.capabilities.canEnroll) return ok({ kind: 'requiere-autogestion', url: siu.selfServiceUrl(target) })
+    const enrolled = await isEnrolled(siuId, target)
+    if (!enrolled.ok) return enrolled
+    if (!enrolled.value) return fail('no-inscripto')
+
+    const plan = await classroomPlan(personId, target)
+    if (!plan.ok) return plan
+    const { courseIds, moodleId } = plan.value
+    const reenrol = (ids: string[]) => Promise.all(ids.map((id) => classroom.enrol(moodleId!, id, 'student')))
+
+    const unenrolled: string[] = []
+    if (moodleId) {
+      for (const courseId of courseIds) {
+        const result = await classroom.unenrol(moodleId, courseId)
+        if (!result.ok) {
+          await reenrol(unenrolled)
+          return fail('falla-externa')
+        }
+        unenrolled.push(courseId)
+      }
+    }
+
+    const receipt = await siu.drop(siuId, target)
+    if (!receipt.ok) {
+      await reenrol(unenrolled)
+      if (receipt.error === 'no-soportado') return ok({ kind: 'requiere-autogestion', url: siu.selfServiceUrl(target) })
+      return fail(receipt.error === 'no-encontrado' ? 'objetivo-desconocido' : receipt.error)
+    }
+    return ok({ kind: 'baja', receipt: receipt.value })
+  }
+
+  /** Materias de su facultad con comisiones en un período lectivo con la
+      inscripción abierta, sin las que ya cursa: una sola comisión vigente por
+      materia. Por ahora solo cursada: las mesas de examen que le sirven entran
+      con la inscripción a finales (#20). */
+  async function openEnrollments(personId: PersonId): Promise<Result<OpenEnrollment[], ReadError>> {
+    const mine = await siuPersonOf(personId)
+    if (!mine.ok) return mine
+    const { siuId, schoolId } = mine.value
+    const at = clock.now().toISOString()
+    const [terms, taken] = await Promise.all([siu.terms(), subjectsInCourse(siuId)])
+    if (!terms.ok) return terms
+    if (!taken.ok) return taken
+    const open = terms.value.filter((t) => t.enrollmentStart <= at && at <= t.enrollmentEnd)
+    const offered = all(await Promise.all(open.map((t) => siu.sections({ schoolId, termId: t.id }))))
+    if (!offered.ok) return offered
+
+    const items: { term: SiuTerm; subjectId: string }[] = []
+    open.forEach((term, i) => {
+      const sections = offered.value[i]
+      for (const subjectId of new Set(sections.map((s) => s.subjectId))) {
+        if (!taken.value.has(subjectId)) items.push({ term, subjectId })
+      }
+    })
+    const subjects = await Promise.all(items.map((item) => siu.subject(item.subjectId)))
+    if (subjects.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+
+    return ok(items
+      .flatMap(({ term }, i): OpenEnrollment[] => {
+        const subject = subjects[i]
+        if (!subject.ok) return []
+        return [{ kind: 'cursada', subjectId: subject.value.id, subjectName: subject.value.name, opensAt: term.enrollmentStart, closesAt: term.enrollmentEnd }]
+      })
+      .sort((a, b) => a.closesAt.localeCompare(b.closesAt) || a.subjectName.localeCompare(b.subjectName, 'es')))
+  }
+
   return {
     subjectsOf: (personId) => fresh(`subjectsOf:${personId}`, () => subjectsOf(personId)),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
-    offer: notImplemented,
-    enroll: notImplemented,
-    drop: notImplemented,
+    offer,
+    enroll,
+    drop,
     upcoming: notImplemented,
-    openEnrollments: notImplemented,
+    openEnrollments: (personId) => fresh(`openEnrollments:${personId}`, () => openEnrollments(personId)),
     record: notImplemented,
     certificate: notImplemented,
   }

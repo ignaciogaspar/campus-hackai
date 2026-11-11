@@ -4,6 +4,7 @@
    actual, qué se archiva, qué facultad ve cada uno y qué tarea venció lo
    decide Cursada. */
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -35,6 +36,11 @@ export default async function MateriasPage() {
       <header>
         <p className='text-xs font-bold tracking-widest text-primary uppercase'>Campus HackAI</p>
         <h1 className='mt-1 text-2xl leading-tight font-bold'>Mis materias</h1>
+        {session.role === 'alumno' && (
+          <Link href='/inscripciones' className='mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline-offset-4 hover:underline'>
+            Inscribirme a una materia
+          </Link>
+        )}
       </header>
 
       {!result.ok ? (
