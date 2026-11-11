@@ -10,14 +10,19 @@ export const metadata: Metadata = {
   title: 'Campus HackAI',
   description: 'Propuesta del equipo para HackAI 2026: rediseño de SIU Guaraní y el Campus Virtual.',
   appleWebApp: { capable: true, title: 'Austral', statusBarStyle: 'black-translucent' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  icons: { apple: '/icons/apple-touch-icon.png' }
 }
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#0b1150' }
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#0b1150'
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es-AR" className={cn('font-sans', montserrat.variable)}>
+    <html lang='es-AR' className={cn('font-sans', montserrat.variable)}>
       <body>{children}</body>
     </html>
   )

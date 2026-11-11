@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
 
 const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'falla-externa': 'No pudimos traer tus materias del SIU o del Campus Virtual. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.',
+  'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.'
 }
 
 function readTime(readAt: string): string {
@@ -22,7 +22,7 @@ function readTime(readAt: string): string {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   })
 }
 
@@ -45,12 +45,15 @@ export default async function MateriasPage() {
         <>
           {result.value.stale && (
             <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
-              El SIU o el Campus Virtual no responden. Te mostramos lo que trajimos el {readTime(result.value.readAt)}: puede estar desactualizado.
+              El SIU o el Campus Virtual no responden. Te mostramos lo que trajimos el {readTime(result.value.readAt)}:
+              puede estar desactualizado.
             </p>
           )}
 
           <section aria-labelledby='actuales' className='flex flex-col gap-3'>
-            <h2 id='actuales' className='text-sm font-semibold text-muted-foreground'>Actuales</h2>
+            <h2 id='actuales' className='text-sm font-semibold text-muted-foreground'>
+              Actuales
+            </h2>
             <CurrentSubjects subjects={result.value.data.current} />
           </section>
 

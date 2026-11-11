@@ -17,10 +17,10 @@ export function createMemoryFiles(): FilesPort {
         name: file.name,
         contentType: file.contentType,
         size: file.bytes.byteLength,
-        url: `data:${file.contentType};base64,${Buffer.from(file.bytes).toString('base64')}`,
+        url: `data:${file.contentType};base64,${Buffer.from(file.bytes).toString('base64')}`
       }
       stored.push(saved)
       return ok({ ...saved })
-    },
+    }
   }
 }

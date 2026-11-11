@@ -12,14 +12,14 @@ function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000) {
   const logs: string[] = []
   const client = createClient('http://siu-simulado.test', 'clave-de-prueba', {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch },
+    global: { fetch }
   })
   const siu = createSimulatedSiu({
     client,
     clock: createFixedClock(syntheticData.now),
     selfServiceBaseUrl: syntheticData.siu.selfServiceBaseUrl,
     timeoutMs,
-    log: (message) => logs.push(message),
+    log: (message) => logs.push(message)
   })
   return { siu, logs }
 }
@@ -40,16 +40,26 @@ test('si la base no responde a tiempo devuelve «falla externa» en vez de queda
 })
 
 test('si la red falla, cada operación devuelve «falla externa» sin tirar', async () => {
-  const { siu, logs } = siuWith(async () => { throw new TypeError('fetch failed') })
+  const { siu, logs } = siuWith(async () => {
+    throw new TypeError('fetch failed')
+  })
 
   assert.deepEqual(await siu.courseEnrollments('30101', { historic: true }), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await siu.sections({ subjectId: 'am1' }), { ok: false, error: 'falla-externa' })
-  assert.deepEqual(await siu.enroll('30102', { kind: 'comision', sectionId: 'sec-pr1-fi-v' }), { ok: false, error: 'falla-externa' })
-  assert.ok(logs.every((line) => !line.includes('30101') && !line.includes('30102')), 'los logs no llevan ids de personas')
+  assert.deepEqual(await siu.enroll('30102', { kind: 'comision', sectionId: 'sec-pr1-fi-v' }), {
+    ok: false,
+    error: 'falla-externa'
+  })
+  assert.ok(
+    logs.every((line) => !line.includes('30101') && !line.includes('30102')),
+    'los logs no llevan ids de personas'
+  )
 })
 
 test('si la base responde con error devuelve «falla externa»', async () => {
-  const { siu } = siuWith(async () => new Response(JSON.stringify({ code: '42P01', message: 'relation does not exist' }), { status: 404 }))
+  const { siu } = siuWith(
+    async () => new Response(JSON.stringify({ code: '42P01', message: 'relation does not exist' }), { status: 404 })
+  )
 
   assert.deepEqual(await siu.subject('am1'), { ok: false, error: 'falla-externa' })
 })

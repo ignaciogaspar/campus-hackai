@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
-import { compose } from '@/lib/composition'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
+import { compose } from '@/lib/composition'
 
 const siuId = (personId: string) => syntheticData.people.find((p) => p.id === personId)!.siuId
 
@@ -10,12 +10,21 @@ test('el SIU en memoria rechaza inscripciones sin cupo, fuera de período o repe
   const { siu } = compose({}).ports
   const lucia = siuId('p-lbenitez')
 
-  assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-fi1-fi-v' }), { ok: false, error: 'sin-cupo' })
-  assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-am1-fi-b' }), { ok: false, error: 'fuera-de-periodo' })
+  assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-fi1-fi-v' }), {
+    ok: false,
+    error: 'sin-cupo'
+  })
+  assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-am1-fi-b' }), {
+    ok: false,
+    error: 'fuera-de-periodo'
+  })
 
   const first = await siu.enroll(lucia, { kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' })
   assert.equal(first.ok, true)
-  assert.deepEqual(await siu.enroll(lucia, { kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' }), { ok: false, error: 'ya-inscripto' })
+  assert.deepEqual(await siu.enroll(lucia, { kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' }), {
+    ok: false,
+    error: 'ya-inscripto'
+  })
 
   const dropped = await siu.drop(lucia, { kind: 'mesa', examBoardId: 'mesa-am1-fi-dic' })
   assert.equal(dropped.ok, true)
@@ -29,7 +38,11 @@ test('el SIU en memoria separa las inscripciones vigentes de las históricas', a
   const vigentes = await siu.courseEnrollments(tomas)
   const todas = await siu.courseEnrollments(tomas, { historic: true })
   assert.deepEqual(vigentes.ok && vigentes.value.map((e) => e.sectionId).sort(), ['sec-am1-fi-a', 'sec-pr1-fi-a'])
-  assert.deepEqual(todas.ok && todas.value.map((e) => e.sectionId).sort(), ['sec-aga-fi-a', 'sec-am1-fi-a', 'sec-pr1-fi-a'])
+  assert.deepEqual(todas.ok && todas.value.map((e) => e.sectionId).sort(), [
+    'sec-aga-fi-a',
+    'sec-am1-fi-a',
+    'sec-pr1-fi-a'
+  ])
 })
 
 test('el canal externo en memoria lee desde un cursor y no repite mensajes', async () => {
@@ -58,12 +71,19 @@ test('un adjunto del canal externo se baja y se guarda en archivos', async () =>
 
   const downloaded = await externalChannel.download(attachment)
   assert.ok(downloaded.ok)
-  const saved = await files.save({ name: downloaded.value.filename, contentType: downloaded.value.contentType, bytes: downloaded.value.bytes })
+  const saved = await files.save({
+    name: downloaded.value.filename,
+    contentType: downloaded.value.contentType,
+    bytes: downloaded.value.bytes
+  })
   assert.ok(saved.ok)
   assert.equal(saved.value.name, 'resumen-derivadas.pdf')
   assert.ok(saved.value.url.startsWith('data:application/pdf;base64,'))
 
-  assert.deepEqual(await externalChannel.download({ ...attachment, url: 'https://vencida' }), { ok: false, error: 'adjunto-vencido' })
+  assert.deepEqual(await externalChannel.download({ ...attachment, url: 'https://vencida' }), {
+    ok: false,
+    error: 'adjunto-vencido'
+  })
 })
 
 test('el aula en memoria sin matriculación ni tareas lo declara y responde «no soportado»', async () => {

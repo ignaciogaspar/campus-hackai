@@ -6,7 +6,7 @@
    `signIn` y `demoPeople` son del ticket del ingreso de demo (#9). */
 import type { IdentityCredential, IdentityPort } from '@/lib/ports/identity'
 import type { SiuPort } from '@/lib/ports/siu'
-import { fail, notImplemented, ok, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
+import { type ExternalFailure, fail, type NotImplemented, notImplemented, ok, type Result } from '@/lib/result'
 
 /** Id de una persona en HackAI. No es el id de ningún sistema de origen. */
 export type PersonId = string
@@ -36,7 +36,10 @@ export type People = {
   /** Su id en un sistema de origen o canal externo. */
   accountIn(personId: PersonId, system: ExternalSystem): Promise<Result<string, 'sin-cuenta' | PeopleError>>
   /** La persona dueña de ese id externo, o `null`. Se vincula por id, nunca por nombre o mail. */
-  byExternalAccount(system: ExternalSystem, externalId: string): Promise<Result<PersonId | null, ExternalFailure | NotImplemented>>
+  byExternalAccount(
+    system: ExternalSystem,
+    externalId: string
+  ): Promise<Result<PersonId | null, ExternalFailure | NotImplemented>>
 }
 
 /** Sus ids en cada sistema. Un sistema sin entrada es que no tiene cuenta. */
@@ -58,7 +61,10 @@ export type PeopleDeps = {
 }
 
 export function createPeople({ siu, store }: PeopleDeps): People {
-  async function accountIn(personId: PersonId, system: ExternalSystem): Promise<Result<string, 'sin-cuenta' | PeopleError>> {
+  async function accountIn(
+    personId: PersonId,
+    system: ExternalSystem
+  ): Promise<Result<string, 'sin-cuenta' | PeopleError>> {
     const accounts = await store.accountsOf(personId)
     if (!accounts.ok) return accounts
     if (!accounts.value) return fail('persona-desconocida')
@@ -83,6 +89,6 @@ export function createPeople({ siu, store }: PeopleDeps): People {
 
     async byExternalAccount(system, externalId) {
       return store.ownerOf(system, externalId)
-    },
+    }
   }
 }

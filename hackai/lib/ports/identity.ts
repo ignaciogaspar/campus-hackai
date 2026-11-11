@@ -9,9 +9,7 @@ export type IdentityCapabilities = {
   demoList: boolean
 }
 
-export type IdentityCredential =
-  | { kind: 'demo'; subject: string }
-  | { kind: 'oidc'; code: string; redirectUri: string }
+export type IdentityCredential = { kind: 'demo'; subject: string } | { kind: 'oidc'; code: string; redirectUri: string }
 
 export type IdentitySubject = {
   /** Id estable del sujeto en el proveedor de identidad. */

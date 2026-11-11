@@ -13,7 +13,7 @@ function dueTime(dueDate: string): string {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   })
 }
 
@@ -45,14 +45,21 @@ function Assignments({ assignments }: { assignments: MyAssignment[] }) {
       <h4 className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>Tareas con fecha</h4>
       <ul className='mt-2 flex flex-col gap-2'>
         {assignments.map((a) => (
-          <li key={`${a.dueDate}-${a.name}`} className={cn('flex items-start justify-between gap-3 text-sm', a.past && 'text-muted-foreground')}>
+          <li
+            key={`${a.dueDate}-${a.name}`}
+            className={cn('flex items-start justify-between gap-3 text-sm', a.past && 'text-muted-foreground')}
+          >
             <div className='min-w-0'>
-              <p className={cn('leading-snug font-medium', a.past ? 'text-muted-foreground' : 'text-foreground')}>{a.name}</p>
+              <p className={cn('leading-snug font-medium', a.past ? 'text-muted-foreground' : 'text-foreground')}>
+                {a.name}
+              </p>
               <p className='text-xs'>
                 {a.past ? 'Venció' : 'Vence'} <time dateTime={a.dueDate}>{dueTime(a.dueDate)}</time>
               </p>
             </div>
-            <span className='shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground'>Moodle</span>
+            <span className='shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground'>
+              Moodle
+            </span>
           </li>
         ))}
       </ul>
@@ -62,14 +69,14 @@ function Assignments({ assignments }: { assignments: MyAssignment[] }) {
 
 function SubjectCard({ subject, archived = false }: { subject: MySubject; archived?: boolean }) {
   return (
-    <li
-      className={cn(
-        'rounded-xl border border-border bg-card p-4 shadow-xs',
-        archived && 'bg-muted/60 shadow-none',
-      )}
-    >
+    <li className={cn('rounded-xl border border-border bg-card p-4 shadow-xs', archived && 'bg-muted/60 shadow-none')}>
       <p className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>{subject.code}</p>
-      <h3 className={cn('mt-0.5 text-base leading-snug font-semibold', archived ? 'text-muted-foreground' : 'text-foreground')}>
+      <h3
+        className={cn(
+          'mt-0.5 text-base leading-snug font-semibold',
+          archived ? 'text-muted-foreground' : 'text-foreground'
+        )}
+      >
         {subject.name}
       </h3>
       <p className='mt-1 text-sm text-muted-foreground'>
@@ -96,7 +103,9 @@ export function CurrentSubjects({ subjects }: { subjects: MySubject[] }) {
   }
   return (
     <ul className='flex flex-col gap-3'>
-      {subjects.map((s) => <SubjectCard key={s.sectionId} subject={s} />)}
+      {subjects.map((s) => (
+        <SubjectCard key={s.sectionId} subject={s} />
+      ))}
     </ul>
   )
 }
@@ -107,10 +116,14 @@ export function ArchivedSubjects({ subjects }: { subjects: MySubject[] }) {
     <details className='group rounded-xl border border-border bg-background'>
       <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden'>
         <span>Archivadas ({subjects.length})</span>
-        <span aria-hidden className='text-muted-foreground transition-transform group-open:rotate-180'>▾</span>
+        <span aria-hidden className='text-muted-foreground transition-transform group-open:rotate-180'>
+          ▾
+        </span>
       </summary>
       <ul className='flex flex-col gap-3 px-4 pb-4'>
-        {subjects.map((s) => <SubjectCard key={s.sectionId} subject={s} archived />)}
+        {subjects.map((s) => (
+          <SubjectCard key={s.sectionId} subject={s} archived />
+        ))}
       </ul>
     </details>
   )
