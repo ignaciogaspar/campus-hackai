@@ -7,6 +7,7 @@
    como `falla-externa`, nunca como excepción. Los logs llevan la operación y
    el código de error, nunca datos de personas. */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createQueryRunner, type Query } from '@/lib/adapters/supabase/query'
 import type {
   ClassroomAnnouncement,
   ClassroomAssignment,
@@ -89,9 +90,6 @@ const toAssignment = (row: AssignmentRow): ClassroomAssignment => ({
   dueDate: row.due_date === null ? null : iso(row.due_date)
 })
 
-type DbError = { message: string; code?: string }
-type Response<T> = { data: T | null; error: DbError | null }
-
 export function createSimulatedMoodle({
   client,
   baseUrl,
@@ -101,38 +99,14 @@ export function createSimulatedMoodle({
   /** Fijas: el simulado siempre matricula y tiene tareas con fecha, a diferencia de un Moodle sin esas funciones en su servicio. */
   const capabilities: ClassroomCapabilities = { canEnrol: true, hasAssignments: true }
 
-  /** Corre una consulta con tiempo máximo. Nunca tira: una caída es `falla-externa`. */
-  async function read<T>(
-    op: string,
-    query: (signal: AbortSignal) => PromiseLike<Response<T>>
-  ): Promise<Result<T | null, ExternalFailure>> {
-    const controller = new AbortController()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        controller.abort()
-        reject(new Error('tiempo agotado'))
-      }, timeoutMs)
-    })
-    try {
-      const { data, error } = await Promise.race([Promise.resolve(query(controller.signal)), timeout])
-      if (error) {
-        log(`[moodle-simulado] ${op}: error ${error.code ?? 'sin código'}`)
-        return fail('falla-externa')
-      }
-      return ok(data)
-    } catch (cause) {
-      log(`[moodle-simulado] ${op}: ${cause instanceof Error ? cause.name : 'falla'}`)
-      return fail('falla-externa')
-    } finally {
-      clearTimeout(timer)
-    }
+  /** Corre una consulta con tiempo máximo. Nunca tira: cualquier error es `falla-externa`. */
+  const run = createQueryRunner({ name: 'moodle-simulado', timeoutMs, log })
+  async function read<T>(op: string, query: Query<T>): Promise<Result<T | null, ExternalFailure>> {
+    const result = await run(op, query)
+    return result.ok ? result : fail('falla-externa')
   }
 
-  async function list<T>(
-    op: string,
-    query: (signal: AbortSignal) => PromiseLike<Response<T[]>>
-  ): Promise<Result<T[], ExternalFailure>> {
+  async function list<T>(op: string, query: Query<T[]>): Promise<Result<T[], ExternalFailure>> {
     const result = await read(op, query)
     return result.ok ? ok(result.value ?? []) : result
   }
