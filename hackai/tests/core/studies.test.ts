@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { createMemoryClassroom, type MemoryClassroomOptions } from '@/lib/adapters/memoria/classroom'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
-import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemorySiu, type MemorySiuOptions } from '@/lib/adapters/memoria/siu'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
 import { createStudies, type MySubject } from '@/lib/core/studies'
@@ -42,9 +42,13 @@ function fallible<P extends object>(port: P) {
   return { port: wrapped, state }
 }
 
-function build(data: SyntheticData = syntheticData, classroomOptions: MemoryClassroomOptions = {}) {
+function build(
+  data: SyntheticData = syntheticData,
+  classroomOptions: MemoryClassroomOptions = {},
+  siuOptions: MemorySiuOptions = {}
+) {
   const { clock, advance } = movableClock(data.now)
-  const { port: siu, state } = fallible(createMemorySiu(data, clock))
+  const { port: siu, state } = fallible(createMemorySiu(data, clock, siuOptions))
   const { port: classroom, state: classroomState } = fallible(createMemoryClassroom(data, classroomOptions))
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
   const studies = createStudies({ people, siu, classroom, clock })
@@ -433,4 +437,224 @@ test('con Moodle caído y sin nada leído antes devuelve «falla externa»', asy
   assert.deepEqual(await studies.subjectsOf('p-taguirre'), { ok: false, error: 'falla-externa' })
   // Las comisiones no dependen de Moodle.
   assert.equal((await studies.sectionsOf('p-taguirre')).ok, true)
+})
+
+// Notas, historia y constancias
+
+test('las notas de parciales salen juntas, vengan de la historia o de actuación provisoria, la más reciente primero', async () => {
+  const { studies } = build()
+
+  const result = await studies.record('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.deepEqual(result.value.data.grades, [
+    {
+      subjectId: 'pr1',
+      subjectName: 'Programación I',
+      assessmentName: 'TP integrador',
+      grade: 9,
+      date: '2026-10-16T12:00:00.000Z',
+      source: 'historia'
+    },
+    {
+      subjectId: 'am1',
+      subjectName: 'Análisis Matemático I',
+      assessmentName: 'Primer parcial',
+      grade: 7,
+      date: '2026-09-21T11:00:00.000Z',
+      source: 'actuacion-provisoria'
+    },
+    {
+      subjectId: 'aga',
+      subjectName: 'Álgebra y Geometría Analítica',
+      assessmentName: 'Segundo parcial',
+      grade: 7,
+      date: '2026-06-23T11:00:00.000Z',
+      source: 'historia'
+    },
+    {
+      subjectId: 'aga',
+      subjectName: 'Álgebra y Geometría Analítica',
+      assessmentName: 'Primer parcial',
+      grade: 6,
+      date: '2026-04-21T11:00:00.000Z',
+      source: 'historia'
+    }
+  ])
+})
+
+test('la historia académica muestra las materias aprobadas con fecha, nota y forma de aprobación, y el promedio', async () => {
+  const { studies } = build()
+
+  const tomas = await studies.record('p-taguirre')
+
+  assert.ok(tomas.ok)
+  // Álgebra quedó regular (le falta el final) y sus parciales son notas, no materias aprobadas.
+  assert.deepEqual(tomas.value.data.history, [
+    { subjectId: 'an1', subjectName: 'Antropología I', date: '2025-12-15T03:00:00.000Z', grade: 9, approval: 'examen' },
+    {
+      subjectId: 'qui',
+      subjectName: 'Química General',
+      date: '2025-12-05T03:00:00.000Z',
+      grade: 7,
+      approval: 'promocion'
+    },
+    {
+      subjectId: 'iin',
+      subjectName: 'Introducción a la Ingeniería',
+      date: '2025-07-04T03:00:00.000Z',
+      grade: 8,
+      approval: 'promocion'
+    }
+  ])
+  assert.equal(tomas.value.data.average, 8)
+
+  const nicolas = await studies.record('p-nherrera')
+
+  assert.ok(nicolas.ok)
+  assert.deepEqual(
+    nicolas.value.data.history.map((h) => [h.subjectName, h.approval, h.grade]),
+    [
+      ['Introducción a la Economía', 'promocion', 9],
+      ['Introducción a la Administración', 'equivalencia', 8]
+    ]
+  )
+  assert.equal(nicolas.value.data.average, 8.5)
+})
+
+test('sin materias aprobadas, la historia sale vacía y sin promedio', async () => {
+  const { studies } = build()
+
+  const result = await studies.record('p-lbenitez')
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.data.history, [])
+  assert.equal(result.value.data.average, null)
+})
+
+test('con el SIU caído, las notas y la historia vuelven como se leyeron la última vez, marcadas como desactualizadas', async () => {
+  const { studies, siuState, advance } = build()
+  const first = await studies.record('p-taguirre')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+  const second = await studies.record('p-taguirre')
+
+  assert.deepEqual(second, { ok: true, value: { data: first.value.data, readAt: NOW, stale: true } })
+})
+
+test('con el SIU caído y sin nada leído antes, las notas devuelven «falla externa»', async () => {
+  const { studies, siuState } = build()
+  siuState.down = true
+
+  assert.deepEqual(await studies.record('p-taguirre'), { ok: false, error: 'falla-externa' })
+})
+
+test('las notas de una persona que no existe devuelven «persona desconocida»', async () => {
+  const { studies } = build()
+
+  assert.deepEqual(await studies.record('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
+test('con un SIU sin cronograma (como la API real), las notas salen igual, con un nombre genérico', async () => {
+  const { studies } = build(syntheticData, {}, { capabilities: { hasAssessmentSchedule: false } })
+
+  const result = await studies.record('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.grades.map((g) => [g.subjectName, g.assessmentName, g.grade, g.source]),
+    [
+      ['Programación I', 'Evaluación', 9, 'historia'],
+      ['Análisis Matemático I', 'Evaluación', 7, 'actuacion-provisoria'],
+      ['Álgebra y Geometría Analítica', 'Evaluación', 7, 'historia'],
+      ['Álgebra y Geometría Analítica', 'Evaluación', 6, 'historia']
+    ]
+  )
+})
+
+test('si cumple las condiciones de la constancia de alumno regular, trae el enlace directo a pedirla en la Autogestión', async () => {
+  const { studies } = build()
+
+  assert.deepEqual(await studies.certificate('p-taguirre', 'alumno-regular'), {
+    ok: true,
+    value: {
+      type: 'alumno-regular',
+      meetsConditions: true,
+      reasons: [],
+      url: 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=alumno-regular'
+    }
+  })
+})
+
+/** Copia del set sintético donde el SIU dice que la persona no cumple las condiciones de la constancia. */
+function withoutConditions(personId: string, type: 'alumno-regular' | 'examen-final'): SyntheticData {
+  const data = structuredClone(syntheticData)
+  const siuId = data.people.find((p) => p.id === personId)!.siuId
+  data.siu.certificates.find((c) => c.personId === siuId && c.type === type)!.meetsConditions = false
+  return data
+}
+
+test('si no cumple la de alumno regular porque su propuesta está pasiva, lo dice', async () => {
+  const { studies } = build()
+
+  const result = await studies.certificate('p-fjuarez', 'alumno-regular')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.meetsConditions, false)
+  assert.deepEqual(result.value.reasons, ['sin-propuesta-activa'])
+  assert.equal(result.value.url, 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=alumno-regular')
+})
+
+test('si no cumple la de alumno regular porque no tiene inscripciones a cursada vigentes, lo dice', async () => {
+  const data = withoutConditions('p-lbenitez', 'alumno-regular')
+  const lucia = data.people.find((p) => p.id === 'p-lbenitez')!.siuId
+  for (const e of data.siu.courseEnrollments) if (e.personId === lucia) e.status = 'baja'
+  const { studies } = build(data)
+
+  const result = await studies.certificate('p-lbenitez', 'alumno-regular')
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.reasons, ['sin-inscripcion-vigente'])
+})
+
+test('si el SIU dice que no cumple y Cursada no encuentra el motivo, no inventa uno', async () => {
+  const { studies } = build(withoutConditions('p-taguirre', 'alumno-regular'))
+
+  const result = await studies.certificate('p-taguirre', 'alumno-regular')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.meetsConditions, false)
+  assert.deepEqual(result.value.reasons, [])
+})
+
+test('si no cumple la de examen final porque no rindió ningún final, lo dice', async () => {
+  const { studies } = build()
+
+  const result = await studies.certificate('p-lbenitez', 'examen-final')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.meetsConditions, false)
+  assert.deepEqual(result.value.reasons, ['sin-examenes-rendidos'])
+  assert.equal(result.value.url, 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=examen-final')
+})
+
+test('la constancia de examen final la cumple quien ya rindió un final', async () => {
+  const { studies } = build()
+
+  const result = await studies.certificate('p-taguirre', 'examen-final')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.meetsConditions, true)
+  assert.deepEqual(result.value.reasons, [])
+})
+
+test('la constancia de una persona que no existe devuelve «persona desconocida», y con el SIU caído, «falla externa»', async () => {
+  const { studies, siuState } = build()
+
+  assert.deepEqual(await studies.certificate('p-nadie', 'alumno-regular'), { ok: false, error: 'persona-desconocida' })
+  siuState.down = true
+  assert.deepEqual(await studies.certificate('p-taguirre', 'alumno-regular'), { ok: false, error: 'falla-externa' })
 })
