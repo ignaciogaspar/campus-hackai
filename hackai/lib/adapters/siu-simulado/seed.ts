@@ -4,8 +4,9 @@
    supabase/simulados/siu_seed.sql.
 
    Es idempotente: cada fila se inserta o se pisa por su clave. Las
-   inscripciones que no están en el set (las que se hicieron durante la demo)
-   se borran, así correrlo de nuevo deja el SIU como en el set sintético. */
+   inscripciones que no están en el set (las que se hicieron durante la demo) y
+   las notas que el set ya no tiene se borran, así correrlo de nuevo deja el SIU
+   como en el set sintético. */
 import { bool, json, num, type Sql, text, textArray, upsert } from '@/lib/adapters/supabase/sql'
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 
@@ -19,6 +20,8 @@ export function siuSeedSql(data: SyntheticData): string {
     'begin;\n',
     `delete from siu_course_enrollments where id <> all (${textArray(siu.courseEnrollments.map((e) => e.id))});\n`,
     `delete from siu_exam_enrollments where id <> all (${textArray(siu.examEnrollments.map((e) => e.id))});\n`,
+    `delete from siu_history where id <> all (${textArray(siu.history.map((h) => h.id))});\n`,
+    `delete from siu_provisional_results where id <> all (${textArray(siu.provisionalResults.map((r) => r.id))});\n`,
     upsert(
       'siu_schools',
       ['id'],
@@ -149,7 +152,9 @@ export function siuSeedSql(data: SyntheticData): string {
         date: text(h.date),
         grade: num(h.grade),
         result: text(h.result),
-        grade_record: text(h.gradeRecord)
+        grade_record: text(h.gradeRecord),
+        section_id: text(h.sectionId),
+        assessment_id: text(h.assessmentId)
       }))
     ),
     upsert(

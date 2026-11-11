@@ -116,6 +116,8 @@ type HistoryRow = {
   grade: number | string | null
   result: SiuHistoryEntry['result']
   grade_record: string
+  section_id: string | null
+  assessment_id: string | null
 }
 type ProvisionalRow = {
   id: string
@@ -470,7 +472,9 @@ export function createSimulatedSiu({
             date: iso(r.date),
             grade: grade(r.grade),
             result: r.result,
-            gradeRecord: r.grade_record
+            gradeRecord: r.grade_record,
+            sectionId: r.section_id,
+            assessmentId: r.assessment_id
           })
         )
       )
