@@ -23,7 +23,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   assert.deepEqual(await system.today.today(alumno.id), { ok: false, error: 'no-implementado' })
   assert.equal((await system.people.get(alumno.id)).ok, true)
   assert.equal((await system.studies.subjectsOf(alumno.id)).ok, true)
-  assert.deepEqual(await system.studies.record(alumno.id), { ok: false, error: 'no-implementado' })
+  assert.equal((await system.studies.record(alumno.id)).ok, true)
   assert.deepEqual(await system.spaces.syncAll(), { ok: false, error: 'no-implementado' })
 })
 
@@ -32,8 +32,6 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
   const p = 'persona'
   const calls = [
     studies.upcoming(p),
-    studies.record(p),
-    studies.certificate(p, 'alumno-regular'),
     spaces.open(p, 's'),
     spaces.channel(p, 'c'),
     spaces.post(p, 'c', { text: 'hola' }),
