@@ -14,6 +14,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const nav = new Map<string, NavSubject>()
   if (subjects.ok) {
     for (const s of subjects.value.data.current) {
+      // unread queda en 0 hasta que Espacios (#12) calcule los no leídos.
       nav.set(s.subjectId, { href: `/materias/${s.subjectId}`, code: s.code, name: s.name, unread: 0 })
     }
   }

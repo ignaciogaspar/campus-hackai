@@ -11,7 +11,7 @@ export const SheetClose = Dialog.Close
 export function SheetContent({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <Dialog.Portal>
-      <Dialog.Overlay className='fixed inset-0 z-20 bg-navy/45 data-[state=open]:animate-in data-[state=open]:fade-in-0' />
+      <Dialog.Overlay className='fixed inset-0 z-20 bg-navy/45 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none' />
       <Dialog.Content className='fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-lg flex-col gap-4 rounded-t-3xl bg-card px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(11_17_80/0.2)] outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom motion-reduce:animate-none'>
         <span aria-hidden='true' className='mx-auto h-1 w-10 rounded-full bg-border' />
         <div>

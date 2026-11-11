@@ -37,8 +37,8 @@ export function AppNav({ school, subjects }: { school?: string; subjects: NavSub
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-muted-foreground focus-visible:ring-3 focus-visible:ring-azul-claro focus-visible:outline-none lg:flex-row lg:gap-3 lg:p-3 lg:text-[0.9375rem]',
-              active && 'text-azul-claro lg:bg-accent lg:text-azul',
+              'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-muted-foreground focus-ring lg:flex-row lg:gap-3 lg:p-3 lg:text-[0.9375rem]',
+              active && 'text-blue-light lg:bg-accent lg:text-blue',
             )}
           >
             <Icon aria-hidden='true' className='size-5' strokeWidth={active ? 2.3 : 1.8} />
@@ -56,9 +56,9 @@ export function AppNav({ school, subjects }: { school?: string; subjects: NavSub
                 href={s.href}
                 title={s.name}
                 aria-current={isActive(pathname, s.href) ? 'page' : undefined}
-                className='flex items-center gap-3 rounded-xl px-3 py-1.5 text-[0.8125rem] font-medium text-foreground hover:bg-background focus-visible:ring-3 focus-visible:ring-azul-claro focus-visible:outline-none aria-[current=page]:bg-accent aria-[current=page]:font-bold'
+                className='flex items-center gap-3 rounded-xl px-3 py-1.5 text-[0.8125rem] font-medium text-foreground hover:bg-background focus-ring-inset aria-[current=page]:bg-accent aria-[current=page]:font-bold'
               >
-                <span aria-hidden='true' className='grid size-7.5 flex-none place-items-center rounded-[8px] bg-azul text-[10px] font-extrabold text-white'>
+                <span aria-hidden='true' className='grid size-7.5 flex-none place-items-center rounded-[8px] bg-blue text-[10px] font-extrabold text-white'>
                   {s.code}
                 </span>
                 <span className='min-w-0 flex-1 truncate'>{s.name}</span>

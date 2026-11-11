@@ -4,16 +4,17 @@ import { Bell, CalendarDays, CircleCheck, Download, FileText, Megaphone, Message
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
+import { IosInstallSteps } from '@/components/shell/install-button'
 import { PageHeader } from '@/components/shell/page-header'
 import { Button } from '@/components/ui/button'
-import { CalendarDay } from '@/components/ui/calendar-day'
+import { CalendarDay, CalendarLegend } from '@/components/ui/calendar-day'
 import { Card } from '@/components/ui/card'
 import { CollapsibleCard } from '@/components/ui/collapsible-card'
 import { List, ListItem } from '@/components/ui/list'
 import { NextExamCard } from '@/components/ui/next-exam-card'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { SegmentedList, SegmentedTrigger } from '@/components/ui/segmented'
-import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetTrigger } from '@/components/ui/sheet'
 import { EmptyState, ErrorNotice, OfflineNotice, Skeleton, StaleNotice } from '@/components/ui/states'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UnreadCount } from '@/components/ui/unread-count'
@@ -37,7 +38,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function RowIcon({ children }: { children: ReactNode }) {
-  return <span className='grid size-9 flex-none place-items-center rounded-full bg-accent text-azul-claro [&>svg]:size-5'>{children}</span>
+  return <span className='grid size-9 flex-none place-items-center rounded-full bg-accent text-blue-light [&>svg]:size-5'>{children}</span>
 }
 
 export default function MuestraPage() {
@@ -50,7 +51,7 @@ export default function MuestraPage() {
         actions={
           <a href='#' aria-label='Novedades, 4 sin leer' className='relative grid size-10 place-items-center rounded-full text-white hover:bg-white/10'>
             <Bell aria-hidden='true' className='size-5' />
-            <UnreadCount count={4} className='absolute -top-0.5 -right-0.5 bg-naranja text-tinta' />
+            <UnreadCount count={4} className='absolute -top-0.5 -right-0.5 bg-orange text-ink' />
           </a>
         }
       />
@@ -83,7 +84,7 @@ export default function MuestraPage() {
                 title='Respondieron tu consulta'
                 description='Mariana Ledesma: «No, llega hasta derivadas y sus aplicaciones.»'
                 meta={<>Análisis Matemático I · Consultas · hace 40 min</>}
-                end={<span aria-label='Sin leer' className='mt-1.5 size-2 rounded-full bg-azul-claro' />}
+                end={<span aria-label='Sin leer' className='mt-1.5 size-2 rounded-full bg-blue-light' />}
               />
               <ListItem
                 start={<RowIcon><Megaphone aria-hidden='true' /></RowIcon>}
@@ -155,20 +156,12 @@ export default function MuestraPage() {
             <SheetTrigger asChild>
               <Button variant='outline' className='self-start'><Download aria-hidden='true' /> Instalar</Button>
             </SheetTrigger>
-            <SheetContent title='Tené la app en tu celular' description='Se abre desde el ícono, sin el navegador.'>
-              <ol className='flex list-decimal flex-col gap-1.5 pl-5 text-[0.8125rem]'>
-                <li>Tocá <b>Compartir</b> en la barra de Safari.</li>
-                <li>Elegí <b>Agregar a inicio</b>.</li>
-                <li>Abrila desde el ícono de la Austral.</li>
-              </ol>
-              <SheetClose asChild>
-                <Button variant='outline'>Listo</Button>
-              </SheetClose>
-            </SheetContent>
+            <IosInstallSteps />
           </Sheet>
         </Section>
 
         <Section title='Días del calendario'>
+          <CalendarLegend />
           <div className='grid grid-cols-3 gap-1.5 sm:grid-cols-7'>
             <CalendarDay day={9} past events={[]} />
             <CalendarDay day={10} today events={[]} />
@@ -192,7 +185,8 @@ export default function MuestraPage() {
             <EmptyState icon={CalendarDays} title='No tenés parciales ni entregas hasta el 24/11'>
               Lo próximo es el final de Álgebra y Geometría Analítica, el miércoles 9/12.
             </EmptyState>
-            <Card className='flex flex-col gap-3 p-4' aria-label='Cargando'>
+            <Card role='status' className='flex flex-col gap-3 p-4'>
+              <span className='sr-only'>Cargando</span>
               <Skeleton className='h-4 w-2/3' />
               <Skeleton className='h-3 w-1/2' />
               <Skeleton className='h-3 w-3/4' />

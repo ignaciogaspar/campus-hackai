@@ -15,7 +15,7 @@ Lenguaje visual de HackAI y referencia de las pantallas de la demo. Los valores 
 - **Paleta de la Austral.** Sale de `hackai/app/globals.css` (provisoria) y de los tonos de Campus Austral (`campus/app/globals.css`): navy `#0b1150` en el encabezado, azul `#1d21a9` como color primario, azul claro `#1f5cff` para lo activo y los no leídos, naranja `#ff7a1a` para lo urgente y fondo `#f2f4fb`.
 - **Tipografía.** Montserrat en todo. Títulos en 800.
 - **Superficies.** Tarjetas blancas sin borde, con sombra suave. Radios de 8, 14 y 22 px.
-- **Primero el celular.** Se diseña a 390 px. Encabezado navy con la marca «Universidad Austral» y la facultad, campana de novedades con contador y navegación inferior con Hoy, Materias y Académico. Áreas táctiles de 40 a 44 px. Sin barra de scroll visible.
+- **Primero el celular.** Se diseña a 390 px. Encabezado navy con la marca «Universidad Austral» y la facultad, campana de novedades con contador y navegación inferior con Hoy, Materias y Académico. Áreas táctiles de 40 a 44 px en los controles principales; los secundarios, como el botón chico, el selector segmentado o el botón «Instalar», pueden bajar a 32-36 px. Sin barra de scroll visible.
 - **Estados.** Vacío que dice qué es lo próximo, cargando con skeleton, error que afecta solo al bloque que falló y desactualizado con la hora de la última lectura.
 - **Movimiento.** Uno solo: el contador de no leídos entra con un pulso corto. Se apaga con `prefers-reduced-motion`.
 - **Accesibilidad.** Foco visible en todo control, pestañas con flechas del teclado, contraste AA y textos de estado con `role="status"` o `role="alert"`.

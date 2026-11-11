@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Brand } from '@/components/shell/brand'
 import { InstallButton } from '@/components/shell/install-button'
+import { cn } from '@/lib/utils'
 
 type Props = {
   title: string
@@ -12,22 +13,24 @@ type Props = {
   school?: string
   /** Pantallas que no son de primer nivel: en la app instalada no hay atrás del navegador. */
   backHref?: string
+  /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
+  hideBackOnDesktop?: boolean
   /** Arriba a la derecha: novedades, perfil. */
   actions?: ReactNode
   /** Debajo del título, sobre el navy: chips de comisión, docente. */
   children?: ReactNode
 }
 
-export function PageHeader({ title, kicker, school, backHref, actions, children }: Props) {
+export function PageHeader({ title, kicker, school, backHref, hideBackOnDesktop, actions, children }: Props) {
   return (
     <header className='rounded-b-[28px] bg-navy text-white'>
       <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>
-        <div className='flex min-h-10 items-center lg:hidden'>
+        <div className={cn('flex min-h-10 items-center', (!backHref || hideBackOnDesktop) && 'lg:hidden')}>
           {backHref ? (
             <Link
               href={backHref}
               aria-label='Volver'
-              className='-ml-2 grid size-10 place-items-center rounded-full text-white hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-azul-claro focus-visible:outline-none'
+              className='-ml-2 grid size-10 place-items-center rounded-full text-white hover:bg-white/10 focus-ring'
             >
               <ChevronLeft aria-hidden='true' className='size-5' />
             </Link>

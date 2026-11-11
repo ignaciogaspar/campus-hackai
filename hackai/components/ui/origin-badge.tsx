@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 
 export type Origin = 'hackai' | 'discord' | 'moodle' | 'siu'
 
-const ORIGINS: Record<Origin, { label: string; className: string }> = {
+export const ORIGINS: Record<Origin, { label: string; className: string }> = {
   hackai: { label: 'HackAI', className: 'bg-origin-hackai-background text-origin-hackai' },
   discord: { label: 'Discord', className: 'bg-origin-discord-background text-origin-discord' },
   moodle: { label: 'Moodle', className: 'bg-origin-moodle-background text-origin-moodle' },

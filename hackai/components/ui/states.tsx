@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
   return (
     <div className='flex flex-col items-center gap-2 rounded-[22px] bg-card px-4 py-6 text-center text-[0.8125rem] text-muted-foreground'>
-      <Icon aria-hidden='true' className='size-7 text-gris-claro' strokeWidth={1.8} />
+      <Icon aria-hidden='true' className='size-7 text-gray-light' strokeWidth={1.8} />
       <strong className='text-[0.9375rem] text-foreground'>{title}</strong>
       <p className='max-w-[48ch] text-pretty'>{children}</p>
     </div>
@@ -15,7 +15,7 @@ export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; 
 
 /* Cargando: la forma de lo que va a aparecer, no un spinner. */
 export function Skeleton({ className, ...props }: ComponentProps<'div'>) {
-  return <div aria-hidden='true' className={cn('animate-pulse rounded-md bg-hielo', className)} {...props} />
+  return <div aria-hidden='true' className={cn('rounded-md bg-ice motion-safe:animate-pulse', className)} {...props} />
 }
 
 function Notice({ icon: Icon, tone, role, children }: { icon: LucideIcon; tone: string; role: 'status' | 'alert'; children: ReactNode }) {
@@ -39,5 +39,5 @@ export function ErrorNotice({ children }: { children: ReactNode }) {
 
 /* Sin internet: se ve lo guardado y se deshabilita lo que necesita conexión. */
 export function OfflineNotice({ children }: { children: ReactNode }) {
-  return <Notice icon={WifiOff} tone='bg-tinta text-white [&>svg]:text-cian' role='status'>{children}</Notice>
+  return <Notice icon={WifiOff} tone='bg-ink text-white [&>svg]:text-cyan' role='status'>{children}</Notice>
 }
