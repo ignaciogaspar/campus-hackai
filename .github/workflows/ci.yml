@@ -1,0 +1,78 @@
+# Typecheck, tests, build y prueba de humo de hackai en cada PR a main y en cada
+# push a main. Solo corre si cambia código de hackai/ o este archivo.
+# Sin secretos: los puertos usan los adaptadores en memoria y los tests contra
+# Supabase se saltean, como pasa sin HACKAI_TEST_SUPABASE_*.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'hackai/**'
+      - '!hackai/**/*.md'
+      - '.github/workflows/ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'hackai/**'
+      - '!hackai/**/*.md'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+# Un push nuevo al mismo PR cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hackai:
+    name: typecheck, tests y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: hackai
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: hackai/.nvmrc
+          cache: npm
+          cache-dependency-path: hackai/package-lock.json
+
+      # Caché del build de Next.js. Va antes de npm ci para que hashFiles no
+      # recorra node_modules; se guarda al terminar el job.
+      - uses: actions/cache@v6
+        with:
+          path: hackai/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('hackai/package-lock.json') }}-${{ hashFiles('hackai/app/**', 'hackai/components/**', 'hackai/lib/**') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('hackai/package-lock.json') }}-
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      # Levanta el servidor standalone, el mismo que usa la imagen de Docker, y
+      # pide la salud y el ingreso.
+      - name: Prueba de humo
+        run: |
+          PORT=3100 HOSTNAME=127.0.0.1 node .next/standalone/server.js > servidor.log 2>&1 &
+          trap 'kill $! 2> /dev/null' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3100/api/health > /dev/null 2>&1 && break
+            sleep 1
+          done
+          if ! curl -fsS http://127.0.0.1:3100/api/health || ! curl -fsS -o /dev/null http://127.0.0.1:3100/; then
+            echo '::error::El servidor no responde /api/health o /. Log del servidor:'
+            cat servidor.log
+            exit 1
+          fi
+          echo
+          echo 'El servidor responde /api/health y /.'
