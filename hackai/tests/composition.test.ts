@@ -18,9 +18,10 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   })
   assert.equal(system.ports.clock.now().toISOString(), NOW.toISOString())
 
-  const alumno = syntheticData.people[0]
+  const alumno = syntheticData.people.find((p) => p.id === 'p-taguirre')!
   assert.deepEqual(await system.today.today(alumno.id), { ok: false, error: 'no-implementado' })
-  assert.deepEqual(await system.people.get(alumno.id), { ok: false, error: 'no-implementado' })
+  assert.equal((await system.people.get(alumno.id)).ok, true)
+  assert.equal((await system.studies.subjectsOf(alumno.id)).ok, true)
   assert.deepEqual(await system.studies.record(alumno.id), { ok: false, error: 'no-implementado' })
   assert.deepEqual(await system.spaces.syncAll(), { ok: false, error: 'no-implementado' })
 })
@@ -31,11 +32,6 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
   const calls = [
     people.signIn({ kind: 'demo', subject: 'demo' }),
     people.demoPeople(),
-    people.get(p),
-    people.accountIn(p, 'siu'),
-    people.byExternalAccount('discord', 'x'),
-    studies.subjectsOf(p),
-    studies.sectionsOf(p),
     studies.offer(p, { kind: 'cursada', subjectId: 's' }),
     studies.enroll(p, { kind: 'comision', sectionId: 's' }),
     studies.drop(p, { kind: 'mesa', examBoardId: 'm' }),
@@ -67,6 +63,21 @@ test('cada puerto se elige por su variable de entorno y un valor desconocido se 
 
   assert.throws(() => compose({ HACKAI_SIU: 'otro' }), /HACKAI_SIU/)
   assert.throws(() => compose({ HACKAI_EXTERNAL_CHANNEL: 'slack' }), /HACKAI_EXTERNAL_CHANNEL/)
+})
+
+test('HACKAI_SIU=simulado usa el SIU simulado sobre Supabase, que declara sus capacidades', () => {
+  const system = compose({
+    HACKAI_SIU: 'simulado',
+    NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+  })
+
+  assert.equal(system.adapters.siu, 'simulado')
+  assert.deepEqual(system.ports.siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
+})
+
+test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () => {
+  assert.throws(() => compose({ HACKAI_SIU: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
 })
 
 test('el canal externo de Discord se arma con el token del entorno y sin token no arranca', () => {

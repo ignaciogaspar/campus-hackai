@@ -23,3 +23,13 @@ export function fail<E extends string>(error: E): Fail<E> {
 export async function notImplemented(): Promise<Fail<NotImplemented>> {
   return fail('no-implementado')
 }
+
+/** Junta varios Result en uno: los valores en orden, o el primer error. */
+export function all<T, E extends string>(results: Result<T, E>[]): Result<T[], E> {
+  const values: T[] = []
+  for (const result of results) {
+    if (!result.ok) return result
+    values.push(result.value)
+  }
+  return ok(values)
+}

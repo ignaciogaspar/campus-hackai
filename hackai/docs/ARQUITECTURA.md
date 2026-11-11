@@ -102,7 +102,7 @@ today ──► studies ──► people
           └──────────────┘
 ```
 
-Cursada usa Personas solo para traducir una persona a sus ids del SIU y de Moodle (`accountIn`), porque los puertos hablan en ids de cada sistema.
+Cursada usa Personas solo para traducir ids: una persona a sus ids del SIU y de Moodle (`accountIn`), y un docente del SIU a su persona de HackAI (`byExternalAccount`), porque los puertos hablan en ids de cada sistema. El rol y la facultad los lee del SIU con ese id.
 
 No hay ciclos. Si un módulo nuevo necesita llamar a uno que lo llama, el diseño está mal: se revisa antes de escribir código.
 
@@ -136,7 +136,8 @@ hackai/
 │   └── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
 ├── app/                 pantallas y server actions
 ├── components/
-├── supabase/migrations/
+├── supabase/migrations/ tablas propias de HackAI
+├── supabase/simulados/  tablas siu_* y moodle_* con su seed: solo para la demo
 └── tests/
     ├── core/            un archivo por módulo
     └── contracts/       una batería por puerto

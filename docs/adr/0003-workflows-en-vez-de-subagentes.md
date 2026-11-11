@@ -5,6 +5,8 @@ date: 2026-11-10
 
 # Los agentes en paralelo se lanzan con workflows guardados, no con subagentes
 
+> El workflow `mergeable-check` se sacó con el [ADR 0004](0004-sistema-propio-con-puertos-y-adaptadores.md). La lista vigente está en `docs/agents/workflows.md`.
+
 Varias skills de Matt Pocock piden lanzar subagentes en paralelo (`code-review`, `implement-spec`, `codebase-design`, `improve-codebase-architecture`, `wayfinder`, `grilling`). Lanzados a mano, cada sesión los arma distinto: otro prompt, otro modelo, otro reparto de archivos. Decidimos que todo trabajo en paralelo pase por el Workflow tool con un script guardado en `.claude/workflows/`: `review-axes`, `implement-tickets`, `design-it-twice`, `explore-codebase`, `research-tickets`, `mergeable-check` y `scan-siu-campus`. Las skills afectadas se editaron para decir «llamá al Workflow tool con name '<workflow>' y args {...}» donde decían «spawn sub-agents».
 
 ## Opciones consideradas

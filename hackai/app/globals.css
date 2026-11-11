@@ -18,6 +18,9 @@
   --tinta: #14162b;
   --gris: #5b6072;
   --borde: #d9deea;
+  /* Avisos: algo para tener en cuenta, que no es un error. */
+  --warning: var(--naranja);
+  --warning-background: #fff4ea;
   --background: var(--hielo);
   --foreground: var(--tinta);
   --card: oklch(1 0 0);
@@ -87,7 +90,7 @@ a { color: var(--azul); }
 .alerta { padding: 12px 16px; border-radius: 8px; border: 1px solid var(--borde); background: #fff; }
 .alerta-error { border-color: #d43c3c; background: #fdeeee; }
 .alerta-ok { border-color: #2f9e5b; background: #ecf8f0; }
-.alerta-aviso { border-color: var(--naranja); background: #fff4ea; }
+.alerta-aviso { border-color: var(--warning); background: var(--warning-background); }
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--hielo); border: 1px solid var(--borde); font-size: 0.75rem; font-weight: 600; }
 
@@ -115,6 +118,8 @@ a { color: var(--azul); }
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-warning-background: var(--warning-background);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);

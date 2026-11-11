@@ -9,13 +9,19 @@
    - Las lecturas toleran caídas: devuelven lo último leído, marcado como
      desactualizado (`Fresh`).
 
+   - Materias y comisiones: un alumno ve las de sus inscripciones aceptadas o
+     pendientes, y nunca las de otra facultad; un docente, las que dicta. Son
+     actuales las de un período lectivo que no terminó (el que está en curso y
+     los que ya tienen inscriptos, como el de verano) y archivadas las de
+     períodos que ya terminaron.
+
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
-import type { SiuCertificateType, SiuPort, SiuSchedule } from '@/lib/ports/siu'
-import { notImplemented, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
+import type { SiuCertificateType, SiuPort, SiuSchedule, SiuSection, SiuSubject, SiuTerm } from '@/lib/ports/siu'
+import { all, fail, notImplemented, ok, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
@@ -136,7 +142,9 @@ export type AcademicRecord = {
 
 export type CertificateStatus = { type: CertificateType; meetsConditions: boolean; url: string }
 
-type ReadError = 'persona-desconocida' | ExternalFailure | NotImplemented
+/** Por qué una lectura de Cursada no pudo responder. */
+export type StudiesReadError = 'persona-desconocida' | ExternalFailure | NotImplemented
+type ReadError = StudiesReadError
 
 export type Studies = {
   /** Materias del período lectivo actual y archivadas. */
@@ -166,10 +174,137 @@ export type StudiesDeps = {
   clock: ClockPort
 }
 
-export function createStudies(_deps: StudiesDeps): Studies {
+/** Una comisión de la persona con su materia y su período lectivo. */
+type SectionInTerm = { section: SiuSection; subject: SiuSubject; term: SiuTerm; current: boolean }
+
+type MySectionsInTerms = { role: Role; sections: SectionInTerm[] }
+
+/** Un id del SIU o un vínculo que no existe es una persona que Cursada no conoce. */
+function asUnknownPerson<E extends string>(error: E | 'no-encontrado' | 'sin-cuenta'): Exclude<E, 'no-encontrado' | 'sin-cuenta'> | 'persona-desconocida' {
+  return error === 'no-encontrado' || error === 'sin-cuenta' ? 'persona-desconocida' : error as Exclude<E, 'no-encontrado' | 'sin-cuenta'>
+}
+
+export function createStudies({ people, siu, classroom, clock }: StudiesDeps): Studies {
+  /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
+  const lastRead = new Map<string, Fresh<unknown>>()
+
+  async function fresh<T>(key: string, read: () => Promise<Result<T, ReadError>>): Promise<Result<Fresh<T>, ReadError>> {
+    const result = await read()
+    if (result.ok) {
+      const value: Fresh<T> = { data: result.value, readAt: clock.now().toISOString(), stale: false }
+      lastRead.set(key, value)
+      return ok(value)
+    }
+    const last = lastRead.get(key) as Fresh<T> | undefined
+    if (result.error === 'falla-externa' && last) return ok({ ...last, stale: true })
+    return result
+  }
+
+  /** Las comisiones de la persona, actuales primero (por inicio del período) y
+      archivadas después (la más reciente primero), cada grupo por materia. El
+      rol y la facultad salen del SIU, con el id que da Personas. */
+  async function sectionsInTermsOf(personId: PersonId): Promise<Result<MySectionsInTerms, ReadError>> {
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
+    const person = await siu.person(siuId.value)
+    if (!person.ok) return fail(asUnknownPerson(person.error))
+    const { role, school } = person.value
+
+    let sections: SiuSection[]
+    if (role === 'profesor') {
+      const taught = await siu.teacherSections(siuId.value)
+      if (!taught.ok) return fail(asUnknownPerson(taught.error))
+      sections = taught.value
+    } else {
+      const enrollments = await siu.courseEnrollments(siuId.value, { historic: true })
+      if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
+      const ids = [...new Set(enrollments.value
+        .filter((e) => e.status === 'aceptada' || e.status === 'pendiente')
+        .map((e) => e.sectionId))]
+      const found = await Promise.all(ids.map((id) => siu.section(id)))
+      if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+      sections = found.flatMap((r) => r.ok ? [r.value] : []).filter((s) => s.schoolId === school.id)
+    }
+
+    const terms = await siu.terms()
+    if (!terms.ok) return terms
+    const subjectIds = [...new Set(sections.map((s) => s.subjectId))]
+    const subjects = await Promise.all(subjectIds.map((id) => siu.subject(id)))
+    if (subjects.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
+
+    const at = clock.now().toISOString()
+    const placed = sections.flatMap((section): SectionInTerm[] => {
+      const term = terms.value.find((t) => t.id === section.termId)
+      const subject = subjects.find((r) => r.ok && r.value.id === section.subjectId)
+      if (!term || !subject?.ok) return []
+      return [{ section, subject: subject.value, term, current: term.end >= at }]
+    })
+    const byName = (a: SectionInTerm, b: SectionInTerm) =>
+      a.subject.name.localeCompare(b.subject.name, 'es') || a.section.name.localeCompare(b.section.name, 'es')
+    const current = placed.filter((p) => p.current).sort((a, b) => a.term.start.localeCompare(b.term.start) || byName(a, b))
+    const archived = placed.filter((p) => !p.current).sort((a, b) => b.term.end.localeCompare(a.term.end) || byName(a, b))
+    return ok({ role, sections: [...current, ...archived] })
+  }
+
+  async function subjectsOf(personId: PersonId): Promise<Result<MySubjects, ReadError>> {
+    const mine = await sectionsInTermsOf(personId)
+    if (!mine.ok) return mine
+    const courses = all(await Promise.all(mine.value.sections.map((p) => classroom.coursesForSection(p.section.id))))
+    if (!courses.ok) return courses
+
+    const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
+      const item: MySubject = {
+        subjectId: subject.id,
+        code: subject.code,
+        name: subject.name,
+        schoolId: section.schoolId,
+        termId: term.id,
+        termName: term.name,
+        sectionId: section.id,
+        sectionName: section.name,
+        role: mine.value.role,
+        classroomCourseIds: courses.value[i].map((c) => c.id),
+      }
+      return { item, current }
+    })
+    return ok({
+      current: subjects.filter((s) => s.current).map((s) => s.item),
+      archived: subjects.filter((s) => !s.current).map((s) => s.item),
+    })
+  }
+
+  /** Docentes de una comisión, con su persona de HackAI si la tienen. */
+  async function teachersOf(section: SiuSection): Promise<Result<Teacher[], ExternalFailure | NotImplemented>> {
+    const teachers: Teacher[] = []
+    for (const siuId of section.teacherIds) {
+      const [person, owner] = await Promise.all([siu.person(siuId), people.byExternalAccount('siu', siuId)])
+      if (!person.ok && person.error === 'falla-externa') return fail('falla-externa')
+      if (!owner.ok) return owner
+      if (person.ok) teachers.push({ personId: owner.value, name: `${person.value.names} ${person.value.surname}` })
+    }
+    return ok(teachers)
+  }
+
+  async function sectionsOf(personId: PersonId): Promise<Result<MySection[], ReadError>> {
+    const mine = await sectionsInTermsOf(personId)
+    if (!mine.ok) return mine
+    const teachers = all(await Promise.all(mine.value.sections.map((p) => teachersOf(p.section))))
+    if (!teachers.ok) return teachers
+
+    return ok(mine.value.sections.map(({ section }, i) => ({
+      sectionId: section.id,
+      name: section.name,
+      subjectId: section.subjectId,
+      schoolId: section.schoolId,
+      termId: section.termId,
+      role: mine.value.role,
+      teachers: teachers.value[i],
+    })))
+  }
+
   return {
-    subjectsOf: notImplemented,
-    sectionsOf: notImplemented,
+    subjectsOf: (personId) => fresh(`subjectsOf:${personId}`, () => subjectsOf(personId)),
+    sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     offer: notImplemented,
     enroll: notImplemented,
     drop: notImplemented,
