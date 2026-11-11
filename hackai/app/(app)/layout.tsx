@@ -1,6 +1,8 @@
 /* Las pantallas de adentro: piden sesión y llevan la navegación. Si Personas o
    Cursada fallan, la navegación se dibuja igual, sin la facultad ni la lista de
-   materias; cada pantalla muestra su propio error. */
+   materias; cada pantalla muestra su propio error.
+   Next.js no vuelve a ejecutar este layout al navegar entre pantallas hermanas:
+   cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta. */
 import type { ReactNode } from 'react'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
