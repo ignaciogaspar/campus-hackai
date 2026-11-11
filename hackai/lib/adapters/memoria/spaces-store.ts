@@ -133,8 +133,11 @@ export function createMemorySpacesStore(): SpacesStore {
     },
 
     async markRead(personId, channelId, seq) {
+      // De un canal que no existe no queda marca; de uno abierto vacío, sí (hasta 0).
+      if (!channels.some((c) => c.id === channelId)) return ok(null)
       const key = readKey(personId, channelId)
-      if (seq > (reads.get(key) ?? 0)) reads.set(key, seq)
+      const current = reads.get(key)
+      if (current === undefined || seq > current) reads.set(key, seq)
       return ok(null)
     }
   }
