@@ -101,7 +101,7 @@ La batería de contrato del almacén (`tests/contracts/people-store.test.ts`) co
 
 En `/materias/<materia>` está el espacio de cada materia, para alumnos y docentes: arriba, una pestaña por canal con sus no leídos (`#avisos` y `#consultas` de cada comisión, el material de toda la materia y los canales que crea el docente). La pestaña elegida va en `?canal=` y el hilo de una consulta en `?hilo=`. En compu son tres columnas: canales, conversación y el material reciente con los docentes de la comisión. Quién ve y quién escribe lo decide Espacios (`lib/core/spaces/`), no la pantalla: la membresía sale de las comisiones que da Cursada, sin tabla de miembros.
 
-El espacio y sus canales se crean la primera vez que alguien los abre. Sin configurar, todo vive en memoria mientras dure el proceso: al reiniciar `npm run dev` se pierden los mensajes. Con `HACKAI_STORE=supabase` se guarda en tablas propias, y con `HACKAI_FILES=supabase` el material y los adjuntos van a un bucket privado de Supabase Storage.
+El espacio y sus canales se crean la primera vez que alguien los abre. Sin configurar, todo vive en memoria mientras dure el proceso: al reiniciar `npm run dev` se pierden los mensajes. El sistema se arma una vez por proceso (`system()` en `lib/composition.ts`) y sobrevive a la recarga en caliente: si cambiás algo de `lib/`, reiniciá `npm run dev` para verlo. Con `HACKAI_STORE=supabase` se guarda en tablas propias, y con `HACKAI_FILES=supabase` el material y los adjuntos van a un bucket privado de Supabase Storage.
 
 | Archivo | Qué hace |
 | --- | --- |
