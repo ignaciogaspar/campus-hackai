@@ -9,13 +9,15 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
-import { createPeople } from '@/lib/core/people'
+import { createPeople, type PeopleStore } from '@/lib/core/people'
 import { type Channel, createSpaces, type SpacesStore, type SpaceView } from '@/lib/core/spaces'
 import { createStudies } from '@/lib/core/studies'
+import type { ClassroomAnnouncement, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { FilesPort } from '@/lib/ports/files'
 import type { SiuPort } from '@/lib/ports/siu'
-import { fail } from '@/lib/result'
+import { fail, ok } from '@/lib/result'
+import { fallible } from '@/tests/core/helpers'
 
 const NOW = syntheticData.now
 
@@ -41,7 +43,20 @@ function assertFileUrl(url: string | undefined, name: string) {
   assert.ok(url?.endsWith(`/${encodeURIComponent(name)}`))
 }
 
-function build(data: SyntheticData = syntheticData, overrides: { store?: SpacesStore; files?: FilesPort } = {}) {
+/** Copia del set sin avisos ni recursos de Moodle: abrir un espacio no importa nada del aula. */
+function withoutMoodleContent(data: SyntheticData): SyntheticData {
+  const copy = structuredClone(data)
+  copy.moodle.announcements = []
+  copy.moodle.contents = []
+  return copy
+}
+
+/** Por defecto el aula no tiene avisos ni recursos, para que los tests que no son
+    de Moodle no cuenten lo que se importa al abrir. Los de Moodle pasan su aula. */
+function build(
+  data: SyntheticData = syntheticData,
+  overrides: { store?: SpacesStore; files?: FilesPort; classroom?: ClassroomPort; peopleStore?: PeopleStore } = {}
+) {
   let now = data.now
   // Reloj que se puede mover, para subir material en distintas semanas.
   const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(now) }
@@ -49,8 +64,9 @@ function build(data: SyntheticData = syntheticData, overrides: { store?: SpacesS
     now = iso
   }
   const { port: siu, state: siuState } = fallibleSiu(createMemorySiu(data, clock))
-  const classroom = createMemoryClassroom(data)
-  const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
+  const classroom = overrides.classroom ?? createMemoryClassroom(withoutMoodleContent(data))
+  const peopleStore = overrides.peopleStore ?? createMemoryPeopleStore(data)
+  const people = createPeople({ identity: createMemoryIdentity(data), siu, store: peopleStore })
   const studies = createStudies({ people, siu, classroom, clock })
   const store = overrides.store ?? createMemorySpacesStore()
   const files: FilesPort = overrides.files ?? createMemoryFiles()
@@ -1017,6 +1033,289 @@ test('quien se inscribe en una comisión ve enseguida los canales de su espacio'
   assert.deepEqual(labels(opened.value.channels), ['#avisos (Verano)', '#consultas (Verano)', '#material'])
   assert.equal(named(opened.value, 'avisos', 'Verano').kind, 'avisos')
   assert.equal(named(opened.value, 'consultas', 'Verano').kind, 'consultas')
+})
+
+// Avisos y material de Moodle (#16). Estos tests arman el aula con el set completo.
+
+/** Los mensajes de un canal como los ve la persona. */
+async function messagesOf(spaces: ReturnType<typeof build>['spaces'], personId: string, channelId: string) {
+  const read = await spaces.channel(personId, channelId)
+  assert.ok(read.ok)
+  return read.value.threads.map((t) => t.message)
+}
+
+test('al abrir el espacio, los avisos del foro de Moodle llegan a #avisos de su comisión, con origen Moodle', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 1)
+  const [aviso, ...rest] = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(rest, [])
+  assert.deepEqual(
+    { ...aviso, id: undefined, channelId: undefined },
+    {
+      id: undefined,
+      channelId: undefined,
+      author: { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' },
+      text: 'Cambio de aula para el segundo parcial\n\nEl segundo parcial del lunes 16 se toma en el aula 20. Traigan DNI.',
+      attachments: [],
+      origin: 'moodle',
+      externalId: 'av-1',
+      status: 'publicado',
+      replyTo: null,
+      question: null,
+      unread: true,
+      createdAt: '2026-11-06T20:12:00.000Z'
+    }
+  )
+})
+
+test('volver a abrir el espacio no duplica los avisos de Moodle, y el de la A no llega a #avisos de la B', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+  const ids = await am1(spaces)
+
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+  assert.ok((await spaces.open('p-mledesma', 'am1')).ok)
+
+  const avisosA = await messagesOf(spaces, 'p-mledesma', ids.avisosA)
+  assert.deepEqual(
+    avisosA.map((m) => [m.origin, m.externalId]),
+    [['moodle', 'av-1']]
+  )
+  assert.deepEqual(await messagesOf(spaces, 'p-gferreyra', ids.avisosB), [])
+})
+
+/** El material como lo muestra la pantalla, sección por sección. */
+const materialRows = (view: SpaceView) =>
+  view.material.sections.map((s) => [
+    s.title,
+    s.items.map((i) => [i.name, i.origin, i.url, i.contentType, i.size, i.addedBy, i.addedAt, i.unread])
+  ])
+
+test('al abrir el espacio, los recursos del curso de Moodle aparecen en el material con su tema y el enlace al recurso', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  // Moodle no da el tamaño de un recurso: 0 es «sin dato».
+  assert.deepEqual(materialRows(opened.value), [
+    [
+      'Unidad 1: Límites',
+      [
+        [
+          'Guía de ejercicios 1',
+          'moodle',
+          'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf',
+          'application/pdf',
+          0,
+          null,
+          '2026-08-11T12:00:00.000Z',
+          true
+        ]
+      ]
+    ],
+    [
+      'Unidad 2: Derivadas',
+      [
+        [
+          'Guía de ejercicios 2',
+          'moodle',
+          'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf',
+          'application/pdf',
+          0,
+          null,
+          '2026-09-29T12:00:00.000Z',
+          true
+        ]
+      ]
+    ]
+  ])
+  assert.equal(named(opened.value, 'material').unread, 2)
+})
+
+test('el material reúne los recursos de Moodle de todas las comisiones de la materia, sin duplicarlos al volver a abrir', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+  await am1(spaces)
+
+  await spaces.open('p-taguirre', 'am1')
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  // El apunte es del curso de la B y es un enlace; el de AM1 de Ciencias Empresariales es de otro espacio.
+  assert.deepEqual(
+    opened.value.material.sections.map((s) => [s.title, s.items.map((i) => [i.name, i.contentType])]),
+    [
+      ['Bibliografía', [['Apunte de la cátedra', 'text/uri-list']]],
+      ['Unidad 1: Límites', [['Guía de ejercicios 1', 'application/pdf']]],
+      ['Unidad 2: Derivadas', [['Guía de ejercicios 2', 'application/pdf']]]
+    ]
+  )
+  assert.equal(named(opened.value, 'material').unread, 3)
+})
+
+test('lo que trae de Moodle entra por fecha, así lo más nuevo queda primero aunque Moodle lo liste en otro orden', async () => {
+  const data = structuredClone(syntheticData)
+  data.moodle.contents.reverse()
+  data.moodle.announcements.push({
+    ...data.moodle.announcements[0],
+    id: 'av-viejo',
+    subject: 'Bienvenida',
+    message: 'Bienvenidos a la materia.',
+    createdAt: '2026-08-10T12:00:00.000Z'
+  })
+  const { spaces } = build(data, { classroom: createMemoryClassroom(data) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.material.recent.map((i) => i.name),
+    ['Guía de ejercicios 2', 'Guía de ejercicios 1']
+  )
+  const avisos = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(
+    avisos.map((m) => m.externalId),
+    ['av-viejo', 'av-1'],
+    'en el orden en que se publicaron'
+  )
+})
+
+test('los adjuntos de un aviso de Moodle quedan como enlace al archivo en Moodle, sin copiarse a Archivos', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-fjuarez', 'co1')
+
+  assert.ok(opened.ok)
+  const [aviso] = await messagesOf(spaces, 'p-fjuarez', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(aviso.author, { personId: 'p-srosales', name: 'Silvina Rosales', role: 'profesor' })
+  assert.deepEqual(aviso.attachments, [
+    {
+      name: 'temas-segundo-parcial.pdf',
+      contentType: 'application/pdf',
+      size: 48213,
+      url: 'https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf'
+    }
+  ])
+})
+
+test('con Moodle caído el espacio abre igual, sin lo de Moodle, y lo trae en la próxima apertura', async () => {
+  const { port: classroom, state } = fallible(createMemoryClassroom(syntheticData))
+  const { spaces } = build(syntheticData, { classroom })
+  state.down = true
+
+  const down = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(down.ok)
+  assert.deepEqual(down.value.material.sections, [])
+  assert.equal(named(down.value, 'avisos', 'A').unread, 0)
+
+  state.down = false
+  const back = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(back.ok)
+  assert.equal(named(back.value, 'avisos', 'A').unread, 1)
+  assert.equal(named(back.value, 'material').unread, 2)
+})
+
+/** Aula en memoria con el set completo a la que se le pueden publicar avisos después de armarla. */
+function classroomWithNewAnnouncements(data: SyntheticData) {
+  const inner = createMemoryClassroom(data)
+  const published: ClassroomAnnouncement[] = []
+  const classroom: ClassroomPort = {
+    ...inner,
+    async announcements(courseId, since) {
+      const read = await inner.announcements(courseId, since)
+      if (!read.ok) return read
+      return ok([...read.value, ...published.filter((a) => a.courseId === courseId)])
+    }
+  }
+  return { classroom, publish: (a: ClassroomAnnouncement) => published.push(a) }
+}
+
+test('un aviso que se publica en Moodle después de abrir el espacio entra en la próxima apertura, sin repetir los otros', async () => {
+  const { classroom, publish } = classroomWithNewAnnouncements(syntheticData)
+  const { spaces } = build(syntheticData, { classroom })
+  const first = await spaces.open('p-taguirre', 'am1')
+  assert.ok(first.ok)
+  const avisosA = named(first.value, 'avisos', 'A').id
+  await spaces.channel('p-taguirre', avisosA)
+
+  publish({
+    id: 'av-nuevo',
+    courseId: 'c-am1-fi-a',
+    authorId: syntheticData.moodle.announcements[0].authorId,
+    subject: 'Consultas antes del parcial',
+    message: 'El viernes hay clase de consulta a las 18.',
+    createdAt: '2026-11-10T21:00:00.000Z',
+    attachments: []
+  })
+  const second = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(second.ok)
+  assert.equal(named(second.value, 'avisos', 'A').unread, 1)
+  assert.deepEqual(
+    (await messagesOf(spaces, 'p-taguirre', avisosA)).map((m) => [m.externalId, m.unread]),
+    [
+      ['av-1', false],
+      ['av-nuevo', true]
+    ]
+  )
+})
+
+test('si Personas no responde al buscar al autor de un aviso, el aviso entra en la próxima apertura con su autor', async () => {
+  const inner = createMemoryPeopleStore(syntheticData)
+  const moodleDown = { value: true }
+  const peopleStore: PeopleStore = {
+    ...inner,
+    ownerOf: async (system, id) =>
+      moodleDown.value && system === 'moodle' ? fail('falla-externa') : inner.ownerOf(system, id)
+  }
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData), peopleStore })
+
+  const down = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(down.ok)
+  const avisosA = named(down.value, 'avisos', 'A').id
+  assert.deepEqual(await messagesOf(spaces, 'p-taguirre', avisosA), [])
+
+  moodleDown.value = false
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+
+  const [aviso] = await messagesOf(spaces, 'p-taguirre', avisosA)
+  assert.deepEqual([aviso.externalId, aviso.author.personId], ['av-1', 'p-mledesma'])
+})
+
+test('un aviso de una cuenta de Moodle que no es de nadie en HackAI se muestra igual, sin autor vinculado', async () => {
+  const data = structuredClone(syntheticData)
+  data.moodle.announcements[0].authorId = '999999'
+  const { spaces } = build(data, { classroom: createMemoryClassroom(data) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  const [aviso] = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(
+    [aviso.externalId, aviso.author],
+    ['av-1', { personId: null, name: 'Persona sin datos', role: null }]
+  )
+})
+
+test('si otro guardó lo mismo de Moodle a la vez y el almacén responde duplicado, el espacio abre igual', async () => {
+  const inner = createMemorySpacesStore()
+  const store: SpacesStore = {
+    ...inner,
+    addMessage: async (m) => (m.origin === 'moodle' ? fail('duplicado') : inner.addMessage(m)),
+    addMaterial: async (m) => (m.origin === 'moodle' ? fail('duplicado') : inner.addMaterial(m))
+  }
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData), store })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 0)
 })
 
 // Canales directos (#19). En el set, Ledesma dicta la A de AM1 (Tomás, Lucía y

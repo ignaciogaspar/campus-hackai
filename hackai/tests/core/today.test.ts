@@ -140,9 +140,13 @@ test('Hoy trae las novedades sin leer de los espacios del alumno', async () => {
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
+  // Al abrir el espacio, Ledesma trajo de Moodle su aviso y las dos guías de la A.
   assert.deepEqual(
-    result.value.unread.map((u) => [u.subjectId, u.kind, u.count, u.latest.text]),
-    [['am1', 'avisos', 1, 'El parcial es en el aula 20.']]
+    result.value.unread.map((u) => [u.subjectId, u.kind, u.count, u.latest.text, u.latest.origin]),
+    [
+      ['am1', 'avisos', 2, 'El parcial es en el aula 20.', 'hackai'],
+      ['am1', 'material', 2, 'Guía de ejercicios 2', 'moodle']
+    ]
   )
   assert.equal(result.value.unavailable.includes('unread'), false)
 })
@@ -273,4 +277,29 @@ test('un docente tiene Hoy con sus comisiones y sin inscripciones abiertas', asy
   )
   assert.deepEqual(result.value.openEnrollments, [])
   assert.deepEqual(result.value.unavailable, [])
+})
+
+test('el final al que se acaba de inscribir sale entre los próximos de Hoy y su mesa deja de estar entre las inscripciones abiertas', async () => {
+  const { today, studies } = build()
+  const before = await today.today('p-vfunes')
+  assert.ok(before.ok)
+  assert.equal(
+    before.value.upcoming.some((i) => i.kind === 'final'),
+    false
+  )
+  assert.ok(before.value.openEnrollments.some((i) => i.kind === 'examen' && i.subjectId === 'aga'))
+
+  assert.equal((await studies.enroll('p-vfunes', { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' })).ok, true)
+  const after = await today.today('p-vfunes')
+
+  assert.ok(after.ok)
+  assert.deepEqual(
+    after.value.upcoming.filter((i) => i.kind === 'final').map((i) => [i.id, i.subjectCode, i.name, i.date, i.past]),
+    [['mesa:mesa-aga-fi-dic', 'AGA', 'Final', '2026-12-09T12:00:00.000Z', false]]
+  )
+  assert.equal(
+    after.value.openEnrollments.some((i) => i.kind === 'examen' && i.subjectId === 'aga'),
+    false
+  )
+  assert.equal(after.value.staleSince, null)
 })

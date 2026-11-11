@@ -1,13 +1,15 @@
 /* Implementación de Espacios. Se importa solo desde ./index.ts: desde afuera
    del módulo se usa su interfaz. Las piezas viven al lado: quién entra y qué
    puede hacer (access), los canales (channels), lo leído (reading), los
-   autores (authors), los mensajes y sus hilos (messages) y el material
-   (material) y los canales directos (direct). Los archivos guardados se
-   entregan acá, con la misma regla de quién ve qué.
+   autores (authors), los mensajes y sus hilos (messages), el material
+   (material), los canales directos (direct) y lo que se trae de Moodle
+   (classroom-import). Los archivos guardados se entregan acá, con la misma
+   regla de quién ve qué.
 
-   Todavía no sincroniza con el canal externo ni con Moodle: `open` no trae lo
-   nuevo, `post` no envía al canal externo vinculado y `link` y `syncAll` no
-   están (#15 y #16). */
+   `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
+   vista. Todavía no sincroniza con el canal externo: `open` no trae lo nuevo
+   de Discord, `post` no envía al canal externo vinculado y `link` y `syncAll`
+   no están (#15). */
 import type { PersonId } from '@/lib/core/people'
 import type {
   AccessError,
@@ -43,6 +45,7 @@ import {
 } from '@/lib/core/spaces/access'
 import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
 import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
+import { importFromClassroom } from '@/lib/core/spaces/classroom-import'
 import { counterpartOf, directChannel, directRefusal } from '@/lib/core/spaces/direct'
 import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
@@ -72,7 +75,7 @@ function toSpace(space: StoredSpace): Space {
 const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(max, i.seq), 0)
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
-  const { people, studies, files, clock, store } = deps
+  const { people, studies, classroom, files, clock, store } = deps
 
   /** El espacio de la materia y facultad de la membresía; lo crea si no existe. */
   async function spaceOf(member: Membership): Promise<Result<StoredSpace, SpacesStoreError>> {
@@ -119,7 +122,8 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!space.ok) return space
     const channels = await ensureChannels(store, space.value, member.value)
     if (!channels.ok) return channels
-    // Acá va a ir traer lo nuevo del canal externo vinculado y de Moodle (#15 y #16).
+    // Acá va a ir traer lo nuevo del canal externo vinculado (#15).
+    await importFromClassroom({ classroom, people, store }, space.value, channels.value)
     return spaceView(member.value, space.value, channels.value)
   }
 

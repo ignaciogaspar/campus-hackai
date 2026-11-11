@@ -100,6 +100,7 @@ export type MaterialItem = {
   name: string
   url: string
   contentType: string
+  /** En bytes; 0 si no se sabe, como en los recursos de Moodle. */
   size: number
   origin: Origin
   /** La unidad o el tema donde lo puso el docente, o `null`. */
