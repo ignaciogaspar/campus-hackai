@@ -22,6 +22,44 @@ npm run build
 
 `npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22. El glob va entre comillas dobles para que lo expanda Node y no el shell: así funciona igual con cmd en Windows y con sh.
 
+## CI
+
+Cada PR a `main` corre en GitHub Actions (`.github/workflows/`):
+
+| Workflow | Cuándo | Qué hace |
+| --- | --- | --- |
+| `ci.yml` | Si cambia código de `hackai/` | `npm ci`, typecheck, tests, build y una prueba de humo: levanta el servidor standalone y pide `/api/health` y `/`. Sin secretos: usa los adaptadores en memoria. |
+| `reglas.yml` | En todos los PRs, también los de docs | `scripts/checks/reglas.sh`: las reglas duras de `AGENTS.md` que se ven en git. Un commit que toca `campus/` no toca nada más, no hay tablas `siu_*` ni `moodle_*` en `supabase/migrations/`, cada tabla activa RLS sin políticas, un paquete nuevo viene con su ADR y no hay `.env` ni claves en el diff. Antes corre `reglas.test.sh`, que prueba cada regla. |
+| `claude-review.yml` | Al abrir o reabrir un PR, o al pasarlo de draft a listo | Review de Claude con el plugin oficial `code-review`, contra `CLAUDE.md` y `AGENTS.md`: un comentario en línea por hallazgo. Corre una vez por PR. |
+| `claude.yml` | Cuando alguien comenta `@claude` en un PR o una issue | Claude responde: «@claude revisá de nuevo» pide otra review. |
+
+Si una regla falla, el mensaje dice cuál es y cómo arreglarla. Para correrlas a mano:
+
+```bash
+sh scripts/checks/reglas.sh origin/main   # los commits de tu branch
+sh scripts/checks/reglas.test.sh          # prueba cada regla
+```
+
+### Ganchos locales
+
+`npm install` en `hackai/` activa los ganchos de `.githooks/` con el script `prepare` (`git config core.hooksPath .githooks`). No hay que instalar nada más.
+
+- `pre-commit`: `reglas.sh --staged` sobre lo que vas a commitear. Tarda menos de un segundo.
+- `pre-push`: typecheck y tests, si lo que pusheás toca `hackai/`. Unos 5 segundos.
+
+Se saltean con `--no-verify`. CI corre lo mismo en GitHub, así que un PR que rompe algo queda en rojo igual.
+
+### Activar la review de Claude
+
+Lo hace una vez un admin del repo:
+
+1. Instalar la GitHub App de Claude en el repo: <https://github.com/apps/claude>.
+2. Cargar uno de estos secretos en Settings → Secrets and variables → Actions:
+   - `ANTHROPIC_API_KEY`: una clave de la Console de Anthropic. Se paga por uso.
+   - `CLAUDE_CODE_OAUTH_TOKEN`: sale de `claude setup-token` y se descuenta de la suscripción de quien lo genera.
+
+Sin secreto, los dos workflows de Claude avisan y terminan en verde. `claude.yml` corre desde `main`: `@claude` empieza a responder cuando ese archivo está mergeado.
+
 ## SIU simulado
 
 Con `HACKAI_SIU=simulado`, el puerto del SIU lee y escribe las tablas `siu_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de la API REST v2 de Guaraní y son solo de la demo: en producción el SIU es la API real.

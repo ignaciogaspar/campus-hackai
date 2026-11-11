@@ -13,6 +13,7 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - `hackai/docs/discord.md`: bot de Discord: token y prueba del adaptador contra el servidor del equipo.
 - `hackai/`: nuestro sistema. Cómo correrlo: `hackai/README.md`. Módulos, puertos, carpetas y tests: `hackai/docs/ARQUITECTURA.md`.
 - `scripts/sync-campus.sh`: reemplaza el snapshot de `campus/`.
+- `.github/workflows/`, `scripts/checks/` y `.githooks/`: CI de cada PR y ganchos locales, que también chequean las reglas duras de abajo. Qué corre cada uno y qué hacer si algo falla: `hackai/README.md`, «CI».
 
 ## Reglas duras
 
