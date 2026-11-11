@@ -4,12 +4,14 @@
    con su origen. El docente de la materia ve además el selector para
    organizarlo y el formulario para subir; quién es docente lo dice
    `viewer.canManage`. Las secciones son <details>: se pliegan sin JavaScript. */
+
 import { ChevronRight, FileText, Upload } from 'lucide-react'
 import { addMaterial, organizeMaterial } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { fileKind, fileSize, shortDate } from '@/components/spaces/format'
 import { buttonVariants } from '@/components/ui/button'
 import { OriginBadge } from '@/components/ui/origin-badge'
+import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
 import type { MaterialItem, MaterialLayout, MaterialView } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
@@ -79,14 +81,14 @@ function OrganizeForm({ subjectId, spaceId, layout }: { subjectId: string; space
       </p>
       <input type='hidden' name='subjectId' value={subjectId} />
       <input type='hidden' name='spaceId' value={spaceId} />
-      <div className='flex gap-1 rounded-[14px] bg-ice p-1'>
+      <div className={railTrack({ size: 'sm' })}>
         {LAYOUTS.map(([value, label]) => (
           <SubmitButton
             key={value}
             name='layout'
             value={value}
             aria-pressed={layout === value}
-            className='inline-flex min-h-9 flex-1 items-center justify-center rounded-[10px] px-1.5 text-[0.8125rem] font-semibold whitespace-nowrap text-muted-foreground focus-ring disabled:opacity-60 aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-[0_1px_2px_rgb(16_20_44/0.1)]'
+            className={railItem({ size: 'sm' })}
           >
             {label}
           </SubmitButton>

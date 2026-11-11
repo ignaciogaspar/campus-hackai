@@ -25,7 +25,7 @@ export default function Loading() {
           <div aria-hidden='true' className='h-6 w-48 rounded-full bg-white/10 motion-safe:animate-pulse' />
         </div>
       </div>
-      <div className='grid w-full gap-4 px-4 pt-5 lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:gap-6 lg:px-6 lg:pt-8'>
+      <div className='grid w-full gap-4 px-4 pt-5 lg:grid-cols-[248px_minmax(0,1fr)_280px] lg:gap-6 lg:px-6 lg:pt-8'>
         <div className='flex gap-2 overflow-hidden lg:flex-col'>
           <Skeleton className='h-10 w-24 flex-none rounded-full lg:w-full' />
           <Skeleton className='h-10 w-28 flex-none rounded-full lg:w-full' />

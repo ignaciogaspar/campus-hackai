@@ -1,68 +1,102 @@
-/* Los canales del espacio como pestañas: en el celular, pastillas arriba que
-   se deslizan de costado, sin barra de scroll; en compu, una lista vertical a
-   la izquierda, como los canales de Discord. Cada una lleva sus no leídos.
-   Son enlaces (`?canal=`): en el navegador solo corre el manejo de las flechas. */
+/* Los canales del espacio como un riel (components/ui/rail.tsx), con sus no
+   leídos.
+   - En el celular, un riel de hasta cuatro piezas con ícono: los primeros
+     canales y, si no entran todos o la persona es docente, «Más», que abre
+     una hoja con el resto y «Crear canal».
+   - En compu, un riel vertical a la izquierda con todos los canales, como los
+     de Discord, y «Canal» para el docente.
+   Son enlaces (`?canal=`): en el navegador corren solo las flechas del teclado
+   y la hoja de «Más». */
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { ArrowKeysList } from '@/components/spaces/arrow-keys'
-import { channelLabel, hasSeveralSections, spaceHref } from '@/components/spaces/format'
+import { ChannelIcon } from '@/components/spaces/channel-icon'
+import { channelAudience, channelLabel, hasSeveralSections, spaceHref } from '@/components/spaces/format'
+import { type MoreChannel, MoreChannels } from '@/components/spaces/more-channels'
+import { railItem, railTrack } from '@/components/ui/rail'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Channel } from '@/lib/core/spaces'
-import { cn } from '@/lib/utils'
 
-const TAB =
-  'inline-flex min-h-10 flex-none snap-start items-center gap-1.5 rounded-full px-4 text-[0.8125rem] font-semibold whitespace-nowrap focus-ring-inset lg:min-h-11 lg:w-full lg:rounded-[14px] lg:px-3'
+/** Cuántas piezas entran en el riel del celular, contando «Más». */
+const PHONE_SLOTS = 4
 
 type Props = {
   subjectId: string
   channels: Channel[]
   selectedId: string | null
-  /** Docente: suma «+ Canal», que abre el formulario de canal nuevo. */
+  /** Docente: suma «Canal», que abre el formulario de canal nuevo. */
   canManage: boolean
   creating: boolean
 }
 
-export function ChannelTabs({ subjectId, channels, selectedId, canManage, creating }: Props) {
-  const several = hasSeveralSections(channels)
+type Tab = { channel: Channel; href: string; label: string; selected: boolean }
+
+function PhoneRail({ subjectId, tabs, canManage, creating }: Omit<Props, 'channels' | 'selectedId'> & { tabs: Tab[] }) {
+  const needsMore = canManage || tabs.length > PHONE_SLOTS
+  const shown = needsMore ? tabs.slice(0, PHONE_SLOTS - 1) : tabs
+  const rest = needsMore ? tabs.slice(PHONE_SLOTS - 1) : []
+  const more: MoreChannel[] = rest.map(({ channel, href, label, selected }) => ({
+    id: channel.id,
+    href,
+    label,
+    kind: channel.kind,
+    audience: channelAudience(channel),
+    unread: channel.unread,
+    selected
+  }))
+
   return (
-    <nav aria-label='Canales del espacio' className='lg:sticky lg:top-4'>
-      <ArrowKeysList className='relative -mx-4 flex snap-x snap-proximity scroll-px-4 gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:rounded-[22px] lg:bg-card lg:p-2 lg:shadow-card [&::-webkit-scrollbar]:hidden'>
-        {channels.map((c) => {
-          const selected = c.id === selectedId && !creating
-          return (
-            <li key={c.id} className='flex'>
-              <Link
-                href={spaceHref(subjectId, { canal: c.id })}
-                aria-current={selected ? 'page' : undefined}
-                className={cn(
-                  TAB,
-                  'lg:justify-between',
-                  selected
-                    ? 'bg-blue text-white lg:bg-accent lg:text-blue'
-                    : 'bg-card text-muted-foreground shadow-[0_1px_2px_rgb(11_17_80/0.08)] hover:text-foreground lg:shadow-none lg:hover:bg-background'
-                )}
-              >
-                {channelLabel(c, several)}
-                <UnreadCount
-                  count={c.unread}
-                  className={selected ? 'bg-white text-blue lg:bg-blue-light lg:text-white' : undefined}
-                />
-              </Link>
-            </li>
-          )
-        })}
+    <nav aria-label='Canales del espacio' className='lg:hidden'>
+      <ArrowKeysList className={railTrack({ size: 'md' })}>
+        {shown.map(({ channel, href, label, selected }) => (
+          <li key={channel.id} className='flex min-w-0 [&>*]:flex-1'>
+            <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'md' })}>
+              <ChannelIcon kind={channel.kind} />
+              <span className='max-w-full truncate px-1'>{label}</span>
+              <UnreadCount count={channel.unread} className='absolute top-1 right-[calc(50%-28px)]' />
+            </Link>
+          </li>
+        ))}
+        {needsMore && (
+          <li className='flex min-w-0 [&>*]:flex-1'>
+            <MoreChannels
+              channels={more}
+              createHref={canManage ? spaceHref(subjectId, { nuevo: 'canal' }) : null}
+              creating={creating}
+            />
+          </li>
+        )}
+      </ArrowKeysList>
+    </nav>
+  )
+}
+
+function DesktopRail({
+  subjectId,
+  tabs,
+  canManage,
+  creating
+}: Omit<Props, 'channels' | 'selectedId'> & { tabs: Tab[] }) {
+  return (
+    <nav aria-label='Canales del espacio' className='hidden lg:sticky lg:top-4 lg:block'>
+      <ArrowKeysList className={railTrack({ size: 'column' })}>
+        {tabs.map(({ channel, href, label, selected }) => (
+          <li key={channel.id} className='flex [&>*]:flex-1'>
+            <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'column' })}>
+              <ChannelIcon kind={channel.kind} />
+              <span className='min-w-0 flex-1 truncate'>{label}</span>
+              <UnreadCount count={channel.unread} />
+            </Link>
+          </li>
+        ))}
         {canManage && (
-          <li className='flex'>
+          <li className='flex [&>*]:flex-1'>
             <Link
-              href={spaceHref(subjectId, { canal: selectedId ?? undefined, nuevo: 'canal' })}
+              href={spaceHref(subjectId, { nuevo: 'canal' })}
               aria-current={creating ? 'page' : undefined}
-              className={cn(
-                TAB,
-                'text-blue inset-ring-1 inset-ring-border hover:bg-card lg:inset-ring-0 lg:hover:bg-background',
-                creating && 'bg-card lg:bg-accent'
-              )}
+              className={railItem({ size: 'column', className: 'text-blue!' })}
             >
-              <Plus aria-hidden='true' className='size-4' strokeWidth={2} />
+              <Plus aria-hidden='true' className='flex-none' strokeWidth={1.8} />
               Canal
               <span className='sr-only'> nuevo</span>
             </Link>
@@ -70,5 +104,21 @@ export function ChannelTabs({ subjectId, channels, selectedId, canManage, creati
         )}
       </ArrowKeysList>
     </nav>
+  )
+}
+
+export function ChannelTabs({ subjectId, channels, selectedId, canManage, creating }: Props) {
+  const several = hasSeveralSections(channels)
+  const tabs = channels.map((channel) => ({
+    channel,
+    href: spaceHref(subjectId, { canal: channel.id }),
+    label: channelLabel(channel, several),
+    selected: channel.id === selectedId && !creating
+  }))
+  return (
+    <>
+      <PhoneRail subjectId={subjectId} tabs={tabs} canManage={canManage} creating={creating} />
+      <DesktopRail subjectId={subjectId} tabs={tabs} canManage={canManage} creating={creating} />
+    </>
   )
 }

@@ -13,6 +13,7 @@ import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
 import { spaceHref } from '@/components/spaces/format'
 import { MessageCard, ReplyBlock } from '@/components/spaces/messages'
 import { buttonVariants } from '@/components/ui/button'
+import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
 import type { Role } from '@/lib/core/people'
 import type { Channel, Thread } from '@/lib/core/spaces'
@@ -137,22 +138,23 @@ function matches(filter: QuestionFilter, thread: Thread): boolean {
 function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & { filter: QuestionFilter }) {
   const open = threads.filter((t) => matches('abiertas', t)).length
   const resolved = threads.filter((t) => matches('resueltas', t)).length
-  const options: [QuestionFilter, string][] = [
-    ['todas', 'Todas'],
-    ['abiertas', `Abiertas (${open})`],
-    ['resueltas', `Resueltas (${resolved})`]
+  const options: [QuestionFilter, string, number | null][] = [
+    ['todas', 'Todas', null],
+    ['abiertas', 'Abiertas', open],
+    ['resueltas', 'Resueltas', resolved]
   ]
   return (
     <nav aria-label='Filtrar consultas'>
-      <ArrowKeysList className='relative -mx-4 flex gap-2 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] lg:mx-0 lg:px-0'>
-        {options.map(([value, label]) => (
-          <li key={value} className='flex'>
+      <ArrowKeysList className={railTrack({ size: 'sm' })}>
+        {options.map(([value, label, count]) => (
+          <li key={value} className='flex min-w-0 flex-1 [&>*]:flex-1'>
             <Link
               href={spaceHref(subjectId, { canal: channel.id, filtro: value === 'todas' ? undefined : value })}
               aria-current={filter === value ? 'page' : undefined}
-              className='inline-flex min-h-10 flex-none items-center rounded-full border border-border bg-card px-3.5 text-[0.8125rem] font-semibold whitespace-nowrap text-muted-foreground focus-ring-inset aria-[current=page]:border-ink aria-[current=page]:bg-ink aria-[current=page]:text-white'
+              className={railItem({ size: 'sm' })}
             >
               {label}
+              {count !== null && <span className='text-[11px] font-bold opacity-70'>{count}</span>}
             </Link>
           </li>
         ))}

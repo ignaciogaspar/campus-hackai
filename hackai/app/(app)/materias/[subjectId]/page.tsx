@@ -203,7 +203,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start lg:gap-6'>
+        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[248px_minmax(0,1fr)_280px] lg:items-start lg:gap-6'>
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}

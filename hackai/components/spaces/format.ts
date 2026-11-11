@@ -67,6 +67,13 @@ export function channelLabel(channel: Channel, severalSections: boolean): string
   return severalSections && channel.sectionName ? `${base} · ${channel.sectionName}` : base
 }
 
+/** A quién le llega lo que se publica en el canal: «Toda la materia», «Comisión A». */
+export function channelAudience(channel: Channel): string {
+  if (channel.scope.kind === 'materia') return 'Toda la materia'
+  if (channel.scope.kind === 'directo') return 'Mensaje directo'
+  return `Comisión ${channel.sectionName ?? ''}`.trim()
+}
+
 /** Si los canales que ve la persona son de más de una comisión. */
 export function hasSeveralSections(channels: Channel[]): boolean {
   const sections = new Set(channels.flatMap((c) => (c.scope.kind === 'comision' ? [c.scope.sectionId] : [])))
