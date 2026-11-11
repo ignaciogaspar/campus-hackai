@@ -109,6 +109,16 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 16. ¿Qué inscripciones abiertas «le sirven» al alumno en Hoy?
+
+- **Por qué importa:** Hoy muestra las inscripciones que cierran pronto (#18). Si muestra de más, es ruido; si muestra de menos, el alumno se pierde una mesa o una cursada.
+- **Hipótesis:** así lo implementa Cursada desde el issue #18 (`openEnrollments`), siempre de su facultad, con la inscripción abierta y con cupo, una por materia y las que cierran antes primero:
+  - cursada: materias que no está cursando, no tiene regulares ni aprobó;
+  - examen: materias que no aprobó y tiene regulares o está cursando (puede regularizar antes de la mesa), si no está inscripto ya a una mesa de esa materia.
+- **Opciones:** como está; solo mesas de materias ya regulares (sin las que está cursando); sumar correlatividades cuando el SIU las exponga.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
