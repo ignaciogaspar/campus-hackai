@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<title>Consultas, variante Encabezado · HackAI</title>
+<link rel="stylesheet" href="../../mocks/tokens.css">
+<link rel="stylesheet" href="../../mocks/ui.css">
+<link rel="stylesheet" href="variante.css">
+<script src="../../mocks/data.js"></script>
+<script src="datos.js"></script>
+<script src="../../mocks/app.js"></script>
+</head>
+<body data-active="materias" data-back="#" data-kicker="AM1 · Grado 2do Cuatrimestre 2026" data-title="Análisis Matemático I" class="con-composer">
+<main id="page"></main>
+<script>
+/* Variante C, «Encabezado»: los canales son pestañas subrayadas dentro de la
+   banda navy, como las secciones de una app; así el contenido arranca
+   directo con las consultas. No hay filtro: las consultas se agrupan por
+   estado. Las abiertas van arriba y las resueltas quedan plegadas abajo,
+   con su cantidad. Cero pastillas en la pantalla.
+   ?rol=docente muestra «Marcar resuelta» en las abiertas; ?resueltas=1 abre
+   el grupo de resueltas. */
+window.extra = function () {
+  const C = window.CONSULTAS
+  const tabs = C.canales.slice(0, 4).map((c) => `
+    <a href="#" ${c.id === 'consultas' ? 'aria-current="page"' : ''}>${c.titulo}
+      ${c.noLeidos && c.id !== 'consultas' ? `<span class="count" aria-label="${c.noLeidos} sin leer">${c.noLeidos}</span>` : ''}</a>`).join('')
+  return `<nav class="hdr-tabs" aria-label="Canales del espacio" style="flex-basis:100%">${tabs}<a class="mas" href="#">Más canales</a></nav>`
+}
+
+window.render = function (P) {
+  const { icon } = UI
+  const C = window.CONSULTAS
+  const docente = P.rol === 'docente'
+  const abiertas = C.lista.filter((c) => !c.resuelta)
+  const resueltas = C.lista.filter((c) => c.resuelta)
+
+  const consulta = (c) => `
+    <div class="consulta">
+      <span class="avatar ${c.externo ? 'externo' : ''}">${c.iniciales}</span>
+      <span class="msg-body">
+        <span class="msg-head"><b>${c.autor}</b>${c.externo ? '<span class="xs muted">sin cuenta vinculada</span>' : ''}<span class="xs muted">${c.hace}</span></span>
+        <p>${c.texto}</p>
+        ${c.ultima ? `<span class="small muted"><b style="${c.ultima.docente ? 'color:var(--azul)' : ''}">${c.ultima.autor}:</b> ${c.ultima.texto}</span>` : ''}
+        <span class="hilo-meta">
+          <a class="link" href="#" style="min-height:40px;display:inline-flex;align-items:center">${c.respuestas ? `Ver hilo (${c.respuestas})` : 'Responder'}</a>
+          ${docente && !c.resuelta ? `<button class="btn btn-sm resolver" type="button">${icon('check', 'icon-sm')} Marcar resuelta</button>` : ''}
+        </span>
+      </span>
+      ${c.nueva ? '<span class="punto" aria-label="Sin leer"></span>' : ''}
+    </div>`
+
+  return `
+    <section class="grupo" aria-labelledby="g-abiertas">
+      <div class="grupo-head"><h2 id="g-abiertas">Abiertas</h2><span class="n">${abiertas.length} sin resolver</span></div>
+      <div class="card">${abiertas.map(consulta).join('')}</div>
+    </section>
+    <details class="grupo" ${P.get('resueltas') === '1' ? 'open' : ''}>
+      <summary class="grupo-head"><h2>${icon('chevron', 'icon-sm')} Resueltas</h2><span class="n">${resueltas.length}</span></summary>
+      <div class="card">${resueltas.map(consulta).join('')}</div>
+    </details>
+    <div class="composer"><form class="composer-box" onsubmit="return false">
+      <button class="icon-btn" type="button" aria-label="Adjuntar archivo">${icon('clip')}</button>
+      <label class="sr" for="in">Escribí tu consulta</label><input id="in" placeholder="${docente ? 'Escribí en Consultas' : 'Escribí tu consulta'}">
+      <button class="btn btn-primary btn-sm" type="submit" aria-label="Enviar">${icon('send', 'icon-sm')}</button>
+    </form></div>`
+}
+</script>
+</body>
+</html>

@@ -97,6 +97,25 @@ Si cambiás las personas de `synthetic-data.ts`, corré `npm run people:seed` y 
 
 La batería de contrato del almacén (`tests/contracts/people-store.test.ts`) corre siempre contra el de memoria y contra el de Supabase con un PostgREST de mentira, sin red. Contra una base de verdad corre solo con `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas.
 
+## Espacio de la materia
+
+En `/materias/<materia>` está el espacio de cada materia, para alumnos y docentes: arriba, una pestaña por canal con sus no leídos (`#avisos` y `#consultas` de cada comisión, el material de toda la materia y los canales que crea el docente). La pestaña elegida va en `?canal=` y el hilo de una consulta en `?hilo=`. En compu son tres columnas: canales, conversación y el material reciente con los docentes de la comisión. Quién ve y quién escribe lo decide Espacios (`lib/core/spaces/`), no la pantalla: la membresía sale de las comisiones que da Cursada, sin tabla de miembros.
+
+El espacio y sus canales se crean la primera vez que alguien los abre. Sin configurar, todo vive en memoria mientras dure el proceso: al reiniciar `npm run dev` se pierden los mensajes. El sistema se arma una vez por proceso (`system()` en `lib/composition.ts`) y sobrevive a la recarga en caliente: si cambiás algo de `lib/`, reiniciá `npm run dev` para verlo. Con `HACKAI_STORE=supabase` se guarda en tablas propias, y con `HACKAI_FILES=supabase` el material y los adjuntos van a un bucket privado de Supabase Storage.
+
+| Archivo | Qué hace |
+| --- | --- |
+| `supabase/migrations/0002_spaces.sql` | Crea `spaces`, `space_channels`, `space_messages`, `space_material` y `space_reads`, y la función `space_mark_read`, que marca leído sin retroceder. Tablas propias de HackAI: van también en producción. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
+| `supabase/migrations/0003_files.sql` | Crea el bucket privado `hackai-files`, de hasta 10 MB por archivo. Sin políticas: solo lo toca el servidor con el service role. |
+
+```bash
+psql "$DATABASE_URL" -f supabase/migrations/0002_spaces.sql -f supabase/migrations/0003_files.sql
+```
+
+Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/route.ts`), que pide sesión y le pide el archivo a Espacios. Espacios chequea que la persona vea el espacio del material o el canal del adjunto; si no, la ruta responde 404, igual que a un archivo que no existe. Solo se abren en el navegador PDF, imágenes y texto plano; el resto se descarga.
+
+Las baterías de contrato del almacén (`tests/contracts/spaces-store.test.ts`) y de Archivos (`tests/contracts/files.test.ts`) corren siempre contra memoria y contra Supabase con un PostgREST o un Storage de mentira, sin red, y contra una base de prueba solo con `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`.
+
 ## SIU simulado
 
 Con `HACKAI_SIU=simulado`, el puerto del SIU lee y escribe las tablas `siu_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de la API REST v2 de Guaraní y son solo de la demo: en producción el SIU es la API real.
@@ -204,8 +223,8 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `ANTHROPIC_API_KEY` | API de Claude. |
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES`, `HACKAI_CLOCK` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
-| `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Por ahora lo usa Personas. |
-| `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados y del almacén de Personas. |
+| `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
+| `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |
 
 No las imprimas en logs ni en reportes.
 
@@ -222,20 +241,21 @@ No las imprimas en logs ni en reportes.
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
 | `lib/result.ts` | `Result`, `ok()`, `fail()` y `notImplemented()`: los errores como valores. |
 | `lib/ports/` | Los seis puertos (identidad, SIU, aula virtual, canal externo, archivos, reloj) con sus capacidades. |
-| `lib/core/` | Las interfaces de Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
+| `lib/core/` | Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
 | `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. |
 | `lib/adapters/memoria/` | Un adaptador en memoria por puerto, cargado con ese set. |
 | `lib/adapters/discord/` | El canal externo real: API REST v10 de Discord, sin gateway. Bot y prueba manual (`npm run discord:probar`): [docs/discord.md](docs/discord.md). |
-| `tests/contracts/` | La batería de contrato de cada puerto y del almacén de Personas, que corre contra el adaptador en memoria y el real. `fake-discord.ts` es un `fetch` con la forma de la API de Discord, sin red. |
+| `tests/contracts/` | La batería de contrato de cada puerto y de los almacenes de Personas y Espacios, que corre contra el adaptador en memoria y el real. `fake-discord.ts` es un `fetch` con la forma de la API de Discord, y `fake-postgrest.ts`, uno con la de PostgREST, los dos sin red. |
 | `lib/composition.ts` | `compose(env)` para los tests y `system()` para la app: arma los módulos con el adaptador de cada puerto y con su almacén. |
 | `lib/adapters/siu-simulado/` | El SIU simulado sobre las tablas `siu_*` y el generador de su seed. |
 | `lib/adapters/moodle-simulado/` | El Moodle simulado sobre las tablas `moodle_*` y el generador de su seed. |
-| `lib/adapters/supabase/` | Lo que comparten los adaptadores sobre Supabase: `client.ts` (cliente con service role), `query.ts` (consultas con tiempo máximo) y `sql.ts` (literales y `upsert` que usan los generadores de seed). Además, el almacén de Personas sobre `people_accounts` y el generador de su seed. |
+| `lib/adapters/supabase/` | Lo que comparten los adaptadores sobre Supabase: `client.ts` (cliente con service role), `query.ts` (consultas con tiempo máximo) y `sql.ts` (literales y `upsert` que usan los generadores de seed). Además, los almacenes de Personas y de Espacios, el generador del seed de Personas y Archivos sobre Supabase Storage. |
 | `app/page.tsx`, `app/actions/session.ts`, `components/session/` | El ingreso de demo: la lista de personas por rol, y las acciones para entrar y salir. |
 | `components/shell/` | Lo que comparten las pantallas: `PageHeader` (encabezado navy con la marca), `Brand`, `AppShell` y `AppNav` (la navegación), y `Avatar` (iniciales). |
-| `app/(app)/hoy/`, `components/today/` | Inicio de los dos roles. Al alumno, en una llamada a Hoy: el próximo parcial o final, las fechas de las próximas 2 semanas (en compu, un calendario de esta semana y la próxima), las inscripciones que cierran pronto y el acceso a Mis materias. Si el SIU o Moodle no responden, cada parte muestra lo último leído con el aviso de `components/ui/stale-banner.tsx` o su error. Las novedades sin leer llegan con Espacios (#12). Al docente, por ahora, lo saluda y lo lleva a Mis materias. |
+| `app/(app)/hoy/`, `components/today/` | Inicio de los dos roles. Al alumno, en una llamada a Hoy: el próximo parcial o final, las fechas de las próximas 2 semanas (en compu, un calendario de esta semana y la próxima), las inscripciones que cierran pronto y el acceso a Mis materias. Si el SIU o Moodle no responden, cada parte muestra lo último leído con el aviso de `components/ui/stale-banner.tsx` o su error. Las novedades sin leer de todos sus espacios llegan a la campana. Al docente, por ahora, lo saluda y lo lleva a Mis materias. |
 | `app/(app)/academico/`, `components/academic/` | Académico, del alumno: las notas de parciales juntas (la última destacada), la historia con las materias aprobadas por año y el promedio, y las constancias con el enlace a la Autogestión o el motivo por el que todavía no se puede pedir. |
-| `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con el enlace a su aula de Moodle y sus tareas con fecha. Si el SIU o Moodle no responden, muestra lo último leído con el aviso de desactualizado. |
+| `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con su espacio, el enlace a su aula de Moodle y sus tareas con fecha. Si el SIU o Moodle no responden, muestra lo último leído con el aviso de desactualizado. En `[subjectId]/`, el espacio de la materia. |
+| `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales y subir y organizar el material. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).

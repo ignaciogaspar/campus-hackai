@@ -8,7 +8,7 @@
    | SIU            | `HACKAI_SIU`              | memoria, simulado  |
    | Aula virtual   | `HACKAI_CLASSROOM`        | memoria, simulado  |
    | Canal externo  | `HACKAI_EXTERNAL_CHANNEL` | memoria, discord   |
-   | Archivos       | `HACKAI_FILES`            | memoria            |
+   | Archivos       | `HACKAI_FILES`            | memoria, supabase  |
    | Reloj          | `HACKAI_CLOCK`            | memoria, sistema   |
    | Almacén        | `HACKAI_STORE`            | memoria, supabase  |
 
@@ -18,8 +18,12 @@
 
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
-   necesita las mismas dos variables; por ahora lo usa Personas para los
-   vínculos con cada sistema.
+   necesita las mismas dos variables. Lo usan Personas, para los vínculos con
+   cada sistema, y Espacios, para espacios, canales, mensajes, material y lo
+   leído.
+
+   Archivos con `supabase` guarda en el bucket privado de Supabase Storage
+   (supabase/migrations/0003_files.sql), con las mismas dos variables.
 
    Con `discord`, el token del bot va en `DISCORD_BOT_TOKEN` (guía:
    docs/discord.md).
@@ -36,11 +40,14 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
+import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
+import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople, type People } from '@/lib/core/people'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
@@ -60,7 +67,7 @@ const ADAPTERS = {
   siu: { variable: 'HACKAI_SIU', values: ['memoria', 'simulado'] },
   classroom: { variable: 'HACKAI_CLASSROOM', values: ['memoria', 'simulado'] },
   externalChannel: { variable: 'HACKAI_EXTERNAL_CHANNEL', values: ['memoria', 'discord'] },
-  files: { variable: 'HACKAI_FILES', values: ['memoria'] },
+  files: { variable: 'HACKAI_FILES', values: ['memoria', 'supabase'] },
   clock: { variable: 'HACKAI_CLOCK', values: ['memoria', 'sistema'] },
   store: { variable: 'HACKAI_STORE', values: ['memoria', 'supabase'] }
 } as const
@@ -140,7 +147,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
       adapters.externalChannel === 'discord'
         ? createDiscordExternalChannel({ token: required(env, 'DISCORD_BOT_TOKEN', 'HACKAI_EXTERNAL_CHANNEL=discord') })
         : createMemoryExternalChannel(data, clock),
-    files: createMemoryFiles(),
+    files: adapters.files === 'supabase' ? createSupabaseFiles({ client: supabase() }) : createMemoryFiles(),
     clock
   }
 
@@ -157,17 +164,18 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     externalChannel: ports.externalChannel,
     classroom: ports.classroom,
     files: ports.files,
-    clock
+    clock,
+    store: adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore()
   })
   const today = createToday({ studies, spaces, clock })
 
   return { adapters, ports, people, studies, spaces, today }
 }
 
-/** Guardado en `globalThis` porque Next.js empaqueta las páginas y las server
-    actions en capas distintas, cada una con su copia de este módulo: con una
-    variable de módulo, lo que una acción inscribe en memoria no lo vería la
-    página. */
+/** Guardado en `globalThis` porque Next.js empaqueta las páginas, las server
+    actions y las rutas en capas distintas, cada una con su copia de este
+    módulo: con una variable de módulo, lo que una acción inscribe en memoria
+    no lo vería la página, ni la ruta /archivos el material que se subió. */
 const holder = globalThis as typeof globalThis & { __hackaiSystem?: System }
 
 /** El sistema de la app, armado una vez por proceso con `process.env`. Los

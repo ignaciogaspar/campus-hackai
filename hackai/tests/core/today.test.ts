@@ -6,6 +6,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
 import { createSpaces } from '@/lib/core/spaces'
@@ -28,10 +29,11 @@ function build(data: SyntheticData = syntheticData) {
     externalChannel: createMemoryExternalChannel(data, clock),
     classroom,
     files: createMemoryFiles(),
-    clock
+    clock,
+    store: createMemorySpacesStore()
   })
   const today = createToday({ studies, spaces, clock })
-  return { today, studies, siuState, classroomState, advance }
+  return { today, studies, spaces, siuState, classroomState, advance }
 }
 
 test('arma la pantalla del alumno en una sola llamada: materias, próximos por fecha e inscripciones abiertas', async () => {
@@ -122,13 +124,26 @@ test('ni las entregas ni los recuperatorios son el próximo parcial: después de
   )
 })
 
-test('mientras Espacios no tenga las novedades, Hoy sale sin ellas y no lo cuenta como una caída', async () => {
-  const { today } = build()
+test('Hoy trae las novedades sin leer de los espacios del alumno', async () => {
+  const { today, spaces } = build()
+
+  const before = await today.today('p-taguirre')
+  assert.ok(before.ok)
+  assert.deepEqual(before.value.unread, [])
+
+  const space = await spaces.open('p-mledesma', 'am1')
+  assert.ok(space.ok)
+  const avisos = space.value.channels.find((c) => c.kind === 'avisos')
+  assert.ok(avisos)
+  assert.equal((await spaces.post('p-mledesma', avisos.id, { text: 'El parcial es en el aula 20.' })).ok, true)
 
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.unread, [])
+  assert.deepEqual(
+    result.value.unread.map((u) => [u.subjectId, u.kind, u.count, u.latest.text]),
+    [['am1', 'avisos', 1, 'El parcial es en el aula 20.']]
+  )
   assert.equal(result.value.unavailable.includes('unread'), false)
 })
 
@@ -165,7 +180,8 @@ test('si varias lecturas están desactualizadas, la hora es la de la más vieja'
   assert.equal(result.value.staleSince, NOW)
   assert.equal(result.value.subjects.current.length, 2)
   assert.equal(result.value.upcoming.length, 9)
-  assert.deepEqual(result.value.unavailable, ['openEnrollments'])
+  // Las novedades necesitan las comisiones, que el SIU no dio antes de caerse.
+  assert.deepEqual(result.value.unavailable, ['openEnrollments', 'unread'])
 })
 
 test('con Moodle caído y nada leído antes faltan las materias y sus entregas, pero los parciales, finales e inscripciones se ven igual', async () => {
@@ -235,7 +251,7 @@ test('con el SIU caído y nada leído antes, Hoy responde igual, con todo marcad
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming', 'openEnrollments'])
+  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming', 'openEnrollments', 'unread'])
   assert.deepEqual(result.value.unread, [])
 })
 

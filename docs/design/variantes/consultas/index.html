@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consultas en el celular · variantes</title>
+<link rel="stylesheet" href="../../mocks/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ebf3; color: var(--tinta); font-family: var(--font-head); }
+  .g-head { background: var(--navy); color: #fff; padding: 36px 32px 26px; }
+  .g-head .wm { font-weight: 800; display: inline-flex; gap: 8px; align-items: center; }
+  .g-head .wm span { background: var(--cian); color: var(--navy); border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .g-head h1 { margin: 12px 0 8px; font-size: 2rem; }
+  .g-head p { margin: 0; max-width: 900px; color: #d7dbf7; line-height: 1.55; }
+  .pill { display: inline-block; margin-top: 14px; padding: 4px 12px; border-radius: 999px; background: var(--naranja); color: var(--tinta); font-weight: 700; font-size: 13px; }
+  .g-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .g-nav a { color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+  section.g { padding: 32px 32px 8px; }
+  section.g h2 { margin: 0 0 8px; font-size: 1.5rem; }
+  .tickets { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: middle; }
+  .tickets span { font-size: 12px; font-weight: 700; background: #fff; border-radius: 999px; padding: 2px 8px; color: var(--azul); }
+  section.g > p { margin: 0 0 6px; max-width: 900px; color: #3b4057; line-height: 1.55; font-size: 15px; }
+  section.g ul.pc { margin: 6px 0 0; padding-left: 18px; max-width: 900px; color: #3b4057; font-size: 14px; line-height: 1.55; }
+  .frames { display: flex; flex-wrap: wrap; gap: 32px; margin-top: 18px; align-items: flex-start; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 10px; width: 410px; }
+  .phone { width: 410px; padding: 10px; background: #0d0f1a; border-radius: 52px; box-shadow: 0 20px 40px rgba(11,17,80,.18); }
+  .phone iframe { display: block; width: 390px; height: 844px; border: 0; border-radius: 42px; background: #fff; }
+  figcaption { font-size: 14px; font-weight: 700; padding: 0 8px; }
+  figcaption a { font-weight: 600; color: var(--azul); margin-left: 6px; font-size: 13px; }
+  figcaption small { display: block; font-weight: 500; color: var(--gris); margin-top: 3px; line-height: 1.45; }
+  footer { padding: 24px 32px 48px; color: #5f6474; font-size: 13px; }
+  body.bare .g-head, body.bare footer { display: none; }
+</style>
+</head>
+<body>
+<header class="g-head">
+  <div class="wm">HackAI <span>variantes</span></div>
+  <h1>Consultas en el celular: tres propuestas</h1>
+  <p>Hoy, arriba de las consultas quedan dos filas de pastillas sueltas: los canales (Avisos, Consultas, Material, #consultas-generales, + Canal) y el filtro (Todas, Abiertas, Resueltas). Son siete chips juntos que compiten entre sí. Cada propuesta los ordena distinto; las tres respetan la dirección B, el encabezado rectangular y las áreas táctiles de 40 px.</p>
+  <span class="pill">Datos de ejemplo, nada es real</span>
+  <nav class="g-nav"><a href="#hoy">0 · Hoy</a><a href="#riel">A · Riel</a><a href="#discord">B · Discord</a><a href="#propia">C · Encabezado</a></nav>
+</header>
+
+<section class="g" id="hoy">
+  <h2>0 · Cómo está hoy <span class="tickets"><span>#12</span></span></h2>
+  <p>Para comparar: las pestañas de canales y el filtro de consultas como dos tiras de pastillas.</p>
+  <div class="frames" data-frames="
+    m|../../mocks/m-espacio.html?tab=consultas|Consultas, alumno|Siete pastillas en dos filas antes de la primera consulta."></div>
+</section>
+
+<section class="g" id="riel">
+  <h2>A · Riel <span class="tickets"><span>#12</span></span></h2>
+  <p>Como la imagen de referencia: los tres canales de siempre en un riel gris con íconos y el elegido en relieve, y «Más» abre una hoja con los demás canales. El filtro es un segundo riel, más chico, del mismo estilo. Siguen siendo dos controles, pero cada uno es un bloque contenido en vez de pastillas sueltas.</p>
+  <ul class="pc"><li><b>A favor:</b> se lee de un vistazo, se maneja con el pulgar y es el cambio más chico sobre lo que ya está construido.</li><li><b>En contra:</b> los canales extra quedan a un toque más, detrás de «Más».</li></ul>
+  <div class="frames" data-frames="
+    m|m-riel.html|Consultas, alumno|Tocá Abiertas o Resueltas: el riel chico filtra.
+    m|m-riel.html?rol=docente&hoja=1|Más canales, docente|La hoja con los canales de la materia y «Crear canal»."></div>
+</section>
+
+<section class="g" id="discord">
+  <h2>B · Discord <span class="tickets"><span>#12</span></span></h2>
+  <p>Una sola barra con el canal en el que estás. Tocarla abre el cajón de canales agrupados por alcance (toda la materia, Comisión A), con lo no leído en negrita como en Discord. Las consultas son un chat plano por fecha con la línea «Nuevos» donde empieza lo que no leíste, y cada una muestra su hilo abajo. El filtro queda detrás de un ícono.</p>
+  <ul class="pc"><li><b>A favor:</b> cero pastillas, y lo conocen todos los que usan Discord. Escala a muchos canales.</li><li><b>En contra:</b> cambiar de canal cuesta un toque más, y el estado de cada consulta se ve menos.</li></ul>
+  <div class="frames" data-frames="
+    m|m-discord.html|Consultas, alumno|Tocá «# consultas» para abrir el cajón.
+    m|m-discord.html?cajon=1&rol=docente|Cajón de canales, docente|Canales por alcance, no leídos en negrita y «Crear canal».
+    m|m-discord.html?filtro=1|Filtro abierto|El filtro, detrás del ícono, como menú."></div>
+</section>
+
+<section class="g" id="propia">
+  <h2>C · Encabezado <span class="tickets"><span>#12</span></span></h2>
+  <p>Propuesta propia. Los canales pasan a ser pestañas subrayadas dentro de la banda navy, como las secciones de una app, así el contenido arranca directo con las consultas. No hay filtro: se agrupan por estado, con las abiertas arriba y las resueltas plegadas abajo con su cantidad.</p>
+  <ul class="pc"><li><b>A favor:</b> ninguna pastilla en el contenido. Lo pendiente queda primero sin tocar nada, que es lo que pidió la encuesta («no leer de más»).</li><li><b>En contra:</b> el encabezado crece un poco, y para ver solo las resueltas hay que bajar y abrir el grupo.</li></ul>
+  <div class="frames" data-frames="
+    m|m-propia.html|Consultas, alumno|Abiertas arriba y resueltas plegadas.
+    m|m-propia.html?rol=docente&resueltas=1|Consultas, docente|«Marcar resuelta» en las abiertas y el grupo de resueltas abierto."></div>
+</section>
+
+<footer>Variantes del #12 para que el equipo elija. Abrí cada pantalla sola con «abrir». Lo que se elija pasa a docs/design/direccion-de-diseno.md y a la pantalla del espacio en hackai/.</footer>
+
+<script>
+  const q = new URLSearchParams(location.search)
+  if (q.get('bare') === '1') document.body.classList.add('bare')
+  if (q.get('s')) document.querySelectorAll('section.g').forEach((s) => { if (s.id !== q.get('s')) s.remove() })
+  const parse = (s) => s.trim().split('\n').map((l) => l.trim().split('|'))
+  document.querySelectorAll('[data-frames]').forEach((el) => {
+    el.innerHTML = parse(el.dataset.frames).map(([, src, t, d]) => `<figure><div class="phone"><iframe src="${src}" title="${t}" loading="lazy"></iframe></div><figcaption>${t} <a href="${src}" target="_blank">abrir</a><small>${d || ''}</small></figcaption></figure>`).join('')
+  })
+</script>
+</body>
+</html>

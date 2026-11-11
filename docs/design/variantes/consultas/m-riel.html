@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<title>Consultas, variante Riel · HackAI</title>
+<link rel="stylesheet" href="../../mocks/tokens.css">
+<link rel="stylesheet" href="../../mocks/ui.css">
+<link rel="stylesheet" href="variante.css">
+<script src="../../mocks/data.js"></script>
+<script src="datos.js"></script>
+<script src="../../mocks/app.js"></script>
+</head>
+<body data-active="materias" data-back="#" data-kicker="AM1 · Grado 2do Cuatrimestre 2026" data-title="Análisis Matemático I" class="con-composer">
+<main id="page"></main>
+<script>
+/* Variante A, «Riel» (como la imagen de referencia): los canales principales
+   en un riel gris con íconos, el elegido en relieve; los demás canales detrás
+   de «Más», en una hoja. Debajo, el filtro como un segundo riel más chico.
+   Dos controles contenidos en vez de siete pastillas sueltas.
+   ?rol=docente suma «Crear canal» en la hoja; ?hoja=1 la abre. */
+window.extra = (P) => P.rol === 'docente'
+  ? '<span class="chip chip-onheader">Docente · Comisión A</span>'
+  : '<span class="chip chip-onheader">Comisión A · Mariana Ledesma</span>'
+
+window.render = function (P) {
+  const { icon } = UI
+  const C = window.CONSULTAS
+  const docente = P.rol === 'docente'
+  const principales = C.canales.slice(0, 3)
+  const otros = C.canales.slice(3)
+  const abiertas = C.lista.filter((c) => !c.resuelta).length
+
+  const riel = `
+    <div class="riel" role="tablist" aria-label="Canales del espacio">
+      ${principales.map((c) => `
+        <button type="button" role="tab" aria-selected="${c.id === 'consultas'}">
+          ${icon(c.icono)}${c.titulo}
+          ${c.noLeidos && c.id !== 'consultas' ? `<span class="count" aria-label="${c.noLeidos} sin leer">${c.noLeidos}</span>` : ''}
+        </button>`).join('')}
+      <button type="button" data-abrir-canales aria-haspopup="dialog">${icon('hash')}Más</button>
+    </div>`
+
+  const filtro = `
+    <div class="riel chico" role="group" aria-label="Filtrar consultas" data-filtro>
+      <button type="button" aria-selected="true" data-f="todas">Todas</button>
+      <button type="button" aria-selected="false" data-f="abierta">Abiertas <span class="seg-n">${abiertas}</span></button>
+      <button type="button" aria-selected="false" data-f="ok">Resueltas <span class="seg-n">${C.lista.length - abiertas}</span></button>
+    </div>`
+
+  const consulta = (c) => `
+    <a class="consulta" href="#" data-estado="${c.resuelta ? 'ok' : 'abierta'}">
+      <span class="avatar ${c.externo ? 'externo' : ''}">${c.iniciales}</span>
+      <span class="msg-body">
+        <span class="msg-head"><b>${c.autor}</b>${c.externo ? '<span class="xs muted">sin cuenta vinculada</span>' : ''}<span class="xs muted">${c.hace}</span></span>
+        <p>${c.texto}</p>
+        ${c.ultima ? `<span class="small muted">${c.ultima.docente ? '<b class="docente-tag" style="color:var(--azul)">' : '<b>'}${c.ultima.autor}:</b> ${c.ultima.texto}</span>` : ''}
+        <span class="hilo-meta">
+          ${c.resuelta ? `<span class="estado ok">${icon('check', 'icon-sm')} Resuelta</span>` : '<span class="estado abierta">Abierta</span>'}
+          <span class="xs muted">· ${c.respuestas === 1 ? '1 respuesta' : `${c.respuestas || 'Sin'} respuestas`}</span>
+        </span>
+      </span>
+      ${c.nueva ? '<span class="punto" aria-label="Sin leer"></span>' : ''}
+    </a>`
+
+  const hoja = `
+    <div class="hoja-fondo" data-hoja ${P.get('hoja') === '1' ? '' : 'hidden'}>
+      <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="hoja-t">
+        <span class="hoja-asa" aria-hidden="true"></span>
+        <h2 id="hoja-t">Más canales</h2>
+        <ul class="list">${otros.map((c) => `
+          <li><a class="canal" href="#">${icon('hash')}<span class="row-body"><span class="canal-name">${c.nombre}</span><span class="xs muted">${c.alcance}</span></span></a></li>`).join('')}
+          ${docente ? `<li><a class="canal" href="#" style="color:var(--azul)">${icon('plus')}<span class="canal-name">Crear canal</span></a></li>` : ''}
+        </ul>
+      </div>
+    </div>`
+
+  return `
+    ${riel}
+    <div class="stack">
+      ${filtro}
+      <div class="card" data-lista>${C.lista.map(consulta).join('')}</div>
+    </div>
+    <div class="composer"><form class="composer-box" onsubmit="return false">
+      <button class="icon-btn" type="button" aria-label="Adjuntar archivo">${icon('clip')}</button>
+      <label class="sr" for="in">Escribí tu consulta</label><input id="in" placeholder="${docente ? 'Escribí en Consultas' : 'Escribí tu consulta'}">
+      <button class="btn btn-primary btn-sm" type="submit" aria-label="Enviar">${icon('send', 'icon-sm')}</button>
+    </form></div>
+    ${hoja}`
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const riel = document.querySelector('.riel[role=tablist]')
+  riel.addEventListener('click', (e) => {
+    const b = e.target.closest('[role=tab]')
+    if (!b) return
+    riel.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', x === b))
+  })
+  const filtro = document.querySelector('[data-filtro]')
+  filtro.addEventListener('click', (e) => {
+    const b = e.target.closest('button')
+    if (!b) return
+    filtro.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', x === b))
+    document.querySelectorAll('[data-lista] .consulta').forEach((c) => {
+      c.hidden = b.dataset.f !== 'todas' && c.dataset.estado !== b.dataset.f
+    })
+  })
+  const hoja = document.querySelector('[data-hoja]')
+  document.querySelector('[data-abrir-canales]').addEventListener('click', () => { hoja.hidden = false })
+  hoja.addEventListener('click', (e) => { if (e.target === hoja) hoja.hidden = true })
+})
+</script>
+</body>
+</html>

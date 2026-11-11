@@ -11,8 +11,8 @@
    - Lo que pasó y lo que cerró se mira contra el reloj al armar la pantalla, no
      al leer: una lectura desactualizada puede ser de antes de que pasara un
      parcial o cerrara una inscripción.
-   - Las novedades de Espacios todavía no están (#12): mientras `unreadFor`
-     devuelva «no implementado», salen vacías sin contarse como caídas.
+   - Las novedades sin leer salen de Espacios (`unreadFor`). Si no responde,
+     salen vacías y se marcan como no disponibles.
    - `staleSince` es la hora de la lectura más vieja entre las desactualizadas.
    - El próximo parcial o final es el primero que no pasó. Las entregas y los
      recuperatorios (que se rinden solo si hace falta) no lo son. Los días que
@@ -106,7 +106,7 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
       const unavailable = (Object.keys(studiesReads) as (keyof typeof studiesReads)[]).filter(
         (part): boolean => !studiesReads[part].ok
       )
-      const unreadPart: TodayPart[] = !unread.ok && unread.error !== 'no-implementado' ? ['unread'] : []
+      const unreadPart: TodayPart[] = unread.ok ? [] : ['unread']
       const stale = Object.values(studiesReads).flatMap((r) => (r.ok && r.value.stale ? [r.value.readAt] : []))
       const now = clock.now().toISOString()
       const mySubjects = subjects.ok ? subjects.value.data : EMPTY_SUBJECTS

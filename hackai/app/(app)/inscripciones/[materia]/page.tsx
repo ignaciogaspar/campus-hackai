@@ -97,6 +97,7 @@ function SectionCard({ item }: { item: OfferItem }) {
 
       <SectionActions
         sectionId={item.target.sectionId}
+        subjectId={item.subjectId}
         label={label}
         status={item}
         enrollAction={enrollAction}
@@ -125,7 +126,7 @@ export default async function OfertaPage({ params }: { params: Promise<{ materia
     <>
       <PageHeader title={subjectName ?? 'Comisiones'} kicker='Elegí tu comisión' backHref='/inscripciones' />
 
-      <main className='mx-auto flex w-full max-w-280 flex-col gap-6 px-4 pt-5 pb-16 lg:px-10 lg:pt-8'>
+      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         {!result.ok ? (
           <ErrorNotice>{readErrorText(result.error, 'las comisiones')}</ErrorNotice>
         ) : result.value.length === 0 ? (

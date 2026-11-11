@@ -1,0 +1,113 @@
+'use client'
+
+/* Formulario que llama a una server action del espacio y muestra cómo salió:
+   el botón queda deshabilitado mientras se manda y el error aparece debajo,
+   con role="alert". Sin JavaScript manda igual, como un formulario común.
+
+   Con JavaScript el envío se hace a mano dentro de una transición, en vez de
+   con `action`: React 19 vacía los campos después de cada envío, y si algo
+   falla quien escribió tiene que poder corregir sin volver a empezar. */
+import {
+  type ComponentProps,
+  createContext,
+  type FormEvent,
+  type ReactNode,
+  startTransition,
+  useActionState,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from 'react'
+import type { SpaceActionState } from '@/app/actions/spaces'
+import { cn } from '@/lib/utils'
+
+export type SpaceAction = (prev: SpaceActionState, form: FormData) => Promise<SpaceActionState>
+
+const IDLE: SpaceActionState = { status: 'idle' }
+
+/** Lo más pesado que acepta Espacios. El servidor corta los pedidos de más de
+    11 MB antes de llegar al módulo, así que lo que pase de esto ni se manda. */
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+export const TOO_LARGE = 'El archivo pasa los 10 MB. Subí uno más liviano o compartí un enlace.'
+
+/** Algún archivo del formulario que pasa el máximo. */
+export function tooLarge(form: FormData): boolean {
+  return [...form.values()].some((v) => v instanceof File && v.size > MAX_UPLOAD_BYTES)
+}
+
+const Pending = createContext(false)
+
+/** El estado de una server action del espacio, con el envío a mano y el control del tamaño. */
+export function useSpaceAction(action: SpaceAction) {
+  const [state, dispatch, pending] = useActionState(action, IDLE)
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    const data = new FormData(event.currentTarget, submitter)
+    // Un campo de archivo sin elegir no se manda: no es un archivo vacío.
+    for (const [key, value] of [...data.entries()]) {
+      if (value instanceof File && value.name === '' && value.size === 0) data.delete(key)
+    }
+    if (tooLarge(data)) {
+      setLocalError(TOO_LARGE)
+      return
+    }
+    setLocalError(null)
+    startTransition(() => dispatch(data))
+  }
+
+  const error = localError ?? (state.status === 'error' ? state.message : null)
+  return { state, dispatch, pending, submit, error }
+}
+
+export function ActionForm({
+  action,
+  resetOnSuccess = false,
+  className,
+  children,
+  ...props
+}: Omit<ComponentProps<'form'>, 'action' | 'onSubmit'> & {
+  action: SpaceAction
+  /** Vacía los campos cuando sale bien, como al subir un archivo. */
+  resetOnSuccess?: boolean
+  children: ReactNode
+}) {
+  const { state, dispatch, pending, submit, error } = useSpaceAction(action)
+  const form = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (state.status === 'ok' && resetOnSuccess) form.current?.reset()
+  }, [state, resetOnSuccess])
+
+  return (
+    <form ref={form} action={dispatch} onSubmit={submit} className={className} {...props}>
+      <Pending.Provider value={pending}>{children}</Pending.Provider>
+      <FormFeedback error={error} success={state.status === 'ok' ? state.message : null} />
+    </form>
+  )
+}
+
+/** El error o la confirmación de un formulario, anunciados al lector de pantalla. */
+export function FormFeedback({ error, success }: { error: string | null; success?: string | null }) {
+  return (
+    <>
+      <p role='alert' className={cn('text-[0.8125rem] font-semibold text-destructive', !error && 'sr-only')}>
+        {error}
+      </p>
+      {success && (
+        <p role='status' className='text-[0.8125rem] font-semibold text-success'>
+          {success}
+        </p>
+      )}
+    </>
+  )
+}
+
+/** Botón de un ActionForm: deshabilitado mientras se manda. */
+export function SubmitButton({ disabled, ...props }: Omit<ComponentProps<'button'>, 'type'>) {
+  const pending = useContext(Pending)
+  return <button type='submit' disabled={pending || disabled} aria-busy={pending || undefined} {...props} />
+}

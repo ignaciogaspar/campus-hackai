@@ -121,8 +121,13 @@ export type MySection = {
   sectionId: string
   name: string
   subjectId: string
+  subjectCode: string
+  subjectName: string
   schoolId: string
   termId: string
+  termName: string
+  /** De un período lectivo que no terminó; si no, archivada. */
+  current: boolean
   role: Role
   teachers: Teacher[]
 }
@@ -730,12 +735,16 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!teachers.ok) return teachers
 
     return ok(
-      mine.value.sections.map(({ section }, i) => ({
+      mine.value.sections.map(({ section, subject, term, current }, i) => ({
         sectionId: section.id,
         name: section.name,
         subjectId: section.subjectId,
+        subjectCode: subject.code,
+        subjectName: subject.name,
         schoolId: section.schoolId,
         termId: section.termId,
+        termName: term.name,
+        current,
         role: mine.value.role,
         teachers: teachers.value[i]
       }))

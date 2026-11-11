@@ -59,7 +59,7 @@
   --header-bg: var(--navy);
   --header-ink: #fff;
   --header-sub: #c4c9f2;
-  --header-radius: 0 0 28px 28px;
+  --header-radius: 0;
 
   --tabbar-bg: var(--papel);
   --tabbar-active: var(--azul-claro);

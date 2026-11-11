@@ -24,6 +24,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   assert.equal((await system.people.get(alumno.id)).ok, true)
   assert.equal((await system.studies.subjectsOf(alumno.id)).ok, true)
   assert.equal((await system.studies.record(alumno.id)).ok, true)
+  assert.equal((await system.spaces.open(alumno.id, 'am1')).ok, true)
   assert.deepEqual(await system.spaces.syncAll(), { ok: false, error: 'no-implementado' })
 })
 
@@ -31,15 +32,9 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
   const { spaces } = compose({})
   const p = 'persona'
   const calls = [
-    spaces.open(p, 's'),
-    spaces.channel(p, 'c'),
-    spaces.post(p, 'c', { text: 'hola' }),
-    spaces.resolve(p, 'm'),
-    spaces.createChannel(p, 'e', { name: 'tp1', scope: { kind: 'materia' } }),
     spaces.openDirect(p, 'otra'),
     spaces.link(p, 'c', { system: 'discord', channelId: 'd' }),
-    spaces.syncAll(),
-    spaces.unreadFor(p)
+    spaces.syncAll()
   ]
   for (const result of await Promise.all(calls)) {
     assert.deepEqual(result, { ok: false, error: 'no-implementado' })
@@ -75,7 +70,20 @@ test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () =
   assert.throws(() => compose({ HACKAI_SIU: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
 })
 
-test('HACKAI_STORE=supabase guarda los vínculos de Personas en Supabase y sin sus variables no arranca', async () => {
+test('HACKAI_FILES=supabase guarda los archivos en Supabase Storage y sin sus variables no arranca', () => {
+  const system = compose({
+    HACKAI_FILES: 'supabase',
+    NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
+  })
+  assert.equal(system.adapters.files, 'supabase')
+  assert.deepEqual(system.ports.files.capabilities, { maxBytes: 10 * 1024 * 1024 })
+
+  assert.throws(() => compose({ HACKAI_FILES: 'supabase' }), /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.throws(() => compose({ HACKAI_FILES: 's3' }), /HACKAI_FILES/)
+})
+
+test('HACKAI_STORE=supabase guarda lo de Personas y Espacios en Supabase y sin sus variables no arranca', async () => {
   const system = compose({
     HACKAI_STORE: 'supabase',
     NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',

@@ -43,7 +43,7 @@ export default async function MateriasPage() {
         )}
       </PageHeader>
 
-      <main className='mx-auto flex w-full max-w-280 flex-col gap-6 px-4 pt-5 pb-16 lg:px-10 lg:pt-8'>
+      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         {!result.ok ? (
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus materias.'}</ErrorNotice>
         ) : (

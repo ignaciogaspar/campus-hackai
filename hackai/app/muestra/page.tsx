@@ -49,7 +49,7 @@ export default function MuestraPage() {
   return (
     <AppShell school={SCHOOL} subjects={SUBJECTS}>
       <PageHeader title='Muestra del sistema visual' kicker='Datos de ejemplo' school={SCHOOL} unread={4} />
-      <main className='mx-auto flex max-w-280 flex-col gap-8 px-4 pt-5 pb-8 lg:px-10'>
+      <main className='flex w-full flex-col gap-8 px-4 pt-5 pb-8 lg:px-6'>
         <Section title='Botones'>
           <div className='flex flex-wrap gap-2'>
             <Button>Inscribirme</Button>
