@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Brand } from '@/components/shell/brand'
 import { InstallButton } from '@/components/shell/install-button'
+import { NotificationsBell } from '@/components/shell/notifications-bell'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -15,13 +16,15 @@ type Props = {
   backHref?: string
   /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
   hideBackOnDesktop?: boolean
-  /** Arriba a la derecha: novedades, perfil. */
+  /** Lo sin leer de todas las materias, para la campana. */
+  unread?: number
+  /** Arriba a la derecha, después de la campana: perfil. */
   actions?: ReactNode
   /** Debajo del título, sobre el navy: chips de comisión, docente. */
   children?: ReactNode
 }
 
-export function PageHeader({ title, kicker, school, backHref, hideBackOnDesktop, actions, children }: Props) {
+export function PageHeader({ title, kicker, school, backHref, hideBackOnDesktop, unread = 0, actions, children }: Props) {
   return (
     <header className='rounded-b-[28px] bg-navy text-white'>
       <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>
@@ -40,6 +43,7 @@ export function PageHeader({ title, kicker, school, backHref, hideBackOnDesktop,
         </div>
         <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
           <InstallButton />
+          <NotificationsBell unread={unread} />
           {actions}
         </div>
         <div className='col-start-1 mt-2 lg:mt-0'>

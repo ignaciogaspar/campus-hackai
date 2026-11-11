@@ -1,6 +1,6 @@
 /* Página de muestra del sistema visual (ticket #8): la estructura y los
    componentes base con datos de ejemplo. No pide sesión ni lee datos. */
-import { Bell, CalendarDays, CircleCheck, Download, FileText, Megaphone, MessageSquare, RotateCw } from 'lucide-react'
+import { CalendarDays, CircleCheck, Download, FileText, Megaphone, MessageSquare, RotateCw } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { AppShell } from '@/components/shell/app-shell'
@@ -48,12 +48,7 @@ export default function MuestraPage() {
         title='Muestra del sistema visual'
         kicker='Datos de ejemplo'
         school={SCHOOL}
-        actions={
-          <a href='#' aria-label='Novedades, 4 sin leer' className='relative grid size-10 place-items-center rounded-full text-white hover:bg-white/10'>
-            <Bell aria-hidden='true' className='size-5' />
-            <UnreadCount count={4} className='absolute -top-0.5 -right-0.5 bg-orange text-ink' />
-          </a>
-        }
+        unread={4}
       />
       <main className='mx-auto flex max-w-280 flex-col gap-8 px-4 pt-5 pb-8 lg:px-10'>
         <Section title='Botones'>
