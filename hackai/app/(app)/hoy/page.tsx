@@ -55,7 +55,7 @@ export default async function HoyPage() {
         }
       />
 
-      <main className='mx-auto flex w-full max-w-280 flex-col gap-6 px-4 pt-5 pb-16 lg:px-10 lg:pt-8'>
+      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         {!found.ok ? (
           <ErrorNotice>{ERRORS[found.error]}</ErrorNotice>
         ) : (

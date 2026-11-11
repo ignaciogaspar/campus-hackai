@@ -8,7 +8,7 @@ export default function NotFound() {
   return (
     <>
       <PageHeader title='Esta pantalla todavía no está' />
-      <main className='mx-auto flex max-w-280 flex-col items-center gap-4 px-4 pt-6 pb-8 lg:px-10'>
+      <main className='flex w-full flex-col items-center gap-4 px-4 pt-6 pb-8 lg:px-6'>
         <EmptyState icon={Compass} title='No encontramos lo que buscabas'>
           Puede que la estemos armando o que el enlace esté mal. Volvé al inicio y seguí desde ahí.
         </EmptyState>

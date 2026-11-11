@@ -89,7 +89,7 @@ function SpaceError({ error }: { error: AccessError }) {
   return (
     <>
       <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop />
-      <main className='mx-auto flex w-full max-w-280 flex-col gap-4 px-4 pt-5 pb-16 lg:px-10 lg:pt-8'>
+      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{OPEN_ERRORS[error]}</p>
           {error === 'sin-acceso' && (
@@ -195,7 +195,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         <SectionChips view={view} />
       </PageHeader>
 
-      <main className='mx-auto flex w-full max-w-280 flex-col gap-4 px-4 pt-5 pb-24 lg:px-10 lg:pt-8 lg:pb-8'>
+      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-6 lg:pt-8 lg:pb-8'>
         {view.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(view.staleSince)}: puede estar

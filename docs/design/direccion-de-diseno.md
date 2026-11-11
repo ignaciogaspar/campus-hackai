@@ -15,7 +15,7 @@ Lenguaje visual de HackAI y referencia de las pantallas de la demo. Los valores 
 - **Paleta de la Austral.** Sale de `hackai/app/globals.css` (provisoria) y de los tonos de Campus Austral (`campus/app/globals.css`): navy `#0b1150` en el encabezado, azul `#1d21a9` como color primario, azul claro `#1f5cff` para lo activo y los no leídos, naranja `#ff7a1a` para lo urgente y fondo `#f2f4fb`.
 - **Tipografía.** Montserrat en todo. Títulos en 800.
 - **Superficies.** Tarjetas blancas sin borde, con sombra suave. Radios de 8, 14 y 22 px.
-- **Primero el celular.** Se diseña a 390 px. Encabezado navy con la marca «Universidad Austral» y la facultad, campana de novedades con contador y navegación inferior con Hoy, Materias y Académico. Áreas táctiles de 40 a 44 px en los controles principales; los secundarios, como el botón chico, el selector segmentado o el botón «Instalar», pueden bajar a 32-36 px. Sin barra de scroll visible.
+- **Primero el celular.** Se diseña a 390 px. Encabezado navy rectangular, de borde a borde, con la marca «Universidad Austral» y la facultad, campana de novedades con contador y navegación inferior con Hoy, Materias y Académico. Áreas táctiles de 40 a 44 px en los controles principales; los secundarios, como el botón chico, el selector segmentado o el botón «Instalar», pueden bajar a 32-36 px. Sin barra de scroll visible.
 - **Estados.** Vacío que dice qué es lo próximo, cargando con skeleton, error que afecta solo al bloque que falló y desactualizado con la hora de la última lectura.
 - **Movimiento.** Uno solo: el contador de no leídos entra con un pulso corto. Se apaga con `prefers-reduced-motion`.
 - **Accesibilidad.** Foco visible en todo control, pestañas con flechas del teclado, contraste AA y textos de estado con `role="status"` o `role="alert"`.
@@ -28,7 +28,7 @@ En compu sobra lugar, así que se muestra más que en el celular, pero cada bloq
 
 - **Barra lateral** de 248 px: la marca de la Austral, la navegación (Hoy, Materias, Académico) y tus materias con sus no leídos, como los servidores en Discord. Si son muchas, la lista scrollea dentro de la barra.
 - **Encabezado más bajo:** el título y las acciones van en la misma franja. No hay flecha de volver, porque está la barra lateral.
-- **Contenido:** ancho máximo de 1120 px y márgenes de 40 px.
+- **Contenido:** a todo el ancho que deja la barra lateral, con márgenes de 24 px (16 px en el celular). Lo que no debe estirarse, como los textos largos, lleva su propio tope.
 - **Hoy:**
   - A la izquierda, un calendario de esta semana y la próxima. Cada día muestra hasta 2 cosas y el resto como «+N más».
   - Debajo del calendario, lo que viene después y lo que ya pasó.
@@ -72,6 +72,7 @@ Salen de los comentarios del equipo sobre la v1.
 | «Sacar la scroll bar» | Sin barra de scroll visible; el scroll funciona igual. |
 | «En quinto año las aprobadas se mezclan con las que falta final»; «disponibles y archivadas no son intuitivas» | Materias tiene tres vistas: **Cursando**, **Falta final** (solo las regularizadas sin final, con la mesa en la que estás inscripto o la próxima abierta) y **Aprobadas** (lista compacta por año de la carrera, plegada salvo el último año, con la nota del acta). |
 | «Las instrucciones para instalar ocupan espacio y rompen el diseño práctico» | Nada de tarjetas en Hoy: un botoncito en el encabezado abre los pasos en una hoja desde abajo. |
+| «Que el header no tenga borde curvo y sea rectangular»; «que el contenido cubra lo ancho y no haya tanto margen» (11/11) | El encabezado navy es rectangular, sin borde redondeado. El contenido usa todo el ancho, con márgenes de 24 px en compu y 16 px en el celular, en todas las pantallas. Mis materias suma el mismo encabezado y muestra las materias en mosaico. |
 
 ## Cambios que esto pide en los tickets
 

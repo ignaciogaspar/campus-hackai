@@ -39,8 +39,8 @@ export function PageHeader({
   children
 }: Props) {
   return (
-    <header className='rounded-b-[28px] bg-navy text-white'>
-      <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>
+    <header className='bg-navy text-white'>
+      <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-6 lg:pt-5'>
         <div
           className={cn('flex min-h-10 items-center', !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden')}
         >

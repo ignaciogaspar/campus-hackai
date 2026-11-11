@@ -4,6 +4,7 @@
    actual, qué se archiva, qué facultad ve cada uno y qué tarea venció lo
    decide Cursada. */
 import type { Metadata } from 'next'
+import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -28,38 +29,39 @@ function readTime(readAt: string): string {
 
 export default async function MateriasPage() {
   const session = await requireSession()
-  const result = await system().studies.subjectsOf(session.personId)
+  const [result, person] = await Promise.all([
+    system().studies.subjectsOf(session.personId),
+    system().people.get(session.personId)
+  ])
 
   return (
-    <main className='mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-6 pb-16'>
-      <header>
-        <p className='text-xs font-bold tracking-widest text-primary uppercase'>Campus HackAI</p>
-        <h1 className='mt-1 text-2xl leading-tight font-bold'>Mis materias</h1>
-      </header>
+    <>
+      <PageHeader title='Mis materias' school={person.ok ? person.value.school.name : undefined} />
+      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+        {!result.ok ? (
+          <p role='alert' className='rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm'>
+            {ERRORS[result.error] ?? 'Algo salió mal al traer tus materias.'}
+          </p>
+        ) : (
+          <>
+            {result.value.stale && (
+              <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
+                El SIU o el Campus Virtual no responden. Te mostramos lo que trajimos el {readTime(result.value.readAt)}
+                : puede estar desactualizado.
+              </p>
+            )}
 
-      {!result.ok ? (
-        <p role='alert' className='rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm'>
-          {ERRORS[result.error] ?? 'Algo salió mal al traer tus materias.'}
-        </p>
-      ) : (
-        <>
-          {result.value.stale && (
-            <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
-              El SIU o el Campus Virtual no responden. Te mostramos lo que trajimos el {readTime(result.value.readAt)}:
-              puede estar desactualizado.
-            </p>
-          )}
+            <section aria-labelledby='actuales' className='flex flex-col gap-3'>
+              <h2 id='actuales' className='text-sm font-semibold text-muted-foreground'>
+                Actuales
+              </h2>
+              <CurrentSubjects subjects={result.value.data.current} />
+            </section>
 
-          <section aria-labelledby='actuales' className='flex flex-col gap-3'>
-            <h2 id='actuales' className='text-sm font-semibold text-muted-foreground'>
-              Actuales
-            </h2>
-            <CurrentSubjects subjects={result.value.data.current} />
-          </section>
-
-          <ArchivedSubjects subjects={result.value.data.archived} />
-        </>
-      )}
-    </main>
+            <ArchivedSubjects subjects={result.value.data.archived} />
+          </>
+        )}
+      </main>
+    </>
   )
 }

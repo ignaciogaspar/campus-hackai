@@ -114,7 +114,7 @@ export function CurrentSubjects({ subjects }: { subjects: MySubject[] }) {
     )
   }
   return (
-    <ul className='flex flex-col gap-3'>
+    <ul className='grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
       {subjects.map((s) => (
         <SubjectCard key={s.sectionId} subject={s} />
       ))}
@@ -132,7 +132,7 @@ export function ArchivedSubjects({ subjects }: { subjects: MySubject[] }) {
           ▾
         </span>
       </summary>
-      <ul className='flex flex-col gap-3 px-4 pb-4'>
+      <ul className='grid gap-3 px-4 pb-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
         {subjects.map((s) => (
           <SubjectCard key={s.sectionId} subject={s} archived />
         ))}
