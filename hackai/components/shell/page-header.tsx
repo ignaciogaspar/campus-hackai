@@ -18,6 +18,9 @@ type Props = {
   hideBackOnDesktop?: boolean
   /** Lo sin leer de todas las materias, para la campana. */
   unread?: number
+  /** Pantallas sin sesión, como el ingreso: no hay barra lateral ni novedades,
+      así que la marca se ve también en compu y no va la campana. */
+  signedOut?: boolean
   /** Arriba a la derecha, después de la campana: perfil. */
   actions?: ReactNode
   /** Debajo del título, sobre el navy: chips de comisión, docente. */
@@ -31,13 +34,16 @@ export function PageHeader({
   backHref,
   hideBackOnDesktop,
   unread = 0,
+  signedOut = false,
   actions,
   children
 }: Props) {
   return (
     <header className='rounded-b-[28px] bg-navy text-white'>
       <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>
-        <div className={cn('flex min-h-10 items-center', (!backHref || hideBackOnDesktop) && 'lg:hidden')}>
+        <div
+          className={cn('flex min-h-10 items-center', !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden')}
+        >
           {backHref ? (
             <Link
               href={backHref}
@@ -52,7 +58,7 @@ export function PageHeader({
         </div>
         <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
           <InstallButton />
-          <NotificationsBell unread={unread} />
+          {!signedOut && <NotificationsBell unread={unread} />}
           {actions}
         </div>
         <div className='col-start-1 mt-2 lg:mt-0'>

@@ -15,6 +15,7 @@
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "siu:seed": "tsx scripts/siu-seed.ts",
     "moodle:seed": "tsx scripts/moodle-seed.ts",
+    "people:seed": "tsx scripts/people-seed.ts",
     "discord:probar": "node --env-file-if-exists=.env.local --import tsx scripts/discord-probar.ts",
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\""
   },
