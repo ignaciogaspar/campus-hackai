@@ -30,7 +30,14 @@ export async function sectionsOf(
 }
 
 /** La membresía de la persona en una materia. Sin `schoolId`, la facultad es la
-    de su primera comisión de la materia (las actuales vienen primero). */
+    de su primera comisión de la materia (las actuales vienen primero).
+
+    Alcanza para las rutas `/materias/[subjectId]`, que no llevan la facultad:
+    - Un alumno solo tiene comisiones de su facultad, porque Cursada ya las
+      filtra, así que su primera comisión es siempre la de su facultad.
+    - En el set sintético ningún docente dicta la misma materia en dos facultades.
+    - Con datos reales, un docente que la dicta en dos facultades necesitaría la
+      facultad en la ruta (`/materias/[subjectId]`) para elegir el espacio. */
 export async function membershipOf(
   studies: Studies,
   personId: PersonId,
