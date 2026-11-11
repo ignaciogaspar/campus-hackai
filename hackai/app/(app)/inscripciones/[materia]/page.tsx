@@ -97,6 +97,7 @@ function SectionCard({ item }: { item: OfferItem }) {
 
       <SectionActions
         sectionId={item.target.sectionId}
+        subjectId={item.subjectId}
         label={label}
         status={item}
         enrollAction={enrollAction}

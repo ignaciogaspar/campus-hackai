@@ -7,6 +7,7 @@ import { CheckCircle2, ExternalLink, Info } from 'lucide-react'
 import Link from 'next/link'
 import { useActionState, useEffect, useRef, useState } from 'react'
 import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
+import { spaceHref } from '@/components/spaces/format'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ErrorNotice } from '@/components/ui/states'
 import type { OfferItem } from '@/lib/core/studies'
@@ -16,7 +17,7 @@ const INITIAL: EnrollmentState = { kind: 'inicial' }
 
 const STEP_TEXT: Record<EnrollmentStep, string> = { inscripcion: 'inscribirte', baja: 'darte de baja' }
 
-function Outcome({ state }: { state: EnrollmentState }) {
+function Outcome({ state, subjectId }: { state: EnrollmentState; subjectId: string }) {
   if (state.kind === 'inscripto') {
     return (
       <div role='status' className='flex gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm'>
@@ -28,13 +29,16 @@ function Outcome({ state }: { state: EnrollmentState }) {
               ? 'Ya estás en el SIU y en el aula del Campus Virtual.'
               : 'Ya estás en el SIU. Al aula del Campus Virtual todavía no te pudimos sumar desde HackAI.'}
           </p>
+          <p>Y quedaste en el espacio de la materia, con sus avisos, consultas y material.</p>
           <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {state.transactionNumber}</p>
-          <Link
-            href='/materias'
-            className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 self-start')}
-          >
-            Ver en Mis materias
-          </Link>
+          <div className='flex flex-wrap gap-2'>
+            <Link href={spaceHref(subjectId)} className={cn(buttonVariants({ size: 'lg' }), 'min-h-11')}>
+              Ir al espacio de la materia
+            </Link>
+            <Link href='/materias' className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')}>
+              Ver en Mis materias
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -86,6 +90,8 @@ type SectionStatus = Pick<OfferItem, 'alreadyEnrolled' | 'enrollmentOpen' | 'enr
 
 type Props = {
   sectionId: string
+  /** La materia de la comisión: el espacio al que lleva el mensaje de éxito. */
+  subjectId: string
   label: string
   status: SectionStatus
   /** Las server actions llegan desde la página del servidor: importadas acá
@@ -96,7 +102,7 @@ type Props = {
 
 /** Los dos estados viven acá porque, al inscribirse, la página se vuelve a
     cargar con `alreadyEnrolled` y el comprobante no se tiene que perder. */
-export function SectionActions({ sectionId, label, status, enrollAction, dropAction }: Props) {
+export function SectionActions({ sectionId, subjectId, label, status, enrollAction, dropAction }: Props) {
   const { alreadyEnrolled: enrolled, enrollmentOpen: open, enrolledElsewhere } = status
   const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL)
   const [dropState, drop, dropping] = useActionState(dropAction, INITIAL)
@@ -142,7 +148,7 @@ export function SectionActions({ sectionId, label, status, enrollAction, dropAct
         </form>
       )}
 
-      <Outcome state={visibleOutcome} />
+      <Outcome state={visibleOutcome} subjectId={subjectId} />
 
       {enrolled &&
         (confirming ? (

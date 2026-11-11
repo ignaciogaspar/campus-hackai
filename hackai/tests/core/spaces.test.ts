@@ -1001,3 +1001,19 @@ test('si falla borrar el archivo, igual se devuelve el error del almacén', asyn
 
   assert.deepEqual(added, { ok: false, error: 'falla-externa' })
 })
+
+test('quien se inscribe en una comisión ve enseguida los canales de su espacio', async () => {
+  const { spaces, studies } = build()
+  // Valentina Funes todavía no cursa Programación I.
+  const before = await spaces.open('p-vfunes', 'pr1')
+  assert.deepEqual(before, { ok: false, error: 'sin-acceso' })
+
+  const enrolled = await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-pr1-fi-v' })
+  assert.ok(enrolled.ok)
+
+  const opened = await spaces.open('p-vfunes', 'pr1')
+  assert.ok(opened.ok)
+  assert.deepEqual(labels(opened.value.channels), ['#avisos (Verano)', '#consultas (Verano)', '#material'])
+  assert.equal(named(opened.value, 'avisos', 'Verano').kind, 'avisos')
+  assert.equal(named(opened.value, 'consultas', 'Verano').kind, 'consultas')
+})
