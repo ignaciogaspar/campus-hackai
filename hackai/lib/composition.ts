@@ -7,7 +7,7 @@
    | Identidad      | `HACKAI_IDENTITY`         | memoria            |
    | SIU            | `HACKAI_SIU`              | memoria, simulado  |
    | Aula virtual   | `HACKAI_CLASSROOM`        | memoria            |
-   | Canal externo  | `HACKAI_EXTERNAL_CHANNEL` | memoria            |
+   | Canal externo  | `HACKAI_EXTERNAL_CHANNEL` | memoria, discord   |
    | Archivos       | `HACKAI_FILES`            | memoria            |
    | Reloj          | `HACKAI_CLOCK`            | memoria, sistema   |
 
@@ -15,10 +15,14 @@
    NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas
    (hackai/README.md).
 
-   Cada ticket que suma un adaptador (moodle-simulado, discord, supabase…) lo
-   agrega a su lista acá. Un valor desconocido o una variable que falta corta
-   el arranque: es un error de configuración, no algo que el núcleo pueda
+   Con `discord`, el token del bot va en `DISCORD_BOT_TOKEN` (guía:
+   docs/discord.md).
+
+   Cada ticket que suma un adaptador (moodle-simulado, supabase…) lo agrega a
+   su lista acá. Un valor desconocido o una variable que falta corta el
+   arranque: es un error de configuración, no algo que el núcleo pueda
    resolver. */
+import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
@@ -47,7 +51,7 @@ const ADAPTERS = {
   identity: { variable: 'HACKAI_IDENTITY', values: ['memoria'] },
   siu: { variable: 'HACKAI_SIU', values: ['memoria', 'simulado'] },
   classroom: { variable: 'HACKAI_CLASSROOM', values: ['memoria'] },
-  externalChannel: { variable: 'HACKAI_EXTERNAL_CHANNEL', values: ['memoria'] },
+  externalChannel: { variable: 'HACKAI_EXTERNAL_CHANNEL', values: ['memoria', 'discord'] },
   files: { variable: 'HACKAI_FILES', values: ['memoria'] },
   clock: { variable: 'HACKAI_CLOCK', values: ['memoria', 'sistema'] },
 } as const
@@ -85,6 +89,14 @@ function choose<P extends PortName>(env: Env, port: P): AdapterChoice[P] {
   return value as AdapterChoice[P]
 }
 
+/** Una variable que el adaptador elegido necesita. El error nombra la
+    variable, nunca su valor. */
+function required(env: Env, variable: string, neededBy: string): string {
+  const value = env[variable]?.trim()
+  if (!value) throw new Error(`${neededBy} necesita ${variable} en el entorno`)
+  return value
+}
+
 /** Arma todos los módulos con los adaptadores que piden las variables de
     entorno. Cada llamada tiene su propia copia de los datos en memoria. */
 export function compose(env: Env = process.env, data: SyntheticData = syntheticData): System {
@@ -104,7 +116,9 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
       ? createSimulatedSiu({ client: supabaseFromEnv(env), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
       : createMemorySiu(data, clock),
     classroom: createMemoryClassroom(data),
-    externalChannel: createMemoryExternalChannel(data, clock),
+    externalChannel: adapters.externalChannel === 'discord'
+      ? createDiscordExternalChannel({ token: required(env, 'DISCORD_BOT_TOKEN', 'HACKAI_EXTERNAL_CHANNEL=discord') })
+      : createMemoryExternalChannel(data, clock),
     files: createMemoryFiles(),
     clock,
   }

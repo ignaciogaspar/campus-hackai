@@ -80,6 +80,15 @@ test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () =
   assert.throws(() => compose({ HACKAI_SIU: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
 })
 
+test('el canal externo de Discord se arma con el token del entorno y sin token no arranca', () => {
+  const system = compose({ HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: 'token-de-prueba' })
+  assert.equal(system.adapters.externalChannel, 'discord')
+  assert.deepEqual(system.ports.externalChannel.capabilities, { delivery: 'cursor', threads: true })
+
+  assert.throws(() => compose({ HACKAI_EXTERNAL_CHANNEL: 'discord' }), /DISCORD_BOT_TOKEN/)
+  assert.throws(() => compose({ HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: '  ' }), /DISCORD_BOT_TOKEN/)
+})
+
 test('los adaptadores en memoria declaran sus capacidades', () => {
   const { ports } = compose({})
   assert.deepEqual(ports.identity.capabilities, { demoList: true })

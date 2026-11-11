@@ -20,7 +20,7 @@ npm test               # node:test + tsx sobre tests/**/*.test.ts
 npm run build
 ```
 
-`npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22.
+`npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22. El glob va entre comillas dobles para que lo expanda Node y no el shell: así funciona igual con cmd en Windows y con sh.
 
 ## SIU simulado
 
@@ -70,6 +70,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `DATABASE_URL` | Solo para correr migraciones con psql. |
 | `SESSION_SECRET` | Firma la cookie de sesión `hackai_session`. |
 | `ANTHROPIC_API_KEY` | API de Claude. |
+| `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES`, `HACKAI_CLOCK` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corre la batería de contrato del SIU simulado. |
 
@@ -91,6 +92,8 @@ No las imprimas en logs ni en reportes.
 | `lib/core/` | Las interfaces de Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
 | `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. |
 | `lib/adapters/memoria/` | Un adaptador en memoria por puerto, cargado con ese set. |
+| `lib/adapters/discord/` | El canal externo real: API REST v10 de Discord, sin gateway. Bot y prueba manual (`npm run discord:probar`): [docs/discord.md](docs/discord.md). |
+| `tests/contracts/` | La batería de contrato de cada puerto, que corre contra el adaptador en memoria y el real. `fake-discord.ts` es un `fetch` con la forma de la API de Discord, sin red. |
 | `lib/composition.ts` | `compose(env)` para los tests y `system()` para la app: arma los módulos con el adaptador de cada puerto. |
 | `lib/adapters/siu-simulado/` | El SIU simulado sobre las tablas `siu_*` y el generador de su seed. |
 | `app/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente. |

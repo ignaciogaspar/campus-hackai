@@ -93,7 +93,15 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
   - **Primer caso de sincronización:** de Discord a HackAI, el material y los avisos; de HackAI a Discord, las consultas, con la respuesta de vuelta. Registrado en el [ADR 0005](../adr/0005-sincronizacion-con-canales-externos.md).
   - **WhatsApp** queda afuera de la demo.
 
-### 12. ¿Las materias de un período que todavía no empezó van con las actuales?
+### 12. ¿Lo que HackAI publica en el canal externo notifica las menciones?
+
+- **Por qué importa:** si un docente escribe un aviso con `@everyone` o `@alumno` en HackAI y se reenvía a Discord, la mención notifica o no según esto. Afecta la sincronización de avisos y consultas, y es justo el problema que queremos resolver: que los avisos lleguen.
+- **Opciones:** no notificar ninguna mención; notificar solo menciones a personas; notificar también `@everyone` y `@here`, solo si escribe un docente en `#avisos`.
+- **Hipótesis:** hoy el adaptador de Discord manda todo sin menciones (`allowed_mentions` vacío), como opción segura: un texto de HackAI no puede mandar un `@everyone` a todo el servidor por accidente. Falta confirmarlo con el equipo.
+- **Estado:** abierta
+- **Decisión:**
+
+### 13. ¿Las materias de un período que todavía no empezó van con las actuales?
 
 - **Por qué importa:** Mis materias muestra las actuales arriba y archiva el resto. Un alumno ya inscripto al próximo período (por ejemplo, el de verano) tiene que verlas en algún lado, y si se archivan quedan mezcladas con las viejas.
 - **Hipótesis:** van con las actuales, ordenadas por inicio del período y con el nombre del período en cada tarjeta. Así lo implementa Cursada desde el issue #10 (`subjectsOf`: actual es todo período que no terminó).
