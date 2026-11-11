@@ -12,6 +12,8 @@
      misma comisión.
    - Cada mensaje guarda su origen y su id externo y no entra dos veces. Si el
      envío al canal externo falla, queda pendiente y se reintenta.
+   - Un archivo guardado (material o adjunto) se entrega solo a quien ve su
+     espacio o su canal.
 
    Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de
    archivos y el reloj. */
@@ -21,7 +23,7 @@ import type { Studies } from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { ExternalChannelPort } from '@/lib/ports/external-channel'
-import type { FilesError, FilesPort } from '@/lib/ports/files'
+import type { FileContent, FilesError, FilesPort } from '@/lib/ports/files'
 import type { ExternalFailure, NotImplemented, Result } from '@/lib/result'
 
 export type SpaceId = string
@@ -258,6 +260,10 @@ export type Spaces = {
   syncAll(): Promise<Result<SyncReport, NotImplemented>>
   /** Novedades sin leer de todos sus espacios, para Hoy y la navegación. No crea espacios. */
   unreadFor(personId: PersonId): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>>
+  /** Los bytes de un archivo guardado, con el id que lleva su URL. Del material,
+      para quien es del espacio; de un adjunto, para quien ve su canal. Un id que
+      no es de ningún material ni adjunto es `archivo-desconocido`. */
+  file(personId: PersonId, fileId: string): Promise<Result<FileContent, 'archivo-desconocido' | AccessError>>
 }
 
 // Almacén de Espacios: un seam interno, que se inyecta al armar el módulo y no
@@ -284,6 +290,10 @@ export type StoredChannel = {
   externalLink: ExternalLink | null
 }
 
+/** Un adjunto guardado: con el id del archivo en Archivos, para saber de qué
+    canal es al entregarlo, o `null` si no se copió a Archivos. */
+export type StoredAttachment = Attachment & { fileId: string | null }
+
 /** Un mensaje guardado. `seq` crece con cada mensaje que entra al almacén y ordena los mensajes y lo leído. */
 export type StoredMessage = {
   id: MessageId
@@ -294,7 +304,7 @@ export type StoredMessage = {
   /** El nombre con que llegó del canal externo; `null` si el autor es una persona de HackAI. */
   authorName: string | null
   text: string
-  attachments: Attachment[]
+  attachments: StoredAttachment[]
   origin: Origin
   externalId: string | null
   status: 'publicado' | 'pendiente'
@@ -311,6 +321,8 @@ export type StoredMaterial = {
   spaceId: SpaceId
   name: string
   url: string
+  /** El id del archivo en Archivos, o `null` si es un enlace (de Moodle o de afuera). */
+  fileId: string | null
   contentType: string
   size: number
   section: string | null
@@ -322,6 +334,9 @@ export type StoredMaterial = {
 }
 
 export type SpacesStoreError = ExternalFailure
+
+/** De quién es un archivo guardado: del material de un espacio o de un mensaje de un canal. */
+export type FileOwner = { kind: 'material'; spaceId: SpaceId } | { kind: 'adjunto'; channelId: ChannelId }
 
 export type SpacesStore = {
   /** Los espacios de esas materias y facultades que ya existen. */
@@ -348,6 +363,8 @@ export type SpacesStore = {
   material(spaceIds: SpaceId[]): Promise<Result<StoredMaterial[], SpacesStoreError>>
   /** Guarda un archivo del material y le asigna id y `seq`. `duplicado` si ya hay uno con ese origen e id externo en el espacio. */
   addMaterial(item: Omit<StoredMaterial, 'id' | 'seq'>): Promise<Result<StoredMaterial, 'duplicado' | SpacesStoreError>>
+  /** De qué material o de qué mensaje es el archivo con ese id de Archivos; `null` si de ninguno. */
+  fileOwner(fileId: string): Promise<Result<FileOwner | null, SpacesStoreError>>
 
   /** Hasta qué `seq` leyó la persona cada canal. Un canal que nunca abrió no aparece. */
   readMarks(personId: PersonId, channelIds: ChannelId[]): Promise<Result<Record<ChannelId, number>, SpacesStoreError>>

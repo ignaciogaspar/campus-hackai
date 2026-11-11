@@ -70,12 +70,13 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
 | `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
+| `file(persona, archivo)` | Los bytes de un archivo guardado, si la persona ve el espacio de su material o el canal de su adjunto |
 
 **Reglas que hace cumplir:**
 
 - **Un espacio por materia y facultad.** Se crea la primera vez que alguien lo abre, con sus canales por defecto: material de la materia, y `#avisos` y `#consultas` por comisión.
 - **Membresía.** Se deduce de `sectionsOf` de Cursada y no se guarda aparte. Por eso no hay operación para agregar miembros: quien se inscribe ya está adentro.
-- **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión.
+- **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión. Con los archivos guardados pasa lo mismo: el material lo baja cualquiera del espacio, y un adjunto, quien ve su canal.
 - **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`), así la pantalla no repite estas reglas.
 - **Canales por defecto:** el espacio y su canal de material se crean la primera vez que alguien abre el espacio; `#avisos` y `#consultas` de una comisión, la primera vez que lo abre alguien de esa comisión. Los nombres no se repiten entre canales que ven las mismas personas.
 - **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que en la demo está fija.
@@ -127,7 +128,7 @@ Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales
 
 **Capacidades:** cada adaptador de un sistema de origen declara qué soporta: por ejemplo, si permite inscribir, si tiene cronograma, si ya matricula en Moodle, o si avisa por evento en vez de leerse desde un cursor. El núcleo decide con esas declaraciones, nunca preguntando qué adaptador es. Así el mismo núcleo funciona con el simulado de la demo y con el sistema real, que tiene menos capacidades.
 
-**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas. Los archivos guardados se entregan por la ruta `/archivos/<id>/<nombre>`, que pide sesión: el bucket es privado y nada se lee desde el navegador directo a Supabase.
+**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas. Los archivos guardados se entregan por la ruta `/archivos/<id>/<nombre>`, que pide sesión y pasa por `file` de Espacios: este busca en su almacén de qué material o de qué mensaje es el archivo y chequea que la persona sea del espacio o vea el canal. El bucket es privado y nada se lee desde el navegador directo a Supabase.
 
 ## Estructura de carpetas
 

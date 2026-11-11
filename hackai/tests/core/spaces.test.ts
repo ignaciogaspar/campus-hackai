@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
@@ -51,16 +52,17 @@ function build(data: SyntheticData = syntheticData) {
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
   const studies = createStudies({ people, siu, classroom, clock })
   const store = createMemorySpacesStore()
+  const files = createMemoryFiles()
   const spaces = createSpaces({
     people,
     studies,
     externalChannel: createMemoryExternalChannel(data, clock),
     classroom,
-    files: createMemoryFiles(),
+    files,
     clock,
     store
   })
-  return { spaces, store, siuState, setNow }
+  return { spaces, store, files, siuState, setNow }
 }
 
 /** Copia del set sintético con una inscripción a cursada de más. */
@@ -415,6 +417,65 @@ test('los adjuntos se guardan con Archivos y si uno falla no se publica nada', a
   const seen = await spaces.channel('p-taguirre', ids.consultasA)
   assert.ok(seen.ok)
   assert.equal(seen.value.threads.length, 1)
+})
+
+/** El id del archivo que lleva su URL: `/archivos/<id>/<nombre>`. */
+const fileIdOf = (url: string | undefined) => url?.split('/')[2] ?? ''
+
+test('el material de la materia lo bajan las dos comisiones, pero no alguien de otra facultad', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const bytes = new Uint8Array([37, 80, 68, 70])
+  const added = await spaces.addMaterial('p-mledesma', ids.spaceId, {
+    name: 'Guía 4.pdf',
+    contentType: 'application/pdf',
+    bytes
+  })
+  assert.ok(added.ok)
+  const fileId = fileIdOf(added.value.url)
+
+  for (const personId of ['p-taguirre', 'p-mcabrera', 'p-gferreyra']) {
+    const file = await spaces.file(personId, fileId)
+    assert.ok(file.ok, personId)
+    assert.equal(file.value.contentType, 'application/pdf')
+    assert.deepEqual(file.value.bytes, bytes)
+  }
+  assert.deepEqual(await spaces.file('p-agimenez', fileId), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await spaces.file('p-fjuarez', fileId), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await spaces.file('p-nadie', fileId), { ok: false, error: 'persona-desconocida' })
+})
+
+test('un adjunto de #consultas de la A lo baja la A, pero no la B', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const bytes = new Uint8Array([1, 2, 3])
+  const posted = await spaces.post('p-taguirre', ids.consultasA, {
+    text: '¿Está bien este?',
+    attachments: [{ name: 'ejercicio.png', contentType: 'image/png', bytes }]
+  })
+  assert.ok(posted.ok)
+  const fileId = fileIdOf(posted.value.attachments[0]?.url)
+
+  for (const personId of ['p-lbenitez', 'p-mledesma']) {
+    const file = await spaces.file(personId, fileId)
+    assert.ok(file.ok, personId)
+    assert.equal(file.value.contentType, 'image/png')
+    assert.deepEqual(file.value.bytes, bytes)
+  }
+  assert.deepEqual(await spaces.file('p-mcabrera', fileId), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await spaces.file('p-gferreyra', fileId), { ok: false, error: 'sin-acceso' })
+})
+
+test('un archivo que no es de ningún material ni adjunto no se entrega a nadie', async () => {
+  const { spaces, files } = build()
+  await am1(spaces)
+  // Guardado en Archivos, pero de ningún espacio.
+  const loose = await files.save({ name: 'suelto.txt', contentType: 'text/plain', bytes: new Uint8Array([1]) })
+  assert.ok(loose.ok)
+
+  for (const fileId of [loose.value.id, randomUUID(), 'no-es-un-id', '../../secreto']) {
+    assert.deepEqual(await spaces.file('p-taguirre', fileId), { ok: false, error: 'archivo-desconocido' }, fileId)
+  }
 })
 
 /** Los no leídos de cada canal que la persona ve: `{ 'avisos (A)': 1, material: 0 }`. */

@@ -2,7 +2,8 @@
    del módulo se usa su interfaz. Las piezas viven al lado: quién entra y qué
    puede hacer (access), los canales (channels), lo leído (reading), los
    autores (authors), los mensajes y sus hilos (messages) y el material
-   (material).
+   (material). Los archivos guardados se entregan acá, con la misma regla de
+   quién ve qué.
 
    Todavía no sincroniza con el canal externo ni con Moodle: `open` no trae lo
    nuevo, `post` no envía al canal externo vinculado y `link` y `syncAll` no
@@ -10,7 +11,6 @@
 import type { PersonId } from '@/lib/core/people'
 import type {
   AccessError,
-  Attachment,
   Channel,
   ChannelId,
   ChannelView,
@@ -25,6 +25,7 @@ import type {
   SpacesDeps,
   SpacesStoreError,
   SpaceView,
+  StoredAttachment,
   StoredChannel,
   StoredMessage,
   StoredSpace
@@ -46,6 +47,7 @@ import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
 import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from '@/lib/core/spaces/reading'
 import { unreadFor } from '@/lib/core/spaces/unread'
+import { isFileId } from '@/lib/ports/files'
 import { fail, notImplemented, ok, type Result } from '@/lib/result'
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
@@ -175,8 +177,8 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
   /** Guarda los adjuntos con Archivos. Si uno falla, no se publica el mensaje. */
   async function saveAttachments(
     attachments: NonNullable<NewMessage['attachments']>
-  ): Promise<Result<Attachment[], 'demasiado-grande' | 'falla-externa'>> {
-    const saved: Attachment[] = []
+  ): Promise<Result<StoredAttachment[], 'demasiado-grande' | 'falla-externa'>> {
+    const saved: StoredAttachment[] = []
     for (const attachment of attachments) {
       const file = await files.save(attachment)
       if (!file.ok) return file
@@ -184,7 +186,8 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
         name: file.value.name,
         contentType: file.value.contentType,
         size: file.value.size,
-        url: file.value.url
+        url: file.value.url,
+        fileId: file.value.id
       })
     }
     return ok(saved)
@@ -193,7 +196,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
   /** Guarda un mensaje ya validado y lo marca leído para quien lo escribió. */
   async function publish(
     { channel, member }: InChannel,
-    draft: { text: string; replyTo: MessageId | null; attachments: Attachment[] }
+    draft: { text: string; replyTo: MessageId | null; attachments: StoredAttachment[] }
   ): Promise<Result<Message, SpacesStoreError>> {
     // Un mensaje de primer nivel de un alumno en #consultas es una consulta.
     const isQuestion = channel.kind === 'consultas' && draft.replyTo === null && member.role === 'alumno'
@@ -344,6 +347,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       spaceId,
       name: file.value.name,
       url: file.value.url,
+      fileId: file.value.id,
       contentType: file.value.contentType,
       size: file.value.size,
       section: material.section?.trim() || null,
@@ -370,6 +374,33 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return material.ok ? ok(material.value.view) : material
   }
 
+  /** Si la persona ve el espacio o el canal del archivo. Un dueño que ya no existe
+      es un archivo desconocido. */
+  async function seesFile(
+    personId: PersonId,
+    fileId: string
+  ): Promise<Result<null, 'archivo-desconocido' | AccessError>> {
+    const owner = await store.fileOwner(fileId)
+    if (!owner.ok) return owner
+    if (!owner.value) return fail('archivo-desconocido')
+    const found =
+      owner.value.kind === 'material'
+        ? await inSpace(personId, owner.value.spaceId)
+        : await inChannel(personId, owner.value.channelId)
+    if (found.ok) return ok(null)
+    if (found.error === 'espacio-desconocido' || found.error === 'canal-desconocido') return fail('archivo-desconocido')
+    return fail(found.error)
+  }
+
+  const file: Spaces['file'] = async (personId, fileId) => {
+    if (!isFileId(fileId)) return fail('archivo-desconocido')
+    const allowed = await seesFile(personId, fileId)
+    if (!allowed.ok) return allowed
+    const content = await files.read(fileId)
+    if (!content.ok) return fail(content.error === 'no-encontrado' ? 'archivo-desconocido' : content.error)
+    return content
+  }
+
   return {
     open,
     resolve,
@@ -385,6 +416,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     openDirect: notImplemented,
     link: notImplemented,
     syncAll: notImplemented,
-    unreadFor: (personId) => unreadFor(studies, store, personId)
+    unreadFor: (personId) => unreadFor(studies, store, personId),
+    file
   }
 }

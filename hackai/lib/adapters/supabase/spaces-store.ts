@@ -8,16 +8,20 @@
    como `falla-externa`, nunca como excepción. Los ids propios son uuid: un id
    con otra forma no puede existir, así que se contesta como no encontrado sin
    preguntarle a la base (que lo rechazaría con un error). Las fechas vuelven
-   en ISO con milisegundos y `Z`, la forma en que las escribe el reloj. */
+   en ISO con milisegundos y `Z`, la forma en que las escribe el reloj.
+
+   El dueño de un archivo se busca por `space_material.file_id` y, en los
+   mensajes, con un `contains` sobre el jsonb de los adjuntos (`cs` en
+   PostgREST, `@>` en Postgres), que usa el índice gin de la migración. */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createQueryRunner } from '@/lib/adapters/supabase/query'
 import type {
-  Attachment,
   ChannelKind,
   ChannelScope,
   MaterialLayout,
   Origin,
   SpacesStore,
+  StoredAttachment,
   StoredChannel,
   StoredMaterial,
   StoredMessage,
@@ -61,7 +65,7 @@ type MessageRow = {
   author_id: string | null
   author_name: string | null
   text: string
-  attachments: Attachment[]
+  attachments: StoredAttachment[]
   origin: Origin
   external_id: string | null
   status: StoredMessage['status']
@@ -76,6 +80,7 @@ type MaterialRow = {
   space_id: string
   name: string
   url: string
+  file_id: string | null
   content_type: string
   size: number | string
   section: string | null
@@ -91,7 +96,7 @@ const CHANNEL_COLUMNS =
 const MESSAGE_COLUMNS =
   'id, seq, channel_id, author_id, author_name, text, attachments, origin, external_id, status, reply_to, resolved, created_at'
 const MATERIAL_COLUMNS =
-  'id, seq, space_id, name, url, content_type, size, section, origin, external_id, added_by, added_at'
+  'id, seq, space_id, name, url, file_id, content_type, size, section, origin, external_id, added_by, added_at'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const isUuid = (id: string) => UUID.test(id)
@@ -197,6 +202,7 @@ function toMaterial(row: MaterialRow): StoredMaterial {
     spaceId: row.space_id,
     name: row.name,
     url: row.url,
+    fileId: row.file_id,
     contentType: row.content_type,
     size: Number(row.size),
     section: row.section,
@@ -212,6 +218,7 @@ function materialRow(item: Omit<StoredMaterial, 'id' | 'seq'>): Omit<MaterialRow
     space_id: item.spaceId,
     name: item.name,
     url: item.url,
+    file_id: item.fileId,
     content_type: item.contentType,
     size: item.size,
     section: item.section,
@@ -395,6 +402,27 @@ export function createSupabaseSpacesStore({
       if (!row.ok) return fail(row.error)
       if (!row.value) return fail('falla-externa')
       return ok(toMaterial(row.value))
+    },
+
+    async fileOwner(fileId) {
+      // Los archivos de Archivos tienen id uuid: otro id no es de nadie.
+      if (!isUuid(fileId)) return ok(null)
+      const [item, messages] = await Promise.all([
+        run<{ space_id: string }>('dueño del archivo en el material', (s) =>
+          client.from('space_material').select('space_id').eq('file_id', fileId).abortSignal(s).maybeSingle()
+        ),
+        run<{ channel_id: string }[]>('dueño del archivo en los adjuntos', (s) =>
+          client
+            .from('space_messages')
+            .select('channel_id')
+            .contains('attachments', JSON.stringify([{ fileId }]))
+            .abortSignal(s)
+        )
+      ])
+      if (!item.ok || !messages.ok) return fail('falla-externa')
+      if (item.value) return ok({ kind: 'material', spaceId: item.value.space_id })
+      const [message] = messages.value ?? []
+      return ok(message ? { kind: 'adjunto', channelId: message.channel_id } : null)
     },
 
     async readMarks(personId, channelIds) {

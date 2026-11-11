@@ -112,7 +112,7 @@ El espacio y sus canales se crean la primera vez que alguien los abre. Sin confi
 psql "$DATABASE_URL" -f supabase/migrations/0002_spaces.sql -f supabase/migrations/0003_files.sql
 ```
 
-Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/route.ts`), que pide sesión y los lee con el puerto de Archivos. Solo se abren en el navegador PDF, imágenes y texto plano; el resto se descarga. La ruta no chequea que la persona sea del espacio: el id es un uuid que no se puede adivinar.
+Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/route.ts`), que pide sesión y le pide el archivo a Espacios. Espacios chequea que la persona vea el espacio del material o el canal del adjunto; si no, la ruta responde 404, igual que a un archivo que no existe. Solo se abren en el navegador PDF, imágenes y texto plano; el resto se descarga.
 
 Las baterías de contrato del almacén (`tests/contracts/spaces-store.test.ts`) y de Archivos (`tests/contracts/files.test.ts`) corren siempre contra memoria y contra Supabase con un PostgREST o un Storage de mentira, sin red, y contra una base de prueba solo con `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`.
 

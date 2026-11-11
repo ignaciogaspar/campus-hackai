@@ -55,7 +55,8 @@ create table if not exists space_channels (
 create index if not exists space_channels_space_idx on space_channels (space_id, seq);
 
 -- Mensajes de un canal. Cada uno guarda su origen y su id externo, y no entra
--- dos veces al mismo canal.
+-- dos veces al mismo canal. Cada adjunto lleva su `fileId` de Archivos: por él
+-- se sabe de qué canal es al entregarlo.
 create table if not exists space_messages (
   id uuid primary key default gen_random_uuid(),
   seq bigint generated always as identity unique,
@@ -75,14 +76,19 @@ create table if not exists space_messages (
 
 create index if not exists space_messages_channel_idx on space_messages (channel_id, seq);
 
+-- Para buscar de qué mensaje es un adjunto (`attachments @> '[{"fileId": ...}]'`).
+create index if not exists space_messages_attachments_idx on space_messages using gin (attachments jsonb_path_ops);
+
 -- Material de un espacio. Un archivo de un sistema de origen no entra dos
--- veces al mismo espacio.
+-- veces al mismo espacio. `file_id` es el id del archivo en Archivos, por el
+-- que se sabe de qué espacio es al entregarlo; null si es un enlace.
 create table if not exists space_material (
   id uuid primary key default gen_random_uuid(),
   seq bigint generated always as identity unique,
   space_id uuid not null references spaces (id) on delete cascade,
   name text not null,
   url text not null,
+  file_id uuid unique,                -- el archivo en Archivos (la clave única es su índice); null si es un enlace
   content_type text not null,
   size bigint not null,
   section text,                       -- la unidad o el tema, si el docente eligió uno

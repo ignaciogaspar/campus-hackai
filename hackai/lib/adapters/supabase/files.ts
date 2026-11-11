@@ -1,8 +1,8 @@
 /* Archivos sobre Supabase Storage, en un bucket privado
    (supabase/migrations/0003_files.sql). Nada se lee desde el navegador directo
    a Supabase: el servidor sube y baja con el service role, y la app entrega
-   cada archivo por su ruta propia (`/archivos/<id>/<nombre>`) a quien tiene
-   sesión. Se porta como el adaptador en memoria y pasa la misma batería de
+   cada archivo por su ruta propia (`/archivos/<id>/<nombre>`) a quien ve su
+   espacio o su canal. Se porta como el adaptador en memoria y pasa la misma batería de
    contrato (tests/contracts/files.test.ts).
 
    Cada objeto se guarda con su id (un uuid) como ruta, sin el nombre: el

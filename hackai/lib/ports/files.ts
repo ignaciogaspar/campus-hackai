@@ -5,8 +5,9 @@
    El material de un espacio lo ven solo sus miembros, así que ningún archivo
    tiene una URL pública: la URL de un archivo guardado es una ruta propia de la
    app (`/archivos/<id>/<nombre>`, app/archivos/[id]/[name]/route.ts) que pide
-   sesión y entrega los bytes leídos acá. Es la misma forma con cualquier
-   adaptador. */
+   sesión y le pide el archivo a Espacios: este chequea que la persona vea el
+   espacio o el canal del archivo y recién ahí lo lee acá. Es la misma forma
+   con cualquier adaptador. */
 import type { ExternalFailure, Result } from '@/lib/result'
 
 export type FilesCapabilities = {

@@ -80,6 +80,7 @@ const materialOf = (spaceId: string, fields: Partial<StoredMaterial> = {}): Omit
   spaceId,
   name: 'Guía 1.pdf',
   url: 'https://archivos.test/guia-1.pdf',
+  fileId: null,
   contentType: 'application/pdf',
   size: 120_000,
   section: 'Unidad 1',
@@ -237,7 +238,13 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
       origin: 'discord',
       externalId: '1310000000000000001',
       attachments: [
-        { name: 'apunte.pdf', contentType: 'application/pdf', size: 2048, url: 'https://cdn.test/apunte.pdf' }
+        {
+          name: 'apunte.pdf',
+          contentType: 'application/pdf',
+          size: 2048,
+          url: 'https://cdn.test/apunte.pdf',
+          fileId: randomUUID()
+        }
       ]
     })
     const third = value(await store.addMessage(fromDiscord))
@@ -283,7 +290,7 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
   it('guarda el material con id y seq nuevos, y lo devuelve por seq y por espacio', async (store, ids) => {
     const space = await newSpace(store, ids)
     const other = await newSpace(store, ids, 2)
-    const guide = materialOf(space.id)
+    const guide = materialOf(space.id, { fileId: randomUUID() })
     const fromMoodle = materialOf(space.id, {
       name: 'Programa.pdf',
       section: null,
@@ -313,6 +320,40 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
     value(await store.addMaterial(materialOf(space.id)))
     value(await store.addMaterial(materialOf(space.id)))
     assert.equal(value(await store.material([space.id])).length, 4)
+  })
+
+  it('sabe de qué material o de qué mensaje es cada archivo guardado', async (store, ids) => {
+    const space = await newSpace(store, ids)
+    const other = await newSpace(store, ids, 2)
+    const consultas = value(
+      await store.createChannel(channelOf(space.id, 'consultas', { kind: 'comision', sectionId: 'com-a' }))
+    )
+    const [guide, photo, sheet] = [randomUUID(), randomUUID(), randomUUID()]
+    const attachment = (fileId: string | null, name: string) => ({
+      name,
+      contentType: 'image/png',
+      size: 10,
+      url: `https://cdn.test/${name}`,
+      fileId
+    })
+    value(await store.addMaterial(materialOf(space.id, { origin: 'moodle', externalId: '7', addedBy: null })))
+    value(await store.addMaterial(materialOf(other.id, { fileId: guide })))
+    value(await store.addMessage(messageOf(consultas.id, { attachments: [attachment(null, 'enlace.png')] })))
+    value(
+      await store.addMessage(
+        messageOf(consultas.id, { attachments: [attachment(sheet, 'hoja.png'), attachment(photo, 'foto.png')] })
+      )
+    )
+
+    assert.deepEqual(value(await store.fileOwner(guide)), { kind: 'material', spaceId: other.id })
+    assert.deepEqual(value(await store.fileOwner(photo)), { kind: 'adjunto', channelId: consultas.id })
+    assert.deepEqual(value(await store.fileOwner(sheet)), { kind: 'adjunto', channelId: consultas.id })
+  })
+
+  it('un archivo que no es de ningún material ni mensaje no tiene dueño', async (store, ids) => {
+    const space = await newSpace(store, ids)
+    value(await store.addMaterial(materialOf(space.id)))
+    for (const id of ['no-existe', randomUUID()]) assert.equal(value(await store.fileOwner(id)), null)
   })
 
   it('guarda hasta dónde leyó cada persona cada canal, sin retroceder nunca', async (store, ids) => {
@@ -388,6 +429,7 @@ const TABLES = {
       'created_at'
     ],
     uuid: ['id', 'channel_id', 'reply_to'],
+    jsonb: ['attachments'],
     generated: { id: 'uuid', seq: 'identity' },
     defaults: { attachments: [] },
     unique: [['id'], ['channel_id', 'external_id']]
@@ -399,6 +441,7 @@ const TABLES = {
       'space_id',
       'name',
       'url',
+      'file_id',
       'content_type',
       'size',
       'section',
@@ -407,9 +450,9 @@ const TABLES = {
       'added_by',
       'added_at'
     ],
-    uuid: ['id', 'space_id'],
+    uuid: ['id', 'space_id', 'file_id'],
     generated: { id: 'uuid', seq: 'identity' },
-    unique: [['id'], ['space_id', 'origin', 'external_id']]
+    unique: [['id'], ['file_id'], ['space_id', 'origin', 'external_id']]
   },
   space_reads: {
     columns: ['person_id', 'channel_id', 'last_seq'],

@@ -1,11 +1,10 @@
-/* Entrega un archivo guardado (material de un espacio, adjunto copiado de
-   Discord) a quien tiene sesión. Es la URL que devuelve el puerto de Archivos:
-   el bucket es privado y el navegador nunca va directo a Supabase.
+/* Entrega un archivo guardado (material de un espacio, adjunto de un mensaje)
+   a quien lo puede ver. Es la URL que devuelve el puerto de Archivos: el bucket
+   es privado y el navegador nunca va directo a Supabase.
 
-   Usa el puerto de Archivos y no un módulo del núcleo porque su trabajo es ese
-   solo: entregar los bytes guardados, como el health responde sin pasar por el
-   núcleo. Pide sesión pero no que la persona sea miembro del espacio: el id es
-   un uuid que solo conoce quien vio el archivo en su espacio.
+   Pide sesión y le pide el archivo a Espacios, que chequea que la persona vea
+   el espacio del material o el canal del adjunto. A quien no lo ve le responde
+   404, igual que a un id que no existe, así no se sabe si el archivo está.
 
    Seguridad: el archivo se sirve desde nuestro origen, así que un HTML o un SVG
    subido podría correr código con la sesión de quien lo abre. Por eso solo un
@@ -13,7 +12,6 @@
    y la respuesta va con nosniff y una CSP que no deja correr nada. */
 import { getSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import { isFileId } from '@/lib/ports/files'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,13 +35,12 @@ function disposition(contentType: string, name: string): string {
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string; name: string }> }) {
-  if (!(await getSession())) return new Response(null, { status: 401 })
+  const session = await getSession()
+  if (!session) return new Response(null, { status: 401 })
 
   const { id, name } = await params
-  if (!isFileId(id)) return new Response(null, { status: 404 })
-
-  const file = await system().ports.files.read(id)
-  if (!file.ok) return new Response(null, { status: file.error === 'no-encontrado' ? 404 : 502 })
+  const file = await system().spaces.file(session.personId, id)
+  if (!file.ok) return new Response(null, { status: file.error === 'falla-externa' ? 502 : 404 })
 
   const contentType = safeContentType(file.value.contentType)
   return new Response(new Uint8Array(file.value.bytes), {

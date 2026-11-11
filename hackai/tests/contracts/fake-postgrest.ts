@@ -3,7 +3,7 @@
    Supabase contra su batería de contrato.
 
    Entiende lo que usan los almacenes y nada más: lecturas con `select`, filtros
-   `eq` e `in` y `order`; inserts con `return=representation`; PATCH con
+   `eq`, `in` y `cs` (contiene, solo sobre columnas jsonb) y `order`; inserts con `return=representation`; PATCH con
    filtros; y funciones por `rpc`. Asigna los uuid y los contadores `identity`,
    aplica las claves únicas (409 con el código 23505 de Postgres) y rechaza un
    id con forma de uuid inválida (400 con 22P02), como la base. Cualquier otra
@@ -17,6 +17,8 @@ export type FakeTable = {
   columns: string[]
   /** Columnas de tipo uuid: un valor con otra forma es un error, como en Postgres. */
   uuid?: string[]
+  /** Columnas de tipo jsonb: las únicas que aceptan el filtro `cs`. */
+  jsonb?: string[]
   /** Columnas que asigna la base y no se pueden escribir: un uuid nuevo o un contador que crece. */
   generated?: Record<string, 'uuid' | 'identity'>
   /** Valores por defecto de las columnas que no vienen en el insert. */
@@ -85,6 +87,21 @@ function checkValue(table: FakeTable, column: string, value: string) {
   if (table.uuid?.includes(column) && !isUuid(value)) throw invalidUuid(value)
 }
 
+/** El `@>` de jsonb en Postgres: un objeto contiene a otro si tiene todas sus
+    claves con valores que los contienen; un array, si cada elemento del otro
+    está contenido en alguno de los suyos; un escalar, si es igual. */
+function jsonContains(value: unknown, wanted: unknown): boolean {
+  if (Array.isArray(wanted)) {
+    return Array.isArray(value) && wanted.every((w) => value.some((v) => jsonContains(v, w)))
+  }
+  if (wanted !== null && typeof wanted === 'object') {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+    const object = value as Record<string, unknown>
+    return Object.entries(wanted).every(([key, w]) => key in object && jsonContains(object[key], w))
+  }
+  return value === wanted
+}
+
 function parseFilter(table: FakeTable, column: string, raw: string): Filter {
   if (raw.startsWith('eq.')) {
     const value = raw.slice(3)
@@ -96,6 +113,16 @@ function parseFilter(table: FakeTable, column: string, raw: string): Filter {
     if (!values) throw bad(`lista inválida: ${raw}`)
     for (const value of values) checkValue(table, column, value)
     return (row) => values.includes(asText(row[column]) ?? '\u0000')
+  }
+  if (raw.startsWith('cs.')) {
+    if (!table.jsonb?.includes(column)) throw bad(`cs solo sobre columnas jsonb: ${column}`)
+    let wanted: unknown
+    try {
+      wanted = JSON.parse(raw.slice(3))
+    } catch {
+      throw new PostgrestError(400, '22P02', `invalid input syntax for type json: ${raw.slice(3)}`)
+    }
+    return (row) => jsonContains(row[column], wanted)
   }
   throw bad(`filtro desconocido: ${column}=${raw}`)
 }

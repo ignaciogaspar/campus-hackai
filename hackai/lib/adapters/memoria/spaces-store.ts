@@ -123,6 +123,13 @@ export function createMemorySpacesStore(): SpacesStore {
       return ok(copy(created))
     },
 
+    async fileOwner(fileId) {
+      const item = material.find((m) => m.fileId === fileId)
+      if (item) return ok({ kind: 'material', spaceId: item.spaceId })
+      const message = messages.find((m) => m.attachments.some((a) => a.fileId === fileId))
+      return ok(message ? { kind: 'adjunto', channelId: message.channelId } : null)
+    },
+
     async readMarks(personId, channelIds) {
       const marks: Record<string, number> = {}
       for (const channelId of channelIds) {

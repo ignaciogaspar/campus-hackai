@@ -11,7 +11,8 @@ export async function toMessage(stored: StoredMessage, authors: Authors, unread:
     channelId: stored.channelId,
     author: await authors.ofMessage(stored),
     text: stored.text,
-    attachments: stored.attachments,
+    // El id del archivo es del almacén: afuera alcanza con la URL.
+    attachments: stored.attachments.map(({ fileId: _fileId, ...attachment }) => attachment),
     origin: stored.origin,
     externalId: stored.externalId,
     status: stored.status,
