@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createDiscordExternalChannel, type DiscordOptions } from '@/lib/adapters/discord/external-channel'
-import { createFakeDiscord, type RawMessage } from '../contracts/fake-discord'
+import { createFakeDiscord, type RawMessage } from '@/tests/contracts/fake-discord'
 
 const TOKEN = 'token-de-prueba-que-no-se-filtra'
 const CHANNEL = '1301000000000000010'
@@ -82,6 +82,50 @@ test('una respuesta queda en el hilo de su mensaje raíz y los mensajes de siste
     ['1310000000000000201', '1310000000000000200'],
     ['1310000000000000202', '1310000000000000200'],
   ])
+})
+
+test('una respuesta a un mensaje de una lectura anterior queda en el hilo de la raíz de la cadena', async () => {
+  const { fake, port } = setup()
+  fake.addMessage(raw('1310000000000000210'))
+  fake.addMessage(raw('1310000000000000211', { type: 19, message_reference: { message_id: '1310000000000000210', channel_id: CHANNEL } }))
+  const first = await port.read(CHANNEL, null)
+  assert.ok(first.ok)
+
+  fake.addMessage(raw('1310000000000000212', { type: 19, message_reference: { message_id: '1310000000000000211', channel_id: CHANNEL } }))
+  const second = await port.read(CHANNEL, first.value.cursor)
+  assert.ok(second.ok)
+  assert.deepEqual(second.value.messages.map((m) => [m.id, m.threadId]), [['1310000000000000212', '1310000000000000210']])
+
+  // Otra instancia del adaptador, sin nada visto: le pide a Discord los mensajes anteriores de la cadena.
+  const fresh = createDiscordExternalChannel({ token: TOKEN, fetch: fake.fetch })
+  const cold = await fresh.read(CHANNEL, first.value.cursor)
+  assert.ok(cold.ok)
+  assert.deepEqual(cold.value.messages.map((m) => [m.id, m.threadId]), [['1310000000000000212', '1310000000000000210']])
+})
+
+test('un mensaje reenviado no queda como respuesta del original', async () => {
+  const { fake, port } = setup()
+  fake.addMessage(raw('1310000000000000220'))
+  fake.addMessage(raw('1310000000000000221', { message_reference: { message_id: '1310000000000000220', channel_id: CHANNEL } }))
+
+  const page = await port.read(CHANNEL, null)
+  assert.ok(page.ok)
+  assert.deepEqual(page.value.messages.map((m) => m.threadId), [null, null])
+})
+
+test('los mensajes de un hilo que se archivó entre dos lecturas no se pierden', async () => {
+  const { fake, port } = setup()
+  fake.addMessage(raw('1310000000000000230'))
+  fake.startThread(CHANNEL, '1310000000000000230', 'Consulta')
+  const first = await port.read(CHANNEL, null)
+  assert.ok(first.ok)
+
+  fake.addMessage(raw('1330000000000000231', { channel_id: '1310000000000000230' }))
+  fake.archiveThread('1310000000000000230', new Date('2026-11-10T15:00:00Z'))
+
+  const second = await port.read(CHANNEL, first.value.cursor)
+  assert.ok(second.ok)
+  assert.deepEqual(second.value.messages.map((m) => [m.id, m.threadId]), [['1330000000000000231', '1310000000000000230']])
 })
 
 test('cada request a la API lleva el token del bot y el User-Agent; la CDN no recibe el token', async () => {

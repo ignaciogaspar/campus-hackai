@@ -20,11 +20,7 @@ npm test               # node:test + tsx sobre tests/**/*.test.ts
 npm run build
 ```
 
-`npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22. En Windows, npm corre el script con cmd, que no entiende las comillas simples del glob, y `npm test` encuentra 0 tests. Ahí corré:
-
-```bash
-node --import tsx --test tests/*.test.ts tests/adapters/*.test.ts tests/contracts/*.test.ts
-```
+`npm test` necesita Node 22 o más: le pasa el glob a `node --test`, que Node 20 no expande. Para la demo, usá Node 22. El glob va entre comillas dobles para que lo expanda Node y no el shell: así funciona igual con cmd en Windows y con sh.
 
 ## Con Docker
 

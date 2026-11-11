@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit -p .",
-    "test": "node --import tsx --test 'tests/**/*.test.ts'",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "discord:probar": "node --env-file-if-exists=.env.local --import tsx scripts/discord-probar.ts"
   },
   "dependencies": {

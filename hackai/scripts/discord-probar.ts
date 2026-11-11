@@ -1,13 +1,15 @@
 /* Prueba manual del adaptador de Discord contra el servidor del equipo.
-   Lee el canal, publica un mensaje, responde en un hilo y baja el primer
-   adjunto que encuentre. Guía: docs/discord.md.
+   Lee el canal, baja el último adjunto que encuentre, publica un mensaje,
+   le responde en un hilo y relee desde el cursor. Arma el adaptador con
+   composition, igual que la app con HACKAI_EXTERNAL_CHANNEL=discord.
+   Guía: docs/discord.md.
 
      npm run discord:probar -- <id-del-canal>
      npm run discord:probar -- <id-del-canal> --solo-leer
 
    Toma DISCORD_BOT_TOKEN de .env.local. Imprime ids y resultados, nunca el
    texto de los mensajes ni el token. */
-import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
+import { compose } from '@/lib/composition'
 
 async function main() {
   const [channelId, flag] = process.argv.slice(2)
@@ -15,13 +17,12 @@ async function main() {
     console.error('Uso: npm run discord:probar -- <id-del-canal> [--solo-leer]')
     process.exit(1)
   }
-  const token = process.env.DISCORD_BOT_TOKEN?.trim()
-  if (!token) {
+  if (!process.env.DISCORD_BOT_TOKEN?.trim()) {
     console.error('Falta DISCORD_BOT_TOKEN en hackai/.env.local (guía: docs/discord.md)')
     process.exit(1)
   }
 
-  const discord = createDiscordExternalChannel({ token })
+  const discord = compose({ ...process.env, HACKAI_EXTERNAL_CHANNEL: 'discord' }).ports.externalChannel
 
   const page = await discord.read(channelId, null)
   if (!page.ok) return stop('leer', page.error)
@@ -54,7 +55,9 @@ async function main() {
   if (!next.ok) return stop('releer', next.error)
   const ids = next.value.messages.map((m) => m.id)
   const both = ids.includes(posted.value.id) && ids.includes(reply.value.id)
-  console.log(both ? 'Releer desde el cursor trae el mensaje y la respuesta: OK' : `Releer desde el cursor trajo ${ids.join(', ') || 'nada'}`)
+  console.log(both
+    ? `Releer desde el cursor trae el mensaje y la respuesta: OK (${ids.length} mensajes nuevos en total)`
+    : `Releer desde el cursor trajo ${ids.join(', ') || 'nada'}`)
   if (!both) process.exitCode = 1
 }
 

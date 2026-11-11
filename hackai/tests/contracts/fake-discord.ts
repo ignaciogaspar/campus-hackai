@@ -20,7 +20,14 @@ export type RawMessage = {
   thread?: { id: string; name: string }
 }
 
-type RawChannel = { id: string; type: number; guild_id: string; parent_id: string | null; last_message_id: string | null }
+type RawChannel = {
+  id: string
+  type: number
+  guild_id: string
+  parent_id: string | null
+  last_message_id: string | null
+  thread_metadata?: { archived: boolean; archive_timestamp: string }
+}
 
 export type RecordedRequest = { method: string; url: string; headers: Record<string, string> }
 
@@ -37,6 +44,7 @@ export function createFakeDiscord() {
 
   function addChannel(id: string, parentId: string | null = null): RawChannel {
     const channel: RawChannel = { id, type: parentId ? 11 : 0, guild_id: GUILD, parent_id: parentId, last_message_id: null }
+    if (parentId) channel.thread_metadata = { archived: false, archive_timestamp: new Date().toISOString() }
     channels.set(id, channel)
     messages.set(id, [])
     return channel
@@ -59,6 +67,11 @@ export function createFakeDiscord() {
     return thread
   }
 
+  /** Archiva un hilo: deja de figurar entre los activos y pasa a los archivados. */
+  function archiveThread(threadId: string, at: Date) {
+    channels.get(threadId)!.thread_metadata = { archived: true, archive_timestamp: at.toISOString() }
+  }
+
   function systemMessage(channelId: string, type: number): RawMessage {
     return { id: nextId(), channel_id: channelId, type, content: '', timestamp: new Date().toISOString(), author: BOT_USER, attachments: [] }
   }
@@ -79,7 +92,7 @@ export function createFakeDiscord() {
 
     // GET /guilds/{guild}/threads/active
     if (path[0] === 'guilds' && path[2] === 'threads' && method === 'GET') {
-      return json(200, { threads: [...channels.values()].filter((c) => c.parent_id !== null), members: [] })
+      return json(200, { threads: [...channels.values()].filter((c) => c.thread_metadata && !c.thread_metadata.archived), members: [] })
     }
     if (path[0] !== 'channels') return json(400, { message: 'Ruta desconocida', code: 0 })
     const channel = channels.get(path[1])
@@ -87,6 +100,17 @@ export function createFakeDiscord() {
 
     // GET /channels/{id}
     if (path.length === 2 && method === 'GET') return json(200, channel)
+
+    // GET /channels/{id}/threads/archived/public?before&limit (del archivado más nuevo al más viejo)
+    if (path.length === 5 && path[2] === 'threads' && path[3] === 'archived' && method === 'GET') {
+      const before = url.searchParams.get('before')
+      const limit = Number(url.searchParams.get('limit') ?? '50')
+      const archived = [...channels.values()]
+        .filter((c) => c.parent_id === channel.id && c.thread_metadata?.archived)
+        .filter((c) => !before || Date.parse(c.thread_metadata!.archive_timestamp) < Date.parse(before))
+        .sort((a, b) => Date.parse(b.thread_metadata!.archive_timestamp) - Date.parse(a.thread_metadata!.archive_timestamp))
+      return json(200, { threads: archived.slice(0, limit), members: [], has_more: archived.length > limit })
+    }
 
     // GET /channels/{id}/messages?after&limit (del más nuevo al más viejo, como Discord)
     if (path.length === 3 && path[2] === 'messages' && method === 'GET') {
@@ -105,6 +129,8 @@ export function createFakeDiscord() {
       const { content } = body as { content: string }
       const created: RawMessage = { ...systemMessage(channel.id, 0), content, author: BOT_USER }
       addMessage(created)
+      // Publicar en un hilo archivado lo desarchiva.
+      if (channel.thread_metadata) channel.thread_metadata.archived = false
       return json(200, created)
     }
 
@@ -142,6 +168,7 @@ export function createFakeDiscord() {
     addChannel,
     addMessage,
     startThread,
+    archiveThread,
     addFile(url: string, content: string) {
       files.set(url, content)
     },

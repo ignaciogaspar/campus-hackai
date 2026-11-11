@@ -10,7 +10,7 @@ import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import type { ExternalAttachment, ExternalChannelPort } from '@/lib/ports/external-channel'
-import { createFakeDiscord, seedFromSynthetic } from './fake-discord'
+import { createFakeDiscord, seedFromSynthetic } from '@/tests/contracts/fake-discord'
 
 type Harness = {
   port: ExternalChannelPort

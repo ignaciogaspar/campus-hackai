@@ -8,12 +8,16 @@
      crecientes en todo Discord, el mismo cursor sirve para el canal y sus hilos.
    - Un hilo de Discord es un canal aparte cuyo id es el del mensaje que lo
      empezó. Sus mensajes se devuelven con el `channelId` del canal padre y ese
-     id como `threadId`, igual que una respuesta (`message_reference`).
-   - Los hilos se leen de los activos del servidor: un hilo archivado vuelve a
-     estar activo cuando recibe un mensaje, así que alcanza si se sincroniza al
-     menos una vez por hora (el archivado más corto de Discord).
-   - Ante un 429 espera el `retry_after` que pide Discord y reintenta. Una caída,
-     un tiempo agotado o un error del servidor vuelven como `falla-externa`.
+     id como `threadId`. Una respuesta con «Responder» (tipo REPLY) vuelve con
+     el primer mensaje de su cadena como `threadId`, aunque esté en una lectura
+     anterior.
+   - Se leen los hilos activos y los archivados después del cursor: un hilo que
+     recibió mensajes y se archivó entre dos lecturas no los pierde.
+   - Ante un 429 espera el `retry_after` que pide Discord y reintenta, hasta
+     `maxRetries` veces y `maxRetryAfterMs` de espera. Si pide más, devuelve
+     `falla-externa` en vez de bloquear, y la próxima sincronización reintenta.
+     Una caída, un tiempo agotado o un error del servidor también vuelven como
+     `falla-externa`.
    - El token solo viaja en el header `Authorization` hacia la API: nunca a la
      CDN, ni en errores ni en logs. */
 import type {
@@ -21,7 +25,7 @@ import type {
   ExternalChannelPort,
   ExternalMessage,
 } from '@/lib/ports/external-channel'
-import { fail, ok, type ExternalFailure, type Result } from '@/lib/result'
+import { fail, ok, type ExternalFailure, type Ok, type Result } from '@/lib/result'
 
 export type DiscordOptions = {
   /** Token del bot. Se lee de `DISCORD_BOT_TOKEN`; nunca se escribe en el repo. */
@@ -42,14 +46,19 @@ const API = 'https://discord.com/api/v10'
 const USER_AGENT = 'DiscordBot (https://github.com/ignaciogaspar/campus-hackai, 0.1.0)'
 /** Hosts de la CDN de Discord: `download` no baja nada de otro lado. */
 const CDN_HOSTS = ['cdn.discordapp.com', 'media.discordapp.net']
-/** `limit` máximo de Get Channel Messages. */
+/** `limit` máximo de Get Channel Messages y de los hilos archivados. */
 const PAGE_SIZE = 100
 /** Páginas por fuente en una lectura; lo que sobra queda para la siguiente. */
 const MAX_PAGES = 10
-/** Tipos de mensaje que son de personas: DEFAULT y REPLY. El resto es del sistema. */
-const USER_MESSAGE_TYPES = new Set([0, 19])
+/** Cuántos mensajes sube, como máximo, para encontrar la raíz de una cadena de respuestas. */
+const MAX_CHAIN = 20
+/** Tipos de mensaje de Discord que son de personas. El resto es del sistema. */
+const DEFAULT = 0
+const REPLY = 19
 /** Error de la API de Discord (JSON Error Codes) al abrir un hilo que ya existe. */
 const THREAD_ALREADY_CREATED = 160004
+/** Origen de los snowflakes de Discord: 2015-01-01 en milisegundos. */
+const DISCORD_EPOCH = 1420070400000n
 
 type DiscordUser = { id: string; username: string; global_name?: string | null; bot?: boolean }
 
@@ -80,13 +89,24 @@ type DiscordChannel = {
   guild_id?: string
   parent_id?: string | null
   last_message_id?: string | null
+  thread_metadata?: { archived: boolean; archive_timestamp: string }
 }
 
-/** Respuesta de un request: el cuerpo, un error HTTP con su código de Discord, o caída. */
-type Reply =
+type ArchivedThreads = { threads: DiscordChannel[]; has_more: boolean }
+
+/** Un error HTTP de Discord, con su código de la API si vino en el cuerpo. */
+type HttpError = { status: number; code: number | null }
+
+/** Lo que pasó con un request: respondió bien, respondió un error, o no respondió. */
+type HttpOutcome =
   | { kind: 'ok'; response: Response }
-  | { kind: 'http'; status: number; code: number | null }
+  | ({ kind: 'http' } & HttpError)
   | { kind: 'caida' }
+
+type ApiResult<T> = Ok<T> | { ok: false; error: HttpError }
+
+/** Mensajes leídos de un canal o hilo. `complete` es falso si quedaron sin leer por el tope de páginas. */
+type Source = { threadId: string | null; messages: DiscordMessage[]; complete: boolean }
 
 class DiscordDown extends Error {}
 
@@ -100,8 +120,10 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
   const maxRetryAfterMs = options.maxRetryAfterMs ?? 30_000
   /** Servidor de cada canal, para buscar sus hilos activos. */
   const guildOf = new Map<string, string | null>()
+  /** Raíz de la cadena de cada mensaje ya visto (`null` si él mismo es raíz). */
+  const rootOf = new Map<string, string | null>()
 
-  async function send(url: string, init: RequestInit): Promise<Reply> {
+  async function send(url: string, init: RequestInit): Promise<HttpOutcome> {
     for (let attempt = 0; ; attempt++) {
       let response: Response
       try {
@@ -117,20 +139,20 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
       }
       if (response.ok) return { kind: 'ok', response }
       if (response.status >= 500) return { kind: 'caida' }
-      return { kind: 'http', status: response.status, code: await errorCode(response) }
+      return { kind: 'http', status: response.status, code: await numberField(response, 'code') }
     }
   }
 
   /** Request a la API con el token del bot. Devuelve el JSON o el error HTTP;
       una caída tira `DiscordDown`, que `guard` convierte en `falla-externa`. */
-  async function api<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<{ ok: true; body: T } | { ok: false; status: number; code: number | null }> {
+  async function api<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<ApiResult<T>> {
     const headers: Record<string, string> = { Authorization: `Bot ${options.token}`, 'User-Agent': USER_AGENT }
     if (body !== undefined) headers['Content-Type'] = 'application/json'
-    const reply = await send(`${API}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
-    if (reply.kind === 'caida') throw new DiscordDown()
-    if (reply.kind === 'http') return { ok: false, status: reply.status, code: reply.code }
+    const outcome = await send(`${API}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    if (outcome.kind === 'caida') throw new DiscordDown()
+    if (outcome.kind === 'http') return { ok: false, error: { status: outcome.status, code: outcome.code } }
     try {
-      return { ok: true, body: (await reply.response.json()) as T }
+      return ok((await outcome.response.json()) as T)
     } catch {
       throw new DiscordDown()
     }
@@ -139,29 +161,61 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
   /** Comprueba que el canal existe y recuerda su servidor. */
   async function channelGuild(channelId: string): Promise<Result<string | null, 'canal-inexistente'>> {
     if (guildOf.has(channelId)) return ok(guildOf.get(channelId)!)
-    const res = await api<DiscordChannel>('GET', `/channels/${channelId}`)
-    if (!res.ok) {
-      if (res.status === 404) return fail('canal-inexistente')
-      throw new DiscordDown()
-    }
-    guildOf.set(channelId, res.body.guild_id ?? null)
-    return ok(res.body.guild_id ?? null)
+    const channel = orNotFound(await api<DiscordChannel>('GET', `/channels/${channelId}`), 'canal-inexistente')
+    if (!channel.ok) return channel
+    guildOf.set(channelId, channel.value.guild_id ?? null)
+    return ok(channel.value.guild_id ?? null)
   }
 
-  /** Mensajes de un canal (o hilo) posteriores a `after`, del más viejo al más
-      nuevo. `complete` es falso si quedaron mensajes sin leer por el tope de páginas. */
-  async function readAfter(channelId: string, after: string | null): Promise<{ messages: DiscordMessage[]; complete: boolean }> {
+  /** Mensajes de un canal (o hilo) posteriores a `after`, del más viejo al más nuevo. */
+  async function readAfter(channelId: string, after: string | null, threadId: string | null): Promise<Source> {
     const messages: DiscordMessage[] = []
     let from = after ?? '0'
     for (let page = 0; page < MAX_PAGES; page++) {
-      const res = await api<DiscordMessage[]>('GET', `/channels/${channelId}/messages?limit=${PAGE_SIZE}&after=${from}`)
-      if (!res.ok) throw new DiscordDown()
-      const batch = [...res.body].sort(byId)
+      const batch = must(await api<DiscordMessage[]>('GET', `/channels/${channelId}/messages?limit=${PAGE_SIZE}&after=${from}`)).sort(byId)
       messages.push(...batch)
-      if (batch.length < PAGE_SIZE) return { messages, complete: true }
+      if (batch.length < PAGE_SIZE) return { threadId, messages, complete: true }
       from = batch.at(-1)!.id
     }
-    return { messages, complete: false }
+    return { threadId, messages, complete: false }
+  }
+
+  /** Hilos del canal con mensajes posteriores al cursor: los activos y los
+      archivados después del cursor, que ya no figuran entre los activos. */
+  async function threadsWithNews(guildId: string, channelId: string, cursor: string | null): Promise<string[]> {
+    const { threads: active } = must(await api<{ threads: DiscordChannel[] }>('GET', `/guilds/${guildId}/threads/active`))
+    const archived: DiscordChannel[] = []
+    const since = cursor === null ? null : snowflakeTime(cursor)
+    let before: string | null = null
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const query: string = `?limit=${PAGE_SIZE}${before ? `&before=${encodeURIComponent(before)}` : ''}`
+      const res: ArchivedThreads = must(await api<ArchivedThreads>('GET', `/channels/${channelId}/threads/archived/public${query}`))
+      archived.push(...res.threads)
+      const last: string | undefined = res.threads.at(-1)?.thread_metadata?.archive_timestamp
+      if (!res.has_more || !last || (since !== null && Date.parse(last) < since)) break
+      before = last
+    }
+    const withNews = (t: DiscordChannel) => t.parent_id === channelId
+      && (cursor === null || (t.last_message_id != null && BigInt(t.last_message_id) > BigInt(cursor)))
+    return [...new Set([...active, ...archived].filter(withNews).map((t) => t.id))]
+  }
+
+  /** Primer mensaje de la cadena de respuestas a la que pertenece `messageId`.
+      Sube por `message_reference` pidiendo a Discord los que no vio en esta lectura. */
+  async function chainRoot(channelId: string, messageId: string): Promise<string> {
+    let current = messageId
+    for (let depth = 0; depth < MAX_CHAIN; depth++) {
+      if (rootOf.has(current)) return rootOf.get(current) ?? current
+      const res = await api<DiscordMessage>('GET', `/channels/${channelId}/messages/${current}`)
+      if (!res.ok && res.error.status === 404) return current
+      const parent = repliesTo(must(res))
+      if (!parent) {
+        rootOf.set(current, null)
+        return current
+      }
+      current = parent
+    }
+    return current
   }
 
   return {
@@ -171,31 +225,26 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
       const guild = await channelGuild(channelId)
       if (!guild.ok) return guild
 
-      const sources: { threadId: string | null; read: { messages: DiscordMessage[]; complete: boolean } }[] = [
-        { threadId: null, read: await readAfter(channelId, cursor) },
-      ]
+      const sources = [await readAfter(channelId, cursor, null)]
       if (guild.value) {
-        const active = await api<{ threads: DiscordChannel[] }>('GET', `/guilds/${guild.value}/threads/active`)
-        if (!active.ok) throw new DiscordDown()
-        const threads = active.body.threads.filter((t) => t.parent_id === channelId
-          && (cursor === null || (t.last_message_id != null && BigInt(t.last_message_id) > BigInt(cursor))))
-        for (const thread of threads) sources.push({ threadId: thread.id, read: await readAfter(thread.id, cursor) })
+        for (const threadId of await threadsWithNews(guild.value, channelId, cursor)) {
+          sources.push(await readAfter(threadId, cursor, threadId))
+        }
       }
 
       // Si una fuente quedó cortada, el cursor no puede pasar su último mensaje leído.
       const limit = sources
-        .filter((s) => !s.read.complete)
-        .map((s) => BigInt(s.read.messages.at(-1)!.id))
+        .filter((s) => !s.complete)
+        .map((s) => BigInt(s.messages.at(-1)!.id))
         .reduce<bigint | null>((min, id) => (min === null || id < min ? id : min), null)
 
-      const rootOf = new Map<string, string | null>()
       const messages: ExternalMessage[] = []
-      for (const { threadId, read } of sources) {
-        for (const raw of read.messages) {
+      for (const source of sources) {
+        for (const raw of source.messages) {
           if (limit !== null && BigInt(raw.id) > limit) continue
-          if (!USER_MESSAGE_TYPES.has(raw.type)) continue
-          const referenced = raw.message_reference?.message_id ?? null
-          const thread = threadId ?? (referenced ? rootOf.get(referenced) ?? referenced : null)
+          if (raw.type !== DEFAULT && raw.type !== REPLY) continue
+          const parent = repliesTo(raw)
+          const thread = source.threadId ?? (parent ? await chainRoot(channelId, parent) : null)
           rootOf.set(raw.id, thread)
           messages.push(toMessage(raw, channelId, thread))
         }
@@ -205,42 +254,35 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
     }),
 
     post: (channelId, text) => guard(async () => {
-      const res = await api<DiscordMessage>('POST', `/channels/${channelId}/messages`, message(text))
-      if (!res.ok) {
-        if (res.status === 404) return fail('canal-inexistente')
-        throw new DiscordDown()
-      }
-      return ok(toMessage(res.body, channelId, null))
+      const posted = orNotFound(await api<DiscordMessage>('POST', `/channels/${channelId}/messages`, createMessageBody(text)), 'canal-inexistente')
+      return posted.ok ? ok(toMessage(posted.value, channelId, null)) : posted
     }),
 
     reply: (channelId, threadId, text) => guard(async () => {
       const guild = await channelGuild(channelId)
       if (!guild.ok) return guild
 
-      const root = await api<DiscordMessage>('GET', `/channels/${channelId}/messages/${threadId}`)
-      if (!root.ok) {
-        if (root.status === 404) return fail('mensaje-inexistente')
-        throw new DiscordDown()
-      }
-      if (!root.body.thread) {
+      const root = orNotFound(await api<DiscordMessage>('GET', `/channels/${channelId}/messages/${threadId}`), 'mensaje-inexistente')
+      if (!root.ok) return root
+      if (!root.value.thread) {
         const created = await api<DiscordChannel>('POST', `/channels/${channelId}/messages/${threadId}/threads`, {
-          name: threadName(root.body.content),
+          name: threadName(root.value.content),
           auto_archive_duration: 10080,
         })
-        if (!created.ok && created.code !== THREAD_ALREADY_CREATED) throw new DiscordDown()
+        if (!created.ok && created.error.code !== THREAD_ALREADY_CREATED) throw new DiscordDown()
       }
 
-      const res = await api<DiscordMessage>('POST', `/channels/${threadId}/messages`, message(text))
-      if (!res.ok) throw new DiscordDown()
-      return ok(toMessage(res.body, channelId, threadId))
+      const posted = must(await api<DiscordMessage>('POST', `/channels/${threadId}/messages`, createMessageBody(text)))
+      rootOf.set(posted.id, threadId)
+      return ok(toMessage(posted, channelId, threadId))
     }),
 
     download: (attachment) => guard(async () => {
       if (!isDiscordCdn(attachment.url)) return fail('falla-externa')
-      const reply = await send(attachment.url, { method: 'GET', headers: { 'User-Agent': USER_AGENT } })
-      if (reply.kind === 'caida') return fail('falla-externa')
-      if (reply.kind === 'http') return fail([403, 404, 410].includes(reply.status) ? 'adjunto-vencido' : 'falla-externa')
-      const bytes = new Uint8Array(await reply.response.arrayBuffer())
+      const outcome = await send(attachment.url, { method: 'GET', headers: { 'User-Agent': USER_AGENT } })
+      if (outcome.kind === 'caida') return fail('falla-externa')
+      if (outcome.kind === 'http') return fail([403, 404, 410].includes(outcome.status) ? 'adjunto-vencido' : 'falla-externa')
+      const bytes = new Uint8Array(await outcome.response.arrayBuffer())
       return ok({ filename: attachment.filename, contentType: attachment.contentType, bytes })
     }),
   }
@@ -253,6 +295,25 @@ async function guard<T, E extends string>(run: () => Promise<Result<T, E>>): Pro
   } catch {
     return fail('falla-externa')
   }
+}
+
+/** El cuerpo de una respuesta que tuvo que salir bien; cualquier error es una caída. */
+function must<T>(res: ApiResult<T>): T {
+  if (res.ok) return res.value
+  throw new DiscordDown()
+}
+
+/** Un 404 es el error del dominio que corresponde; cualquier otro error es una caída. */
+function orNotFound<T, E extends string>(res: ApiResult<T>, notFound: E): Result<T, E> {
+  if (res.ok) return res
+  if (res.error.status === 404) return fail(notFound)
+  throw new DiscordDown()
+}
+
+/** Mensaje al que responde, si es una respuesta. Un reenvío también trae
+    `message_reference`, pero es de tipo DEFAULT y no forma cadena. */
+function repliesTo(raw: DiscordMessage): string | null {
+  return raw.type === REPLY ? raw.message_reference?.message_id ?? null : null
 }
 
 function toMessage(raw: DiscordMessage, channelId: string, threadId: string | null): ExternalMessage {
@@ -283,8 +344,9 @@ function toAttachment(raw: DiscordAttachment): ExternalAttachment {
   }
 }
 
-/** Cuerpo de Create Message. Sin menciones: un texto de HackAI no notifica a nadie por arroba. */
-function message(text: string) {
+/** Cuerpo de Create Message. Sin menciones: un texto de HackAI no notifica a
+    nadie por arroba (pregunta abierta 12 de docs/product/preguntas-abiertas.md). */
+function createMessageBody(text: string) {
   return { content: text, allowed_mentions: { parse: [] } }
 }
 
@@ -300,6 +362,11 @@ function byId(a: { id: string }, b: { id: string }): number {
   return x < y ? -1 : x > y ? 1 : 0
 }
 
+/** Momento en que se creó un snowflake, en milisegundos. */
+function snowflakeTime(id: string): number {
+  return Number((BigInt(id) >> 22n) + DISCORD_EPOCH)
+}
+
 function isDiscordCdn(url: string): boolean {
   try {
     const parsed = new URL(url)
@@ -311,20 +378,16 @@ function isDiscordCdn(url: string): boolean {
 
 /** Milisegundos que pide esperar un 429: `retry_after` del cuerpo (segundos) o el header `Retry-After`. */
 async function retryAfterMs(response: Response): Promise<number | null> {
-  try {
-    const body = (await response.clone().json()) as { retry_after?: unknown }
-    if (typeof body.retry_after === 'number') return Math.ceil(body.retry_after * 1000)
-  } catch {
-    // Sin cuerpo JSON: se usa el header.
-  }
-  const header = Number(response.headers.get('Retry-After'))
-  return Number.isFinite(header) && response.headers.has('Retry-After') ? Math.ceil(header * 1000) : null
+  const seconds = await numberField(response.clone(), 'retry_after')
+    ?? (response.headers.has('Retry-After') ? Number(response.headers.get('Retry-After')) : null)
+  return seconds !== null && Number.isFinite(seconds) ? Math.ceil(seconds * 1000) : null
 }
 
-async function errorCode(response: Response): Promise<number | null> {
+/** Un campo numérico del cuerpo JSON de una respuesta, o `null`. */
+async function numberField(response: Response, field: 'code' | 'retry_after'): Promise<number | null> {
   try {
-    const body = (await response.json()) as { code?: unknown }
-    return typeof body.code === 'number' ? body.code : null
+    const value = ((await response.json()) as Record<string, unknown>)[field]
+    return typeof value === 'number' ? value : null
   } catch {
     return null
   }
