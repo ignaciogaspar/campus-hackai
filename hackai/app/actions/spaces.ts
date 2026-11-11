@@ -66,7 +66,10 @@ function text(form: FormData, key: string): string | null {
 /** Un archivo elegido. Un campo de archivo sin elegir llega como un File sin nombre. */
 function chosenFile(form: FormData, key: string): File | null {
   const value = form.get(key)
-  return value instanceof File && value.name !== '' ? value : null
+  if (!(value instanceof File)) return null
+  // Al decodificar el formulario, Next.js nombra «undefined» al campo vacío.
+  const unnamed = value.name === '' || value.name === 'undefined'
+  return unnamed && value.size === 0 ? null : value
 }
 
 async function bytesOf(file: File): Promise<Uint8Array> {

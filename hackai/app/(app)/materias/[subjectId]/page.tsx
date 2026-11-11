@@ -214,7 +214,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
 
           <section
             aria-label={creating ? 'Canal nuevo' : label}
-            className='flex min-w-0 flex-col gap-4 lg:min-h-[60vh]'
+            className='flex min-w-0 flex-col gap-4 lg:min-h-[calc(100dvh-11rem)]'
           >
             {creating ? (
               <NewChannelForm

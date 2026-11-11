@@ -47,6 +47,10 @@ export function useSpaceAction(action: SpaceAction) {
     event.preventDefault()
     const submitter = (event.nativeEvent as SubmitEvent).submitter
     const data = new FormData(event.currentTarget, submitter)
+    // Un campo de archivo sin elegir no se manda: no es un archivo vacío.
+    for (const [key, value] of [...data.entries()]) {
+      if (value instanceof File && value.name === '' && value.size === 0) data.delete(key)
+    }
     if (tooLarge(data)) {
       setLocalError(TOO_LARGE)
       return

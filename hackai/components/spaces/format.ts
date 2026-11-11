@@ -11,7 +11,12 @@ export function messageTime(iso: string): string {
   const date = new Date(iso)
   const day = date.toLocaleDateString('es-AR', { timeZone: TIME_ZONE, weekday: 'short' }).replace('.', '')
   const dayMonth = date.toLocaleDateString('es-AR', { timeZone: TIME_ZONE, day: 'numeric', month: 'numeric' })
-  const time = date.toLocaleTimeString('es-AR', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit' })
+  const time = date.toLocaleTimeString('es-AR', {
+    timeZone: TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  })
   return `${day} ${dayMonth} ${time}`
 }
 
