@@ -34,7 +34,9 @@ export function IosInstallSteps() {
 
 /* Botón «Instalar» del encabezado, solo en el navegador del celular. En Android
    abre el aviso del navegador; en el iPhone y el iPad, una hoja con los pasos.
-   Instalada la app, o en un navegador que no la instala, no aparece. */
+   Instalada la app, o en un navegador que no la instala, no aparece. En los
+   celulares de menos de 400 px va solo el ícono: con la campana y el perfil,
+   el texto no deja lugar a la facultad de la marca. */
 export function InstallButton() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null)
   const [ios, setIos] = useState(false)
@@ -60,7 +62,8 @@ export function InstallButton() {
   if (prompt) {
     return (
       <button type='button' className={PILL} onClick={() => prompt.prompt().finally(() => setPrompt(null))}>
-        <Download aria-hidden='true' className='size-4' /> Instalar
+        <Download aria-hidden='true' className='size-4' />
+        <span className='max-[399px]:sr-only'>Instalar</span>
       </button>
     )
   }
@@ -68,7 +71,8 @@ export function InstallButton() {
   return (
     <Sheet>
       <SheetTrigger className={PILL}>
-        <Download aria-hidden='true' className='size-4' /> Instalar
+        <Download aria-hidden='true' className='size-4' />
+        <span className='max-[399px]:sr-only'>Instalar</span>
       </SheetTrigger>
       <IosInstallSteps />
     </Sheet>

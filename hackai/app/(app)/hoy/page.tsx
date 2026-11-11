@@ -9,8 +9,8 @@ import { CalendarDays, ChevronRight, LibraryBig } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { activeProgram, firstName } from '@/components/session/person-text'
+import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'
-import { Avatar } from '@/components/shell/avatar'
 import { PageHeader } from '@/components/shell/page-header'
 import { Card } from '@/components/ui/card'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
@@ -44,10 +44,14 @@ export default async function HoyPage() {
         kicker={person ? belonging(person) : undefined}
         school={person?.school.name}
         actions={
-          <>
+          person ? (
+            <>
+              <SignOutButton className='hidden lg:block' />
+              <ProfileMenu person={person} detail={belonging(person)} />
+            </>
+          ) : (
             <SignOutButton />
-            {person && <Avatar person={person} className='ring-2 ring-white/25' />}
-          </>
+          )
         }
       />
 
