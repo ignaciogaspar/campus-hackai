@@ -1,5 +1,5 @@
-# Typecheck, tests, build y prueba de humo de hackai en cada PR a main y en cada
-# push a main. Solo corre si cambia código de hackai/ o este archivo.
+# Biome, typecheck, tests, build y prueba de humo de hackai en cada PR a main y
+# en cada push a main. Solo corre si cambia código de hackai/ o este archivo.
 # Sin secretos: los puertos usan los adaptadores en memoria y los tests contra
 # Supabase se saltean, como pasa sin HACKAI_TEST_SUPABASE_*.
 name: CI
@@ -55,6 +55,12 @@ jobs:
           restore-keys: next-${{ runner.os }}-${{ hashFiles('hackai/package-lock.json') }}-
 
       - run: npm ci
+
+      # Formato, lint y orden de imports (hackai/biome.json, ADR 0007). Los
+      # problemas aparecen como anotaciones en el diff del PR.
+      - name: Biome
+        run: npx biome ci --reporter=github --reporter=summary .
+
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
