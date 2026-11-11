@@ -2,7 +2,7 @@
    archivadas plegadas aparte. Cada una con el enlace a su aula de Moodle y, las
    actuales, sus tareas con fecha. Solo muestra lo que le da Cursada. */
 import { ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import type { MyAssignment, MyClassroom, MySubject } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
@@ -22,13 +22,17 @@ function ClassroomLinks({ classrooms }: { classrooms: MyClassroom[] }) {
   return (
     <div className='mt-3 flex flex-col gap-2'>
       {classrooms.map((c) => (
-        <Button key={c.courseId} asChild variant='outline' size='lg' className='min-h-11 w-full justify-center sm:w-auto'>
-          <a href={c.url} target='_blank' rel='noopener noreferrer'>
-            {classrooms.length > 1 ? `Ir al aula: ${c.name}` : 'Ir al aula'}
-            <ExternalLink aria-hidden data-icon='inline-end' />
-            <span className='sr-only'>(se abre en otra pestaña)</span>
-          </a>
-        </Button>
+        <a
+          key={c.courseId}
+          href={c.url}
+          target='_blank'
+          rel='noopener noreferrer'
+          className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 w-full justify-center sm:w-auto')}
+        >
+          {classrooms.length > 1 ? `Ir al aula: ${c.name}` : 'Ir al aula'}
+          <ExternalLink aria-hidden data-icon='inline-end' />
+          <span className='sr-only'>(se abre en otra pestaña)</span>
+        </a>
       ))}
     </div>
   )
