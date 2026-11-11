@@ -31,8 +31,10 @@ export type People = {
       válido sin persona vinculada, `persona-desconocida`. */
   signIn(credential: IdentityCredential): Promise<Result<Person, 'credencial-invalida' | PeopleError>>
   /** Personas sintéticas para el ingreso de demo, en el orden de la identidad.
-      Con una identidad sin lista de demo devuelve `no-soportado`. */
-  demoPeople(): Promise<Result<Person[], 'no-soportado' | PeopleError>>
+      Un sujeto de la lista que no está vinculado a ninguna persona no aparece:
+      no puede entrar. Con una identidad sin lista de demo devuelve
+      `no-soportado`. */
+  demoPeople(): Promise<Result<Person[], 'no-soportado' | ExternalFailure>>
   get(personId: PersonId): Promise<Result<Person, PeopleError>>
   /** Su id en un sistema de origen o canal externo. */
   accountIn(personId: PersonId, system: ExternalSystem): Promise<Result<string, 'sin-cuenta' | PeopleError>>

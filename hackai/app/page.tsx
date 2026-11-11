@@ -4,30 +4,36 @@
    y quién entra lo decide Personas. */
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import type { SignInError } from '@/app/actions/session'
+import { ErrorNotice } from '@/components/notices'
 import { PersonPicker } from '@/components/session/person-picker'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import type { ExternalFailure } from '@/lib/result'
 
 export const metadata: Metadata = { title: 'Ingresar · Campus HackAI' }
 
 /** Por qué no se pudo armar la lista. */
-const LIST_ERRORS: Record<string, string> = {
+const LIST_ERRORS: Record<'no-soportado' | ExternalFailure, string> = {
   'no-soportado': 'El ingreso de demo no está habilitado en este entorno.',
   'falla-externa': 'No pudimos traer la lista de personas porque el SIU no responde. Probá de nuevo en un rato.',
 }
 
+const UNKNOWN_PERSON = 'No pudimos abrir la sesión de esa persona. Elegí otra o probá de nuevo.'
+
 /** Por qué no se pudo entrar, según el `?error` con el que vuelve la acción. */
-const SIGN_IN_ERRORS: Record<string, string> = {
+const SIGN_IN_ERRORS: Record<SignInError, string> = {
+  'credencial-invalida': UNKNOWN_PERSON,
+  'persona-desconocida': UNKNOWN_PERSON,
+  'sin-cuenta': UNKNOWN_PERSON,
   'falla-externa': 'No pudimos abrir la sesión porque el SIU no responde. Probá de nuevo en un rato.',
   'sin-secreto': 'Falta configurar SESSION_SECRET en el entorno para poder abrir sesiones (hackai/README.md).',
 }
 
-function Alert({ children }: { children: string }) {
-  return (
-    <p role='alert' className='rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm'>
-      {children}
-    </p>
-  )
+/** El mensaje de un `?error`. Lo escribe quien arma la URL, así que un valor
+    que no es de los nuestros se muestra con el mensaje genérico. */
+function signInErrorMessage(error: string | string[]): string {
+  return typeof error === 'string' && Object.hasOwn(SIGN_IN_ERRORS, error) ? SIGN_IN_ERRORS[error as SignInError] : UNKNOWN_PERSON
 }
 
 export default async function IngresoPage({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
@@ -46,15 +52,11 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         </p>
       </header>
 
-      {error !== undefined && (
-        <Alert>
-          {(typeof error === 'string' && SIGN_IN_ERRORS[error]) || 'No pudimos abrir la sesión de esa persona. Elegí otra o probá de nuevo.'}
-        </Alert>
-      )}
+      {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
 
       {listed.ok
         ? <PersonPicker people={listed.value} />
-        : <Alert>{LIST_ERRORS[listed.error] ?? 'Algo salió mal al traer la lista de personas.'}</Alert>}
+        : <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>}
     </main>
   )
 }

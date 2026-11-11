@@ -1,9 +1,14 @@
 /* Hoy: la pantalla de inicio de quien entra, alumno o docente. Por ahora
    saluda, dice desde qué facultad entra y lleva a Mis materias; lo demás
    (parciales, novedades, inscripciones abiertas) llega con el ticket de Hoy
-   (#18). Sin reglas de negocio: quién es la persona lo dice Personas. */
+   (#18). Sin reglas de negocio: quién es la persona lo dice Personas.
+
+   En el celular es una columna. En pantallas anchas usa el mismo ancho que el
+   ingreso, con los accesos a la izquierda y lo del día a la derecha. */
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { EmptyNotice, ErrorNotice } from '@/components/notices'
+import { activeProgram } from '@/components/session/person-text'
 import { SignOutButton } from '@/components/session/sign-out-button'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -19,7 +24,7 @@ const ERRORS: Record<PeopleError, string> = {
 /** Desde dónde entra: qué cursa el alumno o dónde dicta el docente. */
 function belonging(person: Person): string {
   if (person.role === 'profesor') return `Dictás en la ${person.school.name}`
-  const program = person.programs.find((p) => p.status === 'activa')
+  const program = activeProgram(person)
   return program ? `Cursás ${program.name} en la ${person.school.name}` : `Cursás en la ${person.school.name}`
 }
 
@@ -28,7 +33,7 @@ export default async function HoyPage() {
   const person = await system().people.get(session.personId)
 
   return (
-    <main className='mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-6 pb-16'>
+    <main className='mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-6 pb-16 sm:max-w-3xl lg:max-w-5xl lg:pt-10'>
       <header className='flex items-start justify-between gap-4'>
         <div>
           <p className='text-xs font-bold tracking-widest text-primary uppercase'>Campus HackAI</p>
@@ -39,11 +44,9 @@ export default async function HoyPage() {
       </header>
 
       {!person.ok ? (
-        <p role='alert' className='rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm'>
-          {ERRORS[person.error]}
-        </p>
+        <ErrorNotice>{ERRORS[person.error]}</ErrorNotice>
       ) : (
-        <>
+        <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start'>
           <Link
             href='/materias'
             className='rounded-xl border border-border bg-card p-4 shadow-xs outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50'
@@ -56,11 +59,11 @@ export default async function HoyPage() {
             </span>
           </Link>
 
-          <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
+          <EmptyNotice>
             Acá vas a ver tus próximos parciales y finales, las novedades de tus materias y las inscripciones abiertas.
             Todavía lo estamos armando.
-          </p>
-        </>
+          </EmptyNotice>
+        </div>
       )}
     </main>
   )

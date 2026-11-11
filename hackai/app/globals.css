@@ -9,7 +9,9 @@
    Tailwind y shadcn/ui (ADR 0006): los tokens de shadcn (--primary,
    --background…) toman por ahora los colores provisorios de la Austral. Las
    clases sueltas de abajo (.page, .card, .btn…) son las de antes y se van
-   reemplazando por utilidades y componentes de components/ui/. */
+   reemplazando por utilidades y componentes de components/ui/. Ninguna puede
+   llamarse como una utilidad de Tailwind: al no estar en una capa, le gana
+   (por eso ya no está `.grid`). */
 :root {
   --azul: #1d21a9;
   --cian: #3ff0ff;
@@ -69,7 +71,6 @@ a { color: var(--azul); }
 .page-head h1 { margin: 4px 0 8px; font-size: 1.75rem; line-height: 1.2; }
 .seccion { margin-top: 32px; }
 .card { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
-.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .kicker { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--azul); }

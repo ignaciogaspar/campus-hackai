@@ -3,10 +3,13 @@
    Personas.
 
    En el celular es una columna, con atajos para saltar a cada grupo. En
-   pantallas anchas las tarjetas van en grilla y los dos grupos entran juntos,
-   así que los atajos se esconden. */
+   pantallas anchas las tarjetas van en grilla de tres columnas: los grupos
+   siguen uno debajo del otro, pero se ven los dos casi sin scrollear, así que
+   los atajos se esconden. */
 import { signInAsDemoPerson } from '@/app/actions/session'
+import { EmptyNotice } from '@/components/notices'
 import { PersonButton } from '@/components/session/person-button'
+import { activeProgram } from '@/components/session/person-text'
 import type { Person, Role } from '@/lib/core/people'
 
 const GROUPS: { role: Role; title: string }[] = [
@@ -16,17 +19,13 @@ const GROUPS: { role: Role; title: string }[] = [
 
 /** La facultad y, si es alumno, la propuesta que cursa. */
 function detail(person: Person): string {
-  const program = person.programs.find((p) => p.status === 'activa')
+  const program = activeProgram(person)
   return program ? `${person.school.name} · ${program.name}` : person.school.name
 }
 
 export function PersonPicker({ people }: { people: Person[] }) {
   if (!people.length) {
-    return (
-      <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
-        No hay personas cargadas para la demo.
-      </p>
-    )
+    return <EmptyNotice>No hay personas cargadas para la demo.</EmptyNotice>
   }
 
   const groups = GROUPS
