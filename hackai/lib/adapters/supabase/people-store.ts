@@ -22,13 +22,18 @@ export type PeopleAccountRow = { person_id: string; system: ExternalSystem; exte
 
 const TABLE = 'people_accounts'
 
-export function createSupabasePeopleStore({ client, timeoutMs = 5000, log = console.warn }: SupabasePeopleStoreOptions): PeopleStore {
+export function createSupabasePeopleStore({
+  client,
+  timeoutMs = 5000,
+  log = console.warn
+}: SupabasePeopleStoreOptions): PeopleStore {
   const run = createQueryRunner({ name: 'people-store', timeoutMs, log })
 
   return {
     async accountsOf(personId) {
       const rows = await run<Pick<PeopleAccountRow, 'system' | 'external_id'>[]>('cuentas', (s) =>
-        client.from(TABLE).select('system, external_id').eq('person_id', personId).abortSignal(s))
+        client.from(TABLE).select('system, external_id').eq('person_id', personId).abortSignal(s)
+      )
       if (!rows.ok) return fail('falla-externa')
       if (!rows.value?.length) return ok(null)
       const accounts: PersonAccounts = {}
@@ -38,9 +43,16 @@ export function createSupabasePeopleStore({ client, timeoutMs = 5000, log = cons
 
     async ownerOf(system, externalId) {
       const row = await run<Pick<PeopleAccountRow, 'person_id'>>('dueña', (s) =>
-        client.from(TABLE).select('person_id').eq('system', system).eq('external_id', externalId).abortSignal(s).maybeSingle())
+        client
+          .from(TABLE)
+          .select('person_id')
+          .eq('system', system)
+          .eq('external_id', externalId)
+          .abortSignal(s)
+          .maybeSingle()
+      )
       if (!row.ok) return fail('falla-externa')
       return ok(row.value?.person_id ?? null)
-    },
+    }
   }
 }

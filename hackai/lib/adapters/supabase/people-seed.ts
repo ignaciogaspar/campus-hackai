@@ -9,7 +9,7 @@
    nuevo, así correrlo otra vez deja a cada una como en el set sintético. Los
    vínculos de otras personas no se tocan. */
 import type { PeopleAccountRow } from '@/lib/adapters/supabase/people-store'
-import { text, textArray, upsert, type Sql } from '@/lib/adapters/supabase/sql'
+import { type Sql, text, textArray, upsert } from '@/lib/adapters/supabase/sql'
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 import type { ExternalSystem } from '@/lib/core/people'
 
@@ -20,9 +20,9 @@ export function peopleAccountRows(data: SyntheticData): PeopleAccountRow[] {
       ['identity', p.identitySubject],
       ['siu', p.siuId],
       ['moodle', p.moodleId],
-      ['discord', p.discordId],
+      ['discord', p.discordId]
     ]
-    return accounts.flatMap(([system, id]) => id ? [{ person_id: p.id, system, external_id: id }] : [])
+    return accounts.flatMap(([system, id]) => (id ? [{ person_id: p.id, system, external_id: id }] : []))
   })
 }
 
@@ -31,12 +31,16 @@ export function peopleSeedSql(data: SyntheticData): string {
     '-- Generado por npm run people:seed desde lib/adapters/synthetic-data.ts. No lo edites a mano.\n',
     'begin;\n',
     `delete from people_accounts where person_id = any (${textArray(data.people.map((p) => p.id))});\n`,
-    upsert('people_accounts', ['person_id', 'system'], peopleAccountRows(data).map((row) => ({
-      person_id: text(row.person_id),
-      system: text(row.system),
-      external_id: text(row.external_id),
-    }))),
-    'commit;\n',
+    upsert(
+      'people_accounts',
+      ['person_id', 'system'],
+      peopleAccountRows(data).map((row) => ({
+        person_id: text(row.person_id),
+        system: text(row.system),
+        external_id: text(row.external_id)
+      }))
+    ),
+    'commit;\n'
   ]
   return parts.join('\n')
 }

@@ -10,8 +10,8 @@ export function Avatar({ person, className }: { person: Person; className?: stri
       aria-hidden='true'
       className={cn(
         'grid size-10 flex-none place-items-center rounded-full text-[0.8125rem] font-bold',
-        person.role === 'profesor' ? 'bg-azul text-white' : 'bg-azul-suave text-azul',
-        className,
+        person.role === 'profesor' ? 'bg-blue text-white' : 'bg-accent text-blue',
+        className
       )}
     >
       {initials(person)}

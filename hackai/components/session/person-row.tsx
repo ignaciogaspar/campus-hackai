@@ -17,7 +17,7 @@ export function PersonRow({ person, detail }: { person: Person; detail?: string 
       type='submit'
       disabled={pending}
       aria-busy={pending}
-      className='group flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors duration-150 outline-none hover:bg-azul/[0.04] focus-visible:bg-azul-suave focus-visible:inset-ring-2 focus-visible:inset-ring-azul-claro disabled:cursor-progress disabled:opacity-60'
+      className='group flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-blue/[0.04] focus-ring-inset disabled:cursor-progress disabled:opacity-60'
     >
       <Avatar person={person} />
       <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
@@ -26,7 +26,7 @@ export function PersonRow({ person, detail }: { person: Person; detail?: string 
       </span>
       <ChevronRight
         aria-hidden='true'
-        className='size-5 flex-none text-gris-claro transition-transform duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-azul motion-reduce:transition-none'
+        className='size-5 flex-none text-gray-light transition-transform duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-blue motion-reduce:transition-none'
         strokeWidth={1.8}
       />
     </button>

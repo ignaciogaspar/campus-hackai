@@ -4,38 +4,42 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Estilos base provisorios. El sistema visual se rediseña con los colores de
-   la Austral y foco en UX y UI (docs/product/alcance.md, ticket #8).
-   Tailwind y shadcn/ui (ADR 0006): los tokens de shadcn (--primary,
-   --background…) toman por ahora los colores provisorios de la Austral. Las
-   clases sueltas de abajo (.page, .card, .btn…) son las de antes y se van
-   reemplazando por utilidades y componentes de components/ui/. Ninguna puede
-   llamarse como una utilidad de Tailwind: al no estar en una capa, le gana
-   (por eso ya no está `.grid`). */
+/* Sistema visual: dirección B, «Profundo» (docs/design/direccion-de-diseno.md,
+   ticket #8). Tailwind y shadcn/ui (ADR 0006): los tokens de shadcn (--primary,
+   --background…) toman los colores de la Austral. Las clases sueltas de abajo
+   (.page, .card, .btn…) son las de antes y se van reemplazando por utilidades y
+   componentes de components/ui/. */
 :root {
   --azul: #1d21a9;
+  --blue-light: #1f5cff;
+  --blue-deep: #14178a;
+  --navy: #0b1150;
   --cian: #3ff0ff;
   --naranja: #ff7a1a;
-  --hielo: #f2f5fb;
-  --tinta: #14162b;
-  --gris: #5b6072;
-  --borde: #d9deea;
-  /* Dirección visual «B, Profundo», elegida por el equipo el 11/11: los tonos
-     que usan el encabezado, las tarjetas y los avisos de las pantallas nuevas.
-     Salen de los tokens de los mocks; el ticket #8 completa el resto. */
-  --navy: #0b1150;
-  --azul-claro: #1f5cff;
-  --azul-hondo: #14178a;
-  --azul-suave: #e6edff;
-  --header-sub: #c4c9f2;
-  --gris-claro: #8a8fa0;
-  --error: #b42318;
-  --error-suave: #fdecea;
-  --error-tinta: #5e130c;
+  --hielo: #eef0fb;
+  --tinta: #10142c;
+  --gris: #5f6474;
+  --gray-light: #8a8fa0;
+  --borde: #e4e7f0;
   /* Avisos: algo para tener en cuenta, que no es un error. */
   --warning: var(--naranja);
   --warning-background: #fff4ea;
-  --background: var(--hielo);
+  --warning-icon: #b45309;
+  --warning-foreground: #5c2c04;
+  --error-background: #fdecea;
+  --error-foreground: #5e130c;
+  --success: #0f7b4a;
+  --success-background: #e3f5ec;
+  /* Origen de un material o una fecha: texto oscuro sobre fondo suave (AA). */
+  --origin-hackai: #1d21a9;
+  --origin-hackai-background: #e8e9fb;
+  --origin-discord: #3b3fb8;
+  --origin-discord-background: #ecebff;
+  --origin-moodle: #9a4a06;
+  --origin-moodle-background: #fff1e3;
+  --origin-siu: #0f6a41;
+  --origin-siu-background: #e3f5ec;
+  --background: #f2f4fb;
   --foreground: var(--tinta);
   --card: oklch(1 0 0);
   --card-foreground: var(--tinta);
@@ -43,22 +47,22 @@
   --popover-foreground: var(--tinta);
   --primary: var(--azul);
   --primary-foreground: #fff;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --secondary: var(--hielo);
+  --secondary-foreground: var(--tinta);
+  --muted: var(--hielo);
   --muted-foreground: var(--gris);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  --accent: #e6edff;
+  --accent-foreground: var(--blue-light);
+  --destructive: #b42318;
   --border: var(--borde);
   --input: var(--borde);
-  --ring: var(--azul);
+  --ring: var(--blue-light);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.875rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -76,7 +80,19 @@ body {
   line-height: 1.5;
 }
 
-a { color: var(--azul); }
+@layer base {
+  a { color: var(--azul); }
+  html { scrollbar-width: none; }
+  html::-webkit-scrollbar { display: none; }
+}
+
+/* Foco visible de todo control: afuera del borde, o adentro si el contenedor recorta. */
+@utility focus-ring {
+  &:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+}
+@utility focus-ring-inset {
+  &:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
+}
 
 .page { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
 .page-head { margin-bottom: 24px; }
@@ -112,20 +128,6 @@ a { color: var(--azul); }
 .tabla th, .tabla td { padding: 8px 12px; border-bottom: 1px solid var(--borde); text-align: left; }
 
 @theme inline {
-  --color-navy: var(--navy);
-  --color-azul: var(--azul);
-  --color-azul-claro: var(--azul-claro);
-  --color-azul-hondo: var(--azul-hondo);
-  --color-azul-suave: var(--azul-suave);
-  --color-naranja: var(--naranja);
-  --color-header-sub: var(--header-sub);
-  --color-gris-claro: var(--gris-claro);
-  --color-error: var(--error);
-  --color-error-suave: var(--error-suave);
-  --color-error-tinta: var(--error-tinta);
-  --shadow-card: 0 1px 2px rgba(11, 17, 80, .06), 0 6px 18px rgba(11, 17, 80, .08);
-  --radius-card: 22px;
-  --radius-header: 28px;
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -147,6 +149,30 @@ a { color: var(--azul); }
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
   --color-warning-background: var(--warning-background);
+  --color-warning-icon: var(--warning-icon);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-error-background: var(--error-background);
+  --color-error-foreground: var(--error-foreground);
+  --color-success: var(--success);
+  --color-success-background: var(--success-background);
+  --color-navy: var(--navy);
+  --color-blue: var(--azul);
+  --color-orange: var(--naranja);
+  --color-ink: var(--tinta);
+  --color-cyan: var(--cian);
+  --color-ice: var(--hielo);
+  --color-gray-light: var(--gray-light);
+  --color-blue-light: var(--blue-light);
+  --color-blue-deep: var(--blue-deep);
+  --color-origin-hackai: var(--origin-hackai);
+  --color-origin-hackai-background: var(--origin-hackai-background);
+  --color-origin-discord: var(--origin-discord);
+  --color-origin-discord-background: var(--origin-discord-background);
+  --color-origin-moodle: var(--origin-moodle);
+  --color-origin-moodle-background: var(--origin-moodle-background);
+  --color-origin-siu: var(--origin-siu);
+  --color-origin-siu-background: var(--origin-siu-background);
+  --shadow-card: 0 1px 2px rgb(11 17 80 / 0.06), 0 6px 18px rgb(11 17 80 / 0.08);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -210,10 +236,6 @@ a { color: var(--azul); }
   }
   body {
     @apply bg-background text-foreground;
-  }
-  ::selection {
-    background: var(--azul-suave);
-    color: var(--tinta);
   }
   html {
     @apply font-sans;

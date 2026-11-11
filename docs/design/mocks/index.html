@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pantallas de HackAI</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ebf3; color: var(--tinta); font-family: var(--font-head); }
+  .g-head { background: var(--navy); color: #fff; padding: 40px 32px 28px; }
+  .g-head .wm { font-weight: 800; letter-spacing: .02em; display: inline-flex; gap: 8px; align-items: center; }
+  .g-head .wm span { background: var(--cian); color: var(--navy); border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .g-head h1 { margin: 12px 0 8px; font-size: 2rem; }
+  .g-head p { margin: 0; max-width: 860px; color: #d7dbf7; line-height: 1.55; }
+  .pill { display: inline-block; margin-top: 14px; padding: 4px 12px; border-radius: 999px; background: var(--naranja); color: var(--tinta); font-weight: 700; font-size: 13px; }
+  .g-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .g-nav a { color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+  .g-nav a:hover { background: rgba(255,255,255,.1); }
+  section.g { padding: 36px 32px 8px; }
+  section.g h2 { margin: 0 0 8px; font-size: 1.5rem; }
+  .tickets { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: middle; }
+  .tickets span { font-size: 12px; font-weight: 700; background: #fff; border-radius: 999px; padding: 2px 8px; color: var(--azul); }
+  section.g > p { margin: 0 0 6px; max-width: 900px; color: #3b4057; line-height: 1.55; font-size: 15px; }
+  section.g > p a { color: var(--azul); }
+  .frames { display: flex; flex-wrap: wrap; gap: 32px; margin-top: 18px; align-items: flex-start; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 10px; width: 410px; }
+  .phone { width: 410px; padding: 10px; background: #0d0f1a; border-radius: 52px; box-shadow: 0 20px 40px rgba(11,17,80,.18); }
+  .phone iframe { display: block; width: 390px; height: 844px; border: 0; border-radius: 42px; background: #fff; }
+  figure.fd { width: 864px; max-width: 100%; }
+  .desk { width: 864px; max-width: 100%; padding: 0 12px 12px; background: #0d0f1a; border-radius: 16px; box-shadow: 0 20px 40px rgba(11,17,80,.18); }
+  .desk-bar { display: flex; gap: 6px; padding: 10px 2px; }
+  .desk-bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3d52; }
+  .vp { width: 840px; max-width: 100%; height: 580px; overflow: hidden; border-radius: 6px; background: #fff; }
+  .vp iframe { width: 1440px; height: 994px; border: 0; transform: scale(.5834); transform-origin: 0 0; }
+  figcaption { font-size: 14px; font-weight: 700; padding: 0 8px; }
+  figcaption a { font-weight: 600; color: var(--azul); margin-left: 6px; font-size: 13px; }
+  figcaption small { display: block; font-weight: 500; color: var(--gris); margin-top: 3px; line-height: 1.45; }
+  .cambios { margin: 8px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .cambios li { background: #fff; border-radius: 14px; padding: 14px 16px; font-size: 14px; line-height: 1.5; color: #3b4057; }
+  .cambios b { display: block; color: var(--tinta); margin-bottom: 4px; }
+  footer { padding: 40px 32px 60px; color: var(--gris); font-size: 14px; }
+  .bare .g-head, .bare footer { display: none; }
+  @media (max-width: 600px) { .g-head, section.g { padding-left: 16px; padding-right: 16px; } figure, .phone { width: 100%; } .phone iframe { width: 100%; } }
+</style>
+</head>
+<body>
+<header class="g-head">
+  <div class="wm"><span>UA</span>HackAI · Universidad Austral</div>
+  <h1>Pantallas de la demo · propuesta de UI v2</h1>
+  <p>Dirección B, «Profundo», elegida por el equipo el 11/11. Esta vuelta aplica los comentarios de la v1: Hoy más liviano, el espacio de la materia con pestañas para no tener que bajar hasta el final, material por secciones y la marca de la Austral.</p>
+  <span class="pill">Datos de ejemplo, nada es real</span>
+  <nav class="g-nav">
+    <a href="#cambios">Qué cambió</a><a href="#hoy">1 · Hoy</a><a href="#novedades">2 · Novedades</a><a href="#materias">3 · Materias</a><a href="#espacio">4 · Espacio de la materia</a><a href="#docente">5 · Docente</a><a href="#compu">6 · Computadora</a><a href="#pwa">7 · App instalada</a><a href="#instalar">8 · Instalar y sin conexión</a><a href="#estados">9 · Estados</a>
+  </nav>
+</header>
+
+<section class="g" id="cambios">
+  <h2>Qué cambió desde la v1</h2>
+  <ul class="cambios">
+    <li><b>«Es un montón de data la que mostramos en Hoy»</b> Hoy muestra solo qué tenés que hacer y cuándo: el próximo parcial, las próximas 2 semanas (hasta 4 ítems, el resto detrás de «Ver más») y las inscripciones que cierran pronto. Las novedades pasan a la campana y las materias, a su pestaña. Ver Hoy con 7 materias en la sección 1.</li>
+    <li><b>«Es raro tener que hacer scroll hasta el final»</b> El espacio de la materia abre con pestañas arriba (Avisos, Consultas, Material, Directos y los canales extra), cada una con sus no leídos. Ya no hay una lista larga de canales.</li>
+    <li><b>«Material separado por temas o módulos, a elección de la cátedra»</b> El material se agrupa en secciones plegables. La docente elige organizarlo por unidad, por semana o sin secciones.</li>
+    <li><b>«Sacar el label de Discord y HackAI» y «sacar el sincronizado con Discord»</b> Los mensajes ya no llevan etiqueta de origen. Queda solo en el material y en las fechas del SIU y de Moodle, donde tocarlo te lleva a otro sistema. El canal externo lo ve solo la docente.</li>
+    <li><b>«Poner el logo del campus o la facultad»</b> El encabezado dice Universidad Austral y la facultad. Falta el archivo del logo: por ahora es una marca de texto.</li>
+    <li><b>«Sacar la scroll bar»</b> Las pantallas no muestran barra de scroll; el scroll sigue funcionando.</li>
+    <li><b>«Las aprobadas se mezclan con las que falta final»</b> Materias tiene tres vistas: Cursando, Falta final y Aprobadas. Las aprobadas van agrupadas por año y plegadas.</li>
+    <li><b>«Las instrucciones para instalar ocupan espacio»</b> Ahora es un botoncito «Instalar» en el encabezado que abre los pasos en una hoja desde abajo.</li>
+  </ul>
+</section>
+
+<section class="g" id="hoy">
+  <h2>1 · Hoy <span class="tickets"><span>#18</span></span></h2>
+  <p>Pantalla de inicio del alumno. Parciales y finales del SIU y entregas de Moodle (marcadas como complemento) en una sola lista por fecha. Lo más lejano y lo que ya pasó, plegado al final.</p>
+  <div class="frames" data-frames="
+    m|m-hoy.html|Hoy|Tomás, 2 materias.
+    m|m-hoy.html?carga=alta|Hoy con 7 materias|La lista corta en 4 y el resto queda en «Ver 3 más».
+    m|m-hoy.html?estado=desactualizado|SIU caído|Fechas de hace 20 min, marcadas."></div>
+</section>
+
+<section class="g" id="novedades">
+  <h2>2 · Novedades <span class="tickets"><span>#18</span><span>#12</span></span></h2>
+  <p>La campana del encabezado, con el contador. Avisos, material nuevo y respuestas a tus consultas de todas tus materias, agrupados por cuándo llegaron y con filtros.</p>
+  <div class="frames" data-frames="
+    m|m-novedades.html|Novedades|
+    m|m-novedades.html?estado=vacio|Al día|Explica por qué está vacío."></div>
+</section>
+
+<section class="g" id="materias">
+  <h2>3 · Materias <span class="tickets"><span>#10</span><span>#14</span></span></h2>
+  <p>Tres vistas arriba: <b>Cursando</b>, las del cuatrimestre en mosaico; <b>Falta final</b>, solo las regularizadas que falta cerrar, con la mesa en la que estás inscripto o la próxima abierta; y <b>Aprobadas</b>, una lista compacta por año de la carrera, plegada salvo el último año, para que en quinto año no se mezcle con lo que falta.</p>
+  <div class="frames" data-frames="
+    m|m-materias.html|Cursando|
+    m|m-materias.html?vista=final&carga=alta|Falta final|Una inscripta y otra con la mesa abierta.
+    m|m-materias.html?vista=aprobadas&carga=alta|Aprobadas|Por año; los anteriores, plegados."></div>
+</section>
+
+<section class="g" id="espacio">
+  <h2>4 · Espacio de la materia <span class="tickets"><span>#12</span><span>#15</span><span>#19</span></span></h2>
+  <p>Análisis Matemático I de Ingeniería, visto por un alumno de la Comisión A. Las pestañas se deslizan de costado; el alumno nunca ve las de la Comisión B. En Avisos no puede escribir; en Consultas todos ven las respuestas.</p>
+  <div class="frames" data-frames="
+    m|m-espacio.html?tab=avisos|Avisos|
+    m|m-espacio.html?tab=consultas|Consultas|fran.99 escribió desde Discord sin cuenta vinculada.
+    m|m-espacio.html?tab=material|Material por unidad|Solo la sección con algo nuevo abre desplegada.
+    m|m-espacio.html?tab=directos|Directos|Solo con los docentes de su comisión."></div>
+</section>
+
+<section class="g" id="docente">
+  <h2>5 · Docente <span class="tickets"><span>#12</span></span></h2>
+  <p>Mariana Ledesma, docente de la Comisión A. Publica avisos, marca consultas resueltas, crea canales con «+ Canal» y elige cómo organizar el material. El canal externo de la cátedra aparece solo para ella.</p>
+  <div class="frames" data-frames="
+    m|m-espacio.html?tab=avisos&rol=docente|Avisos, docente|
+    m|m-espacio.html?tab=consultas&rol=docente|Consultas, docente|Marcar resuelta en las abiertas.
+    m|m-espacio.html?tab=material&orden=semana&rol=docente|Material por semana|Organizar por unidad, semana o sin secciones."></div>
+</section>
+
+<section class="g" id="compu">
+  <h2>6 · Computadora <span class="tickets"><span>#8</span></span></h2>
+  <p>Las mismas pantallas, con el mismo diseño, a partir de 1024 px de ancho. En compu sobra lugar, así que se muestra más que en el celular, con topes para que no se desborde con muchas materias:</p>
+  <ul class="cambios">
+    <li><b>Barra lateral con tus materias</b> Como los servidores en Discord, cada materia a un clic con sus no leídos. Si son muchas, la lista scrollea sola.</li>
+    <li><b>Hoy con calendario de 2 semanas</b> Cada día muestra hasta 2 cosas y el resto como «+N más». A la derecha, el próximo parcial, las inscripciones y las últimas 3 novedades. En el celular las novedades siguen solo en la campana.</li>
+    <li><b>Espacio en tres columnas</b> Canales, conversación y un panel de contexto con lo próximo de la materia, el material reciente y los docentes de tu comisión.</li>
+    <li><b>Encabezado más bajo</b> Título y acciones en la misma franja; la flecha de volver no hace falta porque está la barra lateral.</li>
+  </ul>
+  <div class="frames" data-frames="
+    d|m-hoy.html|Hoy|
+    d|m-hoy.html?carga=alta|Hoy con 7 materias|El viernes 20 tiene 3 cosas: muestra 2 y «+1 más».
+    d|m-espacio.html?tab=consultas|Espacio de la materia · Consultas|
+    d|m-espacio.html?tab=material&rol=docente|Material, docente|
+    d|m-materias.html?carga=alta|Materias con 7|
+    d|m-novedades.html|Novedades|"></div>
+</section>
+
+<section class="g" id="pwa">
+  <h2>7 · App instalada (PWA) <span class="tickets"><span>#8</span></span></h2>
+  <p>HackAI se instala como app desde el navegador: se abre desde un ícono, sin la barra del navegador. El diseño no cambia. El encabezado navy se mete debajo de la barra de estado, que toma el mismo color, y la navegación inferior deja libre la zona del gesto de inicio. Como en una app instalada no hay botón de atrás del navegador, toda pantalla que no es de primer nivel tiene su flecha de volver. Las notificaciones siguen llegando por el canal externo de la cátedra (ADR 0005): la PWA no manda notificaciones push.</p>
+  <div class="frames" data-frames="
+    m|m-inicio.html|Pantalla de inicio|Ícono con la marca de la Austral; el nombre «Austral» es provisorio.
+    m|m-inicio.html?vista=carga|Al abrirla|Pantalla de carga con los colores del manifest.
+    m|m-hoy.html?pwa=1|Hoy, instalada|La barra de estado (simulada) queda navy.
+    m|m-espacio.html?tab=consultas&pwa=1|Espacio, instalada|Flecha de volver siempre visible."></div>
+</section>
+
+<section class="g" id="instalar">
+  <h2>8 · Instalar y sin conexión <span class="tickets"><span>#8</span><span>#21</span></span></h2>
+  <p>En el navegador del celular aparece un botoncito «Instalar» en el encabezado, que no ocupa lugar en la pantalla. Al tocarlo se abre una hoja desde abajo: en el iPhone con los pasos de Safari; en Android con el botón para instalar. Sin internet, la app muestra lo último que guardó y deshabilita lo que necesita conexión.</p>
+  <div class="frames" data-frames="
+    m|m-hoy.html?instalar=ios|Botón Instalar|Al lado de la campana.
+    m|m-hoy.html?instalar=ios&hoja=1|Hoja con los pasos (iPhone)|Se cierra con Listo o tocando afuera.
+    m|m-hoy.html?estado=offline&pwa=1|Sin conexión|Inscribirme queda deshabilitado.
+    m|m-espacio.html?tab=consultas&estado=offline&pwa=1|Sin conexión en el espacio|No se puede escribir."></div>
+</section>
+
+<section class="g" id="estados">
+  <h2>9 · Estados <span class="tickets"><span>#8</span><span>#21</span></span></h2>
+  <p>Si un sistema de origen no responde, el resto de la pantalla se ve igual.</p>
+  <div class="frames" data-frames="
+    m|m-hoy.html?estado=cargando|Cargando|Skeleton con la forma del layout.
+    m|m-hoy.html?estado=error|Error|Moodle falla: solo las entregas avisan.
+    m|m-hoy.html?estado=vacio|Vacío|Dice qué es lo próximo.
+    m|m-espacio.html?estado=desactualizado|Discord caído|"></div>
+</section>
+
+<footer>Mocks en <code>docs/design/mocks/</code>. Tokens: <code>docs/design/mocks/tokens.css</code>. Decisión y supuestos: <code>docs/design/direccion-de-diseno.md</code>.</footer>
+
+<script>
+  const q = new URLSearchParams(location.search)
+  if (q.get('bare')) document.body.classList.add('bare')
+  if (q.get('s')) document.querySelectorAll('section.g').forEach((s) => { if (s.id !== q.get('s')) s.remove() })
+  const full = !!q.get('full')
+
+  const parse = (s) => s.trim().split('\n').map((l) => l.trim().split('|'))
+  function draw(el) {
+    el.innerHTML = parse(el.dataset.frames).map(([k, s, t, d]) => {
+      return k === 'm'
+        ? `<figure><div class="phone"><iframe src="${s}" title="${t}"></iframe></div><figcaption>${t} <a href="${s}" target="_blank">abrir</a><small>${d || ''}</small></figcaption></figure>`
+        : `<figure class="fd"><div class="desk"><div class="desk-bar"><i></i><i></i><i></i></div><div class="vp"><iframe src="${s}" title="${t}" tabindex="-1"></iframe></div></div><figcaption>${t} <a href="${s}" target="_blank">abrir</a><small>${d || ''}</small></figcaption></figure>`
+    }).join('')
+  }
+  document.querySelectorAll('[data-frames]').forEach((el) => draw(el))
+
+  window.addEventListener('message', (e) => {
+    if (!full || !e.data || !e.data.hkHeight) return
+    document.querySelectorAll('iframe').forEach((f) => { if (f.contentWindow === e.source) f.style.height = e.data.hkHeight + 'px' })
+  })
+
+  if (q.get('measure')) window.addEventListener('load', () => setTimeout(() => { document.title = 'H=' + document.documentElement.scrollHeight }, 1500))
+</script>
+</body>
+</html>

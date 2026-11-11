@@ -3,7 +3,7 @@
    la base vuelven como `falla-externa`; una clave repetida, como `duplicado`.
    Los logs llevan el adaptador, la operación y el código de error, nunca datos
    de personas. */
-import { fail, ok, type ExternalFailure, type Result } from '@/lib/result'
+import { type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 
 export type DbError = { message: string; code?: string }
 export type DbResponse<T> = { data: T | null; error: DbError | null }

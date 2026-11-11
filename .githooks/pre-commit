@@ -1,0 +1,25 @@
+#!/bin/sh
+# Antes de cada commit: las reglas de AGENTS.md sobre lo que está en stage y,
+# si el commit toca código de hackai/, el formato y el lint de Biome.
+# CI corre lo mismo en cada PR. Se activa solo con npm install en hackai/
+# (script prepare). Para saltearlo: git commit --no-verify.
+
+raiz=$(git rev-parse --show-toplevel) || exit 1
+
+sh "$raiz/scripts/checks/reglas.sh" --staged || exit 1
+
+if [ -z "$(git diff --cached --name-only --diff-filter=ACMR -- 'hackai/*.ts' 'hackai/*.tsx' 'hackai/*.mjs')" ]; then
+  exit 0
+fi
+
+biome="$raiz/hackai/node_modules/.bin/biome"
+if [ ! -x "$biome" ]; then
+  echo 'pre-commit: falta npm install en hackai/, así que salteo Biome. CI lo corre igual.'
+  exit 0
+fi
+
+cd "$raiz/hackai" || exit 1
+if ! "$biome" check --staged --no-errors-on-unmatched; then
+  echo 'pre-commit: Biome encontró problemas. Corré npm run lint:arreglar en hackai/, revisá el diff y volvé a hacer git add.'
+  exit 1
+fi

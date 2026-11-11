@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { compose } from '@/lib/composition'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
+import { compose } from '@/lib/composition'
 
 const NOW = new Date(syntheticData.now)
 
@@ -15,7 +15,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
     externalChannel: 'memoria',
     files: 'memoria',
     clock: 'memoria',
-    store: 'memoria',
+    store: 'memoria'
   })
   assert.equal(system.ports.clock.now().toISOString(), NOW.toISOString())
 
@@ -28,7 +28,7 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
 })
 
 test('cada módulo expone su interfaz completa y lo que falta devuelve «no implementado»', async () => {
-  const { people, studies, spaces, today } = compose({})
+  const { studies, spaces, today } = compose({})
   const p = 'persona'
   const calls = [
     studies.offer(p, { kind: 'cursada', subjectId: 's' }),
@@ -47,7 +47,7 @@ test('cada módulo expone su interfaz completa y lo que falta devuelve «no impl
     spaces.link(p, 'c', { system: 'discord', channelId: 'd' }),
     spaces.syncAll(),
     spaces.unreadFor(p),
-    today.today(p),
+    today.today(p)
   ]
   for (const result of await Promise.all(calls)) {
     assert.deepEqual(result, { ok: false, error: 'no-implementado' })
@@ -68,11 +68,15 @@ test('HACKAI_SIU=simulado usa el SIU simulado sobre Supabase, que declara sus ca
   const system = compose({
     HACKAI_SIU: 'simulado',
     NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
-    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
   })
 
   assert.equal(system.adapters.siu, 'simulado')
-  assert.deepEqual(system.ports.siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
+  assert.deepEqual(system.ports.siu.capabilities, {
+    canEnroll: true,
+    hasAssessmentSchedule: true,
+    enrolsInClassroom: false
+  })
 })
 
 test('HACKAI_SIU=simulado sin las variables de Supabase corta el arranque', () => {
@@ -83,7 +87,7 @@ test('HACKAI_STORE=supabase guarda los vínculos de Personas en Supabase y sin s
   const system = compose({
     HACKAI_STORE: 'supabase',
     NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
-    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
   })
   assert.equal(system.adapters.store, 'supabase')
   assert.equal(system.adapters.siu, 'memoria')
@@ -102,6 +106,27 @@ test('con todo en memoria se entra eligiendo una persona de la lista de demo', a
   const entered = await people.signIn({ kind: 'demo', subject: 'demo:p-mledesma' })
   assert.ok(entered.ok)
   assert.equal(entered.value.role, 'profesor')
+})
+
+test('HACKAI_CLASSROOM=simulado usa el Moodle simulado sobre Supabase, que declara sus capacidades y arma el enlace al aula', () => {
+  const system = compose({
+    HACKAI_CLASSROOM: 'simulado',
+    NEXT_PUBLIC_SUPABASE_URL: 'http://supabase.test',
+    SUPABASE_SERVICE_ROLE_KEY: 'clave-de-prueba'
+  })
+
+  assert.equal(system.adapters.classroom, 'simulado')
+  assert.equal(system.adapters.siu, 'memoria')
+  assert.deepEqual(system.ports.classroom.capabilities, { canEnrol: true, hasAssignments: true })
+  assert.equal(
+    system.ports.classroom.courseUrl('c-am1-fi-a'),
+    `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`
+  )
+})
+
+test('HACKAI_CLASSROOM=simulado sin las variables de Supabase corta el arranque', () => {
+  assert.throws(() => compose({ HACKAI_CLASSROOM: 'simulado' }), /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.throws(() => compose({ HACKAI_CLASSROOM: 'otro' }), /HACKAI_CLASSROOM/)
 })
 
 test('el canal externo de Discord se arma con el token del entorno y sin token no arranca', () => {
@@ -128,8 +153,10 @@ test('cada armado tiene su propia copia de los datos sintéticos', async () => {
   const b = compose({})
   const section = syntheticData.siu.sections.find((s) => s.termId === 'verano-2027' && s.capacity === null)!
   const student = syntheticData.siu.persons.find(
-    (p) => p.role === 'alumno' && p.school.id === section.schoolId
-      && !syntheticData.siu.courseEnrollments.some((e) => e.personId === p.id && e.sectionId === section.id),
+    (p) =>
+      p.role === 'alumno' &&
+      p.school.id === section.schoolId &&
+      !syntheticData.siu.courseEnrollments.some((e) => e.personId === p.id && e.sectionId === section.id)
   )!
 
   const enrolled = await a.ports.siu.enroll(student.id, { kind: 'comision', sectionId: section.id })

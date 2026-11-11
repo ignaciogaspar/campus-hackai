@@ -20,7 +20,7 @@ function setup(options: Partial<DiscordOptions> = {}) {
     sleep: async (ms) => {
       waits.push(ms)
     },
-    ...options,
+    ...options
   })
   return { fake, port, waits }
 }
@@ -33,22 +33,36 @@ const raw = (id: string, extra: Partial<RawMessage> = {}): RawMessage => ({
   timestamp: '2026-11-09T11:05:00.123000+00:00',
   author: { id: '1302000000000000050', username: 'mledesma', global_name: 'Marina Ledesma' },
   attachments: [],
-  ...extra,
+  ...extra
 })
 
 test('traduce un mensaje crudo de Discord: autor por id, adjuntos, webhook y hora en UTC', async () => {
   const { fake, port } = setup()
-  fake.addMessage(raw('1310000000000000100', {
-    attachments: [{ id: '1311000000000000100', filename: 'guia.pdf', content_type: 'application/pdf', size: 1200, url: `${CDN}/x/guia.pdf?ex=6730a1b2&is=672f5032&hm=abc` }],
-  }))
-  fake.addMessage(raw('1310000000000000101', {
-    author: { id: '1302000000000000099', username: 'Avisos de la cátedra', global_name: null, bot: true },
-    webhook_id: '1302000000000000099',
-  }))
-  fake.addMessage(raw('1310000000000000102', {
-    author: { id: '1302000000000000051', username: 'tomi.aguirre', global_name: null },
-    attachments: [{ id: '1311000000000000101', filename: 'foto', size: 10, url: `${CDN}/x/foto` }],
-  }))
+  fake.addMessage(
+    raw('1310000000000000100', {
+      attachments: [
+        {
+          id: '1311000000000000100',
+          filename: 'guia.pdf',
+          content_type: 'application/pdf',
+          size: 1200,
+          url: `${CDN}/x/guia.pdf?ex=6730a1b2&is=672f5032&hm=abc`
+        }
+      ]
+    })
+  )
+  fake.addMessage(
+    raw('1310000000000000101', {
+      author: { id: '1302000000000000099', username: 'Avisos de la cátedra', global_name: null, bot: true },
+      webhook_id: '1302000000000000099'
+    })
+  )
+  fake.addMessage(
+    raw('1310000000000000102', {
+      author: { id: '1302000000000000051', username: 'tomi.aguirre', global_name: null },
+      attachments: [{ id: '1311000000000000101', filename: 'foto', size: 10, url: `${CDN}/x/foto` }]
+    })
+  )
 
   const page = await port.read(CHANNEL, null)
   assert.ok(page.ok)
@@ -57,12 +71,24 @@ test('traduce un mensaje crudo de Discord: autor por id, adjuntos, webhook y hor
     channelId: CHANNEL,
     author: { id: '1302000000000000050', name: 'Marina Ledesma', isBot: false },
     text: 'mensaje 1310000000000000100',
-    attachments: [{ id: '1311000000000000100', filename: 'guia.pdf', contentType: 'application/pdf', size: 1200, url: `${CDN}/x/guia.pdf?ex=6730a1b2&is=672f5032&hm=abc` }],
+    attachments: [
+      {
+        id: '1311000000000000100',
+        filename: 'guia.pdf',
+        contentType: 'application/pdf',
+        size: 1200,
+        url: `${CDN}/x/guia.pdf?ex=6730a1b2&is=672f5032&hm=abc`
+      }
+    ],
     threadId: null,
     viaWebhook: false,
-    createdAt: '2026-11-09T11:05:00.123Z',
+    createdAt: '2026-11-09T11:05:00.123Z'
   })
-  assert.deepEqual(page.value.messages[1].author, { id: '1302000000000000099', name: 'Avisos de la cátedra', isBot: true })
+  assert.deepEqual(page.value.messages[1].author, {
+    id: '1302000000000000099',
+    name: 'Avisos de la cátedra',
+    isBot: true
+  })
   assert.equal(page.value.messages[1].viaWebhook, true)
   assert.equal(page.value.messages[2].author.name, 'tomi.aguirre')
   assert.equal(page.value.messages[2].attachments[0].contentType, 'application/octet-stream')
@@ -71,46 +97,80 @@ test('traduce un mensaje crudo de Discord: autor por id, adjuntos, webhook y hor
 test('una respuesta queda en el hilo de su mensaje raíz y los mensajes de sistema no se devuelven', async () => {
   const { fake, port } = setup()
   fake.addMessage(raw('1310000000000000200'))
-  fake.addMessage(raw('1310000000000000201', { type: 19, message_reference: { message_id: '1310000000000000200', channel_id: CHANNEL } }))
-  fake.addMessage(raw('1310000000000000202', { type: 19, message_reference: { message_id: '1310000000000000201', channel_id: CHANNEL } }))
+  fake.addMessage(
+    raw('1310000000000000201', {
+      type: 19,
+      message_reference: { message_id: '1310000000000000200', channel_id: CHANNEL }
+    })
+  )
+  fake.addMessage(
+    raw('1310000000000000202', {
+      type: 19,
+      message_reference: { message_id: '1310000000000000201', channel_id: CHANNEL }
+    })
+  )
   fake.addMessage(raw('1310000000000000203', { type: 7, content: '' }))
 
   const page = await port.read(CHANNEL, null)
   assert.ok(page.ok)
-  assert.deepEqual(page.value.messages.map((m) => [m.id, m.threadId]), [
-    ['1310000000000000200', null],
-    ['1310000000000000201', '1310000000000000200'],
-    ['1310000000000000202', '1310000000000000200'],
-  ])
+  assert.deepEqual(
+    page.value.messages.map((m) => [m.id, m.threadId]),
+    [
+      ['1310000000000000200', null],
+      ['1310000000000000201', '1310000000000000200'],
+      ['1310000000000000202', '1310000000000000200']
+    ]
+  )
 })
 
 test('una respuesta a un mensaje de una lectura anterior queda en el hilo de la raíz de la cadena', async () => {
   const { fake, port } = setup()
   fake.addMessage(raw('1310000000000000210'))
-  fake.addMessage(raw('1310000000000000211', { type: 19, message_reference: { message_id: '1310000000000000210', channel_id: CHANNEL } }))
+  fake.addMessage(
+    raw('1310000000000000211', {
+      type: 19,
+      message_reference: { message_id: '1310000000000000210', channel_id: CHANNEL }
+    })
+  )
   const first = await port.read(CHANNEL, null)
   assert.ok(first.ok)
 
-  fake.addMessage(raw('1310000000000000212', { type: 19, message_reference: { message_id: '1310000000000000211', channel_id: CHANNEL } }))
+  fake.addMessage(
+    raw('1310000000000000212', {
+      type: 19,
+      message_reference: { message_id: '1310000000000000211', channel_id: CHANNEL }
+    })
+  )
   const second = await port.read(CHANNEL, first.value.cursor)
   assert.ok(second.ok)
-  assert.deepEqual(second.value.messages.map((m) => [m.id, m.threadId]), [['1310000000000000212', '1310000000000000210']])
+  assert.deepEqual(
+    second.value.messages.map((m) => [m.id, m.threadId]),
+    [['1310000000000000212', '1310000000000000210']]
+  )
 
   // Otra instancia del adaptador, sin nada visto: le pide a Discord los mensajes anteriores de la cadena.
   const fresh = createDiscordExternalChannel({ token: TOKEN, fetch: fake.fetch })
   const cold = await fresh.read(CHANNEL, first.value.cursor)
   assert.ok(cold.ok)
-  assert.deepEqual(cold.value.messages.map((m) => [m.id, m.threadId]), [['1310000000000000212', '1310000000000000210']])
+  assert.deepEqual(
+    cold.value.messages.map((m) => [m.id, m.threadId]),
+    [['1310000000000000212', '1310000000000000210']]
+  )
 })
 
 test('un mensaje reenviado no queda como respuesta del original', async () => {
   const { fake, port } = setup()
   fake.addMessage(raw('1310000000000000220'))
-  fake.addMessage(raw('1310000000000000221', { message_reference: { message_id: '1310000000000000220', channel_id: CHANNEL } }))
+  fake.addMessage(
+    raw('1310000000000000221', { message_reference: { message_id: '1310000000000000220', channel_id: CHANNEL } })
+  )
 
   const page = await port.read(CHANNEL, null)
   assert.ok(page.ok)
-  assert.deepEqual(page.value.messages.map((m) => m.threadId), [null, null])
+  assert.deepEqual(
+    page.value.messages.map((m) => m.threadId),
+    [null, null]
+  )
 })
 
 test('los mensajes de un hilo que se archivó entre dos lecturas no se pierden', async () => {
@@ -125,12 +185,17 @@ test('los mensajes de un hilo que se archivó entre dos lecturas no se pierden',
 
   const second = await port.read(CHANNEL, first.value.cursor)
   assert.ok(second.ok)
-  assert.deepEqual(second.value.messages.map((m) => [m.id, m.threadId]), [['1330000000000000231', '1310000000000000230']])
+  assert.deepEqual(
+    second.value.messages.map((m) => [m.id, m.threadId]),
+    [['1330000000000000231', '1310000000000000230']]
+  )
 })
 
 test('cada request a la API lleva el token del bot y el User-Agent; la CDN no recibe el token', async () => {
   const { fake, port } = setup()
-  fake.addMessage(raw('1310000000000000300', { attachments: [{ id: '1', filename: 'a.txt', size: 1, url: `${CDN}/x/a.txt` }] }))
+  fake.addMessage(
+    raw('1310000000000000300', { attachments: [{ id: '1', filename: 'a.txt', size: 1, url: `${CDN}/x/a.txt` }] })
+  )
   fake.addFile(`${CDN}/x/a.txt`, 'a')
 
   const page = await port.read(CHANNEL, null)
@@ -179,19 +244,25 @@ test('una caída de la red o del servidor vuelve como falla-externa, no como exc
   assert.deepEqual(await port.reply(CHANNEL, '1310000000000000001', 'hola'), { ok: false, error: 'falla-externa' })
   assert.deepEqual(
     await port.download({ id: '1', filename: 'a', contentType: 'text/plain', size: 1, url: `${CDN}/x/a` }),
-    { ok: false, error: 'falla-externa' },
+    { ok: false, error: 'falla-externa' }
   )
 
   const serverError = createDiscordExternalChannel({
     token: TOKEN,
-    fetch: async () => new Response('<html>Bad Gateway</html>', { status: 502 }),
+    fetch: async () => new Response('<html>Bad Gateway</html>', { status: 502 })
   })
   assert.deepEqual(await serverError.read(CHANNEL, null), { ok: false, error: 'falla-externa' })
 })
 
 test('no baja adjuntos de fuera de la CDN de Discord', async () => {
   const { fake, port } = setup()
-  const result = await port.download({ id: '1', filename: 'a', contentType: 'text/plain', size: 1, url: 'https://ejemplo.invalid/a' })
+  const result = await port.download({
+    id: '1',
+    filename: 'a',
+    contentType: 'text/plain',
+    size: 1,
+    url: 'https://ejemplo.invalid/a'
+  })
   assert.deepEqual(result, { ok: false, error: 'falla-externa' })
   assert.equal(fake.requests.length, 0)
 })
@@ -208,7 +279,10 @@ test('pagina de a 100 y, si hay más de lo que lee de una vez, el cursor queda e
 
   const second = await port.read(CHANNEL, first.value.cursor)
   assert.ok(second.ok)
-  assert.deepEqual(second.value.messages.map((m) => m.id), ids.slice(1000))
+  assert.deepEqual(
+    second.value.messages.map((m) => m.id),
+    ids.slice(1000)
+  )
   assert.equal(second.value.cursor, ids.at(-1))
 })
 

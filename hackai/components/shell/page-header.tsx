@@ -1,32 +1,71 @@
-/* Encabezado de página de la dirección visual «B, Profundo»: franja navy con
-   las esquinas de abajo redondeadas, la marca arriba, las acciones a la
-   derecha y el título de la pantalla. */
+import { ChevronLeft } from 'lucide-react'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Brand } from '@/components/shell/brand'
+import { InstallButton } from '@/components/shell/install-button'
+import { NotificationsBell } from '@/components/shell/notifications-bell'
+import { cn } from '@/lib/utils'
 
 type Props = {
   title: string
-  /** Una línea debajo del título. */
-  sub?: string
-  /** Lo que va debajo de «Universidad Austral»: la facultad o el sistema. */
-  brandSub: string
-  /** Lo que va arriba a la derecha: avatar, salir. */
+  /** Línea chica arriba del título, por ejemplo la fecha o la facultad. */
+  kicker?: string
+  /** La facultad de quien entra, para la marca. */
+  school?: string
+  /** Pantallas que no son de primer nivel: en la app instalada no hay atrás del navegador. */
+  backHref?: string
+  /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
+  hideBackOnDesktop?: boolean
+  /** Lo sin leer de todas las materias, para la campana. */
+  unread?: number
+  /** Pantallas sin sesión, como el ingreso: no hay barra lateral ni novedades,
+      así que la marca se ve también en compu y no va la campana. */
+  signedOut?: boolean
+  /** Arriba a la derecha, después de la campana: perfil. */
   actions?: ReactNode
-  /** Lo que va debajo del título, todavía sobre el navy. */
+  /** Debajo del título, sobre el navy: chips de comisión, docente. */
   children?: ReactNode
 }
 
-export function PageHeader({ title, sub, brandSub, actions, children }: Props) {
+export function PageHeader({
+  title,
+  kicker,
+  school,
+  backHref,
+  hideBackOnDesktop,
+  unread = 0,
+  signedOut = false,
+  actions,
+  children
+}: Props) {
   return (
-    <header className='rounded-b-header bg-navy text-white'>
-      <div className='mx-auto w-full max-w-5xl px-4 pt-3 pb-6 lg:px-10 lg:pt-5 lg:pb-8'>
-        <div className='flex min-h-10 items-center gap-2'>
-          <Brand sub={brandSub} />
-          {actions && <div className='ml-auto flex items-center gap-2'>{actions}</div>}
+    <header className='rounded-b-[28px] bg-navy text-white'>
+      <div className='mx-auto grid max-w-280 grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:px-10 lg:pt-5'>
+        <div
+          className={cn('flex min-h-10 items-center', !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden')}
+        >
+          {backHref ? (
+            <Link
+              href={backHref}
+              aria-label='Volver'
+              className='-ml-2 grid size-10 place-items-center rounded-full text-white hover:bg-white/10 focus-ring'
+            >
+              <ChevronLeft aria-hidden='true' className='size-5' />
+            </Link>
+          ) : (
+            <Brand school={school} />
+          )}
         </div>
-        <h1 className='mt-5 text-[1.875rem] leading-[1.2] font-extrabold text-balance lg:text-4xl'>{title}</h1>
-        {sub && <p className='mt-1.5 max-w-[60ch] text-sm text-pretty text-header-sub lg:text-[0.9375rem]'>{sub}</p>}
-        {children && <div className='mt-4 flex flex-wrap gap-2'>{children}</div>}
+        <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
+          <InstallButton />
+          {!signedOut && <NotificationsBell unread={unread} />}
+          {actions}
+        </div>
+        <div className='col-start-1 mt-2 lg:mt-0'>
+          {kicker && <p className='text-[0.8125rem] text-white/75'>{kicker}</p>}
+          <h1 className='mt-0.5 text-3xl leading-tight font-extrabold text-balance lg:text-[1.75rem]'>{title}</h1>
+        </div>
+        {children && <div className='col-start-1 mt-3 flex flex-wrap gap-2'>{children}</div>}
       </div>
     </header>
   )

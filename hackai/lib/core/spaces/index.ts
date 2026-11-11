@@ -18,7 +18,7 @@ import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { ExternalChannelPort } from '@/lib/ports/external-channel'
 import type { FilesPort } from '@/lib/ports/files'
-import { notImplemented, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
+import { type ExternalFailure, type NotImplemented, notImplemented, type Result } from '@/lib/result'
 
 export type SpaceId = string
 export type ChannelId = string
@@ -104,15 +104,33 @@ export type Spaces = {
   /** Mensajes del canal, con las consultas y sus respuestas; marca leído. */
   channel(personId: PersonId, channelId: ChannelId): Promise<Result<ChannelView, 'canal-desconocido' | AccessError>>
   /** Publica y lo envía al canal externo vinculado. Si el envío falla, queda pendiente. */
-  post(personId: PersonId, channelId: ChannelId, message: NewMessage): Promise<Result<Message, 'canal-desconocido' | 'solo-docentes' | AccessError>>
+  post(
+    personId: PersonId,
+    channelId: ChannelId,
+    message: NewMessage
+  ): Promise<Result<Message, 'canal-desconocido' | 'solo-docentes' | AccessError>>
   /** Marca una consulta como resuelta. */
-  resolve(personId: PersonId, messageId: MessageId): Promise<Result<Message, 'mensaje-desconocido' | 'no-es-consulta' | 'solo-docentes' | AccessError>>
+  resolve(
+    personId: PersonId,
+    messageId: MessageId
+  ): Promise<Result<Message, 'mensaje-desconocido' | 'no-es-consulta' | 'solo-docentes' | AccessError>>
   /** Canal nuevo de la materia o de una comisión. Solo docentes. */
-  createChannel(personId: PersonId, spaceId: SpaceId, channel: NewChannel): Promise<Result<Channel, 'espacio-desconocido' | 'solo-docentes' | 'nombre-repetido' | AccessError>>
+  createChannel(
+    personId: PersonId,
+    spaceId: SpaceId,
+    channel: NewChannel
+  ): Promise<Result<Channel, 'espacio-desconocido' | 'solo-docentes' | 'nombre-repetido' | AccessError>>
   /** Canal directo entre un alumno y un docente de su comisión. */
-  openDirect(personId: PersonId, otherPersonId: PersonId): Promise<Result<Channel, 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError>>
+  openDirect(
+    personId: PersonId,
+    otherPersonId: PersonId
+  ): Promise<Result<Channel, 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError>>
   /** Vincula un canal con uno del canal externo de la cátedra. Solo docentes. */
-  link(personId: PersonId, channelId: ChannelId, external: ExternalLink): Promise<Result<Channel, 'canal-desconocido' | 'solo-docentes' | ExternalFailure | AccessError>>
+  link(
+    personId: PersonId,
+    channelId: ChannelId,
+    external: ExternalLink
+  ): Promise<Result<Channel, 'canal-desconocido' | 'solo-docentes' | ExternalFailure | AccessError>>
   /** Sincroniza todos los canales vinculados: la corrida periódica. */
   syncAll(): Promise<Result<SyncReport, NotImplemented>>
   /** Novedades sin leer de todos sus espacios, para Hoy. */
@@ -138,6 +156,6 @@ export function createSpaces(_deps: SpacesDeps): Spaces {
     openDirect: notImplemented,
     link: notImplemented,
     syncAll: notImplemented,
-    unreadFor: notImplemented,
+    unreadFor: notImplemented
   }
 }

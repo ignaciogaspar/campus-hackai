@@ -76,7 +76,10 @@ function contract(name: string, setup: () => Harness) {
 
       const second = await port.read(avisos.id, first.value.cursor)
       assert.ok(second.ok)
-      assert.deepEqual(second.value.messages.map((m) => [m.id, m.text]), [[posted.value.id, 'Aviso desde HackAI']])
+      assert.deepEqual(
+        second.value.messages.map((m) => [m.id, m.text]),
+        [[posted.value.id, 'Aviso desde HackAI']]
+      )
       assert.equal(second.value.cursor, posted.value.id)
 
       const third = await port.read(avisos.id, second.value.cursor)
@@ -102,19 +105,28 @@ function contract(name: string, setup: () => Harness) {
 
       const next = await port.read(consultas.id, first.value.cursor)
       assert.ok(next.ok)
-      assert.deepEqual(next.value.messages.map((m) => [m.text, m.threadId, m.channelId]), [
-        ['Gracias, profe', question.id, consultas.id],
-        ['¿Hay clase de consulta el viernes?', null, consultas.id],
-        ['Sí, a las 18', posted.value.id, consultas.id],
-      ])
+      assert.deepEqual(
+        next.value.messages.map((m) => [m.text, m.threadId, m.channelId]),
+        [
+          ['Gracias, profe', question.id, consultas.id],
+          ['¿Hay clase de consulta el viernes?', null, consultas.id],
+          ['Sí, a las 18', posted.value.id, consultas.id]
+        ]
+      )
     })
 
     test('un canal o un mensaje que no existe vuelve como error', async () => {
       const { port } = setup()
       assert.deepEqual(await port.read(UNKNOWN_CHANNEL, null), { ok: false, error: 'canal-inexistente' })
       assert.deepEqual(await port.post(UNKNOWN_CHANNEL, 'hola'), { ok: false, error: 'canal-inexistente' })
-      assert.deepEqual(await port.reply(UNKNOWN_CHANNEL, '1310000000000000001', 'hola'), { ok: false, error: 'canal-inexistente' })
-      assert.deepEqual(await port.reply(avisos.id, '1319999999999999999', 'hola'), { ok: false, error: 'mensaje-inexistente' })
+      assert.deepEqual(await port.reply(UNKNOWN_CHANNEL, '1310000000000000001', 'hola'), {
+        ok: false,
+        error: 'canal-inexistente'
+      })
+      assert.deepEqual(await port.reply(avisos.id, '1319999999999999999', 'hola'), {
+        ok: false,
+        error: 'mensaje-inexistente'
+      })
     })
 
     test('un 429 no corta la lectura', async () => {
@@ -129,7 +141,7 @@ function contract(name: string, setup: () => Harness) {
 
 contract('memoria', () => ({
   port: createMemoryExternalChannel(syntheticData, createFixedClock(syntheticData.now)),
-  throttleNext() {},
+  throttleNext() {}
 }))
 
 contract('Discord', () => {
@@ -137,6 +149,6 @@ contract('Discord', () => {
   seedFromSynthetic(fake, syntheticData.discord.channels, syntheticData.discord.files)
   return {
     port: createDiscordExternalChannel({ token: 'token-de-prueba', fetch: fake.fetch, sleep: async () => {} }),
-    throttleNext: () => fake.throttle(1, 0.5),
+    throttleNext: () => fake.throttle(1, 0.5)
   }
 })

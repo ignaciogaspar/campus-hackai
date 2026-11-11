@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Novedades · HackAI</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="ui.css">
+<script src="data.js"></script>
+<script src="app.js"></script>
+</head>
+<body data-active="hoy" data-back="m-hoy.html" data-kicker="De todas tus materias" data-title="Novedades">
+<main id="page"></main>
+<script>
+/* Novedades: la campana del encabezado. Avisos, material nuevo y respuestas a
+   tus consultas de todos tus espacios. ?estado=vacio */
+window.render = function (P) {
+  const { icon, origen } = UI
+  const N = window.HK.novedades
+
+  if (P.estado === 'vacio') return `
+    <div class="empty">${icon('check')}<strong>Estás al día</strong>No hay avisos, material ni respuestas nuevas en tus materias desde que entraste ayer a las 18:40.</div>`
+
+  const tipos = [['todas', 'Todas'], ['aviso', 'Avisos'], ['material', 'Material'], ['respuesta', 'Respuestas']]
+  const grupos = [...new Set(N.map((n) => n.cuando))]
+  const item = (n) => `
+    <li data-tipo="${n.tipo}"><a class="row" href="${n.destino}">
+      <span class="row-icon">${icon(n.icono)}</span>
+      <span class="row-body">
+        <span class="row-title">${n.titulo}</span>
+        <span class="row-text">${n.texto}</span>
+        <span class="row-meta">${n.origen ? origen(n.origen) : ''}<span>${n.materia}</span><span aria-hidden="true">·</span><span>${n.hace}</span></span>
+      </span>
+      <span class="unread-dot" aria-label="Sin leer"></span>
+    </a></li>`
+
+  setTimeout(() => {
+    document.querySelectorAll('.filtros button').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.filtros button').forEach((x) => x.setAttribute('aria-pressed', x === b))
+      document.querySelectorAll('[data-tipo]').forEach((li) => { li.hidden = b.dataset.f !== 'todas' && li.dataset.tipo !== b.dataset.f })
+    }))
+  })
+
+  return `<div class="lectura stack" style="gap:var(--s-6)">
+    <div class="filtros scroll-x" role="group" aria-label="Filtrar novedades">
+      ${tipos.map(([id, t]) => `<button type="button" data-f="${id}" aria-pressed="${id === 'todas'}">${t}${id === 'todas' ? ` (${N.length})` : ''}</button>`).join('')}
+    </div>
+    ${grupos.map((g) => `
+      <section class="sec" aria-label="${g}">
+        <h2 class="grupo-title">${g}</h2>
+        <ul class="card list">${N.filter((n) => n.cuando === g).map(item).join('')}</ul>
+      </section>`).join('')}
+    <button class="btn btn-ghost" type="button">Marcar todas como leídas</button></div>`
+}
+</script>
+</body>
+</html>

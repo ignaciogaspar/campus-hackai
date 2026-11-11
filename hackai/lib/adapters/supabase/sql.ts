@@ -1,6 +1,7 @@
-/* Literales de SQL para los seeds que se generan desde el set sintético
-   (siu_seed.sql, people_seed.sql). Cada función devuelve el valor ya escrito
-   como SQL, con las comillas escapadas. */
+/* Piezas para escribir como SQL los seeds que salen del set sintético:
+   literales y un insert que pisa la fila si ya existe. Las usan
+   lib/adapters/siu-simulado/seed.ts, lib/adapters/moodle-simulado/seed.ts y
+   lib/adapters/supabase/people-seed.ts. */
 
 /** Un valor ya escrito como literal de SQL. */
 export type Sql = string
@@ -29,6 +30,9 @@ export function upsert(table: string, key: string[], rows: Record<string, Sql>[]
   if (!rows.length) return `-- ${table}: sin filas\n`
   const columns = Object.keys(rows[0])
   const values = rows.map((row) => `  (${columns.map((c) => row[c]).join(', ')})`).join(',\n')
-  const updates = columns.filter((c) => !key.includes(c)).map((c) => `${c} = excluded.${c}`).join(', ')
+  const updates = columns
+    .filter((c) => !key.includes(c))
+    .map((c) => `${c} = excluded.${c}`)
+    .join(', ')
   return `insert into ${table} (${columns.join(', ')}) values\n${values}\non conflict (${key.join(', ')}) do update set ${updates};\n`
 }

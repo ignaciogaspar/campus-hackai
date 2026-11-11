@@ -14,23 +14,24 @@
      actuales las de un período lectivo que no terminó (el que está en curso y
      los que ya tienen inscriptos, como el de verano) y archivadas las de
      períodos que ya terminaron.
+   - Cada materia lleva el enlace a su aula de Moodle y, si es actual, sus tareas
+     con fecha por orden de fecha (las sin fecha no se muestran). Si el aula
+     declara que no tiene tareas, salen vacías sin error.
 
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import type { ClassroomPort } from '@/lib/ports/classroom'
+import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { SiuCertificateType, SiuPort, SiuSchedule, SiuSection, SiuSubject, SiuTerm } from '@/lib/ports/siu'
-import { all, fail, notImplemented, ok, type ExternalFailure, type NotImplemented, type Result } from '@/lib/result'
+import { all, type ExternalFailure, fail, type NotImplemented, notImplemented, ok, type Result } from '@/lib/result'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
 export type Fresh<T> = { data: T; readAt: string; stale: boolean }
 
 /** Una comisión (cursada) o una mesa (examen). */
-export type Target =
-  | { kind: 'comision'; sectionId: string }
-  | { kind: 'mesa'; examBoardId: string }
+export type Target = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
 
 /** Qué oferta se busca: comisiones para cursar o mesas para rendir una materia. */
 export type OfferQuery = { kind: 'cursada' | 'examen'; subjectId: string }
@@ -38,6 +39,12 @@ export type OfferQuery = { kind: 'cursada' | 'examen'; subjectId: string }
 export type CertificateType = SiuCertificateType
 
 export type Teacher = { personId: PersonId | null; name: string }
+
+/** Aula de la materia en el Campus Virtual: el curso de Moodle y el enlace para entrar. */
+export type MyClassroom = { courseId: string; name: string; url: string }
+
+/** Tarea con fecha límite de un curso de Moodle. `past` si la fecha ya pasó según el reloj. */
+export type MyAssignment = { name: string; dueDate: string; source: 'moodle'; past: boolean }
 
 /** Una materia de la persona, en una comisión y un período lectivo. */
 export type MySubject = {
@@ -50,8 +57,10 @@ export type MySubject = {
   sectionId: string
   sectionName: string
   role: Role
-  /** Cursos de Moodle vinculados a la comisión. */
-  classroomCourseIds: string[]
+  /** Cursos de Moodle vinculados a la comisión, con el enlace a cada aula. */
+  classrooms: MyClassroom[]
+  /** Tareas con fecha de esos cursos, por fecha. Solo las de materias actuales; las archivadas, vacío. */
+  assignments: MyAssignment[]
 }
 
 export type MySubjects = { current: MySubject[]; archived: MySubject[] }
@@ -89,9 +98,7 @@ export type EnrollOutcome =
   | { kind: 'inscripto'; receipt: Receipt; classroomCourseIds: string[] }
   | { kind: 'requiere-autogestion'; url: string }
 
-export type DropOutcome =
-  | { kind: 'baja'; receipt: Receipt }
-  | { kind: 'requiere-autogestion'; url: string }
+export type DropOutcome = { kind: 'baja'; receipt: Receipt } | { kind: 'requiere-autogestion'; url: string }
 
 export type EnrollError = 'sin-cupo' | 'fuera-de-periodo' | 'ya-inscripto' | 'objetivo-desconocido' | ExternalFailure
 export type DropError = 'no-inscripto' | 'fuera-de-periodo' | 'objetivo-desconocido' | ExternalFailure
@@ -154,9 +161,15 @@ export type Studies = {
   /** Comisiones o mesas de examen con cupo, horario y docentes. */
   offer(personId: PersonId, query: OfferQuery): Promise<Result<OfferItem[], ReadError>>
   /** Inscribe en el SIU y matricula en Moodle, todo o nada. */
-  enroll(personId: PersonId, target: Target): Promise<Result<EnrollOutcome, EnrollError | 'persona-desconocida' | NotImplemented>>
+  enroll(
+    personId: PersonId,
+    target: Target
+  ): Promise<Result<EnrollOutcome, EnrollError | 'persona-desconocida' | NotImplemented>>
   /** Baja en el SIU y desmatriculación en Moodle. */
-  drop(personId: PersonId, target: Target): Promise<Result<DropOutcome, DropError | 'persona-desconocida' | NotImplemented>>
+  drop(
+    personId: PersonId,
+    target: Target
+  ): Promise<Result<DropOutcome, DropError | 'persona-desconocida' | NotImplemented>>
   /** Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados. */
   upcoming(personId: PersonId): Promise<Result<Fresh<UpcomingItem[]>, ReadError>>
   /** Inscripciones abiertas que le sirven. */
@@ -180,15 +193,22 @@ type SectionInTerm = { section: SiuSection; subject: SiuSubject; term: SiuTerm; 
 type MySectionsInTerms = { role: Role; sections: SectionInTerm[] }
 
 /** Un id del SIU o un vínculo que no existe es una persona que Cursada no conoce. */
-function asUnknownPerson<E extends string>(error: E | 'no-encontrado' | 'sin-cuenta'): Exclude<E, 'no-encontrado' | 'sin-cuenta'> | 'persona-desconocida' {
-  return error === 'no-encontrado' || error === 'sin-cuenta' ? 'persona-desconocida' : error as Exclude<E, 'no-encontrado' | 'sin-cuenta'>
+function asUnknownPerson<E extends string>(
+  error: E | 'no-encontrado' | 'sin-cuenta'
+): Exclude<E, 'no-encontrado' | 'sin-cuenta'> | 'persona-desconocida' {
+  return error === 'no-encontrado' || error === 'sin-cuenta'
+    ? 'persona-desconocida'
+    : (error as Exclude<E, 'no-encontrado' | 'sin-cuenta'>)
 }
 
 export function createStudies({ people, siu, classroom, clock }: StudiesDeps): Studies {
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
 
-  async function fresh<T>(key: string, read: () => Promise<Result<T, ReadError>>): Promise<Result<Fresh<T>, ReadError>> {
+  async function fresh<T>(
+    key: string,
+    read: () => Promise<Result<T, ReadError>>
+  ): Promise<Result<Fresh<T>, ReadError>> {
     const result = await read()
     if (result.ok) {
       const value: Fresh<T> = { data: result.value, readAt: clock.now().toISOString(), stale: false }
@@ -203,6 +223,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   /** Las comisiones de la persona, actuales primero (por inicio del período) y
       archivadas después (la más reciente primero), cada grupo por materia. El
       rol y la facultad salen del SIU, con el id que da Personas. */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 18 (máximo 15). Se refactoriza después de la demo (#30).
   async function sectionsInTermsOf(personId: PersonId): Promise<Result<MySectionsInTerms, ReadError>> {
     const siuId = await people.accountIn(personId, 'siu')
     if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
@@ -218,12 +239,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     } else {
       const enrollments = await siu.courseEnrollments(siuId.value, { historic: true })
       if (!enrollments.ok) return fail(asUnknownPerson(enrollments.error))
-      const ids = [...new Set(enrollments.value
-        .filter((e) => e.status === 'aceptada' || e.status === 'pendiente')
-        .map((e) => e.sectionId))]
+      const ids = [
+        ...new Set(
+          enrollments.value.filter((e) => e.status === 'aceptada' || e.status === 'pendiente').map((e) => e.sectionId)
+        )
+      ]
       const found = await Promise.all(ids.map((id) => siu.section(id)))
       if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
-      sections = found.flatMap((r) => r.ok ? [r.value] : []).filter((s) => s.schoolId === school.id)
+      sections = found.flatMap((r) => (r.ok ? [r.value] : [])).filter((s) => s.schoolId === school.id)
     }
 
     const terms = await siu.terms()
@@ -241,9 +264,35 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
     const byName = (a: SectionInTerm, b: SectionInTerm) =>
       a.subject.name.localeCompare(b.subject.name, 'es') || a.section.name.localeCompare(b.section.name, 'es')
-    const current = placed.filter((p) => p.current).sort((a, b) => a.term.start.localeCompare(b.term.start) || byName(a, b))
-    const archived = placed.filter((p) => !p.current).sort((a, b) => b.term.end.localeCompare(a.term.end) || byName(a, b))
+    const current = placed
+      .filter((p) => p.current)
+      .sort((a, b) => a.term.start.localeCompare(b.term.start) || byName(a, b))
+    const archived = placed
+      .filter((p) => !p.current)
+      .sort((a, b) => b.term.end.localeCompare(a.term.end) || byName(a, b))
     return ok({ role, sections: [...current, ...archived] })
+  }
+
+  /** Tareas con fecha de los cursos, por fecha. Que el aula no tenga tareas (o no
+      tenga el curso) no es un error; que no responda, sí. */
+  async function assignmentsOf(
+    courses: ClassroomCourse[],
+    at: string
+  ): Promise<Result<MyAssignment[], ExternalFailure>> {
+    if (!classroom.capabilities.hasAssignments) return ok([])
+    const found = await Promise.all(courses.map((c) => classroom.assignments(c.id)))
+    const lists: ClassroomAssignment[][] = []
+    for (const result of found) {
+      if (result.ok) lists.push(result.value)
+      else if (result.error === 'falla-externa') return fail('falla-externa')
+    }
+    return ok(
+      lists
+        .flat()
+        .flatMap((a) => (a.dueDate === null ? [] : [{ name: a.name, dueDate: a.dueDate }]))
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name, 'es'))
+        .map((a): MyAssignment => ({ ...a, source: 'moodle', past: a.dueDate < at }))
+    )
   }
 
   async function subjectsOf(personId: PersonId): Promise<Result<MySubjects, ReadError>> {
@@ -251,6 +300,15 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!mine.ok) return mine
     const courses = all(await Promise.all(mine.value.sections.map((p) => classroom.coursesForSection(p.section.id))))
     if (!courses.ok) return courses
+    const at = clock.now().toISOString()
+    const assignments = all(
+      await Promise.all(
+        mine.value.sections.map((p, i) =>
+          p.current ? assignmentsOf(courses.value[i], at) : Promise.resolve(ok<MyAssignment[]>([]))
+        )
+      )
+    )
+    if (!assignments.ok) return assignments
 
     const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
       const item: MySubject = {
@@ -263,13 +321,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
         sectionId: section.id,
         sectionName: section.name,
         role: mine.value.role,
-        classroomCourseIds: courses.value[i].map((c) => c.id),
+        classrooms: courses.value[i].map((c) => ({ courseId: c.id, name: c.fullName, url: classroom.courseUrl(c.id) })),
+        assignments: assignments.value[i]
       }
       return { item, current }
     })
     return ok({
       current: subjects.filter((s) => s.current).map((s) => s.item),
-      archived: subjects.filter((s) => !s.current).map((s) => s.item),
+      archived: subjects.filter((s) => !s.current).map((s) => s.item)
     })
   }
 
@@ -291,15 +350,17 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const teachers = all(await Promise.all(mine.value.sections.map((p) => teachersOf(p.section))))
     if (!teachers.ok) return teachers
 
-    return ok(mine.value.sections.map(({ section }, i) => ({
-      sectionId: section.id,
-      name: section.name,
-      subjectId: section.subjectId,
-      schoolId: section.schoolId,
-      termId: section.termId,
-      role: mine.value.role,
-      teachers: teachers.value[i],
-    })))
+    return ok(
+      mine.value.sections.map(({ section }, i) => ({
+        sectionId: section.id,
+        name: section.name,
+        subjectId: section.subjectId,
+        schoolId: section.schoolId,
+        termId: section.termId,
+        role: mine.value.role,
+        teachers: teachers.value[i]
+      }))
+    )
   }
 
   return {
@@ -311,6 +372,6 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     upcoming: notImplemented,
     openEnrollments: notImplemented,
     record: notImplemented,
-    certificate: notImplemented,
+    certificate: notImplemented
   }
 }

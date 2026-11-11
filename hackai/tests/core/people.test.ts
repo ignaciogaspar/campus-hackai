@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
+import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
@@ -17,7 +17,7 @@ function build(overrides: { siu?: Partial<SiuPort>; identity?: Partial<IdentityP
   return createPeople({
     identity,
     siu,
-    store: createMemoryPeopleStore(syntheticData),
+    store: createMemoryPeopleStore(syntheticData)
   })
 }
 
@@ -35,9 +35,9 @@ test('get devuelve rol, facultad y propuestas de la persona según el SIU', asyn
       school: { id: 'fi', name: 'Facultad de Ingeniería' },
       programs: [
         { id: 'iinf', name: 'Ingeniería en Informática', status: 'activa' },
-        { id: 'asp-fi', name: 'Aspirantes - fi', status: 'pasiva' },
-      ],
-    },
+        { id: 'asp-fi', name: 'Aspirantes - fi', status: 'pasiva' }
+      ]
+    }
   })
 
   const docente = await people.get('p-cbustos')
@@ -99,42 +99,60 @@ test('signIn con una persona elegida de la lista de demo devuelve quién entra',
 test('signIn con una credencial que la identidad no reconoce devuelve «credencial inválida»', async () => {
   const people = build()
 
-  assert.deepEqual(await people.signIn({ kind: 'demo', subject: 'demo:p-nadie' }), { ok: false, error: 'credencial-invalida' })
+  assert.deepEqual(await people.signIn({ kind: 'demo', subject: 'demo:p-nadie' }), {
+    ok: false,
+    error: 'credencial-invalida'
+  })
   // El selector de demo no sabe validar una cuenta de Microsoft.
   assert.deepEqual(
     await people.signIn({ kind: 'oidc', code: 'codigo', redirectUri: 'https://hackai.example/callback' }),
-    { ok: false, error: 'credencial-invalida' },
+    { ok: false, error: 'credencial-invalida' }
   )
 })
 
 test('signIn de un sujeto válido que no está vinculado a ninguna persona devuelve «persona desconocida»', async () => {
   const people = build({ identity: { verify: async () => ok(fantasma) } })
 
-  assert.deepEqual(await people.signIn({ kind: 'demo', subject: fantasma.subject }), { ok: false, error: 'persona-desconocida' })
+  assert.deepEqual(await people.signIn({ kind: 'demo', subject: fantasma.subject }), {
+    ok: false,
+    error: 'persona-desconocida'
+  })
 })
 
 test('signIn con la identidad o el SIU caídos devuelve «falla externa» como valor', async () => {
   const sinIdentidad = build({ identity: { verify: async () => fail('falla-externa') } })
-  assert.deepEqual(await sinIdentidad.signIn({ kind: 'demo', subject: 'demo:p-taguirre' }), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await sinIdentidad.signIn({ kind: 'demo', subject: 'demo:p-taguirre' }), {
+    ok: false,
+    error: 'falla-externa'
+  })
 
   const sinSiu = build({ siu: { person: async () => fail('falla-externa') } })
-  assert.deepEqual(await sinSiu.signIn({ kind: 'demo', subject: 'demo:p-taguirre' }), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await sinSiu.signIn({ kind: 'demo', subject: 'demo:p-taguirre' }), {
+    ok: false,
+    error: 'falla-externa'
+  })
 })
 
 test('demoPeople lista las personas sintéticas con su rol, facultad y propuestas', async () => {
   const listed = await build().demoPeople()
   assert.ok(listed.ok)
 
-  assert.deepEqual(listed.value.map((p) => p.id), syntheticData.people.map((p) => p.id))
+  assert.deepEqual(
+    listed.value.map((p) => p.id),
+    syntheticData.people.map((p) => p.id)
+  )
   assert.equal(listed.value.filter((p) => p.role === 'alumno').length, 10)
   assert.equal(listed.value.filter((p) => p.role === 'profesor').length, 5)
-  assert.deepEqual(listed.value.find((p) => p.id === 'p-agimenez'), {
-    id: 'p-agimenez',
-    name: 'Agustina Giménez',
-    role: 'alumno',
-    school: { id: 'fce', name: 'Facultad de Ciencias Empresariales' },
-    programs: [{ id: 'ladm', name: 'Licenciatura en Administración de Empresas', status: 'activa' }],
-  })
+  assert.deepEqual(
+    listed.value.find((p) => p.id === 'p-agimenez'),
+    {
+      id: 'p-agimenez',
+      name: 'Agustina Giménez',
+      role: 'alumno',
+      school: { id: 'fce', name: 'Facultad de Ciencias Empresariales' },
+      programs: [{ id: 'ladm', name: 'Licenciatura en Administración de Empresas', status: 'activa' }]
+    }
+  )
 })
 
 test('demoPeople deja afuera a los sujetos que no están vinculados a ninguna persona', async () => {
@@ -144,17 +162,22 @@ test('demoPeople deja afuera a los sujetos que no están vinculados a ninguna pe
       async demoSubjects() {
         const subjects = await identity.demoSubjects()
         return subjects.ok ? ok([fantasma, ...subjects.value]) : subjects
-      },
-    },
+      }
+    }
   })
 
   const listed = await people.demoPeople()
   assert.ok(listed.ok)
-  assert.deepEqual(listed.value.map((p) => p.id), syntheticData.people.map((p) => p.id))
+  assert.deepEqual(
+    listed.value.map((p) => p.id),
+    syntheticData.people.map((p) => p.id)
+  )
 })
 
 test('demoPeople con una identidad sin lista de demo devuelve «no soportado»', async () => {
-  const people = build({ identity: { capabilities: { demoList: false }, demoSubjects: async () => fail('no-soportado') } })
+  const people = build({
+    identity: { capabilities: { demoList: false }, demoSubjects: async () => fail('no-soportado') }
+  })
 
   assert.deepEqual(await people.demoPeople(), { ok: false, error: 'no-soportado' })
 })

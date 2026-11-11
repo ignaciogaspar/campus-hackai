@@ -4,6 +4,6 @@ import type { ClockPort } from '@/lib/ports/clock'
 export function createSystemClock(): ClockPort {
   return {
     capabilities: { fixed: false },
-    now: () => new Date(),
+    now: () => new Date()
   }
 }

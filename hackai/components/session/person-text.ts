@@ -16,5 +16,8 @@ export function firstName(person: Person): string {
 export function initials(person: Person): string {
   const words = person.name.trim().split(/\s+/)
   const letters = words.length > 1 ? [words[0], words[words.length - 1]] : words
-  return letters.map((w) => w.charAt(0)).join('').toUpperCase()
+  return letters
+    .map((w) => w.charAt(0))
+    .join('')
+    .toUpperCase()
 }

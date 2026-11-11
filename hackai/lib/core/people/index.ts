@@ -4,7 +4,7 @@
    nunca adivinan a quién corresponde un id: se lo preguntan a Personas. */
 import type { IdentityCredential, IdentityPort } from '@/lib/ports/identity'
 import type { SiuPort } from '@/lib/ports/siu'
-import { all, fail, ok, type ExternalFailure, type Result } from '@/lib/result'
+import { all, type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 
 /** Id de una persona en HackAI. No es el id de ningún sistema de origen. */
 export type PersonId = string
@@ -61,7 +61,10 @@ export type PeopleDeps = {
 }
 
 export function createPeople({ identity, siu, store }: PeopleDeps): People {
-  async function accountIn(personId: PersonId, system: ExternalSystem): Promise<Result<string, 'sin-cuenta' | PeopleError>> {
+  async function accountIn(
+    personId: PersonId,
+    system: ExternalSystem
+  ): Promise<Result<string, 'sin-cuenta' | PeopleError>> {
     const accounts = await store.accountsOf(personId)
     if (!accounts.ok) return accounts
     if (!accounts.value) return fail('persona-desconocida')
@@ -110,6 +113,6 @@ export function createPeople({ identity, siu, store }: PeopleDeps): People {
 
     async byExternalAccount(system, externalId) {
       return store.ownerOf(system, externalId)
-    },
+    }
   }
 }

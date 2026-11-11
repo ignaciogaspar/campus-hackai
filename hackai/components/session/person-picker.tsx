@@ -11,12 +11,14 @@ import { useState } from 'react'
 import { signInAsDemoPerson } from '@/app/actions/session'
 import { PersonRow } from '@/components/session/person-row'
 import { activeProgram } from '@/components/session/person-text'
+import { Card } from '@/components/ui/card'
+import { List } from '@/components/ui/list'
 import type { Person, Role } from '@/lib/core/people'
 import { cn } from '@/lib/utils'
 
 const GROUPS: { role: Role; title: string; wide: boolean }[] = [
   { role: 'alumno', title: 'Alumnos', wide: true },
-  { role: 'profesor', title: 'Docentes', wide: false },
+  { role: 'profesor', title: 'Docentes', wide: false }
 ]
 
 type School = Person['school'] & { members: Person[] }
@@ -33,35 +35,43 @@ function bySchool(people: Person[]): School[] {
 }
 
 export function PersonPicker({ people }: { people: Person[] }) {
-  const groups = GROUPS
-    .map((g) => ({ ...g, schools: bySchool(people.filter((p) => p.role === g.role)), count: people.filter((p) => p.role === g.role).length }))
-    .filter((g) => g.count)
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    schools: bySchool(people.filter((p) => p.role === g.role)),
+    count: people.filter((p) => p.role === g.role).length
+  })).filter((g) => g.count)
   const [shown, setShown] = useState<Role | undefined>(groups[0]?.role)
 
   return (
     <div className='flex flex-col gap-5 lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-6'>
       {groups.length > 1 && (
-        <div role='group' aria-label='Qué personas ver' className='flex gap-2 lg:hidden'>
+        <fieldset aria-label='Qué personas ver' className='flex gap-2 lg:hidden'>
           {groups.map(({ role, title, count }) => (
             <button
               key={role}
               type='button'
               aria-pressed={shown === role}
               onClick={() => setShown(role)}
-              className='inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-card px-4 text-[0.8125rem] font-semibold text-muted-foreground shadow-[0_1px_2px_rgba(11,17,80,.08)] outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-azul-claro focus-visible:ring-offset-2 aria-pressed:bg-azul aria-pressed:text-white'
+              className='inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-card px-4 text-[0.8125rem] font-semibold text-muted-foreground shadow-[0_1px_2px_rgb(11_17_80/0.08)] transition-colors duration-150 focus-ring aria-pressed:bg-blue aria-pressed:text-white'
             >
               {title}
-              <span className={cn('text-[11px] font-bold', shown === role ? 'text-header-sub' : 'text-gris-claro')}>{count}</span>
+              <span className={cn('text-[11px] font-bold', shown === role ? 'text-white/75' : 'text-gray-light')}>
+                {count}
+              </span>
             </button>
           ))}
-        </div>
+        </fieldset>
       )}
 
       {groups.map(({ role, title, wide, schools, count }) => (
         <section
           key={role}
           aria-labelledby={`grupo-${role}`}
-          className={cn('flex-col gap-4 lg:flex', shown === role ? 'flex' : 'hidden', wide ? 'lg:col-span-2' : 'lg:col-span-1')}
+          className={cn(
+            'flex-col gap-4 lg:flex',
+            shown === role ? 'flex' : 'hidden',
+            wide ? 'lg:col-span-2' : 'lg:col-span-1'
+          )}
         >
           <h2 id={`grupo-${role}`} className='sr-only text-lg leading-tight font-extrabold lg:not-sr-only'>
             {title} <span className='text-[0.8125rem] font-semibold text-muted-foreground'>{count}</span>
@@ -69,16 +79,20 @@ export function PersonPicker({ people }: { people: Person[] }) {
           <div className={cn('grid gap-5', wide && 'sm:grid-cols-2 sm:gap-x-6')}>
             {schools.map((school) => (
               <div key={school.id} className='flex flex-col gap-2'>
-                <h3 className='px-1 text-xs font-bold tracking-[.08em] text-muted-foreground uppercase lg:flex lg:min-h-8 lg:items-end'>{school.name}</h3>
-                <ul className='divide-y divide-border overflow-hidden rounded-card bg-card shadow-card'>
-                  {school.members.map((person) => (
-                    <li key={person.id}>
-                      <form action={signInAsDemoPerson.bind(null, person.id)}>
-                        <PersonRow person={person} detail={activeProgram(person)?.name} />
-                      </form>
-                    </li>
-                  ))}
-                </ul>
+                <h3 className='px-1 text-xs font-bold tracking-[.08em] text-muted-foreground uppercase lg:flex lg:min-h-8 lg:items-end'>
+                  {school.name}
+                </h3>
+                <Card>
+                  <List>
+                    {school.members.map((person) => (
+                      <li key={person.id}>
+                        <form action={signInAsDemoPerson.bind(null, person.id)}>
+                          <PersonRow person={person} detail={activeProgram(person)?.name} />
+                        </form>
+                      </li>
+                    ))}
+                  </List>
+                </Card>
               </div>
             ))}
           </div>

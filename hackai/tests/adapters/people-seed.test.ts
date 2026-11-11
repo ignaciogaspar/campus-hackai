@@ -14,11 +14,14 @@ test('cada persona del set queda vinculada con la identidad, el SIU y Moodle, y 
   const conDiscord = syntheticData.people.filter((p) => p.discordId).length
 
   assert.equal(rows.length, syntheticData.people.length * 3 + conDiscord)
-  assert.deepEqual(rows.filter((r) => r.person_id === 'p-cbustos'), [
-    { person_id: 'p-cbustos', system: 'identity', external_id: 'demo:p-cbustos' },
-    { person_id: 'p-cbustos', system: 'siu', external_id: '20103' },
-    { person_id: 'p-cbustos', system: 'moodle', external_id: '303' },
-  ])
+  assert.deepEqual(
+    rows.filter((r) => r.person_id === 'p-cbustos'),
+    [
+      { person_id: 'p-cbustos', system: 'identity', external_id: 'demo:p-cbustos' },
+      { person_id: 'p-cbustos', system: 'siu', external_id: '20103' },
+      { person_id: 'p-cbustos', system: 'moodle', external_id: '303' }
+    ]
+  )
 })
 
 test('el seed es idempotente: borra los vínculos de las personas del set y los carga de nuevo en una transacción', () => {

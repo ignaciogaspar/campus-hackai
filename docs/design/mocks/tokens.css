@@ -1,0 +1,105 @@
+/* Tokens de los mocks de HackAI. Única fuente de colores, tipografía, radios,
+   espaciado y movimiento de docs/design/. La explicación de cada valor está en
+   docs/design/direccion-de-diseno.md.
+
+   Dirección elegida: B, «Profundo» (equipo, 11/11/2026). La paleta sale de
+   hackai/app/globals.css (provisoria del ticket #8), completada con los tonos de
+   Campus Austral (campus/app/globals.css). */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Paleta de la Austral */
+  --azul: #1d21a9;
+  --azul-claro: #1f5cff;
+  --azul-hondo: #14178a;
+  --navy: #0b1150;
+  --cian: #3ff0ff;
+  --naranja: #ff7a1a;
+  --hielo: #eef0fb;
+  --tinta: #10142c;
+  --gris: #5f6474;
+  --gris-claro: #8a8fa0;
+  --borde: #e4e7f0;
+  --borde-fuerte: #c9cfe4;
+  --papel: #ffffff;
+
+  /* Estados */
+  --ok: #0f7b4a;
+  --ok-suave: #e3f5ec;
+  --alerta: #b45309;
+  --alerta-suave: #fff4e0;
+  --error: #b42318;
+  --error-suave: #fdecea;
+
+  /* Origen: solo en material, fechas y lo que abre otro sistema.
+     Texto oscuro sobre fondo suave: AA. */
+  --o-hackai: #1d21a9;
+  --o-hackai-bg: #e8e9fb;
+  --o-discord: #3b3fb8;
+  --o-discord-bg: #ecebff;
+  --o-moodle: #9a4a06;
+  --o-moodle-bg: #fff1e3;
+  --o-siu: #0f6a41;
+  --o-siu-bg: #e3f5ec;
+
+  /* Semánticos */
+  --bg: #f2f4fb;
+  --surface: var(--papel);
+  --surface-2: var(--hielo);
+  --text: var(--tinta);
+  --muted: var(--gris);
+  --line: var(--borde);
+  --primary: var(--azul);
+  --primary-ink: #fff;
+  --accent: var(--azul-claro);
+  --accent-soft: #e6edff;
+  --pronto: var(--naranja);
+
+  --header-bg: var(--navy);
+  --header-ink: #fff;
+  --header-sub: #c4c9f2;
+  --header-radius: 0 0 28px 28px;
+
+  --tabbar-bg: var(--papel);
+  --tabbar-active: var(--azul-claro);
+
+  --card-bg: var(--papel);
+  --card-shadow: 0 1px 2px rgba(11, 17, 80, .06), 0 6px 18px rgba(11, 17, 80, .08);
+
+  /* Tipografía */
+  --font-head: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.9375rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.875rem;
+  --fw-head: 800;
+
+  /* Radios */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+
+  /* Espaciado (base 4) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --row-pad: 14px;
+  --gutter: 16px;
+
+  /* Movimiento: firma = el contador de no leídos entra con un pulso corto */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --t-fast: 120ms;
+  --t-med: 220ms;
+
+  /* Foco visible en todo control */
+  --focus: 0 0 0 3px #fff, 0 0 0 5px var(--azul-claro);
+}

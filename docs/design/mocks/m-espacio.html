@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1150">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Espacio de la materia · HackAI</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="ui.css">
+<script src="data.js"></script>
+<script src="app.js"></script>
+</head>
+<body data-active="materias" data-back="m-materias.html" data-kicker="Facultad de Ingeniería" data-title="Análisis Matemático I" data-materia="AM1" data-back-compu="oculto" class="con-composer">
+<main id="page"></main>
+<script>
+/* Espacio de la materia (ticket #12). Todo a un toque: pestañas arriba en vez
+   de una lista larga de canales. ?tab=avisos | consultas | material | directos,
+   ?orden=unidad | semana | todo (material), ?rol=docente, ?estado=vacio | desactualizado */
+window.extra = function (P) {
+  const E = window.HK.espacio
+  const { icon } = UI
+  return P.rol === 'docente'
+    ? `<span class="chip chip-onheader">Docente · Comisión ${E.comision}</span>
+       <a class="chip chip-onheader" href="#" style="text-decoration:none">${icon('sync', 'icon-sm')} ${E.canalExterno}</a>`
+    : `<span class="chip chip-onheader">Comisión ${E.comision} · ${E.docente}</span>`
+}
+
+window.render = function (P) {
+  const { icon, origen } = UI
+  const H = window.HK
+  const E = H.espacio
+  const docente = P.rol === 'docente'
+  const tab = P.get('tab', 'avisos')
+  const orden = P.get('orden', 'unidad')
+  const vacio = P.estado === 'vacio'
+
+  const persona = (m) => `<span class="avatar ${m.docente ? 'docente' : m.externo ? 'externo' : ''}">${m.iniciales}</span>`
+  const cabeza = (m) => `
+    <span class="msg-head"><b>${m.autor}</b>${m.docente ? '<span class="chip">Docente</span>' : ''}${m.externo ? '<span class="xs muted">sin cuenta vinculada</span>' : ''}<span class="xs muted">${m.hace}</span></span>`
+  const composer = (placeholder, id) => `
+    <div class="composer">
+      <form class="composer-box" onsubmit="return false">
+        <button class="icon-btn" type="button" aria-label="Adjuntar archivo">${icon('clip')}</button>
+        <label class="sr" for="${id}">${placeholder}</label>
+        <input id="${id}" placeholder="${placeholder}">
+        <button class="btn btn-primary btn-sm" type="submit" aria-label="Enviar">${icon('send', 'icon-sm')}</button>
+      </form>
+    </div>`
+
+  /* Avisos */
+  const avisos = `
+    ${vacio ? `<div class="empty">${icon('megaphone')}<strong>Todavía no hay avisos</strong>${docente ? 'Lo que publiques acá les llega a los alumnos de la Comisión A.' : 'Cuando la docente publique un aviso, te llega acá y te avisamos.'}</div>` : `
+    <div class="msgs">${H.avisos.map((m) => `
+      <article class="card msg">
+        ${persona(m)}
+        <div class="msg-body">
+          ${cabeza(m)}
+          ${m.titulo ? `<strong>${m.titulo}</strong>` : ''}
+          <p>${m.texto}</p>
+          ${m.adjunto ? `<a class="adjunto" href="#">${icon('clip', 'icon-sm')} ${m.adjunto}</a>` : ''}
+        </div>
+        ${m.nuevo ? '<span class="unread-dot" aria-label="Sin leer"></span>' : ''}
+      </article>`).join('')}</div>`}
+    ${docente ? composer('Escribí un aviso para la Comisión A', 'in-avisos')
+      : `<div class="composer"><div class="composer-cerrado">${icon('lock', 'icon-sm')} Solo los docentes publican avisos. Si tenés una duda, usá Consultas.</div></div>`}`
+
+  /* Consultas */
+  const abiertas = H.consultas.filter((c) => !c.resuelta).length
+  const consultas = `
+    ${vacio ? `<div class="empty">${icon('chat')}<strong>Nadie preguntó todavía</strong>Si tenés una duda, escribila abajo: la ven todos los de la Comisión A y la docente responde acá.</div>` : `
+    <div class="filtros scroll-x" role="group" aria-label="Filtrar consultas">
+      <button type="button" aria-pressed="true">Todas</button><button type="button" aria-pressed="false">Abiertas (${abiertas})</button><button type="button" aria-pressed="false">Resueltas (${H.consultas.length - abiertas})</button>
+    </div>
+    <div class="msgs">${H.consultas.map((m) => `
+      <article class="card msg">
+        ${persona(m)}
+        <div class="msg-body">
+          ${cabeza(m)}
+          <p>${m.texto}</p>
+          ${m.respuesta ? `<div class="respuesta">${persona(m.respuesta)}<div class="msg-body">${cabeza(m.respuesta)}<p class="small">${m.respuesta.texto}</p></div></div>` : ''}
+          <div class="hilo-meta">
+            ${m.resuelta ? `<span class="chip chip-ok">${icon('check', 'icon-sm')} Resuelta</span>` : '<span class="chip chip-alerta">Sin respuesta</span>'}
+            <a class="link" href="#">${m.respuesta ? 'Ver hilo (1)' : 'Responder'}</a>
+            ${docente && !m.resuelta ? `<button class="btn btn-sm" type="button">${icon('check', 'icon-sm')} Marcar resuelta</button>` : ''}
+          </div>
+        </div>
+      </article>`).join('')}</div>`}
+    ${composer(docente ? 'Escribí en Consultas' : 'Escribí tu consulta', 'in-consultas')}`
+
+  /* Material, agrupado como lo organiza la docente */
+  const grupos = orden === 'todo'
+    ? [{ nombre: 'Todo el material', abierta: true, items: E.material.semana.flatMap((g) => g.items) }]
+    : E.material[orden]
+  const archivo = (m) => `
+    <li><a class="archivo" href="#">
+      <span class="archivo-ext ${m.ext === 'LINK' ? 'link' : ''}">${m.ext}</span>
+      <span class="row-body"><span class="row-title">${m.nombre}</span><span class="row-meta">${origen(m.origen)}<span>${m.meta}</span></span></span>
+      ${m.nuevo ? '<span class="chip chip-pronto">Nuevo</span>' : ''}
+    </a></li>`
+  const material = `
+    ${docente ? `
+      <div class="stack">
+        <div class="panel-head"><p>Organizar el material por</p></div>
+        <nav class="segmentado" aria-label="Organizar el material">
+          ${[['unidad', 'Unidad'], ['semana', 'Semana'], ['todo', 'Sin secciones']].map(([id, t]) => `<a href="m-espacio.html?tab=material&orden=${id}" aria-current="${orden === id}">${t}</a>`).join('')}
+        </nav>
+        <button class="btn btn-primary btn-block" type="button">${icon('upload')} Subir material</button>
+      </div>` : ''}
+    ${vacio ? `<div class="empty">${icon('file')}<strong>Todavía no hay material</strong>Cuando la cátedra suba algo acá, en Moodle o en Discord, aparece en esta lista con su origen.</div>` : `
+    <div class="stack">${grupos.map((g) => `
+      <details class="card seccion-mat" ${g.abierta ? 'open' : ''}>
+        <summary>${icon('chevron', 'icon-sm')} ${g.nombre}<span class="xs muted">${g.items.length} ${g.items.length === 1 ? 'archivo' : 'archivos'}</span></summary>
+        <ul class="list">${g.items.map(archivo).join('')}</ul>
+      </details>`).join('')}
+    </div>
+    <p class="sec-note">Junta lo que se sube en HackAI, en el aula de Moodle y en el Discord de la cátedra.</p>`}`
+
+  /* Mensajes directos: solo entre alumno y docente */
+  const directos = `
+    <ul class="card list">${H.directos[docente ? 'docente' : 'alumno'].map((d) => `
+      <li><a class="canal" href="#">${persona(d)}
+        <span class="row-body"><span class="canal-name">${d.nombre}</span><span class="xs muted">${d.rol} · ${d.ultimo}</span></span>
+        <span class="row-end"><span class="xs muted">${d.hace}</span>${d.noLeido ? '<span class="unread-dot" aria-label="Sin leer"></span>' : ''}</span></a></li>`).join('')}
+    </ul>
+    <p class="sec-note">${docente ? 'Tus alumnos de la Comisión A te pueden escribir en privado.' : 'Podés escribirle en privado a los docentes de tu comisión.'}</p>`
+
+  const generales = `
+    <div class="empty">${icon('chat')}<strong>Consultas de toda la materia</strong>Acá preguntan alumnos de las dos comisiones de Ingeniería. Todavía no hay mensajes.</div>
+    ${composer('Escribí en #consultas-generales', 'in-generales')}`
+
+  /* Solo en compu: panel de contexto a la derecha, como el de detalles de Slack */
+  const C = H.contexto
+  const contexto = `
+    <aside class="contexto solo-compu" aria-label="Sobre la materia">
+      <section class="card">
+        <h2 class="ctx-title">Próximo en la materia</h2>
+        <ul class="fechas">${C.fechas.map((f) => `
+          <li><a class="fecha ${f.origen === 'moodle' ? 'complemento' : ''}" href="#">
+            <div class="dia"><span class="dow">${f.dow}</span><span class="num">${f.num}</span><span class="mes">${f.mes}</span></div>
+            <div class="fecha-body"><span class="fecha-title">${f.titulo}</span><span class="xs muted">${f.meta}</span></div>
+            ${origen(f.origen)}
+          </a></li>`).join('')}</ul>
+      </section>
+      <section class="card">
+        <h2 class="ctx-title">Material reciente</h2>
+        <ul class="list">${C.material.map((m) => `
+          <li><a class="archivo" href="#"><span class="archivo-ext">${m.ext}</span>
+            <span class="row-body"><span class="row-title small">${m.nombre}</span><span class="row-meta">${origen(m.origen)}<span>${m.meta}</span></span></span></a></li>`).join('')}</ul>
+      </section>
+      <section class="card">
+        <h2 class="ctx-title">Docentes de tu comisión</h2>
+        <ul class="list">${C.docentes.map((d) => `
+          <li><div class="canal"><span class="avatar docente">${d.iniciales}</span>
+            <span class="row-body"><span class="canal-name small">${d.nombre}</span><span class="xs muted">${d.rol}</span><span class="xs muted">${d.horario}</span></span>
+            ${docente ? '' : `<a class="icon-btn" href="m-espacio.html?tab=directos" aria-label="Escribirle a ${d.nombre}">${icon('chat')}</a>`}</div></li>`).join('')}</ul>
+      </section>
+    </aside>`
+
+  const paneles = { avisos, consultas, material, directos, 'consultas-generales': generales }
+  const desact = P.estado === 'desactualizado' ? `
+    <div class="note" role="status">${icon('warn')}<div><b>Discord no responde.</b> Lo que se publique en el servidor de la cátedra va a aparecer acá cuando vuelva. Lo último que trajimos es de hoy a las 11:40.</div></div>` : ''
+
+  return `<div class="espacio-grid">
+    <div class="canal-tabs scroll-x" role="tablist" aria-label="Canales del espacio">
+      ${E.pestanas.map((t) => `<button class="canal-tab" role="tab" id="tb-${t.id}" aria-controls="p-${t.id}" aria-selected="${t.id === tab}" type="button">${t.nombre}${t.noLeidos && !vacio ? `<span class="count" aria-label="${t.noLeidos} sin leer">${t.noLeidos}</span>` : ''}</button>`).join('')}
+      ${docente ? `<button class="canal-tab mas" type="button">${icon('plus', 'icon-sm')} Canal</button>` : ''}
+    </div>
+    ${desact}
+    ${E.pestanas.map((t) => `<div class="stack" id="p-${t.id}" role="tabpanel" aria-labelledby="tb-${t.id}" data-panel ${t.id === tab ? '' : 'hidden'}>${paneles[t.id]}</div>`).join('')}
+    ${contexto}</div>`
+}
+</script>
+</body>
+</html>

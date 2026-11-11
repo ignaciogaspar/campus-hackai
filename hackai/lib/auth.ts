@@ -2,16 +2,16 @@
    (app/actions/session.ts) cuando Personas dice quién entra, y getSession()
    solo verifica la firma: no consulta ningún sistema. */
 import 'server-only'
-import { cache } from 'react'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { cache } from 'react'
 import {
+  createSessionToken,
+  type Role,
   SESSION_COOKIE,
   SESSION_MAX_AGE,
-  createSessionToken,
-  verifySessionToken,
-  type Role,
   type Session,
+  verifySessionToken
 } from '@/lib/session-token'
 
 export type { Role, Session }
@@ -45,7 +45,7 @@ export async function startSession(session: Session): Promise<void> {
     sameSite: 'lax',
     secure: incoming.get('x-forwarded-proto')?.split(',')[0].trim() === 'https',
     path: '/',
-    maxAge: SESSION_MAX_AGE,
+    maxAge: SESSION_MAX_AGE
   })
 }
 

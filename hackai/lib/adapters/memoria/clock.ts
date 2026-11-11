@@ -6,6 +6,6 @@ export function createFixedClock(now: string): ClockPort {
   const fixed = new Date(now)
   return {
     capabilities: { fixed: true },
-    now: () => new Date(fixed),
+    now: () => new Date(fixed)
   }
 }
