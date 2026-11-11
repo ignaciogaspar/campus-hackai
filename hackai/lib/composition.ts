@@ -164,11 +164,15 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   return { adapters, ports, people, studies, spaces, today }
 }
 
-let current: System | null = null
+/** Guardado en `globalThis` porque Next.js empaqueta las páginas y las server
+    actions en capas distintas, cada una con su copia de este módulo: con una
+    variable de módulo, lo que una acción inscribe en memoria no lo vería la
+    página. */
+const holder = globalThis as typeof globalThis & { __hackaiSystem?: System }
 
 /** El sistema de la app, armado una vez por proceso con `process.env`. Los
     adaptadores en memoria guardan su estado mientras viva el proceso. */
 export function system(): System {
-  if (!current) current = compose(process.env)
-  return current
+  holder.__hackaiSystem ??= compose(process.env)
+  return holder.__hackaiSystem
 }

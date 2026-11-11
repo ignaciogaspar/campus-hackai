@@ -1,6 +1,6 @@
 /* Días de calendario en la hora de la Austral. Las fechas viajan en ISO 8601
    (UTC); para saber qué día es algo (hoy, mañana, esta semana) se miran en
-   Buenos Aires. Cómo se muestran está en lib/format-dates.ts. */
+   Buenos Aires. Cómo se muestran está en components/dates.ts. */
 
 export const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 

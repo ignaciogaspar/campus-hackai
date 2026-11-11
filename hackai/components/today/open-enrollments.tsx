@@ -2,12 +2,12 @@
    primero. Cuáles le sirven, y si a un final le falta la regularidad, lo decide
    Cursada; acá solo se muestran. */
 import { CalendarClock, CalendarX } from 'lucide-react'
+import { shortDate } from '@/components/dates'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
 import type { OpenEnrollment } from '@/lib/core/studies'
-import { shortDate } from '@/lib/format-dates'
 
 const TITLE: Record<OpenEnrollment['kind'], string> = {
   cursada: 'Cursada de',

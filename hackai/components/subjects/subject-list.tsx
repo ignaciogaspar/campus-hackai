@@ -1,10 +1,11 @@
 /* Lista de materias de la pantalla Mis materias: las actuales arriba y las
-   archivadas plegadas aparte. Cada una con el enlace a su aula de Moodle y, las
+   archivadas plegadas aparte. En el celular, una columna; en compu, un mosaico
+   de hasta 3 columnas, para que las tareas se lean sin cortarse. Cada una con el enlace a su aula de Moodle y, las
    actuales, sus tareas con fecha. Solo muestra lo que le da Cursada. */
 import { ExternalLink } from 'lucide-react'
+import { dueTime } from '@/components/dates'
 import { buttonVariants } from '@/components/ui/button'
 import type { MyAssignment, MyClassroom, MySubject } from '@/lib/core/studies'
-import { dueTime } from '@/lib/format-dates'
 import { cn } from '@/lib/utils'
 
 function ClassroomLinks({ classrooms }: { classrooms: MyClassroom[] }) {
@@ -59,7 +60,7 @@ function Assignments({ assignments }: { assignments: MyAssignment[] }) {
 
 function SubjectCard({ subject, archived = false }: { subject: MySubject; archived?: boolean }) {
   return (
-    <li className={cn('rounded-xl border border-border bg-card p-4 shadow-xs', archived && 'bg-muted/60 shadow-none')}>
+    <li className={cn('rounded-[22px] bg-card p-4 shadow-card', archived && 'bg-muted/60 shadow-none')}>
       <p className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>{subject.code}</p>
       <h3
         className={cn(
@@ -83,16 +84,11 @@ function SubjectCard({ subject, archived = false }: { subject: MySubject; archiv
   )
 }
 
+const MOSAIC = 'grid gap-3 lg:grid-cols-2 lg:items-start xl:grid-cols-3'
+
 export function CurrentSubjects({ subjects }: { subjects: MySubject[] }) {
-  if (!subjects.length) {
-    return (
-      <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
-        No tenés materias en curso ni del próximo período.
-      </p>
-    )
-  }
   return (
-    <ul className='flex flex-col gap-3'>
+    <ul className={MOSAIC}>
       {subjects.map((s) => (
         <SubjectCard key={s.sectionId} subject={s} />
       ))}
@@ -103,14 +99,14 @@ export function CurrentSubjects({ subjects }: { subjects: MySubject[] }) {
 export function ArchivedSubjects({ subjects }: { subjects: MySubject[] }) {
   if (!subjects.length) return null
   return (
-    <details className='group rounded-xl border border-border bg-background'>
+    <details className='group rounded-[22px] bg-card shadow-card'>
       <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden'>
         <span>Archivadas ({subjects.length})</span>
         <span aria-hidden className='text-muted-foreground transition-transform group-open:rotate-180'>
           ▾
         </span>
       </summary>
-      <ul className='flex flex-col gap-3 px-4 pb-4'>
+      <ul className={cn(MOSAIC, 'px-4 pb-4')}>
         {subjects.map((s) => (
           <SubjectCard key={s.sectionId} subject={s} archived />
         ))}

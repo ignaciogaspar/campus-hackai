@@ -111,11 +111,12 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 
 ### 16. ¿Qué inscripciones abiertas «le sirven» al alumno en Hoy?
 
-- **Por qué importa:** Hoy muestra las inscripciones que cierran pronto (#18). Si muestra de más, es ruido; si muestra de menos, el alumno se pierde una mesa o una cursada.
-- **Hipótesis:** así lo implementa Cursada desde el issue #18 (`openEnrollments`), siempre de su facultad, con la inscripción abierta y con cupo, una por materia y las que cierran antes primero:
-  - cursada: materias que no está cursando, no tiene regulares ni aprobó;
-  - examen: materias que no aprobó y tiene regulares o está cursando (puede regularizar antes de la mesa), si no está inscripto ya a una mesa de esa materia.
-- **Opciones:** como está; solo mesas de materias ya regulares (sin las que está cursando); sumar correlatividades cuando el SIU las exponga.
+- **Por qué importa:** Hoy muestra las inscripciones que cierran pronto (#18) y la pantalla Inscripciones lista las materias a las que se puede inscribir (#17). Las dos leen `openEnrollments`. Si muestra de más, es ruido; si muestra de menos, el alumno se pierde una mesa o una cursada.
+- **Hipótesis:** así lo implementa Cursada desde los issues #17 y #18 (`openEnrollments`), siempre de su facultad, con la inscripción abierta, una por materia y las que cierran antes primero:
+  - cursada: materias que no cursa en ninguna facultad (una sola comisión vigente por materia, como en la inscripción), no tiene regulares ni aprobó;
+  - examen: materias que no aprobó y tiene regulares o está cursando (puede regularizar antes de la mesa, y entonces se avisa), si no está inscripto ya a una mesa de esa materia.
+  - Salen tengan o no cupo: la oferta muestra cuántos lugares quedan, así que una materia llena llega a «sin cupo» en vez de desaparecer. Inscripciones muestra solo las de cursada hasta la inscripción a finales (#20).
+- **Opciones:** como está; ocultar las que no tienen cupo en Hoy; solo mesas de materias ya regulares (sin las que está cursando); sumar correlatividades cuando el SIU las exponga.
 - **Estado:** abierta
 - **Decisión:** pendiente
 

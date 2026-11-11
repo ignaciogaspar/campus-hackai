@@ -12,6 +12,7 @@
    Personas y Hoy. */
 import { CalendarDays } from 'lucide-react'
 import type { Metadata } from 'next'
+import { longDay } from '@/components/dates'
 import { activeProgram, firstName } from '@/components/session/person-text'
 import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'
@@ -23,7 +24,6 @@ import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { PeopleError, Person } from '@/lib/core/people'
 import type { TodayView } from '@/lib/core/today'
-import { longDay } from '@/lib/format-dates'
 
 export const metadata: Metadata = { title: 'Hoy · Campus HackAI' }
 

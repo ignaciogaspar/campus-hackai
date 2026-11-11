@@ -7,6 +7,7 @@
    inscripciones y el acceso a Mis materias. En compu, a la izquierda el
    calendario de esta semana y la próxima, y a la derecha lo demás. */
 import type { ReactNode } from 'react'
+import { longDay, timeOf } from '@/components/dates'
 import { SubjectsShortcut } from '@/components/subjects/subjects-shortcut'
 import { agendaOf, calendarOf } from '@/components/today/agenda'
 import { OpenEnrollmentList } from '@/components/today/open-enrollments'
@@ -16,7 +17,6 @@ import { NextExamCard } from '@/components/ui/next-exam-card'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
 import type { NextExam, TodayView } from '@/lib/core/today'
-import { longDay, timeOf } from '@/lib/format-dates'
 import { cn } from '@/lib/utils'
 
 const UPCOMING_DOWN = 'No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.'

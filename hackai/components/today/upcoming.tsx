@@ -3,6 +3,7 @@
    compu, el calendario de esta semana y la próxima. Solo muestra lo que da Hoy. */
 import { CalendarCheck, ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { dayParts, longDay, shortDate, shortDay, timeOf } from '@/components/dates'
 import type { Agenda, Calendar } from '@/components/today/agenda'
 import { CalendarDay } from '@/components/ui/calendar-day'
 import { Card } from '@/components/ui/card'
@@ -10,7 +11,6 @@ import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
 import type { UpcomingItem } from '@/lib/core/studies'
-import { dayParts, longDay, shortDate, shortDay, timeOf } from '@/lib/format-dates'
 import { cn } from '@/lib/utils'
 
 /** Cuántas fechas se ven en el celular antes de «Ver más». */
