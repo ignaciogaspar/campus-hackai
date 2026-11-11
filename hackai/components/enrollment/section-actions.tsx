@@ -9,6 +9,7 @@ import { useActionState, useState } from 'react'
 import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { ErrorNotice } from '@/components/ui/states'
+import type { OfferItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 const INITIAL: EnrollmentState = { kind: 'inicial' }
@@ -25,7 +26,7 @@ function Outcome({ state }: { state: EnrollmentState }) {
             <b>Listo, quedaste inscripto.</b>{' '}
             {state.inClassroom
               ? 'Ya estás en el SIU y en el aula del Campus Virtual.'
-              : 'Ya estás en el SIU. Esta comisión todavía no tiene aula en el Campus Virtual.'}
+              : 'Ya estás en el SIU. Al aula del Campus Virtual todavía no te pudimos sumar desde HackAI.'}
           </p>
           <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {state.transactionNumber}</p>
           <Link
@@ -80,15 +81,13 @@ function Outcome({ state }: { state: EnrollmentState }) {
   return null
 }
 
+/** Lo que la oferta dice de la comisión para esta persona. */
+type SectionStatus = Pick<OfferItem, 'alreadyEnrolled' | 'enrollmentOpen' | 'enrolledElsewhere'>
+
 type Props = {
   sectionId: string
   label: string
-  /** Ya está inscripto en la comisión. */
-  enrolled: boolean
-  /** La inscripción está abierta. */
-  open: boolean
-  /** Otra comisión de la materia en la que ya está inscripto: no se puede inscribir en esta. */
-  enrolledElsewhere: string | null
+  status: SectionStatus
   /** Las server actions llegan desde la página del servidor: importadas acá
       quedarían en otra capa del bundle, con otra copia del sistema en memoria. */
   enrollAction: EnrollmentAction
@@ -96,23 +95,16 @@ type Props = {
 }
 
 /** Los dos estados viven acá porque, al inscribirse, la página se vuelve a
-    cargar con `enrolled` y el comprobante no se tiene que perder. */
-export function SectionActions({
-  sectionId,
-  label,
-  enrolled,
-  open,
-  enrolledElsewhere,
-  enrollAction,
-  dropAction
-}: Props) {
+    cargar con `alreadyEnrolled` y el comprobante no se tiene que perder. */
+export function SectionActions({ sectionId, label, status, enrollAction, dropAction }: Props) {
+  const { alreadyEnrolled: enrolled, enrollmentOpen: open, enrolledElsewhere } = status
   const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL)
   const [dropState, drop, dropping] = useActionState(dropAction, INITIAL)
   const [confirming, setConfirming] = useState(false)
-  const [lastAction, setLastAction] = useState<'enroll' | 'drop' | null>(null)
+  const [lastAction, setLastAction] = useState<EnrollmentStep | null>(null)
   if (!open) return null
 
-  const visibleOutcome = lastAction === 'drop' ? dropState : lastAction === 'enroll' ? enrollState : INITIAL
+  const visibleOutcome = lastAction === 'baja' ? dropState : lastAction === 'inscripcion' ? enrollState : INITIAL
 
   return (
     <div className='flex flex-col gap-3'>
@@ -123,7 +115,7 @@ export function SectionActions({
       )}
 
       {!enrolled && !enrolledElsewhere && (
-        <form action={enroll} onSubmit={() => setLastAction('enroll')}>
+        <form action={enroll} onSubmit={() => setLastAction('inscripcion')}>
           <input type='hidden' name='sectionId' value={sectionId} />
           <Button type='submit' size='lg' disabled={enrolling} className='min-h-11 w-full sm:w-auto'>
             {enrolling ? 'Inscribiéndote…' : 'Inscribirme'}
@@ -139,7 +131,7 @@ export function SectionActions({
           <form
             action={drop}
             onSubmit={() => {
-              setLastAction('drop')
+              setLastAction('baja')
               setConfirming(false)
             }}
             className='flex flex-col gap-2 rounded-lg border border-border p-3'

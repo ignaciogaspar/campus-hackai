@@ -2,14 +2,15 @@
    docentes, y el botón para inscribirse en un paso o darse de baja. Qué
    comisiones se ofrecen, si la inscripción está abierta y si ya está
    inscripto lo decide Cursada. */
-import { ArrowLeft, CalendarClock, MapPin, UserRound, Users } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CalendarX, MapPin, UserRound, Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
-import { capacityText, modalityName, scheduleLine, shortDate } from '@/components/enrollment/format'
+import { shortDate } from '@/components/dates'
+import { capacityText, modalityName, scheduleLine } from '@/components/enrollment/format'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { SectionActions } from '@/components/enrollment/section-actions'
-import { ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { OfferItem } from '@/lib/core/studies'
@@ -96,9 +97,7 @@ function SectionCard({ item }: { item: OfferItem }) {
       <SectionActions
         sectionId={item.target.sectionId}
         label={label}
-        enrolled={item.alreadyEnrolled}
-        open={item.enrollmentOpen}
-        enrolledElsewhere={item.enrolledElsewhere}
+        status={item}
         enrollAction={enrollAction}
         dropAction={dropAction}
       />
@@ -134,9 +133,9 @@ export default async function OfertaPage({ params }: { params: Promise<{ materia
       {!result.ok ? (
         <ErrorNotice>{readErrorText(result.error, 'las comisiones')}</ErrorNotice>
       ) : result.value.length === 0 ? (
-        <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
+        <EmptyState icon={CalendarX} title='Sin comisiones'>
           Esta materia no tiene comisiones abiertas en tu facultad.
-        </p>
+        </EmptyState>
       ) : (
         <ul className='flex flex-col gap-3'>
           {result.value.map((item) => (

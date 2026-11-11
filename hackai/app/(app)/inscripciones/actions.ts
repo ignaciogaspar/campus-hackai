@@ -3,20 +3,21 @@
    lo que devuelve Cursada a un estado que la pantalla sabe mostrar: las reglas
    (todo o nada, cupo, período, autogestión) son de Cursada. */
 import { revalidatePath } from 'next/cache'
+import { UNKNOWN_PERSON_TEXT } from '@/components/enrollment/read-error'
 import type { EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { DropError, DropOutcome, EnrollError, EnrollOutcome } from '@/lib/core/studies'
 import type { Result } from '@/lib/result'
 
-type Common = 'objetivo-desconocido' | 'persona-desconocida'
+type CommonError = 'objetivo-desconocido' | 'persona-desconocida'
 
-const COMMON_ERRORS: Record<Common, string> = {
+const COMMON_ERRORS: Record<CommonError, string> = {
   'objetivo-desconocido': 'No encontramos esta comisión en el SIU.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU.'
+  'persona-desconocida': UNKNOWN_PERSON_TEXT
 }
 
-const ENROLL_ERRORS: Record<EnrollError | Common | 'no-implementado', string> = {
+const ENROLL_ERRORS: Record<EnrollError | CommonError | 'no-implementado', string> = {
   ...COMMON_ERRORS,
   'sin-cupo': 'La comisión se quedó sin cupo. Probá con otra comisión.',
   'fuera-de-periodo': 'La inscripción a esta comisión no está abierta.',
@@ -30,7 +31,7 @@ const ENROLL_ERRORS: Record<EnrollError | Common | 'no-implementado', string> = 
   'no-implementado': 'Todavía no podemos inscribirte desde HackAI.'
 }
 
-const DROP_ERRORS: Record<DropError | Common | 'no-implementado', string> = {
+const DROP_ERRORS: Record<DropError | CommonError | 'no-implementado', string> = {
   ...COMMON_ERRORS,
   'no-inscripto': 'No estás inscripto en esta comisión.',
   'fuera-de-periodo': 'Ya no te podés dar de baja: el período de inscripción cerró.',
@@ -59,10 +60,13 @@ async function runSectionAction<E extends string, O extends Outcome>(
   if (typeof sectionId !== 'string' || !sectionId) return { kind: 'error', message: errors['objetivo-desconocido'] }
 
   const result = await call(session.personId, sectionId)
+  // Algo cambió en el SIU también si quedó a medias: la pantalla tiene que verlo.
+  if (result.ok || result.error === 'a-medias') {
+    revalidatePath('/inscripciones', 'layout')
+    revalidatePath('/materias')
+  }
   if (!result.ok) return { kind: 'error', message: errors[result.error] }
   if (result.value.kind === 'requiere-autogestion') return { kind: 'requiere-autogestion', url: result.value.url, step }
-  revalidatePath('/inscripciones', 'layout')
-  revalidatePath('/materias')
   return done(result.value as Exclude<O, { kind: 'requiere-autogestion' }>)
 }
 

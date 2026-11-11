@@ -982,3 +982,91 @@ test('la oferta marca la comisión vigente de la materia aunque sea de otra facu
     error: 'ya-inscripto'
   })
 })
+
+test('la oferta de mesas trae las de su facultad que no se tomaron, por fecha, con cupo y si ya está inscripto', async () => {
+  const data = structuredClone(syntheticData)
+  const december = data.siu.examBoards.find((b) => b.id === 'mesa-aga-fi-dic')!
+  data.siu.examBoards.push(
+    { ...december, id: 'mesa-aga-fi-feb', date: '2027-02-15T12:00:00.000Z', examPeriod: 'Turno Febrero 2027' },
+    { ...december, id: 'mesa-aga-fi-jul', date: '2026-07-20T12:00:00.000Z', examPeriod: 'Turno Julio 2026' }
+  )
+  const { studies } = build(data)
+
+  const result = await studies.offer('p-taguirre', { kind: 'examen', subjectId: 'aga' })
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.map((o) => [o.target, o.period, o.date, o.spotsLeft, o.alreadyEnrolled, o.enrolledElsewhere]),
+    [
+      [{ kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }, 'Turno Diciembre 2026', december.date, 1, true, null],
+      [
+        { kind: 'mesa', examBoardId: 'mesa-aga-fi-feb' },
+        'Turno Febrero 2027',
+        '2027-02-15T12:00:00.000Z',
+        2,
+        false,
+        null
+      ]
+    ]
+  )
+  assert.deepEqual(
+    result.value[0].teachers.map((t) => t.name),
+    ['Mariana Ledesma', 'Gustavo Ferreyra']
+  )
+})
+
+test('darse de baja de una mesa da de baja en el SIU sin tocar el aula', async () => {
+  let unenrols = 0
+  const { studies, siu } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: {
+        unenrol: async () => {
+          unenrols++
+          return fail('falla-externa')
+        }
+      }
+    }
+  )
+
+  const result = await studies.drop('p-taguirre', { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' })
+
+  assert.ok(result.ok && result.value.kind === 'baja')
+  const exams = await siu.examEnrollments('30101')
+  assert.ok(exams.ok)
+  assert.deepEqual(exams.value, [])
+  assert.equal(unenrols, 0)
+})
+
+test('si el aula no deja matricular por API, inscribe en el SIU y no dice que quedó en el aula', async () => {
+  const { studies, classroom } = build(syntheticData, { capabilities: { canEnrol: false } })
+
+  const result = await studies.enroll('p-vfunes', PR1_VERANO)
+
+  assert.ok(result.ok && result.value.kind === 'inscripto')
+  assert.deepEqual(result.value.classroomCourseIds, [])
+  assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), VALENTINA_COURSES)
+})
+
+test('fuera de período la baja vuelve como error antes de tocar el aula', async () => {
+  let unenrols = 0
+  const { studies } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: {
+        unenrol: async () => {
+          unenrols++
+          return fail('falla-externa')
+        }
+      }
+    }
+  )
+
+  assert.deepEqual(await studies.drop('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fi-b' }), {
+    ok: false,
+    error: 'fuera-de-periodo'
+  })
+  assert.equal(unenrols, 0)
+})

@@ -5,6 +5,7 @@
    decide Cursada. */
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { readTime } from '@/components/dates'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -15,16 +16,6 @@ export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
 const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'falla-externa': 'No pudimos traer tus materias del SIU o del Campus Virtual. Probá de nuevo en un rato.',
   'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.'
-}
-
-function readTime(readAt: string): string {
-  return new Date(readAt).toLocaleString('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 export default async function MateriasPage() {

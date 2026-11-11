@@ -1,12 +1,12 @@
 /* Inscripciones abiertas: las materias a las que el alumno se puede inscribir
    ahora, cada una con su oferta de comisiones. Qué está abierto y qué le sirve
    lo decide Cursada. */
-import { ChevronRight } from 'lucide-react'
+import { CalendarX, ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { readTime, shortDate } from '@/components/enrollment/format'
+import { readTime, shortDate } from '@/components/dates'
 import { readErrorText } from '@/components/enrollment/read-error'
-import { ErrorNotice, StaleNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 
@@ -38,9 +38,9 @@ export default async function InscripcionesPage() {
           )}
 
           {result.value.data.length === 0 ? (
-            <p className='rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground'>
-              No hay inscripciones a cursada abiertas para vos en este momento.
-            </p>
+            <EmptyState icon={CalendarX} title='No hay inscripciones abiertas'>
+              Ahora no hay inscripciones a cursada que te sirvan. Cuando abra una, aparece acá.
+            </EmptyState>
           ) : (
             <ul className='flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs'>
               {result.value.data.map((item) => (

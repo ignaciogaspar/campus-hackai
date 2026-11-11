@@ -1,8 +1,6 @@
-/* Formatos de fecha y horario de las pantallas de inscripción, en la hora de
-   Buenos Aires. Solo presentación. */
+/* Horario, modalidad y cupo de la oferta, en palabras. Solo presentación: las
+   fechas están en components/dates.ts. */
 import type { OfferItem } from '@/lib/core/studies'
-
-const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
 const DAYS: Record<OfferItem['schedule'][number]['day'], string> = {
   lunes: 'Lunes',
@@ -17,22 +15,6 @@ const MODALITIES: Record<NonNullable<OfferItem['modality']>, string> = {
   presencial: 'Presencial',
   virtual: 'Virtual',
   hibrida: 'Híbrida'
-}
-
-/** «18 de dic.» */
-export function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, day: 'numeric', month: 'short' })
-}
-
-/** «10 nov., 11:40» */
-export function readTime(iso: string): string {
-  return new Date(iso).toLocaleString('es-AR', {
-    timeZone: TIME_ZONE,
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 /** «Martes 09:00 a 13:00» */

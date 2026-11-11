@@ -2,20 +2,10 @@
    archivadas plegadas aparte. Cada una con el enlace a su aula de Moodle y, las
    actuales, sus tareas con fecha. Solo muestra lo que le da Cursada. */
 import { ExternalLink } from 'lucide-react'
+import { dueTime } from '@/components/dates'
 import { buttonVariants } from '@/components/ui/button'
 import type { MyAssignment, MyClassroom, MySubject } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
-
-function dueTime(dueDate: string): string {
-  return new Date(dueDate).toLocaleString('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function ClassroomLinks({ classrooms }: { classrooms: MyClassroom[] }) {
   if (!classrooms.length) return null
