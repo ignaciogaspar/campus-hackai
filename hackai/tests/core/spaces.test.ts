@@ -370,3 +370,86 @@ test('los adjuntos se guardan con Archivos y si uno falla no se publica nada', a
   assert.ok(seen.ok)
   assert.equal(seen.value.threads.length, 1)
 })
+
+/** Los no leídos de cada canal que la persona ve: `{ 'avisos (A)': 1, material: 0 }`. */
+async function unreadOf(spaces: ReturnType<typeof build>['spaces'], personId: string, subjectId = 'am1') {
+  const opened = await spaces.open(personId, subjectId)
+  assert.ok(opened.ok)
+  return Object.fromEntries(
+    opened.value.channels.map((c) => [c.sectionName ? `${c.name} (${c.sectionName})` : c.name, c.unread])
+  )
+}
+
+test('cada persona ve qué no leyó en cada canal', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'El jueves no hay clase.' })
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Subí la guía 4.' })
+  const question = await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Entra límites?' })
+  assert.ok(question.ok)
+  await spaces.post('p-gferreyra', ids.avisosB, { text: 'Aviso de la B' })
+
+  assert.deepEqual(await unreadOf(spaces, 'p-taguirre'), { 'avisos (A)': 2, 'consultas (A)': 1, material: 0 })
+  // Lo propio nunca está sin leer.
+  assert.deepEqual(await unreadOf(spaces, 'p-lbenitez'), { 'avisos (A)': 2, 'consultas (A)': 0, material: 0 })
+  assert.deepEqual(await unreadOf(spaces, 'p-mledesma'), { 'avisos (A)': 0, 'consultas (A)': 1, material: 0 })
+  assert.deepEqual(await unreadOf(spaces, 'p-mcabrera'), { 'avisos (B)': 1, 'consultas (B)': 0, material: 0 })
+
+  // Abrir el canal muestra qué era nuevo y lo marca leído.
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  assert.equal(seen.value.channel.unread, 0)
+  assert.deepEqual(
+    seen.value.threads.map((t) => t.message.unread),
+    [true, true]
+  )
+  assert.deepEqual(await unreadOf(spaces, 'p-taguirre'), { 'avisos (A)': 0, 'consultas (A)': 1, material: 0 })
+
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+  const again = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(again.ok)
+  assert.deepEqual(
+    again.value.threads.map((t) => t.message.unread),
+    [false, false, true]
+  )
+
+  // Responder marca leído el canal hasta la respuesta.
+  await spaces.post('p-taguirre', ids.consultasA, { text: 'Yo también quiero saber', replyTo: question.value.id })
+  assert.deepEqual(await unreadOf(spaces, 'p-taguirre'), { 'avisos (A)': 0, 'consultas (A)': 0, material: 0 })
+})
+
+test('el docente de la comisión marca resuelta una consulta y todos la ven resuelta', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const question = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  const answer = await spaces.post('p-mledesma', ids.consultasA, {
+    text: 'Sí.',
+    replyTo: question.ok ? question.value.id : ''
+  })
+  assert.ok(question.ok && answer.ok)
+
+  assert.deepEqual(await spaces.resolve('p-taguirre', question.value.id), { ok: false, error: 'solo-docentes' })
+  assert.deepEqual(await spaces.resolve('p-gferreyra', question.value.id), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await spaces.resolve('p-mledesma', answer.value.id), { ok: false, error: 'no-es-consulta' })
+  assert.deepEqual(await spaces.resolve('p-mledesma', 'm-nada'), { ok: false, error: 'mensaje-desconocido' })
+
+  const resolved = await spaces.resolve('p-mledesma', question.value.id)
+  assert.ok(resolved.ok)
+  assert.deepEqual(resolved.value.question, { resolved: true })
+  assert.equal(resolved.value.author.name, 'Tomás Aguirre')
+  // Es idempotente.
+  const twice = await spaces.resolve('p-mledesma', question.value.id)
+  assert.ok(twice.ok)
+  assert.deepEqual(twice.value.question, { resolved: true })
+
+  const seen = await spaces.channel('p-lbenitez', ids.consultasA)
+  assert.ok(seen.ok)
+  assert.deepEqual(seen.value.threads[0].message.question, { resolved: true })
+
+  const asStudent = await spaces.open('p-taguirre', 'am1')
+  const asTeacher = await spaces.open('p-mledesma', 'am1')
+  assert.ok(asStudent.ok && asTeacher.ok)
+  assert.equal(named(asStudent.value, 'consultas', 'A').canResolve, false)
+  assert.equal(named(asTeacher.value, 'consultas', 'A').canResolve, true)
+})

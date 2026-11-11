@@ -22,9 +22,10 @@ import type {
   SpacesStoreError,
   SpaceView,
   StoredChannel,
+  StoredMessage,
   StoredSpace
 } from '.'
-import { type Membership, membershipInSpace, membershipOf, postRefusal, sees, viewerOf } from './access'
+import { canResolve, type Membership, membershipInSpace, membershipOf, postRefusal, sees, viewerOf } from './access'
 import { authorsFrom } from './authors'
 import { ensureChannels, toChannel, visibleChannels } from './channels'
 import { materialItems, materialView } from './material'
@@ -217,15 +218,47 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return publish(found.value, { text, replyTo: replyTo.value, attachments: attachments.value })
   }
 
+  /** El mensaje, si existe y la persona ve su canal. */
+  async function inMessage(
+    personId: PersonId,
+    messageId: MessageId
+  ): Promise<Result<InChannel & { message: StoredMessage }, 'mensaje-desconocido' | AccessError>> {
+    const message = await store.message(messageId)
+    if (!message.ok) return message
+    if (!message.value) return fail('mensaje-desconocido')
+    const found = await inChannel(personId, message.value.channelId)
+    if (!found.ok) return fail(found.error === 'canal-desconocido' ? 'mensaje-desconocido' : found.error)
+    return ok({ ...found.value, message: message.value })
+  }
+
+  /** El mensaje como lo ve la persona, con si lo leyó. */
+  async function seenBy(personId: PersonId, message: StoredMessage): Promise<Result<Message, SpacesStoreError>> {
+    const marks = await store.readMarks(personId, [message.channelId])
+    if (!marks.ok) return marks
+    const unread = isUnreadMessage(personId, marks.value[message.channelId] ?? 0, message)
+    return ok(await toMessage(message, authorsFrom(people), unread))
+  }
+
+  const resolve: Spaces['resolve'] = async (personId, messageId) => {
+    const found = await inMessage(personId, messageId)
+    if (!found.ok) return found
+    if (found.value.message.resolved === null) return fail('no-es-consulta')
+    if (!canResolve(found.value.member, found.value.channel)) return fail('solo-docentes')
+    const resolved = await store.setResolved(messageId, true)
+    if (!resolved.ok) return resolved
+    return resolved.value ? seenBy(personId, resolved.value) : fail('mensaje-desconocido')
+  }
+
   return {
     open,
+    resolve,
     async channel(personId, channelId) {
       const found = await inChannel(personId, channelId)
       if (!found.ok) return found
       return found.value.channel.kind === 'material' ? readMaterial(found.value) : readMessages(found.value)
     },
     post,
-    resolve: pending,
+
     createChannel: pending,
     addMaterial: pending,
     organizeMaterial: pending,
