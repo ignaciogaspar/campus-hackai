@@ -1,10 +1,12 @@
 /* Mis materias: las del período lectivo actual arriba y las archivadas aparte,
    leídas del SIU y de Moodle por Cursada, con el enlace al aula y las tareas
-   con fecha. Sirve al alumno y al docente. Sin reglas de negocio: qué es
-   actual, qué se archiva, qué facultad ve cada uno y qué tarea venció lo
-   decide Cursada. */
+   con fecha. Sirve al alumno y al docente. Si el SIU o Moodle no responden,
+   muestra lo último que leyó Cursada con el aviso de desactualizado y su hora.
+   Sin reglas de negocio: qué es actual, qué se archiva, qué facultad ve cada
+   uno, qué tarea venció y cuándo algo está desactualizado lo decide Cursada. */
 import type { Metadata } from 'next'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
+import { StaleBanner } from '@/components/ui/stale-banner'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError } from '@/lib/core/studies'
@@ -14,16 +16,6 @@ export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
 const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'falla-externa': 'No pudimos traer tus materias del SIU o del Campus Virtual. Probá de nuevo en un rato.',
   'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.'
-}
-
-function readTime(readAt: string): string {
-  return new Date(readAt).toLocaleString('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 export default async function MateriasPage() {
@@ -43,12 +35,7 @@ export default async function MateriasPage() {
         </p>
       ) : (
         <>
-          {result.value.stale && (
-            <p role='status' className='rounded-lg border border-warning bg-warning-background p-3 text-sm'>
-              El SIU o el Campus Virtual no responden. Te mostramos lo que trajimos el {readTime(result.value.readAt)}:
-              puede estar desactualizado.
-            </p>
-          )}
+          {result.value.stale && <StaleBanner since={result.value.readAt} />}
 
           <section aria-labelledby='actuales' className='flex flex-col gap-3'>
             <h2 id='actuales' className='text-sm font-semibold text-muted-foreground'>
