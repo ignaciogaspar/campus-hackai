@@ -10,7 +10,7 @@ import type { SiuAbsences } from '@/lib/ports/siu'
 /** A partir de cuántas faltas restantes se avisa que se acerca al máximo. */
 const NEAR_LIMIT = 1
 
-/** `cerca`: le queda `NEAR_LIMIT` o menos (con el máximo de 3, una); `limite`: no le queda ninguna. */
+/** `cerca`: tiene alguna falta y le queda `NEAR_LIMIT` o menos (con el máximo de 3, una); `limite`: no le queda ninguna. */
 export type AbsenceWarning = 'cerca' | 'limite'
 
 export type MyAbsences = {
@@ -29,6 +29,7 @@ export function absencesIn(report: SiuAbsences, sectionId: string): MyAbsences {
   const max = report.limits.find((l) => l.sectionId === sectionId)?.max ?? null
   const left = max === null ? null : Math.max(0, max - mine.length)
   let warning: AbsenceWarning | null = null
-  if (left !== null) warning = left === 0 ? 'limite' : left <= NEAR_LIMIT ? 'cerca' : null
+  // «Se acerca» pide alguna falta: con máximo 1 y ninguna, no hay aviso.
+  if (left !== null) warning = left === 0 ? 'limite' : left <= NEAR_LIMIT && mine.length > 0 ? 'cerca' : null
   return { count: mine.length, justified: mine.filter((a) => a.justified).length, max, left, warning }
 }

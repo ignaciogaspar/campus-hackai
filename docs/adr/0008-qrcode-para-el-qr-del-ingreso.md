@@ -15,6 +15,6 @@ date: 2026-11-12
 
 ## Consecuencias
 
-- Entran `qrcode` como dependencia y `@types/qrcode` como dependencia de desarrollo, las dos con versión fija y las mismas que usa Campus.
+- Entran `qrcode` como dependencia y `@types/qrcode` como dependencia de desarrollo, las dos en la misma versión que Campus (`1.5.4` y `1.5.6`), pero fijadas, sin el `^` que usa `campus/package.json`.
 - Solo se usa en el servidor (`components/session/sign-in-qr.ts`, con `server-only`): `qrcode` no llega al navegador.
 - El QR sale como SVG en una imagen con texto alternativo y la dirección escrita debajo, para quien no lo pueda escanear.

@@ -52,7 +52,8 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
   if (session) redirect(returnTo ?? homeFor(session.role))
 
   const listed = await system().people.demoPeople()
-  const qr = await signInQr()
+  // El QR es un agregado: si no se puede armar, el ingreso sale igual, sin él.
+  const qr = await signInQr().catch(() => null)
 
   return (
     <>
@@ -68,7 +69,7 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
       </PageHeader>
 
       <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
-        <PhoneQr qr={qr.image} url={qr.url} />
+        {qr && <PhoneQr qr={qr.image} url={qr.url} />}
 
         {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
 
