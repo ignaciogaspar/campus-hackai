@@ -74,7 +74,7 @@ Cuando la review termina bien, le pone al PR la label `revisado-por-claude`, y c
 
 En `/` se entra eligiendo una persona sintética de la lista, alumno o docente, sin clave. La sesión queda en la cookie firmada `hackai_session` y lleva a `/hoy`, el inicio de los dos roles. Se sale con «Salir», que en el celular está en la hoja que abre el avatar. En producción se entra con la cuenta de Microsoft de la Austral: cambia el adaptador del puerto de identidad, no el núcleo.
 
-Tomás Aguirre y Mariana Ledesma, las personas del guion, van primeras en la lista (`components/session/person-order.ts`). En la compu, arriba de la lista hay un QR con la dirección de HackAI tal como la pidió el navegador, para seguir en el celular; en el celular no aparece. Se genera en el servidor con `qrcode` (ADR 0008). Corriendo en `localhost`, el QR apunta a `localhost` y el celular no lo abre: para que lo escaneen, abrí el ingreso desde el deploy.
+Tomás Aguirre y Mariana Ledesma, las personas del guion, van primeras en la lista (`components/session/person-order.ts`). En la compu, arriba de la lista hay un QR para seguir en el celular; en el celular no aparece. Apunta siempre al deploy, https://campus-hackai.vercel.app/ (`DEPLOY_URL` en `components/session/sign-in-qr.ts`), también corriendo en local, porque el celular no abre `localhost`. Se genera en el servidor con `qrcode` (ADR 0008).
 
 Para abrir sesiones hace falta `SESSION_SECRET` en el entorno. Sin esa variable la lista se ve, pero al elegir una persona el ingreso avisa que falta.
 

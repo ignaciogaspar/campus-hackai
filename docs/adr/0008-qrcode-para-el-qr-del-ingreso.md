@@ -5,7 +5,7 @@ date: 2026-11-12
 
 # El QR del ingreso se genera con `qrcode`
 
-«Mal desde el celular» es el 49% de la encuesta, y la demo se proyecta desde una compu. Para que el jurado y los alumnos de las validaciones prueben HackAI en su teléfono, el ingreso muestra en la compu un QR con la dirección de la propia HackAI (issue #56). El QR se arma en el servidor, sin pedírselo a un servicio externo: la dirección no sale de HackAI y la pantalla no depende de que otro sitio responda.
+«Mal desde el celular» es el 49% de la encuesta, y la demo se proyecta desde una compu. Para que el jurado y los alumnos de las validaciones prueben HackAI en su teléfono, el ingreso muestra en la compu un QR con la dirección del deploy de HackAI (issue #56). El QR se arma en el servidor, sin pedírselo a un servicio externo: la dirección no sale de HackAI y la pantalla no depende de que otro sitio responda.
 
 ## Opciones consideradas
 

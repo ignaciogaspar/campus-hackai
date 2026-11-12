@@ -1,8 +1,12 @@
-/* QR del ingreso: la dirección de la propia HackAI, para abrirla en el
-   celular desde la compu donde se proyecta la demo. Se arma en el servidor,
+/* QR del ingreso: la dirección del deploy de HackAI, para abrirla en el
+   celular desde la compu donde se proyecta la demo. Apunta siempre al deploy,
+   también corriendo en local, porque el celular no abre `localhost`. Se arma en el servidor,
    sin pedirle nada a un servicio externo (ADR 0008). */
 import 'server-only'
 import QRCode from 'qrcode'
+
+/** Donde está deployada la demo (hackai/README.md, «Deploy en Vercel»). */
+export const DEPLOY_URL = 'https://campus-hackai.vercel.app/'
 
 /** El QR como `data:` de un SVG, listo para un `<img>`. */
 export async function qrImage(url: string): Promise<string> {
