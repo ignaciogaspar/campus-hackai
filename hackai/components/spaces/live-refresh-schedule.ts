@@ -1,12 +1,7 @@
 /* Cuándo se vuelve a leer el espacio abierto: cada tanto mientras la pestaña
    está a la vista, nada mientras está oculta (otra pestaña, el celular
-   bloqueado) y enseguida al volver a ella; solo en el espacio de una materia.
-   Lo usa LiveRefresh. */
-
-/** El espacio de una materia, `/materias/<id>`: ni la lista de materias ni otras pantallas. */
-export function isSpacePath(pathname: string): boolean {
-  return /^\/materias\/[^/]+$/.test(pathname)
-}
+   bloqueado) y enseguida al volver a ella; solo en el espacio de una materia
+   (`isSpacePath`, en components/spaces/format.ts). Lo usa LiveRefresh. */
 
 /** La marca que deja la página del espacio (`data-just-read` en su `<main>`) cuando el canal que
     abrió tenía no leídos: la barra lateral, que no se vuelve a dibujar al navegar, quedó vieja. */

@@ -28,14 +28,14 @@ function Notice({
   icon: LucideIcon
   tone: string
   role: 'status' | 'alert'
-  /** Qué aviso es, en `data-aviso`. */
+  /** Qué aviso es, en `data-notice`. */
   kind?: 'error'
   children: ReactNode
 }) {
   return (
     <div
       role={role}
-      data-aviso={kind}
+      data-notice={kind}
       className={cn('flex items-start gap-3 rounded-[14px] px-4 py-3 text-[0.8125rem]', tone)}
     >
       <Icon aria-hidden='true' className='mt-px size-5 flex-none' strokeWidth={1.8} />
@@ -53,7 +53,7 @@ export function StaleNotice({ children }: { children: ReactNode }) {
   )
 }
 
-/* Algo falló y no hay copia: solo en el bloque que falló. `data-aviso` lo
+/* Algo falló y no hay copia: solo en el bloque que falló. `data-notice` lo
    marca para la prueba de pantallas de la demo (lib/demo-base/screens.ts). */
 export function ErrorNotice({ children }: { children: ReactNode }) {
   return (

@@ -1,7 +1,8 @@
 /* El espacio abierto se vuelve a leer solo mientras la pestaña está a la vista, y enseguida al volver a ella. */
 import assert from 'node:assert/strict'
 import { mock, test } from 'node:test'
-import { isSpacePath, refreshWhileVisible } from '@/components/spaces/live-refresh-schedule'
+import { isSpacePath } from '@/components/spaces/format'
+import { refreshWhileVisible } from '@/components/spaces/live-refresh-schedule'
 
 /** Una pestaña de mentira: se puede ocultar y volver a mostrar. */
 class FakePage extends EventTarget {

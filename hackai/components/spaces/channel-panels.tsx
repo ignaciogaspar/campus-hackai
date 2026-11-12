@@ -23,7 +23,7 @@ import type { Role } from '@/lib/core/people'
 import type { Channel, Thread } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
-type PanelProps = {
+export type PanelProps = {
   subjectId: string
   channel: Channel
   threads: Thread[]
@@ -177,8 +177,14 @@ function QuestionFilters({ subjectId, channel, threads, filter }: ListProps & { 
   )
 }
 
-/** Las consultas que deja ver el filtro, o por qué no hay ninguna. */
-function QuestionList({ subjectId, channel, threads, filter }: ListProps & { filter: QuestionFilter }) {
+/** Las consultas que deja ver el filtro (`shown`, ya filtradas), o por qué no hay ninguna. */
+function QuestionList({
+  subjectId,
+  channel,
+  threads,
+  shown,
+  filter
+}: ListProps & { shown: Thread[]; filter: QuestionFilter }) {
   if (!threads.length) {
     return (
       <EmptyState icon={MessagesSquare} title='Nadie preguntó todavía'>
@@ -186,7 +192,6 @@ function QuestionList({ subjectId, channel, threads, filter }: ListProps & { fil
       </EmptyState>
     )
   }
-  const shown = threads.filter((t) => matches(filter, t))
   if (shown.length) return <ThreadList subjectId={subjectId} channel={channel} threads={shown} />
   return (
     <p role='status' className='px-1 text-[0.8125rem] text-muted-foreground'>
@@ -211,7 +216,7 @@ export function QuestionsPanel({
         <QuestionFilters subjectId={subjectId} channel={channel} threads={threads} filter={filter} />
       )}
       <LatestMark scope={`${channel.id}:${filter}`} latest={latestOf(shown, viewerId)} at='bottom'>
-        <QuestionList subjectId={subjectId} channel={channel} threads={threads} filter={filter} />
+        <QuestionList subjectId={subjectId} channel={channel} threads={threads} shown={shown} filter={filter} />
       </LatestMark>
       {channel.canPost && (
         <ComposerDock>

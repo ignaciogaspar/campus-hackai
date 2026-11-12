@@ -40,7 +40,7 @@ test('resembrar no pisa los vínculos de Discord: no los borra y el del set entr
   const inserts = sql.split(/;\n/).filter((s) => s.trimStart().startsWith('insert into'))
   const withDiscord = inserts.filter((s) => s.includes("'discord'"))
 
-  assert.match(deleted, /and system <> 'discord'/)
+  assert.match(deleted, /and system <> all \(array\['discord'\]::text\[\]\)/)
   assert.equal(withDiscord.length, 1, 'los vínculos de Discord van en un insert aparte')
   assert.match(withDiscord[0], /\('p-mledesma', 'discord', '1290000000000000001'\)/)
   assert.match(withDiscord[0], /on conflict do nothing$/)

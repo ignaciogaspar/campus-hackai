@@ -67,6 +67,7 @@
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
 import { daysBetween } from '@/lib/dates'
+import type { Fresh } from '@/lib/fresh'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
@@ -90,7 +91,7 @@ import { all, type ExternalFailure, fail, type NotImplemented, ok, type Result }
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
-export type Fresh<T> = { data: T; readAt: string; stale: boolean }
+export type { Fresh }
 
 /** Una comisión (cursada) o una mesa (examen). */
 export type Target = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
@@ -370,12 +371,12 @@ const isRegular = (h: SiuHistoryEntry) => h.type === 'cursada' && h.result === '
 
 const isApproved = (h: SiuHistoryEntry) => approvalOf(h) !== null
 
-const isOpenAt = (at: string, start: string, end: string) => start <= at && at <= end
-
 function windowAt(at: string, start: string, end: string): EnrollmentWindow {
   if (at < start) return 'no-abrio'
   return at <= end ? 'abierta' : 'cerrada'
 }
+
+const isOpenAt = (at: string, start: string, end: string) => windowAt(at, start, end) === 'abierta'
 
 /** Le sirve cursarla si no la está cursando, no la tiene regular y no la aprobó. */
 const needsCourseAttempt = (subjectId: string, p: SubjectProgress) =>

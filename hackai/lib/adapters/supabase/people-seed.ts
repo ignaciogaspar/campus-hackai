@@ -16,6 +16,11 @@ import { insertMissing, type Sql, text, textArray, upsert } from '@/lib/adapters
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 import type { ExternalSystem } from '@/lib/core/people'
 
+/** Un vínculo que el seed no pisa: el de Discord puede ser el real de quien
+    usa la demo. Lo usan el seed y la verificación de la base. */
+const PRESERVED_SYSTEMS: ExternalSystem[] = ['discord']
+export const isPreservedAccount = (row: PeopleAccountRow) => PRESERVED_SYSTEMS.includes(row.system)
+
 /** Las filas de `people_accounts` del set sintético. */
 export function peopleAccountRows(data: SyntheticData): PeopleAccountRow[] {
   return data.people.flatMap((p) => {
@@ -30,25 +35,18 @@ export function peopleAccountRows(data: SyntheticData): PeopleAccountRow[] {
 }
 
 export function peopleSeedSql(data: SyntheticData): string {
-  const rows = peopleAccountRows(data).map((row) => ({
+  const toSql = (row: PeopleAccountRow) => ({
     person_id: text(row.person_id),
     system: text(row.system),
     external_id: text(row.external_id)
-  }))
-  const discord = text('discord')
+  })
+  const rows = peopleAccountRows(data)
   const parts: Sql[] = [
     '-- Generado por npm run people:seed desde lib/adapters/synthetic-data.ts. No lo edites a mano.\n',
     'begin;\n',
-    `delete from people_accounts where person_id = any (${textArray(data.people.map((p) => p.id))}) and system <> ${discord};\n`,
-    upsert(
-      'people_accounts',
-      ['person_id', 'system'],
-      rows.filter((row) => row.system !== discord)
-    ),
-    insertMissing(
-      'people_accounts',
-      rows.filter((row) => row.system === discord)
-    ),
+    `delete from people_accounts where person_id = any (${textArray(data.people.map((p) => p.id))}) and system <> all (${textArray(PRESERVED_SYSTEMS)});\n`,
+    upsert('people_accounts', ['person_id', 'system'], rows.filter((row) => !isPreservedAccount(row)).map(toSql)),
+    insertMissing('people_accounts', rows.filter(isPreservedAccount).map(toSql)),
     'commit;\n'
   ]
   return parts.join('\n')

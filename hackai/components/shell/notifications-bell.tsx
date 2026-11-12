@@ -1,6 +1,6 @@
 import { Bell } from 'lucide-react'
 import Link from 'next/link'
-import { unreadTotal } from '@/components/novedades/format'
+import { unreadTotal } from '@/components/news/format'
 import { UnreadCount } from '@/components/ui/unread-count'
 import { getSession } from '@/lib/auth'
 import { system } from '@/lib/composition'

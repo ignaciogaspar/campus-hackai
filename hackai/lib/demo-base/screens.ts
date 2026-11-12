@@ -6,6 +6,7 @@
    redirecciones: tiene que responder 200 y no mostrar ninguno de los errores
    que las pantallas le muestran a la persona. La lista de pantallas está acá
    y en ningún otro lado: una pantalla nueva se suma a `DEMO_SCREENS`. */
+import { messageOf } from '@/lib/result'
 import type { Role } from '@/lib/session-token'
 
 export type DemoScreens = {
@@ -16,10 +17,15 @@ export type DemoScreens = {
 
 /** Las pantallas que se prueban, por persona del set sintético: las de su
     navegación. Al docente no se le piden Inscripciones, que son del alumno y
-    lo redirigen, ni Académico. */
+    lo redirigen, ni Académico.
+
+    Abrir un espacio lo crea y marca leído el canal que se abre, así que se
+    prueba con una alumna y un docente de la comisión B de Análisis I, que no
+    son los del guion de la demo (Tomás Aguirre y Mariana Ledesma, de la A):
+    correr la prueba después de `demo:preparar` no les cambia los no leídos. */
 export const DEMO_SCREENS: DemoScreens[] = [
   {
-    personId: 'p-taguirre',
+    personId: 'p-sdominguez',
     role: 'alumno',
     paths: [
       '/hoy',
@@ -33,7 +39,7 @@ export const DEMO_SCREENS: DemoScreens[] = [
       '/inscripciones/am1/final'
     ]
   },
-  { personId: 'p-mledesma', role: 'profesor', paths: ['/hoy', '/novedades', '/materias', '/materias/am1'] }
+  { personId: 'p-gferreyra', role: 'profesor', paths: ['/hoy', '/novedades', '/materias', '/materias/am1'] }
 ]
 
 /** Textos con que las pantallas avisan que algo falló. Una pantalla que no
@@ -68,13 +74,13 @@ async function probe(fetch: typeof globalThis.fetch, url: string, cookie: string
   try {
     response = await fetch(url, { headers: { cookie }, redirect: 'manual' })
   } catch (error) {
-    return [false, `no responde (${error instanceof Error ? error.message : 'error desconocido'})`]
+    return [false, `no responde (${messageOf(error)})`]
   }
   if (response.status >= 300 && response.status < 400) return [false, redirectDetail(response)]
   if (response.status !== 200) return [false, `responde ${response.status}`]
   const body = visibleHtml(await response.text())
-  // ErrorNotice (components/ui/states.tsx) marca sus avisos con data-aviso="error".
-  if (/data-aviso="error"/.test(body)) return [false, 'muestra un aviso de error']
+  // ErrorNotice (components/ui/states.tsx) marca sus avisos con data-notice="error".
+  if (/data-notice="error"/.test(body)) return [false, 'muestra un aviso de error']
   const shown = ERROR_TEXTS.find((text) => body.includes(text))
   return shown ? [false, `muestra «${shown}…»`] : [true, 'ok']
 }

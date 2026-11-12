@@ -2,6 +2,9 @@
    fechas están en components/dates.ts. */
 import type { OfferItem } from '@/lib/core/studies'
 
+/** El aviso de una mesa que pide regularizar la cursada antes de rendir. */
+export const REGULARITY_NOTE = 'Para rendir este final, antes tenés que regularizar la cursada.'
+
 const DAYS: Record<OfferItem['schedule'][number]['day'], string> = {
   lunes: 'Lunes',
   martes: 'Martes',

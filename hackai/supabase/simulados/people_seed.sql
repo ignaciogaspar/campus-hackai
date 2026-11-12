@@ -2,7 +2,7 @@
 
 begin;
 
-delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]) and system <> 'discord';
+delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]) and system <> all (array['discord']::text[]);
 
 insert into people_accounts (person_id, system, external_id) values
   ('p-mledesma', 'identity', 'demo:p-mledesma'),

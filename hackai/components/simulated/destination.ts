@@ -5,6 +5,7 @@
    `/simulado/<sistema>/<ruta del sistema real>`, y esa página explica que es
    una demo y qué abriría el enlace en producción. Acá se lee la ruta; la
    pantalla está en app/simulado/. */
+import type { CertificateType } from '@/lib/core/studies'
 
 export type SimulatedSystem = 'moodle' | 'siu'
 
@@ -31,9 +32,17 @@ const SYSTEM_NAMES: Record<SimulatedSystem, string> = {
   siu: 'Autogestión del SIU Guaraní'
 }
 
-const CERTIFICATES: Record<string, string> = {
+/* Las rutas que se leen acá las arman los adaptadores del SIU (`selfServiceUrl`
+   en lib/adapters/siu-simulado/ y lib/adapters/memoria/siu.ts) y de Moodle
+   (`courseUrl`, y el material del set sintético): si cambia una, cambia acá. */
+const CERTIFICATES: Record<CertificateType, string> = {
   'alumno-regular': 'Constancia de alumno regular',
   'examen-final': 'Constancia de examen final'
+}
+
+/** El nombre de la constancia de `?tipo=`, o «Constancia» si no es una que conocemos. */
+function certificateName(type: string | null): string {
+  return Object.entries(CERTIFICATES).find(([known]) => known === type)?.[1] ?? 'Constancia'
 }
 
 /** Origen inventado para leer rutas relativas: un enlace que trae otro origen no es de lo simulado. */
@@ -95,7 +104,7 @@ function siuLink(path: string[], query: URLSearchParams): Link {
   if (route === 'constancias/solicitar')
     return {
       kind: 'constancia',
-      title: CERTIFICATES[query.get('tipo') ?? ''] ?? 'Constancia',
+      title: certificateName(query.get('tipo')),
       production: 'Abre el pedido de la constancia en la Autogestión del SIU, donde se pide y se descarga.'
     }
   return {

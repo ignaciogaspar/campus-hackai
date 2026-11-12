@@ -17,7 +17,7 @@ import { prepareDemoBase } from '@/lib/demo-base/prepare'
 import { fail, ok, type Result } from '@/lib/result'
 
 const root = join(import.meta.dirname, '..')
-const WORD = 'preparar'
+const CONFIRM_WORD = 'preparar'
 
 async function confirm(question: string): Promise<boolean> {
   console.log(question)
@@ -28,7 +28,7 @@ async function confirm(question: string): Promise<boolean> {
   }
   const prompt = createInterface({ input: process.stdin, output: process.stdout })
   try {
-    return (await prompt.question(`Escribí «${WORD}» para seguir: `)).trim() === WORD
+    return (await prompt.question(`Escribí «${CONFIRM_WORD}» para seguir: `)).trim() === CONFIRM_WORD
   } finally {
     prompt.close()
   }

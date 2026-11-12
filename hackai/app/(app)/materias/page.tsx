@@ -8,7 +8,7 @@
 import { BookOpen, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { unreadBySubject, unreadTotal } from '@/components/novedades/format'
+import { unreadBySubject, unreadTotal } from '@/components/news/format'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
 import { StaleBanner } from '@/components/ui/stale-banner'

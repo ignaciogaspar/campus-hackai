@@ -16,7 +16,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, readTime, shortDate, timeOf } from '@/components/dates'
-import { closingText, spotsLeftText } from '@/components/enrollment/format'
+import { closingText, REGULARITY_NOTE, spotsLeftText } from '@/components/enrollment/format'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { PageHeader } from '@/components/shell/page-header'
 import { Card } from '@/components/ui/card'
@@ -24,6 +24,7 @@ import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Fresh, MySection, OpenEnrollment, StudiesReadError, UpcomingItem } from '@/lib/core/studies'
+import { staleSince } from '@/lib/fresh'
 import type { Result } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -62,23 +63,21 @@ function OfferLink({ href, title, children }: { href: string; title: string; chi
   )
 }
 
-const detail = 'block text-[0.8125rem] text-muted-foreground'
+const detailClass = 'block text-[0.8125rem] text-muted-foreground'
 
 function EnrollmentLink({ item }: { item: OpenEnrollment }) {
   const spots = spotsLeftText(item.spotsLeft)
   const soon = item.closesInDays >= 0 && item.closesInDays <= CLOSING_SOON_DAYS
   return (
     <OfferLink href={offerHref(item.subjectId, item.kind)} title={item.subjectName}>
-      <span className={detail}>
+      <span className={detailClass}>
         {KIND_NAME[item.kind]} ·{' '}
         <span className={cn(soon && 'font-semibold text-warning-foreground')}>{closingText(item.closesInDays)}</span> (
         <time dateTime={item.closesAt}>{shortDate(item.closesAt)}</time>)
       </span>
-      <span className={cn(detail, spots.full && 'font-semibold text-destructive')}>{spots.text}</span>
+      <span className={cn(detailClass, spots.full && 'font-semibold text-destructive')}>{spots.text}</span>
       {item.needsRegularity && (
-        <span className='mt-1 block text-[0.8125rem] text-warning-foreground'>
-          Para rendirlo, antes tenés que regularizar la cursada.
-        </span>
+        <span className='mt-1 block text-[0.8125rem] text-warning-foreground'>{REGULARITY_NOTE}</span>
       )}
     </OfferLink>
   )
@@ -122,9 +121,9 @@ function OpenEnrollments({ read }: { read: Read<OpenEnrollment[]> }) {
 }
 
 /** Las comisiones que cursa ahora, cada una con su oferta: ahí ve su comisión y se da de baja. */
-function MyCourses({ read }: { read: Read<MySection[]> }) {
-  const courses = read.ok ? read.value.data.filter((s) => s.current && s.role === 'alumno') : []
-  if (read.ok && courses.length === 0) return null
+function MySections({ read }: { read: Read<MySection[]> }) {
+  const sections = read.ok ? read.value.data.filter((s) => s.current && s.role === 'alumno') : []
+  if (read.ok && sections.length === 0) return null
   return (
     <PageSection
       id='mis-cursadas'
@@ -136,10 +135,10 @@ function MyCourses({ read }: { read: Read<MySection[]> }) {
       ) : (
         <Card>
           <ul className='divide-y divide-border'>
-            {courses.map((s) => (
+            {sections.map((s) => (
               <li key={s.sectionId}>
                 <OfferLink href={offerHref(s.subjectId, 'cursada')} title={s.subjectName}>
-                  <span className={detail}>
+                  <span className={detailClass}>
                     Comisión {s.name} · {s.termName}
                   </span>
                 </OfferLink>
@@ -170,7 +169,7 @@ function MyFinals({ read }: { read: Read<UpcomingItem[]> }) {
             {finals.map((f) => (
               <li key={f.id}>
                 <OfferLink href={offerHref(f.subjectId, 'examen')} title={f.subjectName}>
-                  <span className={detail}>
+                  <span className={detailClass}>
                     Final · <time dateTime={f.date}>{`${longDay(f.date)} · ${timeOf(f.date)}`}</time>
                   </span>
                 </OfferLink>
@@ -181,11 +180,6 @@ function MyFinals({ read }: { read: Read<UpcomingItem[]> }) {
       )}
     </PageSection>
   )
-}
-
-/** La hora de la lectura más vieja entre las que vinieron desactualizadas, o `null`. */
-function staleSince(reads: Read<unknown>[]): string | null {
-  return reads.flatMap((r) => (r.ok && r.value.stale ? [r.value.readAt] : [])).sort()[0] ?? null
 }
 
 export default async function InscripcionesPage() {
@@ -217,7 +211,7 @@ export default async function InscripcionesPage() {
         </PageSection>
 
         <div className='grid gap-6 lg:grid-cols-2 lg:items-start'>
-          <MyCourses read={sections} />
+          <MySections read={sections} />
           <MyFinals read={upcoming} />
         </div>
       </main>

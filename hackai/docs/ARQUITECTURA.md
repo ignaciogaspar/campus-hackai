@@ -161,7 +161,8 @@ hackai/
 - `core/` importa `ports/` y las interfaces de otros módulos de `core/`. Nunca `adapters/`, `app/` ni `lib/db`.
 - `adapters/` importa `ports/` y los tipos de `core/` que necesita.
 - `app/` importa `composition` y los tipos de `core/`. Las pantallas no tienen reglas de negocio.
-- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria.
+- `components/` no importa `composition`, salvo la campana de sesión (`components/shell/notifications-bell.tsx`): lee los no leídos como una página, porque Next.js no vuelve a ejecutar el layout al navegar y el número quedaría viejo. No lleva reglas de negocio.
+- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria. Fuera de `lib/`, también los usan los scripts de `scripts/` (seeds y base de la demo), que arman lo suyo con `lib/adapters/supabase/demo-base.ts` y se lo pasan a `lib/demo-base/`.
 
 ## De la demo a producción
 

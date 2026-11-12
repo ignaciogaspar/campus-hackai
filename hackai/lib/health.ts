@@ -4,6 +4,7 @@
    sistemas de origen: armar el sistema no hace pedidos, así que una base caída
    no lo baja. Lo que sí detecta es una configuración rota, por ejemplo un
    adaptador desconocido o una variable que falta. */
+import { messageOf } from '@/lib/result'
 
 export type HealthDeps = {
   log?: (message: string) => void
@@ -17,7 +18,7 @@ export function healthResponse(build: () => unknown, { log = console.error }: He
     build()
     return Response.json({ status: 'ok' })
   } catch (error) {
-    log(`[salud] el sistema no se puede armar: ${error instanceof Error ? error.message : 'error desconocido'}`)
+    log(`[salud] el sistema no se puede armar: ${messageOf(error)}`)
     return Response.json({ status: 'error', reason: 'configuracion' }, { status: 503 })
   }
 }

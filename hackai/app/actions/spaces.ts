@@ -12,7 +12,7 @@ import { spaceHref } from '@/components/spaces/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
-import type { Fail } from '@/lib/result'
+import type { ErrorOf } from '@/lib/result'
 
 /** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. */
 export type SpaceActionState =
@@ -20,15 +20,13 @@ export type SpaceActionState =
   | { status: 'ok'; message: string | null; at: number }
   | { status: 'error'; message: string; at: number }
 
-type ErrorOf<T extends (...args: never[]) => unknown> = Extract<Awaited<ReturnType<T>>, Fail<string>>['error']
-
 type SpaceError =
-  | ErrorOf<Spaces['post']>
-  | ErrorOf<Spaces['resolve']>
-  | ErrorOf<Spaces['createChannel']>
-  | ErrorOf<Spaces['addMaterial']>
-  | ErrorOf<Spaces['organizeMaterial']>
-  | ErrorOf<Spaces['openDirect']>
+  | ErrorOf<ReturnType<Spaces['post']>>
+  | ErrorOf<ReturnType<Spaces['resolve']>>
+  | ErrorOf<ReturnType<Spaces['createChannel']>>
+  | ErrorOf<ReturnType<Spaces['addMaterial']>>
+  | ErrorOf<ReturnType<Spaces['organizeMaterial']>>
+  | ErrorOf<ReturnType<Spaces['openDirect']>>
 
 const ERRORS: Record<SpaceError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',

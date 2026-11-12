@@ -8,7 +8,7 @@
    Sí lo vuelve a ejecutar `router.refresh()`, que es como LiveRefresh mantiene
    al día el espacio abierto y estos no leídos. */
 import { type ReactNode, Suspense } from 'react'
-import { unreadBySubject } from '@/components/novedades/format'
+import { unreadBySubject } from '@/components/news/format'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { spaceHref } from '@/components/spaces/format'

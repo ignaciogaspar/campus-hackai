@@ -5,6 +5,7 @@
 import { AtSign } from 'lucide-react'
 import Link from 'next/link'
 import { BackLink } from '@/components/spaces/back-link'
+import type { PanelProps } from '@/components/spaces/channel-panels'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
 import { latestOf, type SpaceRef, spaceHref } from '@/components/spaces/format'
@@ -14,7 +15,7 @@ import { StartDirect } from '@/components/spaces/start-direct'
 import { EmptyState } from '@/components/ui/states'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Role } from '@/lib/core/people'
-import type { Author, Channel, DirectContact, Thread } from '@/lib/core/spaces'
+import type { Author, Channel, DirectContact } from '@/lib/core/spaces'
 
 const ROLE_NAMES: Record<Role, string> = { alumno: 'Alumno', profesor: 'Docente' }
 
@@ -114,18 +115,7 @@ export function DirectsPanel({
 /* Una conversación privada: los mensajes en orden, el más nuevo abajo y a la
    vista, y el campo para escribirle a la otra persona. La flecha vuelve a
    Directos. */
-export function DirectPanel({
-  subjectId,
-  channel,
-  threads,
-  viewerId
-}: {
-  subjectId: string
-  channel: Channel
-  threads: Thread[]
-  /** Quien mira: lo que acaba de enviar se deja a la vista. */
-  viewerId: string
-}) {
+export function DirectPanel({ subjectId, channel, threads, viewerId }: PanelProps) {
   const other = otherPersonIn(channel)
   const firstName = other.name.split(/\s+/)[0]
   const messages = threads.flatMap((t) => [t.message, ...t.replies])

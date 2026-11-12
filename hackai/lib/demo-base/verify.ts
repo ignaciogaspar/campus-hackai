@@ -9,32 +9,48 @@
    que pide a Supabase es lectura: las tablas con un select, el bucket con su
    descripción y las funciones con un rpc por GET, que PostgREST corre en una
    transacción de solo lectura. Lo que informa nombra variables, tablas y
-   funciones, nunca valores de variables. */
-import { readdirSync, readFileSync } from 'node:fs'
+   funciones, nunca valores de variables.
+
+   Lo que depende de los adaptadores (el cliente, el bucket con su tope y las
+   filas que dejan los seeds) llega armado en `facts`: lo arma
+   lib/adapters/supabase/demo-base.ts, porque fuera de los adaptadores solo
+   composition los conoce. */
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
-import { createSupabaseFiles, DEFAULT_BUCKET } from '@/lib/adapters/supabase/files'
-import { peopleAccountRows } from '@/lib/adapters/supabase/people-seed'
-import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { type AdapterChoice, compose, type Env, type System } from '@/lib/composition'
-import { MIGRATIONS_DIR, SIMULATED_DIR } from '@/lib/demo-base/prepare'
+import { MIGRATIONS_DIR, missingVariables, SIMULATED_DIR, sqlFilesIn } from '@/lib/demo-base/prepare'
+import { messageOf } from '@/lib/result'
 
 export type CheckStatus = 'ok' | 'aviso' | 'falla'
 export type Check = { name: string; status: CheckStatus; detail: string }
+
+/** Un vínculo de una persona con un sistema, como lo guarda `people_accounts`. */
+export type AccountRow = { person_id: string; system: string; external_id: string }
+
+/** La base de la demo como la tienen que dejar la preparación y los seeds. */
+export type DemoBaseFacts = {
+  /** El cliente de Supabase con service role, o null si faltan sus variables. */
+  client: SupabaseClient | null
+  /** El bucket de Archivos y el tope de un archivo que declara su adaptador. */
+  bucket: { name: string; maxBytes: number }
+  /** Las filas del set sintético que cargan los seeds, por tabla. */
+  seeded: { table: string; ids: string[] }[]
+  /** Las personas del set y los vínculos que el seed les deja. */
+  people: string[]
+  accounts: AccountRow[]
+}
 
 export type VerifyDeps = {
   env: Env
   /** La carpeta hackai/, de donde salen los SQL. */
   root: string
-  /** El cliente de Supabase con service role. Sin él, se arma con las variables de `env`. */
-  client?: SupabaseClient
-  data?: SyntheticData
+  facts: DemoBaseFacts
 }
 
 const check = (name: string, status: CheckStatus, detail: string): Check => ({ name, status, detail })
 
-const AGAIN = 'corré npm run demo:preparar'
+const FIX_HINT = 'corré npm run demo:preparar'
 
 /** Las que la app necesita para la demo. */
 const REQUIRED_VARIABLES = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SESSION_SECRET']
@@ -53,10 +69,8 @@ const MISSING_TABLE = new Set(['42P01', 'PGRST205'])
 /** Una función que PostgREST no encuentra con esos argumentos. */
 const MISSING_FUNCTION = new Set(['PGRST202', '42883'])
 
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'error desconocido')
-
 function variableChecks(env: Env): Check[] {
-  const missing = REQUIRED_VARIABLES.filter((name) => !env[name]?.trim())
+  const missing = missingVariables(env, REQUIRED_VARIABLES)
   const checks = [
     missing.length
       ? check('Variables', 'falla', `faltan ${missing.join(', ')} en el entorno`)
@@ -80,10 +94,10 @@ async function readCheck(system: System): Promise<Check> {
   return check('Lectura', 'ok', `${people.value.length} personas de demo y las comisiones de ${student.id}`)
 }
 
-async function systemChecks(env: Env, data: SyntheticData): Promise<Check[]> {
+async function systemChecks(env: Env): Promise<Check[]> {
   let system: System
   try {
-    system = compose(env, data)
+    system = compose(env)
   } catch (error) {
     return [check('Sistema', 'falla', `no arma: ${messageOf(error)}`)]
   }
@@ -94,6 +108,10 @@ async function systemChecks(env: Env, data: SyntheticData): Promise<Check[]> {
   const unused = BASE_PORTS.filter(([port]) => system.adapters[port] === 'memoria').map(([, variable]) => variable)
   if (unused.length)
     checks.push(check('Sistema', 'aviso', `${unused.join(', ')} en memoria: para eso la app no usa la base`))
+  if (system.adapters.clock !== 'sistema')
+    checks.push(
+      check('Sistema', 'aviso', 'HACKAI_CLOCK no es «sistema»: Hoy muestra la fecha fija del set y no la del día')
+    )
   checks.push(await readCheck(system))
   return checks
 }
@@ -101,12 +119,7 @@ async function systemChecks(env: Env, data: SyntheticData): Promise<Check[]> {
 /** El SQL de las migraciones y de lo simulado, sin comentarios. */
 function schemaSql(root: string): string {
   return [MIGRATIONS_DIR, SIMULATED_DIR]
-    .flatMap((dir) =>
-      readdirSync(join(root, dir))
-        .filter((name) => name.endsWith('.sql'))
-        .sort()
-        .map((name) => readFileSync(join(root, dir, name), 'utf8'))
-    )
+    .flatMap((dir) => sqlFilesIn(root, dir).map((file) => readFileSync(join(root, file), 'utf8')))
     .join('\n')
     .replace(/--.*$/gm, '')
 }
@@ -133,7 +146,7 @@ async function tableChecks(client: SupabaseClient, tables: string[]): Promise<{ 
   const missing = read.filter((r) => r.error && MISSING_TABLE.has(r.error.code)).map((r) => r.table)
   const broken = read.filter((r) => r.error && !MISSING_TABLE.has(r.error.code))
   const checks: Check[] = []
-  if (missing.length) checks.push(check('Tablas', 'falla', `faltan ${missing.join(', ')}: ${AGAIN}`))
+  if (missing.length) checks.push(check('Tablas', 'falla', `faltan ${missing.join(', ')}: ${FIX_HINT}`))
   if (broken.length)
     checks.push(
       check(
@@ -161,36 +174,23 @@ async function functionChecks(client: SupabaseClient, functions: SqlFunction[]):
     const { error } = await client.rpc(fn.name, probeArgs(fn), { get: true })
     if (error && MISSING_FUNCTION.has(error.code)) missing.push(fn.name)
   }
-  if (missing.length) return [check('Funciones', 'falla', `faltan ${missing.join(', ')}: ${AGAIN}`)]
+  if (missing.length) return [check('Funciones', 'falla', `faltan ${missing.join(', ')}: ${FIX_HINT}`)]
   return [check('Funciones', 'ok', functions.map((fn) => fn.name).join(', ') || 'no hay')]
 }
 
-async function bucketCheck(client: SupabaseClient): Promise<Check> {
-  const { data, error } = await client.storage.getBucket(DEFAULT_BUCKET)
+async function bucketCheck(client: SupabaseClient, { name, maxBytes: max }: DemoBaseFacts['bucket']): Promise<Check> {
+  const { data, error } = await client.storage.getBucket(name)
   if (error || !data)
-    return check(
-      'Bucket',
-      'falla',
-      `no está el bucket ${DEFAULT_BUCKET} o no se pudo leer (${error?.message}): ${AGAIN}`
-    )
-  if (data.public) return check('Bucket', 'falla', `el bucket ${DEFAULT_BUCKET} es público y tiene que ser privado`)
-  const max = createSupabaseFiles({ client }).capabilities.maxBytes
+    return check('Bucket', 'falla', `no está el bucket ${name} o no se pudo leer (${error?.message}): ${FIX_HINT}`)
+  if (data.public) return check('Bucket', 'falla', `el bucket ${name} es público y tiene que ser privado`)
   if (data.file_size_limit !== max)
     return check(
       'Bucket',
       'falla',
-      `el bucket ${DEFAULT_BUCKET} acepta hasta ${data.file_size_limit ?? 'cualquier tamaño'} bytes y Archivos declara ${max}: ${AGAIN}`
+      `el bucket ${name} acepta hasta ${data.file_size_limit ?? 'cualquier tamaño'} bytes y Archivos declara ${max}: ${FIX_HINT}`
     )
-  return check('Bucket', 'ok', `${DEFAULT_BUCKET}, privado, hasta ${max} bytes por archivo`)
+  return check('Bucket', 'ok', `${name}, privado, hasta ${max} bytes por archivo`)
 }
-
-/** Filas del set sintético que tienen que estar después de los seeds. */
-const seededRows = (data: SyntheticData) => [
-  { table: 'siu_persons', ids: data.siu.persons.map((p) => p.id) },
-  { table: 'siu_sections', ids: data.siu.sections.map((s) => s.id) },
-  { table: 'siu_exam_boards', ids: data.siu.examBoards.map((b) => b.id) },
-  { table: 'moodle_courses', ids: data.moodle.courses.map((c) => c.id) }
-]
 
 async function rowsCheck(client: SupabaseClient, table: string, ids: string[]): Promise<string | null> {
   const { data, error } = await client.from(table).select('id').in('id', ids)
@@ -202,62 +202,50 @@ async function rowsCheck(client: SupabaseClient, table: string, ids: string[]): 
     : null
 }
 
-/** Los vínculos de cada persona con la identidad, el SIU y Moodle. Los de
-    Discord no se comparan: pueden ser los reales de quien la usa. */
-async function accountsCheck(client: SupabaseClient, data: SyntheticData): Promise<string | null> {
-  const expected = peopleAccountRows(data).filter((row) => row.system !== 'discord')
+/** Los vínculos de cada persona que el seed deja (los que conserva, como los
+    de Discord, ya vienen fuera de `facts.accounts`). */
+async function accountsCheck(client: SupabaseClient, facts: DemoBaseFacts): Promise<string | null> {
+  const expected = facts.accounts
   const { data: rows, error } = await client
     .from('people_accounts')
     .select('person_id,system,external_id')
-    .in(
-      'person_id',
-      data.people.map((p) => p.id)
-    )
+    .in('person_id', facts.people)
   if (error) return `no se pudo leer people_accounts (${error.code || error.message})`
-  const key = (row: { person_id: string; system: string; external_id: string }) =>
-    `${row.person_id} ${row.system} ${row.external_id}`
-  const have = new Set((rows as (typeof expected)[number][]).map(key))
+  const key = (row: AccountRow) => `${row.person_id} ${row.system} ${row.external_id}`
+  const have = new Set((rows as AccountRow[]).map(key))
   const people = [...new Set(expected.filter((row) => !have.has(key(row))).map((row) => row.person_id))]
   return people.length ? `faltan o cambiaron los vínculos de ${people.join(', ')} en people_accounts` : null
 }
 
-async function seedChecks(client: SupabaseClient, data: SyntheticData, unreadable: string[]): Promise<Check[]> {
-  const pending = seededRows(data).filter(({ table }) => !unreadable.includes(table))
+async function seedChecks(client: SupabaseClient, facts: DemoBaseFacts, unreadable: string[]): Promise<Check[]> {
+  const pending = facts.seeded.filter(({ table }) => !unreadable.includes(table))
   const problems = await Promise.all([
     ...pending.map(({ table, ids }) => rowsCheck(client, table, ids)),
-    unreadable.includes('people_accounts') ? null : accountsCheck(client, data)
+    unreadable.includes('people_accounts') ? null : accountsCheck(client, facts)
   ])
   const found = problems.filter((p): p is string => p !== null)
-  if (found.length) return found.map((problem) => check('Seeds', 'falla', `${problem}: ${AGAIN}`))
+  if (found.length) return found.map((problem) => check('Seeds', 'falla', `${problem}: ${FIX_HINT}`))
   return [check('Seeds', 'ok', 'el set sintético está cargado')]
 }
 
-async function baseChecks(client: SupabaseClient, root: string, data: SyntheticData): Promise<Check[]> {
+async function baseChecks(client: SupabaseClient, root: string, facts: DemoBaseFacts): Promise<Check[]> {
   const sql = schemaSql(root)
   const tables = await tableChecks(client, tablesIn(sql))
   return [
     ...tables.checks,
     ...(await functionChecks(client, functionsIn(sql))),
-    await bucketCheck(client),
-    ...(await seedChecks(client, data, tables.missing))
+    await bucketCheck(client, facts.bucket),
+    ...(await seedChecks(client, facts, tables.missing))
   ]
 }
 
-function clientFrom(env: Env): SupabaseClient | null {
-  try {
-    return supabaseFromEnv(env)
-  } catch {
-    return null
-  }
-}
-
-export async function verifyDemoBase({ env, root, client, data = syntheticData }: VerifyDeps): Promise<Check[]> {
-  const checks = [...variableChecks(env), ...(await systemChecks(env, data))]
-  const base = client ?? clientFrom(env)
+export async function verifyDemoBase({ env, root, facts }: VerifyDeps): Promise<Check[]> {
+  const checks = [...variableChecks(env), ...(await systemChecks(env))]
+  const base = facts.client
   if (!base)
     return [
       ...checks,
       check('Base', 'falla', 'sin NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY no se puede revisar la base')
     ]
-  return [...checks, ...(await baseChecks(base, root, data))]
+  return [...checks, ...(await baseChecks(base, root, facts))]
 }

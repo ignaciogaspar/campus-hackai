@@ -1,11 +1,12 @@
 'use client'
 
 /* El espacio abierto se actualiza solo: mientras la pestaña está a la vista se
-   vuelve a leer cada 10 segundos, y enseguida al volver a ella (la tarea T3,
+   vuelve a leer cada 6 segundos, y enseguida al volver a ella (la tarea T3,
    «enterarme», pide ver lo nuevo en 15 segundos como mucho). Volver a leer es
    `router.refresh()`: el servidor arma la página y la barra lateral de nuevo,
-   con lo que trajo del canal externo y de Moodle, y lo que se está escribiendo
-   no se pierde. En las otras pantallas no hace nada.
+   con lo nuevo de HackAI y lo que trajo de Moodle, y lo que se está
+   escribiendo no se pierde. En las otras pantallas no hace nada. Lo del canal
+   externo entra por el mismo camino cuando exista la sincronización (#15).
 
    Vive en el layout de (app), no en la página: así sigue andando, sin volver a
    empezar, al pasar de un canal a otro. Puesto en la página, en el build de
@@ -18,10 +19,13 @@
    para que la barra los baje sin esperar al próximo refresco. */
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
-import { isSpacePath, JUST_READ_SELECTOR, refreshWhileVisible } from '@/components/spaces/live-refresh-schedule'
+import { isSpacePath } from '@/components/spaces/format'
+import { JUST_READ_SELECTOR, refreshWhileVisible } from '@/components/spaces/live-refresh-schedule'
 
-/** Por debajo de los 15 segundos, con margen para lo que tarda el servidor en responder. */
-const EVERY_MS = 10_000
+/** Espacios no vuelve a Moodle más de una vez cada 10 segundos por espacio
+    (`open`): con un refresco cada 6, lo nuevo llega en 12 como mucho, por
+    debajo de los 15, con margen para lo que tarda el servidor. */
+const EVERY_MS = 6_000
 
 export function LiveRefresh() {
   const router = useRouter()

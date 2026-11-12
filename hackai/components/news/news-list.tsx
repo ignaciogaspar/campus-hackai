@@ -3,7 +3,7 @@
    y cuántas cosas hay sin leer. Cada fila lleva al canal o al hilo, que al
    abrirse queda leído. En el celular y en compu es la misma columna. */
 import Link from 'next/link'
-import type { NewsRow, SubjectNews } from '@/components/novedades/format'
+import type { NewsRow, SubjectNews } from '@/components/news/format'
 import { ChannelIcon } from '@/components/spaces/channel-icon'
 import { Card } from '@/components/ui/card'
 import { OriginBadge } from '@/components/ui/origin-badge'

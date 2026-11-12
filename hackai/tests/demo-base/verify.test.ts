@@ -3,7 +3,9 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@supabase/supabase-js'
+import { demoBaseFacts } from '@/lib/adapters/supabase/demo-base'
 import { peopleAccountRows } from '@/lib/adapters/supabase/people-seed'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { type Check, verifyDemoBase } from '@/lib/demo-base/verify'
@@ -101,13 +103,16 @@ function fakeBase({ without = [], functions = true, publicBucket = false, missin
   return { client, methods }
 }
 
+/** Lo que la verificación sabe de la base de la demo, con el cliente de mentira. */
+const factsWith = (client: SupabaseClient) => ({ ...demoBaseFacts({}), client })
+
 const failures = (checks: Check[]) => checks.filter((c) => c.status === 'falla')
 const text = (checks: Check[]) => checks.map((c) => `${c.name}: ${c.detail}`).join('\n')
 
 test('con la base como la deja la preparación y las variables cargadas, no falla nada', async () => {
   const { client } = fakeBase()
 
-  const checks = await verifyDemoBase({ env: ENV, root: fakeRoot(), client })
+  const checks = await verifyDemoBase({ env: ENV, root: fakeRoot(), facts: factsWith(client) })
 
   assert.deepEqual(failures(checks), [], text(checks))
   assert.match(text(checks), /people_accounts/)
@@ -122,7 +127,7 @@ test('nombra la tabla, la función, el bucket y el seed que faltan, y la variabl
   })
   const { SESSION_SECRET: _, ...env } = ENV
 
-  const checks = await verifyDemoBase({ env, root: fakeRoot(), client })
+  const checks = await verifyDemoBase({ env, root: fakeRoot(), facts: factsWith(client) })
   const failed = text(failures(checks))
 
   assert.match(failed, /SESSION_SECRET/)
@@ -135,7 +140,11 @@ test('nombra la tabla, la función, el bucket y el seed que faltan, y la variabl
 test('nunca muestra el valor de una variable', async () => {
   const { client } = fakeBase({ without: ['siu_persons'], functions: false })
 
-  const checks = await verifyDemoBase({ env: { ...ENV, HACKAI_SIU: 'otro' }, root: fakeRoot(), client })
+  const checks = await verifyDemoBase({
+    env: { ...ENV, HACKAI_SIU: 'otro' },
+    root: fakeRoot(),
+    facts: factsWith(client)
+  })
 
   assert.doesNotMatch(text(checks), new RegExp(`${SERVICE_KEY}|${SESSION}|secreto-del-cron`))
 })
@@ -143,7 +152,11 @@ test('nunca muestra el valor de una variable', async () => {
 test('si el sistema no arma con los adaptadores elegidos lo dice con el nombre de la variable', async () => {
   const { client } = fakeBase()
 
-  const checks = await verifyDemoBase({ env: { ...ENV, HACKAI_EXTERNAL_CHANNEL: 'discord' }, root: fakeRoot(), client })
+  const checks = await verifyDemoBase({
+    env: { ...ENV, HACKAI_EXTERNAL_CHANNEL: 'discord' },
+    root: fakeRoot(),
+    facts: factsWith(client)
+  })
 
   assert.match(text(failures(checks)), /DISCORD_BOT_TOKEN/)
 })
@@ -151,7 +164,7 @@ test('si el sistema no arma con los adaptadores elegidos lo dice con el nombre d
 test('si el sistema arma, dice con qué adaptadores y avisa qué puertos no usan la base', async () => {
   const { client } = fakeBase()
 
-  const checks = await verifyDemoBase({ env: ENV, root: fakeRoot(), client })
+  const checks = await verifyDemoBase({ env: ENV, root: fakeRoot(), facts: factsWith(client) })
 
   assert.match(text(checks), /siu=memoria/)
   assert.ok(checks.some((c) => c.status === 'aviso' && /HACKAI_STORE/.test(c.detail)))
@@ -160,7 +173,7 @@ test('si el sistema arma, dice con qué adaptadores y avisa qué puertos no usan
 test('es de solo lectura: no escribe en la base ni en Storage', async () => {
   const { client, methods } = fakeBase()
 
-  await verifyDemoBase({ env: ENV, root: fakeRoot(), client })
+  await verifyDemoBase({ env: ENV, root: fakeRoot(), facts: factsWith(client) })
 
   assert.ok(methods.length > 0)
   assert.deepEqual(
@@ -172,7 +185,7 @@ test('es de solo lectura: no escribe en la base ni en Storage', async () => {
 test('en el repo, revisa las tablas propias y las simuladas de los SQL y llama a space_mark_read por sus argumentos', async () => {
   const { client, methods } = fakeBase()
 
-  await verifyDemoBase({ env: ENV, root: join(import.meta.dirname, '../..'), client })
+  await verifyDemoBase({ env: ENV, root: join(import.meta.dirname, '../..'), facts: factsWith(client) })
 
   for (const table of ['people_accounts', 'space_reads', 'siu_certificates', 'moodle_assignments']) {
     assert.ok(methods.includes(`GET /rest/v1/${table}`), table)
@@ -181,8 +194,22 @@ test('en el repo, revisa las tablas propias y las simuladas de los SQL y llama a
 })
 
 test('sin las variables de Supabase no revisa la base y dice cuáles faltan', async () => {
-  const checks = await verifyDemoBase({ env: { SESSION_SECRET: SESSION }, root: fakeRoot() })
+  const checks = await verifyDemoBase({ env: { SESSION_SECRET: SESSION }, root: fakeRoot(), facts: demoBaseFacts({}) })
 
   assert.match(text(failures(checks)), /NEXT_PUBLIC_SUPABASE_URL/)
   assert.match(text(failures(checks)), /SUPABASE_SERVICE_ROLE_KEY/)
+})
+
+test('avisa si el reloj no es el del sistema, porque Hoy mostraría la fecha fija del set', async () => {
+  const { client } = fakeBase()
+
+  const fixed = await verifyDemoBase({ env: ENV, root: fakeRoot(), facts: factsWith(client) })
+  const real = await verifyDemoBase({
+    env: { ...ENV, HACKAI_CLOCK: 'sistema' },
+    root: fakeRoot(),
+    facts: factsWith(client)
+  })
+
+  assert.ok(fixed.some((c) => c.status === 'aviso' && /HACKAI_CLOCK/.test(c.detail)))
+  assert.ok(!real.some((c) => /HACKAI_CLOCK/.test(c.detail)))
 })

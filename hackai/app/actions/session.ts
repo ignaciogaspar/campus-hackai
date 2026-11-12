@@ -7,11 +7,9 @@ import { redirect } from 'next/navigation'
 import { endSession, homeFor, startSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { People } from '@/lib/core/people'
-import type { Fail } from '@/lib/result'
+import type { ErrorOf } from '@/lib/result'
 import { safeReturnTo } from '@/lib/return-to'
 import { hasSessionSecret } from '@/lib/session-token'
-
-type ErrorOf<T> = Extract<Awaited<T>, Fail<string>>['error']
 
 /** Por qué no se pudo entrar. Viaja en el `?error` con el que se vuelve al ingreso. */
 export type SignInError =

@@ -14,6 +14,7 @@
    enviado.», que agranda el campo un rato: 67 px de navegación, unos 90 del
    campo con esa línea y un respiro. */
 import { type ReactNode, useEffect, useRef } from 'react'
+import type { Latest } from '@/components/spaces/format'
 import { cn } from '@/lib/utils'
 
 /** Cuánto puede quedar la marca fuera de la pantalla y contar igual como «mirando el final». */
@@ -22,7 +23,7 @@ const NEAR_PX = 200
 type Props = {
   /** Qué se está mirando: el canal, el hilo o el filtro. Al cambiar, se vuelve a dejar a la vista lo último. */
   scope: string
-  latest: { id: string; mine: boolean } | null
+  latest: Latest | null
   /** Arriba de la lista (Avisos) o al pie. */
   at: 'top' | 'bottom'
   children: ReactNode
@@ -33,9 +34,10 @@ function inView(el: HTMLElement): boolean {
   return bottom >= -NEAR_PX && top <= window.innerHeight + NEAR_PX
 }
 
-function reveal(el: HTMLElement, animate: boolean) {
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  el.scrollIntoView({ block: 'nearest', behavior: animate && !reduce ? 'smooth' : 'auto' })
+/* Sin scroll suave: la dirección de diseño admite un solo movimiento, el pulso
+   del contador de no leídos. */
+function reveal(el: HTMLElement) {
+  el.scrollIntoView({ block: 'nearest', behavior: 'auto' })
 }
 
 export function LatestMark({ scope, latest, at, children }: Props) {
@@ -64,8 +66,8 @@ export function LatestMark({ scope, latest, at, children }: Props) {
     const before = shown.current
     shown.current = { scope, id }
     if (!el) return
-    if (before?.scope !== scope) reveal(el, false)
-    else if (before.id !== id && (mine || near.current)) reveal(el, true)
+    if (before?.scope !== scope) reveal(el)
+    else if (before.id !== id && (mine || near.current)) reveal(el)
   }, [scope, id, mine])
 
   const marker = (

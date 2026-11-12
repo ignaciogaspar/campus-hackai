@@ -13,7 +13,7 @@
 import { CalendarDays } from 'lucide-react'
 import type { Metadata } from 'next'
 import { longDay } from '@/components/dates'
-import { unreadTotal } from '@/components/novedades/format'
+import { unreadTotal } from '@/components/news/format'
 import { activeProgram, firstName } from '@/components/session/person-text'
 import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'

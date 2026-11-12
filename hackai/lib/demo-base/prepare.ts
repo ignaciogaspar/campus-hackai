@@ -40,7 +40,8 @@ export const SIMULATED_DIR = 'supabase/simulados'
 /** El SQL que vacía las tablas propias que llenan los ensayos. */
 const RESET_FILE = `${SIMULATED_DIR}/demo_reset.sql`
 
-const sqlFilesIn = (root: string, dir: string) =>
+/** Los SQL de una carpeta, en orden, con su ruta relativa a `root`. */
+export const sqlFilesIn = (root: string, dir: string) =>
   readdirSync(join(root, dir))
     .filter((name) => name.endsWith('.sql'))
     .sort()
@@ -81,6 +82,9 @@ function supabaseProjectRef(url: string): string | null {
   return /^(?:db\.)?([a-z0-9]+)\.supabase\.(?:co|com)$/.exec(host)?.[1] ?? null
 }
 
+/** Las variables de `names` que faltan o están vacías en `env`. */
+export const missingVariables = (env: Env, names: string[]) => names.filter((name) => !env[name]?.trim())
+
 /** Lo que la preparación necesita del entorno. */
 const REQUIRED = ['HACKAI_DEMO_SUPABASE_REF', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_URL']
 
@@ -88,7 +92,7 @@ const REQUIRED = ['HACKAI_DEMO_SUPABASE_REF', 'NEXT_PUBLIC_SUPABASE_URL', 'SUPAB
     nombran variables: nunca muestran una URL, que en DATABASE_URL lleva la
     clave. */
 function recognizeDemoBase(env: Env): Result<string, string> {
-  const missing = REQUIRED.filter((name) => !env[name]?.trim())
+  const missing = missingVariables(env, REQUIRED)
   if (missing.length) return fail(`Faltan ${missing.join(', ')} en hackai/.env.local.`)
   const ref = env.HACKAI_DEMO_SUPABASE_REF!.trim()
   const strangers = ['NEXT_PUBLIC_SUPABASE_URL', 'DATABASE_URL'].filter(

@@ -9,19 +9,19 @@
    un mismo hilo lo dice Espacios. */
 import { CheckCheck } from 'lucide-react'
 import type { Metadata } from 'next'
-import { newsBySubject, unreadTotal } from '@/components/novedades/format'
-import { NewsList } from '@/components/novedades/news-list'
+import { newsBySubject, unreadTotal } from '@/components/news/format'
+import { NewsList } from '@/components/news/news-list'
 import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Spaces } from '@/lib/core/spaces'
-import type { Fail } from '@/lib/result'
+import type { ErrorOf } from '@/lib/result'
 
 export const metadata: Metadata = { title: 'Novedades · Campus HackAI' }
 
 type UnreadRead = Awaited<ReturnType<Spaces['unreadFor']>>
-type UnreadError = Extract<UnreadRead, Fail<string>>['error']
+type UnreadError = ErrorOf<UnreadRead>
 
 const ERRORS: Record<UnreadError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',

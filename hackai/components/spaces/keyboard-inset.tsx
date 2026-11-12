@@ -1,6 +1,6 @@
 'use client'
 
-/* Cuánto tapa el teclado del teléfono, en la variable CSS `--teclado` de la
+/* Cuánto tapa el teclado del teléfono, en la variable CSS `--keyboard-inset` de la
    página, para que ComposerDock suba el campo para escribir justo encima del
    teclado en vez de quedar detrás. Se mide con `visualViewport`, que cambia al
    abrir y cerrar el teclado y cuando el navegador corre la pantalla. Sin
@@ -10,7 +10,7 @@
 import { useEffect } from 'react'
 import { keyboardInset } from '@/components/spaces/keyboard-inset-size'
 
-const VARIABLE = '--teclado'
+const VARIABLE = '--keyboard-inset'
 
 /** Los campos que abren el teclado. Una casilla, una opción o elegir un archivo, no. */
 const TEXT_INPUTS = new Set(['text', 'search', 'email', 'url', 'tel', 'password', 'number'])

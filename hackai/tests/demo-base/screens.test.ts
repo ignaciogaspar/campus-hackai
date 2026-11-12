@@ -68,7 +68,7 @@ test('una pantalla que redirige al ingreso, que no da 200 o que muestra un error
 
 test('una pantalla que muestra un aviso de error, diga lo que diga, falla', async () => {
   // Como lo dibuja ErrorNotice (components/ui/states.tsx).
-  const notice = '<div role="alert" data-aviso="error" class="flex"><div>No sos parte de esta materia.</div></div>'
+  const notice = '<div role="alert" data-notice="error" class="flex"><div>No sos parte de esta materia.</div></div>'
   const server = fakeServer({ '/materias/am1': () => page(`<h1>Análisis</h1>${notice}`) })
   const screens = [{ personId: 'p-alumno', role: 'alumno' as const, paths: ['/materias/am1'] }]
 

@@ -11,6 +11,7 @@
    navegador no adivina otro tipo que el guardado. */
 import type { PersonId } from '@/lib/core/people'
 import type { Spaces } from '@/lib/core/spaces'
+import type { ErrorOf } from '@/lib/result'
 import { signInUrl } from '@/lib/return-to'
 
 export type FileDeliveryDeps = {
@@ -80,7 +81,9 @@ function matches(ifNoneMatch: string | null, etag: string): boolean {
 
 /** Estilos de las páginas de error: los colores de la app y letra del sistema,
     porque la CSP de la página no deja bajar fuentes. Una columna que se
-    centra, igual en el celular que en la compu. */
+    centra, igual en el celular que en la compu. Los colores son copia de los
+    tokens de app/globals.css (fondo, tinta, borde, azul y azul claro): si
+    cambia la paleta, cambian acá. */
 const PAGE_STYLE = [
   '*{box-sizing:border-box}',
   'body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:16px;background:#f2f4fb;color:#10142c;font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}',
@@ -138,7 +141,7 @@ const STORAGE_DOWN: ErrorPage = {
   ])
 }
 
-type FileError = Extract<Awaited<ReturnType<Spaces['file']>>, { ok: false }>['error']
+type FileError = ErrorOf<ReturnType<Spaces['file']>>
 
 /** La página de cada error de Espacios. Es exhaustivo a propósito: si Espacios
     suma un error, el typecheck pide decidir qué página muestra. */

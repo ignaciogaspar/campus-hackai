@@ -1,7 +1,7 @@
 /* Cómo se muestran las novedades sin leer que da Espacios: por materia y canal, con a dónde lleva cada una. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { newsBySubject, unreadBySubject, unreadTotal } from '@/components/novedades/format'
+import { newsBySubject, unreadBySubject, unreadTotal } from '@/components/news/format'
 import type { UnreadItem } from '@/lib/core/spaces'
 
 const ledesma = { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' as const }

@@ -10,6 +10,7 @@
 import { CheckCircle2, CircleAlert, ExternalLink, Info } from 'lucide-react'
 import Link from 'next/link'
 import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react'
+import { REGULARITY_NOTE } from '@/components/enrollment/format'
 import { INITIAL_ENROLLMENT_STATE, visibleOutcome } from '@/components/enrollment/outcome'
 import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { targetFields } from '@/components/enrollment/target'
@@ -34,8 +35,6 @@ const TARGET_TEXT: Record<Target['kind'], { what: string; dropped: string; dropW
     dropWarning: 'Vas a dejar tu lugar en la mesa.'
   }
 }
-
-const REGULARITY_TEXT = 'Para rendir este final, antes tenés que regularizar la cursada.'
 
 const linkButton = cn(buttonVariants({ size: 'lg' }), 'min-h-11')
 const outlineLinkButton = cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')
@@ -82,11 +81,7 @@ function BoardEnrolled({ transactionNumber, needsRegularity }: EnrolledProps) {
       <p>
         <b>Listo, quedaste inscripto al final.</b> Ya estás en el SIU y lo vas a ver en Hoy, entre tus próximos.
       </p>
-      {needsRegularity && (
-        <p className='font-semibold text-warning-foreground'>
-          Acordate: para rendirlo, antes tenés que regularizar la cursada.
-        </p>
-      )}
+      {needsRegularity && <p className='font-semibold text-warning-foreground'>{REGULARITY_NOTE}</p>}
       <Receipt transactionNumber={transactionNumber} />
       <div className='flex flex-wrap gap-2'>
         <Link href='/hoy' className={linkButton}>
@@ -193,22 +188,25 @@ function TargetInputs({ target }: { target: Target }) {
   )
 }
 
+/** Lo que comparten los dos formularios: a qué apuntan, cómo se nombra para
+    un lector de pantalla, si su acción está en curso y qué hacen al enviarse. */
+type FormControlProps = {
+  target: Target
+  label: string
+  pending: boolean
+  action: (formData: FormData) => void
+  onSubmit: () => void
+}
+
 /** Inscribirse: el aviso de la regularidad, si falta, y el botón, que sin lugares dice «Sin cupo» y no se puede tocar. */
 function EnrollForm({
   target,
   label,
   status,
-  enrolling,
+  pending: enrolling,
   action,
   onSubmit
-}: {
-  target: Target
-  label: string
-  status: EnrollmentStatus
-  enrolling: boolean
-  action: (formData: FormData) => void
-  onSubmit: () => void
-}) {
+}: FormControlProps & { status: EnrollmentStatus }) {
   const full = status.spotsLeft === 0
   return (
     <form action={action} onSubmit={onSubmit} className='flex flex-col gap-3'>
@@ -216,7 +214,7 @@ function EnrollForm({
       {status.needsRegularity && (
         <p className='flex gap-2 text-sm text-warning-foreground'>
           <CircleAlert aria-hidden className='mt-0.5 size-4 shrink-0 text-warning-icon' />
-          {REGULARITY_TEXT}
+          {REGULARITY_NOTE}
         </p>
       )}
       <Button type='submit' size='lg' disabled={enrolling || full} className='min-h-11 w-full sm:w-auto sm:self-start'>
@@ -228,19 +226,7 @@ function EnrollForm({
 }
 
 /** Darse de baja: el botón y, al tocarlo, la confirmación. */
-function DropControls({
-  target,
-  label,
-  dropping,
-  action,
-  onSubmit
-}: {
-  target: Target
-  label: string
-  dropping: boolean
-  action: (formData: FormData) => void
-  onSubmit: () => void
-}) {
+function DropControls({ target, label, pending: dropping, action, onSubmit }: FormControlProps) {
   const [confirming, setConfirming] = useState(false)
   // El foco sigue a la confirmación: al abrirla va a «Cancelar», la opción que
   // no borra nada; al cerrarla vuelve a «Darme de baja». Así no se pierde con
@@ -339,7 +325,7 @@ export function EnrollmentActions({ target, subjectId, label, status, enrollActi
           target={target}
           label={label}
           status={status}
-          enrolling={enrolling}
+          pending={enrolling}
           action={enroll}
           onSubmit={() => startAction('inscripcion')}
         />
@@ -351,7 +337,7 @@ export function EnrollmentActions({ target, subjectId, label, status, enrollActi
         <DropControls
           target={target}
           label={label}
-          dropping={dropping}
+          pending={dropping}
           action={drop}
           onSubmit={() => startAction('baja')}
         />
