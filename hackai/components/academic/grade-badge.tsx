@@ -10,7 +10,7 @@ export function GradeBadge({ grade, size = 'md' }: { grade: number | null; size?
         className={cn(
           'grid flex-none place-items-center rounded-[14px] bg-muted text-center leading-tight font-bold text-muted-foreground',
           box,
-          size === 'lg' ? 'text-xs' : 'text-[10px]'
+          size === 'lg' ? 'text-xs' : 'text-[0.625rem]'
         )}
       >
         Sin nota

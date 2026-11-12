@@ -3,11 +3,14 @@
 
 export type EnrollmentStep = 'inscripcion' | 'baja'
 
+/** A qué se inscribe: una comisión (cursada) o una mesa (final). */
+export type EnrollmentTargetKind = 'comision' | 'mesa'
+
 export type EnrollmentState =
   | { kind: 'inicial' }
   /** `inClassroom`: también quedó en el aula del Campus Virtual (la comisión tiene curso). */
-  | { kind: 'inscripto'; transactionNumber: string; inClassroom: boolean }
-  | { kind: 'baja'; transactionNumber: string }
+  | { kind: 'inscripto'; transactionNumber: string; inClassroom: boolean; target: EnrollmentTargetKind }
+  | { kind: 'baja'; transactionNumber: string; target: EnrollmentTargetKind }
   | { kind: 'requiere-autogestion'; url: string; step: EnrollmentStep }
   | { kind: 'error'; message: string }
 

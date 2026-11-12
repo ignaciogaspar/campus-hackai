@@ -67,6 +67,10 @@ export type SiuSection = {
   instance: 'promocion' | 'regularidad'
   /** Cupo. `null` es «sin definir». */
   capacity: number | null
+  /** Propuestas para las que se abre la comisión. Vacío es «para todas las de la facultad». */
+  programIds: string[]
+  /** Observaciones de la comisión, como las carga la facultad. */
+  notes: string | null
 }
 
 export type SiuEnrollmentStatus = 'aceptada' | 'pendiente' | 'rechazada' | 'baja'
@@ -92,6 +96,8 @@ export type SiuExamBoard = {
   capacity: number | null
   enrollmentStart: string
   enrollmentEnd: string
+  /** Observaciones de la mesa, como las carga la facultad. */
+  notes: string | null
 }
 
 export type SiuExamEnrollment = {
@@ -101,6 +107,25 @@ export type SiuExamEnrollment = {
   examBoardId: string
   date: string
   status: SiuEnrollmentStatus
+}
+
+/** Cómo cuenta una materia en el plan: obligatoria, optativa o actividad de vida universitaria. */
+export type SiuPlanSubjectKind = 'obligatoria' | 'optativa' | 'vida-universitaria'
+
+/** Una materia del plan de estudios, con el año de la carrera en que va.
+    `year` es `null` si se puede hacer en cualquier año, como las de vida universitaria. */
+export type SiuPlanSubject = { subjectId: string; year: number | null; kind: SiuPlanSubjectKind }
+
+/** Plan de estudios vigente de una propuesta (/propuestas/{propuesta}/planes):
+    cuántos años dura, sus materias y cuántas optativas y actividades de vida
+    universitaria pide. */
+export type SiuStudyPlan = {
+  programId: string
+  name: string
+  years: number
+  electivesRequired: number
+  universityLifeRequired: number
+  subjects: SiuPlanSubject[]
 }
 
 /** Evaluación del cronograma: parcial, recuperatorio o trabajo práctico. */
@@ -193,6 +218,8 @@ export type SiuPort = {
   /** Cronograma de una comisión. Sin `hasAssessmentSchedule` devuelve `no-soportado`. */
   assessments(sectionId: string): Promise<Result<SiuAssessment[], SiuReadError | 'no-soportado'>>
   history(personId: string): Promise<Result<SiuHistoryEntry[], SiuReadError>>
+  /** Plan de estudios vigente de una propuesta. */
+  studyPlan(programId: string): Promise<Result<SiuStudyPlan, SiuReadError>>
   provisionalResults(personId: string): Promise<Result<SiuProvisionalResult[], SiuReadError>>
   meetsCertificateConditions(personId: string, type: SiuCertificateType): Promise<Result<boolean, SiuReadError>>
 

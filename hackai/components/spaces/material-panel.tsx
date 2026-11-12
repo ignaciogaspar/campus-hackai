@@ -23,7 +23,7 @@ export function FileKindBox({ item }: { item: MaterialItem }) {
     <span
       aria-hidden='true'
       className={cn(
-        'grid h-10 w-9 flex-none place-items-center rounded-lg text-[10px] font-extrabold',
+        'grid h-10 w-9 flex-none place-items-center rounded-lg text-[0.625rem] font-extrabold',
         kind === 'PDF' ? 'bg-error-background text-destructive' : 'bg-ice text-blue'
       )}
     >
@@ -57,7 +57,7 @@ export function MaterialRow({ item, compact }: { item: MaterialItem; compact?: b
           </span>
         </span>
         {item.unread && (
-          <span className='flex-none rounded-full bg-warning-background px-2 py-0.5 text-[11px] font-bold text-warning-foreground'>
+          <span className='flex-none rounded-full bg-warning-background px-2 py-0.5 text-[0.6875rem] font-bold text-warning-foreground'>
             Nuevo
           </span>
         )}

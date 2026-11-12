@@ -61,7 +61,7 @@ export function ContextPanel({ recent, sections }: { recent: MaterialItem[]; sec
               <li key={t.key} className='flex items-center gap-3 px-4 py-2.5'>
                 <span
                   aria-hidden='true'
-                  className='grid size-8 flex-none place-items-center rounded-full bg-blue text-[11px] font-bold text-white'
+                  className='grid size-8 flex-none place-items-center rounded-full bg-blue text-[0.6875rem] font-bold text-white'
                 >
                   {initialsOf(t.name)}
                 </span>

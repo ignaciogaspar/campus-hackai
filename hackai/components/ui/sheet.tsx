@@ -2,26 +2,46 @@
 
 import { Dialog } from 'radix-ui'
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 export const Sheet = Dialog.Root
 export const SheetTrigger = Dialog.Trigger
 export const SheetClose = Dialog.Close
 
-/* Hoja que sube desde abajo, con fondo oscuro detrás. Se cierra con Escape o tocando afuera. */
+const SIDES = {
+  /** Sube desde abajo: menús cortos y acciones. */
+  bottom:
+    'inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(11_17_80/0.2)] data-[state=open]:slide-in-from-bottom',
+  /** En el celular sube desde abajo; en compu es un panel a la derecha, a todo lo alto, para leer un detalle sin perder la lista. */
+  right:
+    'inset-x-0 bottom-0 max-h-[88dvh] overflow-y-auto rounded-t-3xl pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(11_17_80/0.2)] data-[state=open]:slide-in-from-bottom lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:w-[28rem] lg:rounded-none lg:rounded-l-3xl lg:pt-6 lg:pb-6 lg:shadow-[-8px_0_30px_rgb(11_17_80/0.18)] lg:data-[state=open]:slide-in-from-right'
+}
+
+/* Hoja con fondo oscuro detrás. Se cierra con Escape o tocando afuera. */
 export function SheetContent({
   title,
   description,
+  side = 'bottom',
   children
 }: {
   title: string
   description?: string
+  side?: keyof typeof SIDES
   children: ReactNode
 }) {
   return (
     <Dialog.Portal>
       <Dialog.Overlay className='fixed inset-0 z-20 bg-navy/45 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none' />
-      <Dialog.Content className='fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-lg flex-col gap-4 rounded-t-3xl bg-card px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(11_17_80/0.2)] outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom motion-reduce:animate-none'>
-        <span aria-hidden='true' className='mx-auto h-1 w-10 rounded-full bg-border' />
+      <Dialog.Content
+        className={cn(
+          'fixed z-30 flex flex-col gap-4 bg-card px-5 outline-none data-[state=open]:animate-in motion-reduce:animate-none',
+          SIDES[side]
+        )}
+      >
+        <span
+          aria-hidden='true'
+          className={cn('mx-auto h-1 w-10 flex-none rounded-full bg-border', side === 'right' && 'lg:hidden')}
+        />
         <div>
           <Dialog.Title className='text-lg font-extrabold'>{title}</Dialog.Title>
           {description ? (

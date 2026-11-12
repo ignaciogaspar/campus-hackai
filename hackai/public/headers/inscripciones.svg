@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<style>*{vector-effect:non-scaling-stroke}</style>
+<defs><radialGradient id="glow" cx="0.76" cy="0.5" r="0.4"><stop offset="0" stop-color="#1f5cff" stop-opacity="0.5"/><stop offset="1" stop-color="#1f5cff" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="360" fill="url(#glow)" stroke="none"/>
+<rect x="444" y="106" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="480" y="106" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="516" y="106" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="552" y="106" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="588" y="106" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="624" y="106" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="660" y="106" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="444" y="144" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="480" y="144" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="516" y="144" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="552" y="144" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="588" y="144" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="624" y="144" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="660" y="144" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="444" y="182" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="480" y="182" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="516" y="182" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="552" y="182" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="586" y="180" width="28" height="28" rx="8" stroke="#ff7a1a" stroke-opacity="1" fill="#ff7a1a" fill-opacity="0.18"/>
+<path d="M594 194 L599 199 L607 189" stroke="#ff7a1a" stroke-opacity="1" fill="none" fill-opacity="1"/>
+<rect x="624" y="182" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="660" y="182" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="444" y="220" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="480" y="220" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="516" y="220" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="552" y="220" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="588" y="220" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<rect x="624" y="220" width="24" height="24" rx="7" stroke="#ffffff" stroke-opacity="0.22" fill="#ffffff" fill-opacity="0.16"/>
+<rect x="660" y="220" width="24" height="24" rx="7" stroke="#3ff0ff" stroke-opacity="0.5" fill="none" fill-opacity="1"/>
+<line x1="330" y1="136" x2="410" y2="136" stroke="#ffffff" stroke-opacity="0.22"/>
+<line x1="330" y1="158" x2="392" y2="158" stroke="#ffffff" stroke-opacity="0.22"/>
+<line x1="330" y1="180" x2="402" y2="180" stroke="#ffffff" stroke-opacity="0.22"/>
+</svg>

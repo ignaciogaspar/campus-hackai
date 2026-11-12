@@ -5,7 +5,7 @@ export function UnreadCount({ count, className }: { count: number; className?: s
   return (
     <span
       className={cn(
-        'inline-grid h-5 min-w-5 place-items-center rounded-full bg-blue-light px-1.5 text-[11px] font-bold text-white motion-safe:animate-in motion-safe:zoom-in-50',
+        'inline-grid h-5 min-w-5 place-items-center rounded-full bg-blue-light px-1.5 text-[0.6875rem] font-bold text-white motion-safe:animate-in motion-safe:zoom-in-50',
         className
       )}
     >

@@ -69,7 +69,10 @@ test('arma la pantalla del alumno en una sola llamada: materias, próximos por f
     view.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
       ['examen', 'am1'],
-      ['cursada', 'fi1']
+      ['cursada', 'cda'],
+      ['cursada', 'fi1'],
+      ['cursada', 'pye'],
+      ['cursada', 'vol']
     ]
   )
   assert.equal(view.now, NOW)
@@ -209,7 +212,10 @@ test('con Moodle caído y nada leído antes faltan las materias y sus entregas, 
     result.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
       ['examen', 'am1'],
-      ['cursada', 'fi1']
+      ['cursada', 'cda'],
+      ['cursada', 'fi1'],
+      ['cursada', 'pye'],
+      ['cursada', 'vol']
     ]
   )
   assert.equal(result.value.staleSince, null)
@@ -234,12 +240,20 @@ test('lo desactualizado se mira contra el reloj: lo que ya pasó sale pasado y l
     monday.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
       ['examen', 'am1'],
-      ['cursada', 'fi1']
+      ['cursada', 'cda'],
+      ['cursada', 'fi1'],
+      ['cursada', 'pye'],
+      ['cursada', 'vol']
     ]
   )
   assert.deepEqual(
     december.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
-    [['cursada', 'fi1']],
+    [
+      ['cursada', 'cda'],
+      ['cursada', 'fi1'],
+      ['cursada', 'pye'],
+      ['cursada', 'vol']
+    ],
     'la mesa cerró el 4/12; el verano sigue abierto'
   )
 })

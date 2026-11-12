@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<style>*{vector-effect:non-scaling-stroke}</style>
+<defs><radialGradient id="glow" cx="0.79" cy="0.66" r="0.4"><stop offset="0" stop-color="#1f5cff" stop-opacity="0.5"/><stop offset="1" stop-color="#1f5cff" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="360" fill="url(#glow)" stroke="none"/>
+<line x1="250" y1="250" x2="720" y2="250" stroke="#ffffff" stroke-opacity="0.22"/>
+<circle cx="570" cy="250" r="34" stroke="#3ff0ff" stroke-opacity="0.75" fill="#3ff0ff" fill-opacity="0.12"/>
+<path d="M506 250 A64 64 0 0 1 634 250" stroke="#3ff0ff" stroke-opacity="0.6" fill="none" fill-opacity="1"/>
+<path d="M474 250 A96 96 0 0 1 666 250" stroke="#3ff0ff" stroke-opacity="0.4" fill="none" fill-opacity="1"/>
+<path d="M440 250 A130 130 0 0 1 700 250" stroke="#3ff0ff" stroke-opacity="0.3" fill="none" fill-opacity="1"/>
+<path d="M404 250 A166 166 0 0 1 736 250" stroke="#3ff0ff" stroke-opacity="0.2" fill="none" fill-opacity="1"/>
+<circle cx="286" cy="168" r="3.5" stroke="#ffffff" stroke-opacity="0.35" fill="none" fill-opacity="1"/>
+<circle cx="304" cy="168" r="5" stroke="#ff7a1a" stroke-opacity="1" fill="#ff7a1a" fill-opacity="1"/>
+<circle cx="322" cy="168" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="340" cy="168" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="358" cy="168" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="376" cy="168" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="394" cy="168" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="286" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="304" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="322" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="340" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="358" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="376" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+<circle cx="394" cy="190" r="3.5" stroke="#ffffff" stroke-opacity="0" fill="#ffffff" fill-opacity="0.32"/>
+</svg>

@@ -7,11 +7,9 @@ import { AppShell } from '@/components/shell/app-shell'
 import { IosInstallSteps } from '@/components/shell/install-button'
 import { PageHeader } from '@/components/shell/page-header'
 import { Button } from '@/components/ui/button'
-import { CalendarDay, CalendarLegend } from '@/components/ui/calendar-day'
 import { Card } from '@/components/ui/card'
 import { CollapsibleCard } from '@/components/ui/collapsible-card'
 import { List, ListItem } from '@/components/ui/list'
-import { NextExamCard } from '@/components/ui/next-exam-card'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { SegmentedList, SegmentedTrigger } from '@/components/ui/segmented'
 import { Sheet, SheetTrigger } from '@/components/ui/sheet'
@@ -47,8 +45,8 @@ function RowIcon({ children }: { children: ReactNode }) {
 
 export default function MuestraPage() {
   return (
-    <AppShell school={SCHOOL} subjects={SUBJECTS}>
-      <PageHeader title='Muestra del sistema visual' kicker='Datos de ejemplo' school={SCHOOL} unread={4} />
+    <AppShell school={SCHOOL} subjects={SUBJECTS} shell={{ person: null, unread: 4 }}>
+      <PageHeader title='Muestra del sistema visual' subtitle='Datos de ejemplo' school={SCHOOL} art='hoy' />
       <main className='flex w-full flex-col gap-8 px-4 pt-5 pb-8 lg:px-6'>
         <Section title='Botones'>
           <div className='flex flex-wrap gap-2'>
@@ -151,13 +149,13 @@ export default function MuestraPage() {
           <Tabs defaultValue='cursando' className='flex flex-col gap-3'>
             <SegmentedList aria-label='Tus materias'>
               <SegmentedTrigger value='cursando'>
-                Cursando <span className='text-[11px] text-muted-foreground'>7</span>
+                Cursando <span className='text-[0.6875rem] text-muted-foreground'>7</span>
               </SegmentedTrigger>
               <SegmentedTrigger value='final'>
-                Falta final <span className='text-[11px] text-muted-foreground'>2</span>
+                Falta final <span className='text-[0.6875rem] text-muted-foreground'>2</span>
               </SegmentedTrigger>
               <SegmentedTrigger value='aprobadas'>
-                Aprobadas <span className='text-[11px] text-muted-foreground'>10</span>
+                Aprobadas <span className='text-[0.6875rem] text-muted-foreground'>10</span>
               </SegmentedTrigger>
             </SegmentedList>
             <TabsContent value='cursando' className='text-sm text-muted-foreground'>
@@ -170,17 +168,6 @@ export default function MuestraPage() {
               Las aprobadas, por año de la carrera.
             </TabsContent>
           </Tabs>
-        </Section>
-
-        <Section title='Próximo parcial'>
-          <div className='max-w-md'>
-            <NextExamCard
-              title='Segundo parcial'
-              subject='Análisis Matemático I'
-              when='Lunes 16 de noviembre · 08:00 · Aula 20'
-              daysLeft={6}
-            />
-          </div>
         </Section>
 
         <Section title='Secciones plegables'>
@@ -235,26 +222,6 @@ export default function MuestraPage() {
             </SheetTrigger>
             <IosInstallSteps />
           </Sheet>
-        </Section>
-
-        <Section title='Días del calendario'>
-          <CalendarLegend />
-          <div className='grid grid-cols-3 gap-1.5 sm:grid-cols-7'>
-            <CalendarDay day={9} past events={[]} />
-            <CalendarDay day={10} today events={[]} />
-            <CalendarDay day={12} events={[{ code: 'AM2', title: 'Segundo parcial', origin: 'siu', next: true }]} />
-            <CalendarDay day={13} events={[{ code: 'QUI', title: 'Informe de laboratorio 4', origin: 'moodle' }]} />
-            <CalendarDay day={16} events={[{ code: 'FI2', title: 'Segundo parcial', origin: 'siu' }]} />
-            <CalendarDay
-              day={20}
-              events={[
-                { code: 'PYE', title: 'Segundo parcial', origin: 'siu' },
-                { code: 'QUI', title: 'Cuestionario 5', origin: 'moodle' },
-                { code: 'ING', title: 'Quiz de vocabulario', origin: 'moodle' }
-              ]}
-            />
-            <CalendarDay day={22} events={[{ code: 'PR2', title: 'TP de listas enlazadas', origin: 'moodle' }]} />
-          </div>
         </Section>
 
         <Section title='Estados'>

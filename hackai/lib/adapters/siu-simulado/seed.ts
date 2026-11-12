@@ -87,8 +87,37 @@ export function siuSeedSql(data: SyntheticData): string {
         location: text(s.location),
         modality: text(s.modality),
         instance: text(s.instance),
-        capacity: num(s.capacity)
+        capacity: num(s.capacity),
+        program_ids: textArray(s.programIds),
+        notes: text(s.notes)
       }))
+    ),
+    `delete from siu_plan_subjects where (program_id || ':' || subject_id) <> all (${textArray(
+      siu.studyPlans.flatMap((p) => p.subjects.map((x) => `${p.programId}:${x.subjectId}`))
+    )});\n`,
+    upsert(
+      'siu_study_plans',
+      ['program_id'],
+      siu.studyPlans.map((p) => ({
+        program_id: text(p.programId),
+        name: text(p.name),
+        years: num(p.years),
+        electives_required: num(p.electivesRequired),
+        university_life_required: num(p.universityLifeRequired)
+      }))
+    ),
+    upsert(
+      'siu_plan_subjects',
+      ['program_id', 'subject_id'],
+      siu.studyPlans.flatMap((p) =>
+        p.subjects.map((x, i) => ({
+          program_id: text(p.programId),
+          subject_id: text(x.subjectId),
+          year: num(x.year),
+          kind: text(x.kind),
+          position: num(i)
+        }))
+      )
     ),
     upsert(
       'siu_course_enrollments',
@@ -115,7 +144,8 @@ export function siuSeedSql(data: SyntheticData): string {
         teacher_ids: textArray(m.teacherIds),
         capacity: num(m.capacity),
         enrollment_start: text(m.enrollmentStart),
-        enrollment_end: text(m.enrollmentEnd)
+        enrollment_end: text(m.enrollmentEnd),
+        notes: text(m.notes)
       }))
     ),
     upsert(

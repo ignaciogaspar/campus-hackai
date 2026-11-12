@@ -77,6 +77,14 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     termName: 'Grado 2do Cuatrimestre 2026',
     sectionId: 'sec-am1-fi-a',
     sectionName: 'A',
+    termStart: '2026-08-10T03:00:00.000Z',
+    termEnd: '2026-11-29T02:59:00.000Z',
+    schedule: [
+      { day: 'lunes', start: '08:00', end: '10:00' },
+      { day: 'miercoles', start: '08:00', end: '10:00' }
+    ],
+    location: 'Campus Pilar, aula 12',
+    modality: 'presencial',
     role: 'alumno',
     classrooms: [
       {
@@ -583,7 +591,8 @@ const openings = (items: OpenEnrollment[]) => items.map((i) => [i.kind, i.subjec
 test('ve las mesas de lo que tiene regular o está cursando y las comisiones de verano de lo que le falta cursar, las que cierran antes primero', async () => {
   const { studies } = build()
 
-  // Valentina tiene Álgebra regular, cursa Análisis I y no cursó Física I ni Programación I.
+  // Valentina tiene Álgebra regular, cursa Análisis I y no cursó Física I, Programación I
+  // ni las materias que solo se dictan en verano.
   const result = await studies.openEnrollments('p-vfunes')
 
   assert.ok(result.ok)
@@ -592,10 +601,13 @@ test('ve las mesas de lo que tiene regular o está cursando y las comisiones de 
   assert.deepEqual(openings(result.value.data), [
     ['examen', 'aga', '2026-12-05T02:59:00.000Z'],
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
+    ['cursada', 'cda', '2026-12-19T02:59:00.000Z'],
     ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
-    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z']
+    ['cursada', 'pye', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'vol', '2026-12-19T02:59:00.000Z']
   ])
-  assert.deepEqual(result.value.data[3], {
+  assert.deepEqual(result.value.data[5], {
     kind: 'cursada',
     subjectId: 'pr1',
     subjectName: 'Programación I',
@@ -630,7 +642,10 @@ test('no ve la mesa a la que ya se inscribió ni el verano de lo que está cursa
   assert.ok(result.ok)
   assert.deepEqual(openings(result.value.data), [
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
-    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z']
+    ['cursada', 'cda', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'pye', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'vol', '2026-12-19T02:59:00.000Z']
   ])
 })
 
@@ -683,8 +698,11 @@ test('cuando cierra la inscripción a las mesas dejan de aparecer, y sin nada ab
   assert.deepEqual(
     december.value.data.map((i) => [i.kind, i.subjectId]),
     [
+      ['cursada', 'cda'],
       ['cursada', 'fi1'],
-      ['cursada', 'pr1']
+      ['cursada', 'pye'],
+      ['cursada', 'pr1'],
+      ['cursada', 'vol']
     ]
   )
   assert.deepEqual(later.value.data, [])
@@ -1003,6 +1021,10 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
     date: null,
     location: 'Virtual',
     modality: 'virtual',
+    instance: 'regularidad',
+    start: '2027-01-11T03:00:00.000Z',
+    end: '2027-02-27T02:59:00.000Z',
+    notes: 'Las clases son por Zoom y quedan grabadas en el aula del Campus Virtual.',
     teachers: [{ personId: 'p-darrieta', name: 'Diego Arrieta' }],
     capacity: null,
     enrolled: 0,
@@ -1018,17 +1040,15 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
 test('la oferta nunca trae comisiones de otra facultad ni de períodos que ya terminaron', async () => {
   const { studies } = build()
 
-  const fi = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'am1' })
+  // Lucía es de Informática: de Análisis I de Ingeniería ve la A, que es de su carrera.
+  const fi = await studies.offer('p-lbenitez', { kind: 'cursada', subjectId: 'am1' })
   const fce = await studies.offer('p-nherrera', { kind: 'cursada', subjectId: 'am1' })
   const aga = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'aga' })
 
   assert.ok(fi.ok && fce.ok && aga.ok)
   assert.deepEqual(
     fi.value.map((o) => o.target),
-    [
-      { kind: 'comision', sectionId: 'sec-am1-fi-a' },
-      { kind: 'comision', sectionId: 'sec-am1-fi-b' }
-    ]
+    [{ kind: 'comision', sectionId: 'sec-am1-fi-a' }]
   )
   assert.deepEqual(
     fce.value.map((o) => o.target),
@@ -1385,19 +1405,21 @@ test('las inscripciones abiertas a cursada son las materias de su facultad con u
 
   assert.ok(tomas.ok && martin.ok && federico.ok)
   assert.equal(tomas.value.stale, false)
-  assert.deepEqual(courses(tomas.value.data), [
-    {
-      kind: 'cursada',
-      subjectId: 'fi1',
-      subjectName: 'Física I',
-      opensAt: '2026-11-02T03:00:00.000Z',
-      closesAt: '2026-12-19T02:59:00.000Z',
-      needsRegularity: false
-    }
-  ])
+  assert.deepEqual(
+    courses(tomas.value.data).map((o) => o.subjectId),
+    ['cda', 'fi1', 'pye', 'vol']
+  )
+  assert.deepEqual(courses(tomas.value.data)[1], {
+    kind: 'cursada',
+    subjectId: 'fi1',
+    subjectName: 'Física I',
+    opensAt: '2026-11-02T03:00:00.000Z',
+    closesAt: '2026-12-19T02:59:00.000Z',
+    needsRegularity: false
+  })
   assert.deepEqual(
     courses(martin.value.data).map((o) => o.subjectId),
-    ['pr1']
+    ['cda', 'pye', 'pr1', 'vol']
   )
   // Federico, de Ciencias Empresariales, no cursa Análisis Matemático I.
   assert.deepEqual(
@@ -1468,10 +1490,7 @@ test('la oferta dice cuántos lugares quedan: ninguno si se llenó, y sin tope s
   )
   assert.deepEqual(
     am1.value.map((o) => [o.name, o.capacity, o.enrolled, o.spotsLeft]),
-    [
-      ['A', 40, 3, 37],
-      ['B', 40, 3, 37]
-    ]
+    [['B', 40, 3, 37]]
   )
   assert.deepEqual(
     pr1.value.map((o) => o.spotsLeft),
@@ -1499,10 +1518,7 @@ test('la oferta marca la comisión vigente de la materia aunque sea de otra facu
   assert.ok(offer.ok)
   assert.deepEqual(
     offer.value.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
-    [
-      ['A', false, 'A'],
-      ['B', false, 'A']
-    ]
+    [['B', false, 'A']]
   )
   assert.deepEqual(await studies.enroll('p-vfunes', { kind: 'comision', sectionId: 'sec-am1-fi-b' }), {
     ok: false,
@@ -1651,4 +1667,98 @@ test('si falla desmatricular la segunda aula y volver a matricular la primera ta
 
   assert.deepEqual(await studies.drop('p-mcabrera', FI1_VERANO), { ok: false, error: 'a-medias' })
   assert.deepEqual(await siuSections(siu, MARTIN.siu), ['sec-am1-fi-b', 'sec-fi1-fi-v'])
+})
+
+test('las comisiones de otra carrera no aparecen en la oferta ni dejan inscribirse', async () => {
+  const { studies } = build()
+
+  // Sofía es de Industrial: de Probabilidad y Estadística de verano ve la A y la B, no la C de Informática.
+  const offer = await studies.offer('p-sdominguez', { kind: 'cursada', subjectId: 'pye' })
+
+  assert.ok(offer.ok)
+  assert.deepEqual(
+    offer.value.map((o) => o.name),
+    ['Verano A', 'Verano B']
+  )
+  assert.deepEqual(await studies.enroll('p-sdominguez', { kind: 'comision', sectionId: 'sec-pye-fi-vc' }), {
+    ok: false,
+    error: 'objetivo-desconocido'
+  })
+  const enrolled = await studies.enroll('p-sdominguez', { kind: 'comision', sectionId: 'sec-pye-fi-va' })
+  assert.equal(enrolled.ok && enrolled.value.kind, 'inscripto')
+})
+
+test('la carrera trae cada materia del plan con su estado, sus notas y el avance', async () => {
+  const { studies } = build()
+
+  const result = await studies.career('p-sdominguez')
+
+  assert.ok(result.ok)
+  const career = result.value.data
+  assert.deepEqual(career.program, { id: 'iind', name: 'Ingeniería Industrial', plan: 'Plan 2019', years: 5 })
+  const status = (id: string) => career.subjects.find((s) => s.subjectId === id)
+  assert.deepEqual(
+    ['iin', 'an1', 'aga', 'am1', 'pye', 'tor'].map((id) => [id, status(id)?.status]),
+    [
+      ['iin', 'promocionada'],
+      ['an1', 'aprobada'],
+      ['aga', 'regular'],
+      ['am1', 'en-curso'],
+      ['pye', 'pendiente'],
+      ['tor', 'promocionada']
+    ]
+  )
+  const aga = status('aga')!
+  assert.deepEqual(
+    [aga.year, aga.kind, aga.courseGrade, aga.finalGrade, aga.academicYear],
+    [1, 'obligatoria', 7, null, 2026]
+  )
+  assert.deepEqual(
+    aga.assessments.map((a) => [a.name, a.grade, a.graded]),
+    [
+      ['Primer parcial', 7, true],
+      ['Segundo parcial', 6, true]
+    ]
+  )
+  // Análisis I: el primer parcial tiene nota en actuación provisoria y el segundo todavía no se tomó.
+  assert.deepEqual(
+    status('am1')!.assessments.map((a) => [a.name, a.grade, a.past, a.source]),
+    [
+      ['Primer parcial', 9, true, 'actuacion-provisoria'],
+      ['Segundo parcial', null, false, null]
+    ]
+  )
+  assert.equal(status('tor')!.year, null)
+  // Promedio de las aprobadas con nota: 8, 7 y 6. La de vida universitaria no tiene nota.
+  assert.equal(career.average, 7)
+  assert.deepEqual(career.required, { approved: 3, total: 17 })
+  assert.deepEqual(career.electives, { approved: 0, total: 2 })
+  assert.deepEqual(career.universityLife, { approved: 1, total: 3 })
+  assert.equal(career.percent, 18)
+})
+
+test('la carrera marca el final al que está inscripto y usa la propuesta activa, no la de aspirante', async () => {
+  const { studies } = build()
+
+  // Tomás tiene Informática activa y Aspirantes pasiva, y está inscripto a la mesa de Álgebra.
+  const result = await studies.career('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.data.program?.id, 'iinf')
+  assert.equal(result.value.data.subjects.find((s) => s.subjectId === 'aga')?.examDate, '2026-12-09T12:00:00.000Z')
+})
+
+test('un docente no tiene carrera, y con el SIU caído vuelve lo último leído', async () => {
+  const { studies, siuState } = build()
+
+  const teacher = await studies.career('p-mledesma')
+  assert.ok(teacher.ok)
+  assert.deepEqual(teacher.value.data.subjects, [])
+
+  await studies.career('p-sdominguez')
+  siuState.down = true
+  const stale = await studies.career('p-sdominguez')
+  assert.ok(stale.ok)
+  assert.equal(stale.value.stale, true)
+  assert.equal(stale.value.data.program?.id, 'iind')
 })

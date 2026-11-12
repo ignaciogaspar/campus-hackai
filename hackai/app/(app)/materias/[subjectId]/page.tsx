@@ -26,6 +26,7 @@ import { ContextPanel, shownSections } from '@/components/spaces/context-panel'
 import { channelLabel, hasSeveralSections, messageTime, type SpaceQuery, spaceHref } from '@/components/spaces/format'
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
+import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -77,7 +78,10 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
 function SectionChips({ view }: { view: SpaceView }) {
   const sections = shownSections(view.viewer.sections)
   return sections.map((s) => (
-    <span key={s.sectionId} className='rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white'>
+    <span
+      key={s.sectionId}
+      className='rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15 ring-inset'
+    >
       {view.viewer.role === 'profesor'
         ? `Docente · Comisión ${s.name}`
         : [`Comisión ${s.name}`, s.teachers[0]?.name].filter(Boolean).join(' · ')}
@@ -88,7 +92,7 @@ function SectionChips({ view }: { view: SpaceView }) {
 function SpaceError({ error }: { error: AccessError }) {
   return (
     <>
-      <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop />
+      <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop art='general' />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{OPEN_ERRORS[error]}</p>
@@ -188,7 +192,11 @@ export default async function SpacePage({ params, searchParams }: { params: Para
     <>
       <PageHeader
         title={view.space.name}
-        kicker={[view.space.subjectCode, shownSections(view.viewer.sections)[0]?.termName].filter(Boolean).join(' · ')}
+        subtitle={[view.space.subjectCode, shownSections(view.viewer.sections)[0]?.termName]
+          .filter(Boolean)
+          .join(' · ')}
+        icon={<SubjectIcon name={view.space.name} size='lg' tone='glass' className='max-sm:hidden' />}
+        art={subjectTheme(view.space.name).art}
         backHref='/materias'
         hideBackOnDesktop
       >
@@ -203,7 +211,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[248px_minmax(0,1fr)_280px] lg:items-start lg:gap-6'>
+        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15.5rem_minmax(0,1fr)_17.5rem] lg:items-start lg:gap-6'>
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}

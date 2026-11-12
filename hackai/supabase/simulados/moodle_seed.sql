@@ -3,7 +3,7 @@
 begin;
 
 delete from moodle_enrolments e where not exists (
-  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('304', 'c-pr1-fi-v'), ('303', 'c-am1-fce-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
+  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('304', 'c-pr1-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
   where keep.user_id = e.user_id and keep.course_id = e.course_id
 );
 
@@ -13,6 +13,8 @@ insert into moodle_users (id, username, first_name, last_name, email) values
   ('303', 'carolina.bustos', 'Carolina', 'Bustos', 'carolina.bustos@example.edu.ar'),
   ('304', 'diego.arrieta', 'Diego', 'Arrieta', 'diego.arrieta@example.edu.ar'),
   ('305', 'silvina.rosales', 'Silvina', 'Rosales', 'silvina.rosales@example.edu.ar'),
+  ('306', 'romina.quiroga', 'Romina', 'Quiroga', 'romina.quiroga@example.edu.ar'),
+  ('307', 'pablo.molina', 'Pablo', 'Molina', 'pablo.molina@example.edu.ar'),
   ('401', 'tomas.aguirre', 'Tomás', 'Aguirre', 'tomas.aguirre@alumnos.example.edu.ar'),
   ('402', 'lucia.benitez', 'Lucía', 'Benítez', 'lucia.benitez@alumnos.example.edu.ar'),
   ('403', 'martin.cabrera', 'Martín', 'Cabrera', 'martin.cabrera@alumnos.example.edu.ar'),
@@ -35,7 +37,12 @@ insert into moodle_courses (id, short_name, full_name, siu_section_ids) values
   ('c-iec-fce-a', '1C-2026-IEC-FCE-A', 'Introducción a la Economía - Comisión A (FCE) - Grado 1er Cuatrimestre 2026', array['sec-iec-fce-a']::text[]),
   ('c-fi1-fi-v', 'VERANO-2027-FI1-FI-Verano', 'Física I - Comisión Verano (FI) - Curso de Verano 2027', array['sec-fi1-fi-v']::text[]),
   ('c-pr1-fi-v', 'VERANO-2027-PR1-FI-Verano', 'Programación I - Comisión Verano (FI) - Curso de Verano 2027', array['sec-pr1-fi-v']::text[]),
-  ('c-am1-fce-v', 'VERANO-2027-AM1-FCE-Verano', 'Análisis Matemático I - Comisión Verano (FCE) - Curso de Verano 2027', array['sec-am1-fce-v']::text[])
+  ('c-am1-fce-v', 'VERANO-2027-AM1-FCE-Verano', 'Análisis Matemático I - Comisión Verano (FCE) - Curso de Verano 2027', array['sec-am1-fce-v']::text[]),
+  ('c-pye-fi-va', 'VERANO-2027-PYE-FI-Verano A', 'Probabilidad y Estadística - Comisión Verano A (FI) - Curso de Verano 2027', array['sec-pye-fi-va']::text[]),
+  ('c-pye-fi-vb', 'VERANO-2027-PYE-FI-Verano B', 'Probabilidad y Estadística - Comisión Verano B (FI) - Curso de Verano 2027', array['sec-pye-fi-vb']::text[]),
+  ('c-pye-fi-vc', 'VERANO-2027-PYE-FI-Verano C', 'Probabilidad y Estadística - Comisión Verano C (FI) - Curso de Verano 2027', array['sec-pye-fi-vc']::text[]),
+  ('c-cda-fi-v', 'VERANO-2027-CDA-FI-Verano', 'Ciencia de Datos - Comisión Verano (FI) - Curso de Verano 2027', array['sec-cda-fi-v']::text[]),
+  ('c-vol-fi-v', 'VERANO-2027-VOL-FI-Verano', 'Voluntariado Universitario - Comisión Verano (FI) - Curso de Verano 2027', array['sec-vol-fi-v']::text[])
 on conflict (id) do update set short_name = excluded.short_name, full_name = excluded.full_name, siu_section_ids = excluded.siu_section_ids;
 
 insert into moodle_enrolments (user_id, course_id, role) values
@@ -49,8 +56,14 @@ insert into moodle_enrolments (user_id, course_id, role) values
   ('302', 'c-fi1-fi-v', 'editingteacher'),
   ('304', 'c-pr1-fi-v', 'editingteacher'),
   ('303', 'c-am1-fce-v', 'editingteacher'),
+  ('306', 'c-pye-fi-va', 'editingteacher'),
+  ('307', 'c-pye-fi-vb', 'editingteacher'),
+  ('307', 'c-pye-fi-vc', 'editingteacher'),
+  ('307', 'c-cda-fi-v', 'editingteacher'),
+  ('306', 'c-vol-fi-v', 'editingteacher'),
   ('401', 'c-aga-fi-a', 'student'),
   ('406', 'c-aga-fi-a', 'student'),
+  ('404', 'c-aga-fi-a', 'student'),
   ('408', 'c-iec-fce-a', 'student'),
   ('401', 'c-am1-fi-a', 'student'),
   ('401', 'c-pr1-fi-a', 'student'),

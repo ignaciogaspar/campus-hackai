@@ -48,8 +48,12 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title='¿Quién sos?' signedOut>
-        <p className='w-full text-sm text-pretty text-white/75'>Elegí una persona para entrar. No hace falta clave.</p>
+      <PageHeader
+        title='¿Quién sos?'
+        subtitle='Elegí una persona para entrar. No hace falta clave.'
+        art='ingreso'
+        signedOut
+      >
         <span className='rounded-full bg-orange px-3 py-1 text-[0.8125rem] font-bold text-ink'>
           Demo con datos inventados
         </span>

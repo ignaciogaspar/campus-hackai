@@ -44,14 +44,14 @@ function QuestionStatus({ thread }: { thread: Thread }) {
   if (!question) return null
   if (question.resolved) {
     return (
-      <span className='inline-flex items-center gap-1 rounded-full bg-success-background px-2 py-0.5 text-[11px] font-bold text-success'>
+      <span className='inline-flex items-center gap-1 rounded-full bg-success-background px-2 py-0.5 text-[0.6875rem] font-bold text-success'>
         <Check aria-hidden='true' className='size-3.5' strokeWidth={2.4} />
         Resuelta
       </span>
     )
   }
   return (
-    <span className='rounded-full bg-warning-background px-2 py-0.5 text-[11px] font-bold text-warning-foreground'>
+    <span className='rounded-full bg-warning-background px-2 py-0.5 text-[0.6875rem] font-bold text-warning-foreground'>
       {thread.replies.length ? 'Abierta' : 'Sin respuesta'}
     </span>
   )
@@ -154,7 +154,7 @@ function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & {
               className={railItem({ size: 'sm' })}
             >
               {label}
-              {count !== null && <span className='text-[11px] font-bold opacity-70'>{count}</span>}
+              {count !== null && <span className='text-[0.6875rem] font-bold opacity-70'>{count}</span>}
             </Link>
           </li>
         ))}

@@ -20,6 +20,7 @@ import type {
   SiuExamEnrollment,
   SiuHistoryEntry,
   SiuPerson,
+  SiuPlanSubjectKind,
   SiuPort,
   SiuProvisionalResult,
   SiuReceipt,
@@ -84,6 +85,8 @@ type SectionRow = {
   modality: SiuSection['modality']
   instance: SiuSection['instance']
   capacity: number | null
+  program_ids: string[] | null
+  notes: string | null
 }
 type EnrollmentRow = {
   id: string
@@ -105,6 +108,7 @@ type ExamBoardRow = {
   capacity: number | null
   enrollment_start: string
   enrollment_end: string
+  notes: string | null
 }
 type AssessmentRow = { id: string; section_id: string; name: string; kind: SiuAssessment['kind']; date: string }
 type HistoryRow = {
@@ -118,6 +122,14 @@ type HistoryRow = {
   grade_record: string
   section_id: string | null
   assessment_id: string | null
+}
+type StudyPlanRow = {
+  program_id: string
+  name: string
+  years: number
+  electives_required: number
+  university_life_required: number
+  subjects: { subject_id: string; year: number | null; kind: SiuPlanSubjectKind; position: number }[]
 }
 type ProvisionalRow = {
   id: string
@@ -170,7 +182,9 @@ function toSection(row: SectionRow): SiuSection {
     location: row.location,
     modality: row.modality,
     instance: row.instance,
-    capacity: row.capacity
+    capacity: row.capacity,
+    programIds: row.program_ids ?? [],
+    notes: row.notes ?? null
   }
 }
 
@@ -207,7 +221,8 @@ function toExamBoard(row: ExamBoardRow): SiuExamBoard {
     teacherIds: row.teacher_ids,
     capacity: row.capacity,
     enrollmentStart: iso(row.enrollment_start),
-    enrollmentEnd: iso(row.enrollment_end)
+    enrollmentEnd: iso(row.enrollment_end),
+    notes: row.notes ?? null
   }
 }
 
@@ -478,6 +493,32 @@ export function createSimulatedSiu({
           })
         )
       )
+    },
+
+    async studyPlan(programId) {
+      const row = await read<StudyPlanRow>('plan', (s) =>
+        client
+          .from('siu_study_plans')
+          .select(
+            'program_id, name, years, electives_required, university_life_required, subjects:siu_plan_subjects(subject_id, year, kind, position)'
+          )
+          .eq('program_id', programId)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!row.ok) return row
+      if (!row.value) return fail('no-encontrado')
+      const plan = row.value
+      return ok({
+        programId: plan.program_id,
+        name: plan.name,
+        years: plan.years,
+        electivesRequired: plan.electives_required,
+        universityLifeRequired: plan.university_life_required,
+        subjects: [...plan.subjects]
+          .sort((a, b) => a.position - b.position)
+          .map((p) => ({ subjectId: p.subject_id, year: p.year, kind: p.kind }))
+      })
     },
 
     async provisionalResults(personId) {

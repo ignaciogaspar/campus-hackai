@@ -7,7 +7,8 @@
    - Dos facultades (Ingeniería y Ciencias Empresariales) y Análisis
      Matemático I dictada en las dos.
    - En Ingeniería, comisiones A y B de Análisis Matemático I con docentes distintos.
-   - Diez alumnos de cuatro propuestas y cinco docentes.
+   - Diez alumnos de cuatro propuestas y siete docentes (Quiroga y Molina
+     dictan solo en verano).
    - Inscripciones a cursada del cuatrimestre actual, del anterior y de verano
      (con la inscripción abierta; Física I de verano está sin cupo).
    - Mesas de examen con cupo en el turno de diciembre, con la inscripción abierta.
@@ -18,6 +19,13 @@
      con sus parciales en la historia; Nicolás Herrera, Introducción a la
      Economía. Tomás aprobó tres materias en 2025, una de ellas con final, y
      Nicolás tiene una equivalencia.
+   - Un plan de estudios por propuesta, con el año de cada materia, optativas
+     y actividades de vida universitaria. Algunas comisiones son de una sola
+     carrera: las de Análisis Matemático I de Ingeniería y las de verano de
+     Probabilidad y Estadística.
+   - Sofía Domínguez (Industrial) tiene historia completa: una promoción, dos
+     finales, una actividad de vida universitaria y Álgebra regular con el
+     final pendiente.
    - Federico Juárez tiene la propuesta pasiva: no cumple las condiciones de la
      constancia de alumno regular.
    - Cursos de Moodle por comisión (Sofía Domínguez todavía no está matriculada
@@ -43,6 +51,7 @@ import type {
   SiuProvisionalResult,
   SiuSchool,
   SiuSection,
+  SiuStudyPlan,
   SiuSubject,
   SiuTerm
 } from '@/lib/ports/siu'
@@ -72,6 +81,7 @@ export type SyntheticData = {
     history: SiuHistoryEntry[]
     provisionalResults: SiuProvisionalResult[]
     certificates: { personId: string; type: SiuCertificateType; meetsConditions: boolean }[]
+    studyPlans: SiuStudyPlan[]
   }
   moodle: {
     baseUrl: string
@@ -114,6 +124,8 @@ const rows: Row[] = [
   ['p-cbustos', '20103', '303', null, 'Bustos', 'Carolina', 'profesor', fce, []],
   ['p-darrieta', '20104', '304', null, 'Arrieta', 'Diego', 'profesor', fi, []],
   ['p-srosales', '20105', '305', null, 'Rosales', 'Silvina', 'profesor', fce, []],
+  ['p-rquiroga', '20106', '306', null, 'Quiroga', 'Romina', 'profesor', fi, []],
+  ['p-pmolina', '20107', '307', null, 'Molina', 'Pablo', 'profesor', fi, []],
   ['p-taguirre', '30101', '401', '1290000000000000011', 'Aguirre', 'Tomás', 'alumno', fi, [informatica, aspirantes]],
   ['p-lbenitez', '30102', '402', '1290000000000000012', 'Benítez', 'Lucía', 'alumno', fi, [informatica]],
   ['p-mcabrera', '30103', '403', null, 'Cabrera', 'Martín', 'alumno', fi, [industrial]],
@@ -203,8 +215,113 @@ const subjects: SiuSubject[] = [
   { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería' },
   { id: 'qui', code: 'QUI', name: 'Química General' },
   { id: 'an1', code: 'AN1', name: 'Antropología I' },
-  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' }
+  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' },
+  // Del resto de los planes de estudio: todavía nadie las cursó.
+  { id: 'am2', code: 'AM2', name: 'Análisis Matemático II' },
+  { id: 'fi2', code: 'FI2', name: 'Física II' },
+  { id: 'pye', code: 'PYE', name: 'Probabilidad y Estadística' },
+  { id: 'pr2', code: 'PR2', name: 'Programación II' },
+  { id: 'edd', code: 'EDD', name: 'Estructuras de Datos' },
+  { id: 'bdd', code: 'BDD', name: 'Bases de Datos' },
+  { id: 'sop', code: 'SOP', name: 'Sistemas Operativos' },
+  { id: 'isw', code: 'ISW', name: 'Ingeniería de Software' },
+  { id: 'iop', code: 'IOP', name: 'Investigación Operativa' },
+  { id: 'ter', code: 'TER', name: 'Termodinámica' },
+  { id: 'gca', code: 'GCA', name: 'Gestión de la Calidad' },
+  { id: 'cst', code: 'CST', name: 'Costos Industriales' },
+  { id: 'etp', code: 'ETP', name: 'Ética Profesional' },
+  { id: 'pfi', code: 'PFI', name: 'Proyecto Final de Ingeniería' },
+  { id: 'cda', code: 'CDA', name: 'Ciencia de Datos' },
+  { id: 'log', code: 'LOG', name: 'Logística' },
+  { id: 'iar', code: 'IAR', name: 'Inteligencia Artificial' },
+  { id: 'mkt', code: 'MKT', name: 'Marketing' },
+  { id: 'fin', code: 'FIN', name: 'Finanzas' },
+  { id: 'co2', code: 'CO2', name: 'Contabilidad II' },
+  { id: 'ndg', code: 'NDG', name: 'Negocios Digitales' },
+  // Actividades de vida universitaria.
+  { id: 'tor', code: 'TOR', name: 'Taller de Oratoria' },
+  { id: 'vol', code: 'VOL', name: 'Voluntariado Universitario' },
+  { id: 'cor', code: 'COR', name: 'Coro Universitario' }
 ]
+
+// Planes de estudio: [propuesta, nombre del plan, años, optativas, vida universitaria, materias por año]
+
+type PlanRow = [string, string, number, number, number, Record<string, string[]>, string[], string[]]
+
+const planRows: PlanRow[] = [
+  [
+    'iind',
+    'Plan 2019',
+    5,
+    2,
+    3,
+    {
+      1: ['am1', 'aga', 'qui', 'iin', 'an1', 'pr1'],
+      2: ['am2', 'fi1', 'fi2', 'pye'],
+      3: ['iop', 'ter', 'iec'],
+      4: ['gca', 'cst', 'etp'],
+      5: ['pfi']
+    },
+    ['cda', 'log'],
+    ['tor', 'vol', 'cor']
+  ],
+  [
+    'iinf',
+    'Plan 2019',
+    5,
+    2,
+    3,
+    {
+      1: ['am1', 'aga', 'pr1', 'iin', 'qui', 'an1'],
+      2: ['am2', 'fi1', 'pr2', 'edd', 'pye'],
+      3: ['bdd', 'sop', 'fi2'],
+      4: ['isw', 'etp'],
+      5: ['pfi']
+    },
+    ['cda', 'iar'],
+    ['tor', 'vol', 'cor']
+  ],
+  [
+    'ladm',
+    'Plan 2021',
+    4,
+    1,
+    2,
+    { 1: ['iad', 'iec', 'am1', 'co1', 'an1'], 2: ['mkt', 'fin'], 3: ['co2'], 4: ['etp'] },
+    ['ndg'],
+    ['tor', 'vol']
+  ],
+  [
+    'cpub',
+    'Plan 2021',
+    5,
+    1,
+    2,
+    { 1: ['iad', 'iec', 'am1', 'co1', 'an1'], 2: ['co2', 'fin'], 3: ['mkt'], 4: ['etp'], 5: [] },
+    ['ndg'],
+    ['tor', 'vol']
+  ]
+]
+
+/* Las optativas van en el año desde el que se pueden cursar (el cuarto, o el
+   tercero en las licenciaturas) y las de vida universitaria, en ninguno: se
+   hacen en cualquier año. */
+const studyPlans: SiuStudyPlan[] = planRows.map(
+  ([programId, name, years, electivesRequired, universityLifeRequired, byYear, electives, universityLife]) => ({
+    programId,
+    name,
+    years,
+    electivesRequired,
+    universityLifeRequired,
+    subjects: [
+      ...Object.entries(byYear).flatMap(([year, ids]) =>
+        ids.map((subjectId) => ({ subjectId, year: Number(year), kind: 'obligatoria' as const }))
+      ),
+      ...electives.map((subjectId) => ({ subjectId, year: years === 4 ? 3 : 4, kind: 'optativa' as const })),
+      ...universityLife.map((subjectId) => ({ subjectId, year: null, kind: 'vida-universitaria' as const }))
+    ]
+  })
+)
 
 // Comisiones
 
@@ -223,7 +340,9 @@ const sections: SiuSection[] = [
     location: 'Campus Pilar, aula 12',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 40
+    capacity: 40,
+    programIds: ['iinf'],
+    notes: 'Comisión de Ingeniería en Informática. Llevá calculadora científica a los parciales.'
   },
   {
     id: 'sec-am1-fi-b',
@@ -239,7 +358,9 @@ const sections: SiuSection[] = [
     location: 'Campus Pilar, aula 14',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 40
+    capacity: 40,
+    programIds: ['iind'],
+    notes: 'Comisión de Ingeniería Industrial. Las clases de consulta son los viernes a las 12 en el aula 14.'
   },
   {
     id: 'sec-am1-fce-a',
@@ -255,7 +376,9 @@ const sections: SiuSection[] = [
     location: 'Sede Buenos Aires, aula 3',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 35
+    capacity: 35,
+    programIds: [],
+    notes: null
   },
   {
     id: 'sec-pr1-fi-a',
@@ -268,7 +391,9 @@ const sections: SiuSection[] = [
     location: 'Campus Pilar, laboratorio 2',
     modality: 'hibrida',
     instance: 'promocion',
-    capacity: 30
+    capacity: 30,
+    programIds: [],
+    notes: 'Se promociona con 7 o más en el parcial y en el TP integrador. Traé tu notebook al laboratorio.'
   },
   {
     id: 'sec-co1-fce-a',
@@ -281,7 +406,9 @@ const sections: SiuSection[] = [
     location: 'Sede Buenos Aires, aula 5',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 35
+    capacity: 35,
+    programIds: [],
+    notes: null
   },
   {
     id: 'sec-aga-fi-a',
@@ -294,7 +421,9 @@ const sections: SiuSection[] = [
     location: 'Campus Pilar, aula 12',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 40
+    capacity: 40,
+    programIds: [],
+    notes: null
   },
   {
     id: 'sec-iec-fce-a',
@@ -307,7 +436,9 @@ const sections: SiuSection[] = [
     location: 'Sede Buenos Aires, aula 3',
     modality: 'presencial',
     instance: 'promocion',
-    capacity: 35
+    capacity: 35,
+    programIds: [],
+    notes: 'Se promociona con 7 o más en el parcial.'
   },
   {
     id: 'sec-fi1-fi-v',
@@ -323,7 +454,9 @@ const sections: SiuSection[] = [
     location: 'Campus Pilar, aula 20',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 2
+    capacity: 2,
+    programIds: [],
+    notes: 'Cursada intensiva de verano: dos clases por semana durante 7 semanas.'
   },
   {
     id: 'sec-pr1-fi-v',
@@ -336,7 +469,9 @@ const sections: SiuSection[] = [
     location: 'Virtual',
     modality: 'virtual',
     instance: 'regularidad',
-    capacity: null
+    capacity: null,
+    programIds: [],
+    notes: 'Las clases son por Zoom y quedan grabadas en el aula del Campus Virtual.'
   },
   {
     id: 'sec-am1-fce-v',
@@ -349,7 +484,94 @@ const sections: SiuSection[] = [
     location: 'Sede Buenos Aires, aula 3',
     modality: 'presencial',
     instance: 'regularidad',
-    capacity: 25
+    capacity: 25,
+    programIds: [],
+    notes: null
+  },
+  // Verano de Ingeniería: Probabilidad y Estadística tiene comisiones para cada carrera.
+  {
+    id: 'sec-pye-fi-va',
+    name: 'Verano A',
+    subjectId: 'pye',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-rquiroga')],
+    schedule: [
+      { day: 'lunes', start: '09:00', end: '12:00' },
+      { day: 'miercoles', start: '09:00', end: '12:00' }
+    ],
+    location: 'Campus Pilar, aula 8',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 30,
+    programIds: ['iind'],
+    notes: 'Cursada intensiva de verano. Se promociona con 7 o más en los dos parciales.'
+  },
+  {
+    id: 'sec-pye-fi-vb',
+    name: 'Verano B',
+    subjectId: 'pye',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-pmolina')],
+    schedule: [
+      { day: 'martes', start: '18:00', end: '21:00' },
+      { day: 'jueves', start: '18:00', end: '21:00' }
+    ],
+    location: 'Campus Pilar, aula 8',
+    modality: 'hibrida',
+    instance: 'regularidad',
+    capacity: 25,
+    programIds: ['iind'],
+    notes: 'Los jueves la clase es virtual y queda grabada en el aula del Campus Virtual.'
+  },
+  {
+    id: 'sec-pye-fi-vc',
+    name: 'Verano C',
+    subjectId: 'pye',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-pmolina')],
+    schedule: [
+      { day: 'lunes', start: '14:00', end: '17:00' },
+      { day: 'miercoles', start: '14:00', end: '17:00' }
+    ],
+    location: 'Campus Pilar, aula 10',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 30,
+    programIds: ['iinf'],
+    notes: 'Comisión de Ingeniería en Informática.'
+  },
+  {
+    id: 'sec-cda-fi-v',
+    name: 'Verano',
+    subjectId: 'cda',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-pmolina')],
+    schedule: [{ day: 'viernes', start: '09:00', end: '13:00' }],
+    location: 'Campus Pilar, laboratorio 2',
+    modality: 'hibrida',
+    instance: 'promocion',
+    capacity: 20,
+    programIds: ['iind', 'iinf'],
+    notes: 'Optativa. Conviene tener Programación I aprobada o en curso.'
+  },
+  {
+    id: 'sec-vol-fi-v',
+    name: 'Verano',
+    subjectId: 'vol',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-rquiroga')],
+    schedule: [{ day: 'sabado', start: '09:00', end: '12:00' }],
+    location: 'Centro comunitario de Derqui',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 15,
+    programIds: [],
+    notes: 'Actividad de vida universitaria. Sale una combi desde el Campus Pilar a las 8:30.'
   }
 ]
 
@@ -358,6 +580,7 @@ const sections: SiuSection[] = [
 const enrollmentRows: [string, string, string][] = [
   ['p-taguirre', 'sec-aga-fi-a', '2026-03-02'],
   ['p-vfunes', 'sec-aga-fi-a', '2026-03-02'],
+  ['p-sdominguez', 'sec-aga-fi-a', '2026-03-03'],
   ['p-nherrera', 'sec-iec-fce-a', '2026-03-03'],
   ['p-taguirre', 'sec-am1-fi-a', '2026-08-03'],
   ['p-taguirre', 'sec-pr1-fi-a', '2026-08-03'],
@@ -404,6 +627,7 @@ const examBoards: SiuExamBoard[] = [
     location: 'Campus Pilar, aula 12',
     teacherIds: [siu('p-mledesma'), siu('p-gferreyra')],
     capacity: 2,
+    notes: 'Escrito, de 3 horas. Llevá DNI o libreta universitaria.',
     ...decemberBoard
   },
   {
@@ -414,6 +638,7 @@ const examBoards: SiuExamBoard[] = [
     location: 'Campus Pilar, aula 14',
     teacherIds: [siu('p-mledesma'), siu('p-gferreyra')],
     capacity: 40,
+    notes: 'Escrito. Se puede usar calculadora científica no programable.',
     ...decemberBoard
   },
   {
@@ -424,6 +649,7 @@ const examBoards: SiuExamBoard[] = [
     location: 'Sede Buenos Aires, aula 3',
     teacherIds: [siu('p-cbustos')],
     capacity: 30,
+    notes: null,
     ...decemberBoard
   },
   {
@@ -434,6 +660,7 @@ const examBoards: SiuExamBoard[] = [
     location: 'Sede Buenos Aires, aula 5',
     teacherIds: [siu('p-srosales')],
     capacity: 30,
+    notes: null,
     ...decemberBoard
   }
 ]
@@ -491,7 +718,12 @@ const subjectRows: HistoryRow[] = [
   ['p-taguirre', 'iin', 'promocion', '2025-07-04', 8, 'promocionado', 'P-2025-0101'],
   ['p-taguirre', 'qui', 'promocion', '2025-12-05', 7, 'promocionado', 'P-2025-0230'],
   ['p-taguirre', 'an1', 'examen', '2025-12-15', 9, 'aprobado', 'E-2025-0318'],
-  ['p-nherrera', 'iad', 'equivalencia', '2026-03-20', 8, 'aprobado', 'R-2026-0014']
+  ['p-nherrera', 'iad', 'equivalencia', '2026-03-20', 8, 'aprobado', 'R-2026-0014'],
+  ['p-sdominguez', 'iin', 'promocion', '2025-07-04', 8, 'promocionado', 'P-2025-0101'],
+  ['p-sdominguez', 'tor', 'promocion', '2025-11-20', null, 'promocionado', 'P-2025-0198'],
+  ['p-sdominguez', 'qui', 'examen', '2025-12-12', 6, 'aprobado', 'E-2025-0301'],
+  ['p-sdominguez', 'an1', 'examen', '2025-12-15', 7, 'aprobado', 'E-2025-0318'],
+  ['p-sdominguez', 'aga', 'cursada', '2026-07-08', 7, 'regular', 'C-2026-0412']
 ]
 
 // Notas de evaluaciones cargadas en la historia: [persona, comisión, evaluación, nota, resultado, registro]
@@ -501,6 +733,8 @@ const evaluationRows: [string, string, string, number | null, SiuHistoryResult, 
   ['p-taguirre', 'sec-aga-fi-a', 'Segundo parcial', 7, 'aprobado', 'EV-2026-0188'],
   ['p-vfunes', 'sec-aga-fi-a', 'Primer parcial', 8, 'aprobado', 'EV-2026-0103'],
   ['p-vfunes', 'sec-aga-fi-a', 'Segundo parcial', 6, 'aprobado', 'EV-2026-0188'],
+  ['p-sdominguez', 'sec-aga-fi-a', 'Primer parcial', 7, 'aprobado', 'EV-2026-0103'],
+  ['p-sdominguez', 'sec-aga-fi-a', 'Segundo parcial', 6, 'aprobado', 'EV-2026-0188'],
   ['p-taguirre', 'sec-pr1-fi-a', 'TP integrador', 9, 'aprobado', 'EV-2026-0412'],
   ['p-lbenitez', 'sec-pr1-fi-a', 'TP integrador', 8, 'aprobado', 'EV-2026-0412'],
   ['p-sdominguez', 'sec-pr1-fi-a', 'TP integrador', null, 'ausente', 'EV-2026-0412']
@@ -828,7 +1062,8 @@ export const syntheticData: SyntheticData = {
     assessments,
     history,
     provisionalResults,
-    certificates
+    certificates,
+    studyPlans
   },
   moodle: {
     baseUrl: 'https://moodle.example.edu.ar',

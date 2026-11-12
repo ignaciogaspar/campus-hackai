@@ -49,6 +49,13 @@
      real), salen igual con el nombre «Evaluación».
    - Historia: solo las materias aprobadas (promoción, final o equivalencia) y
      su promedio. Las cursadas regulares y las evaluaciones no entran.
+   - Comisiones por carrera: una comisión puede abrirse solo para algunas
+     propuestas. Un alumno ve, y puede inscribirse a, las de sus propuestas
+     activas y las abiertas a todas; las de otras carreras no le aparecen.
+   - Carrera (`career`): cada materia de su plan de estudios, y las que cursó
+     fuera de él, con su estado, sus notas y el final al que está inscripto, y
+     el avance de la carrera. Las reglas están en career.ts. El plan es el de
+     su primera propuesta activa: una pasiva, como la de aspirante, no cuenta.
    - Constancias: si cumple las condiciones lo dice el SIU. Si no cumple,
      Cursada deduce el motivo con lo que la API real también da (propuesta
      activa, inscripción vigente, finales rendidos); si no lo encuentra, no
@@ -57,6 +64,14 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
+import {
+  type Approved as ApprovedInCareer,
+  buildCareer,
+  type Career,
+  EMPTY_CAREER,
+  type LoadedGrade,
+  type TakenSection
+} from '@/lib/core/studies/career'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
@@ -73,10 +88,20 @@ import type {
   SiuReadError,
   SiuSchedule,
   SiuSection,
+  SiuStudyPlan,
   SiuSubject,
   SiuTerm
 } from '@/lib/ports/siu'
 import { all, type ExternalFailure, fail, type NotImplemented, ok, type Result } from '@/lib/result'
+
+export type {
+  Career,
+  CareerProgress,
+  PlanKind,
+  SubjectAssessment,
+  SubjectStanding,
+  SubjectStatus
+} from '@/lib/core/studies/career'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
@@ -108,6 +133,13 @@ export type MySubject = {
   termName: string
   sectionId: string
   sectionName: string
+  /** Inicio y fin del período lectivo: entre esas fechas hay clases. */
+  termStart: string
+  termEnd: string
+  /** Días y horarios de clase de la comisión. */
+  schedule: SiuSchedule[]
+  location: string
+  modality: SiuSection['modality']
   role: Role
   /** Cursos de Moodle vinculados a la comisión, con el enlace a cada aula. */
   classrooms: MyClassroom[]
@@ -146,6 +178,13 @@ export type OfferItem = {
   location: string
   /** Comisión: presencial, virtual o híbrida. Mesa: `null`. */
   modality: SiuSection['modality'] | null
+  /** Comisión: si se puede promocionar o se aprueba con final. Mesa: `null`. */
+  instance: SiuSection['instance'] | null
+  /** Comisión: inicio y fin de la cursada (el período lectivo). Mesa: `null`. */
+  start: string | null
+  end: string | null
+  /** Observaciones de la comisión o la mesa. */
+  notes: string | null
   teachers: Teacher[]
   /** Cupo. `null` es «sin definir»: no se llena. */
   capacity: number | null
@@ -290,6 +329,8 @@ export type Studies = {
   record(personId: PersonId): Promise<Result<Fresh<AcademicRecord>, ReadError>>
   /** Si cumple las condiciones de la constancia y el enlace a la Autogestión del SIU. */
   certificate(personId: PersonId, type: CertificateType): Promise<Result<CertificateStatus, ReadError>>
+  /** Su plan de estudios con el estado y las notas de cada materia, y el avance de la carrera. */
+  career(personId: PersonId): Promise<Result<Fresh<Career>, ReadError>>
 }
 
 export type StudiesDeps = {
@@ -315,6 +356,15 @@ type MySectionsInTerms = { role: Role; sections: SectionInTerm[] }
 type ExamBoardsOf = { boards: (SiuExamBoard & { enrolled: number })[]; enrolledIn: Set<string> }
 
 const isActive = (status: SiuEnrollmentStatus) => status === 'aceptada' || status === 'pendiente'
+
+/** Las propuestas activas de la persona. */
+const activePrograms = (person: SiuPerson) => person.programs.filter((p) => p.status === 'activa')
+
+/** Si la comisión es para alguna de sus carreras: abierta a todas o a una de sus propuestas activas. */
+function isForPrograms(section: Pick<SiuSection, 'programIds'>, person: SiuPerson): boolean {
+  if (!section.programIds.length) return true
+  return activePrograms(person).some((p) => section.programIds.includes(p.id))
+}
 
 const unique = (values: string[]) => [...new Set(values)]
 
@@ -579,6 +629,11 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
         termName: term.name,
         sectionId: section.id,
         sectionName: section.name,
+        termStart: term.start,
+        termEnd: term.end,
+        schedule: section.schedule,
+        location: section.location,
+        modality: section.modality,
         role: mine.value.role,
         classrooms: courses.value[i].map((c) => ({ courseId: c.id, name: c.fullName, url: classroom.courseUrl(c.id) })),
         assignments: assignments.value[i]
@@ -830,6 +885,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!sections.ok) return sections
     if (!enrolledSections.ok) return enrolledSections
     const currentSections = sections.value
+      .filter((section) => isForPrograms(section, person.person))
       .flatMap((section) => {
         const term = terms.value.find((t) => t.id === section.termId)
         return term && term.end >= at ? [{ section, term }] : []
@@ -849,6 +905,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           date: null,
           location: section.location,
           modality: section.modality,
+          instance: section.instance,
+          start: term.start,
+          end: term.end,
+          notes: section.notes,
           alreadyEnrolled: sameSubject.some((s) => s.id === section.id),
           enrolledElsewhere: sameSubject.find((s) => s.id !== section.id)?.name ?? null
         })
@@ -879,6 +939,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           date: board.date,
           location: board.location,
           modality: null,
+          instance: null,
+          start: null,
+          end: null,
+          notes: board.notes,
           alreadyEnrolled: enrollments.value.some((e) => e.examBoardId === board.id),
           enrolledElsewhere: null
         })
@@ -911,13 +975,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return found ? ok(found) : fail('objetivo-desconocido')
   }
 
-  /** La comisión, si existe y es de la facultad, con la ventana de su período lectivo. */
-  async function sectionInfo(sectionId: string, schoolId: string): Promise<Result<TargetInfo, TargetError>> {
+  /** La comisión, si existe y es de su facultad y de su carrera, con la ventana de su período lectivo. */
+  async function sectionInfo(sectionId: string, who: SiuPersonRef): Promise<Result<TargetInfo, TargetError>> {
     const [section, terms] = await Promise.all([siu.section(sectionId), siu.terms()])
     if (!section.ok) return fail(section.error === 'no-encontrado' ? 'objetivo-desconocido' : section.error)
     if (!terms.ok) return terms
     const term = terms.value.find((t) => t.id === section.value.termId)
-    if (section.value.schoolId !== schoolId || !term) return fail('objetivo-desconocido')
+    const mine = section.value.schoolId === who.schoolId && isForPrograms(section.value, who.person)
+    if (!mine || !term) return fail('objetivo-desconocido')
     const { enrollmentStart, enrollmentEnd } = term
     return ok({ subjectId: section.value.subjectId, enrollmentStart, enrollmentEnd })
   }
@@ -933,7 +998,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const info =
       target.kind === 'mesa'
         ? await boardInfo(target.examBoardId, schoolId)
-        : await sectionInfo(target.sectionId, schoolId)
+        : await sectionInfo(target.sectionId, siuPerson.value)
     if (!info.ok) return info
     return ok({ siuId: siuPerson.value.siuId, ...info.value })
   }
@@ -1219,19 +1284,19 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
 
   /** Comisiones de su facultad con la inscripción del período abierta, de materias que le falta cursar. Tengan o no cupo: lo dice la oferta. */
   async function openCourseEnrollments(
-    schoolId: string,
+    who: SiuPersonRef,
     progress: SubjectProgress,
     at: string
   ): Promise<Result<Opening[], ExternalFailure>> {
     const terms = await siu.terms()
     if (!terms.ok) return terms
     const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd))
-    const found = all(await Promise.all(open.map((t) => siu.sections({ schoolId, termId: t.id }))))
+    const found = all(await Promise.all(open.map((t) => siu.sections({ schoolId: who.schoolId, termId: t.id }))))
     if (!found.ok) return found
     return ok(
       found.value.flatMap((sections, i) =>
         sections
-          .filter((s) => needsCourseAttempt(s.subjectId, progress))
+          .filter((s) => isForPrograms(s, who.person) && needsCourseAttempt(s.subjectId, progress))
           .map(
             (s): Opening => ({
               kind: 'cursada',
@@ -1284,7 +1349,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!progress.ok) return progress
     const at = clock.now().toISOString()
     const [courses, exams] = await Promise.all([
-      openCourseEnrollments(who.value.schoolId, progress.value, at),
+      openCourseEnrollments(who.value, progress.value, at),
       openExamEnrollments(who.value, progress.value, at)
     ])
     if (!courses.ok) return courses
@@ -1299,6 +1364,105 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok(onePerSubject(named.sort(byClosing)))
   }
 
+  /** El plan de su primera propuesta activa. Sin propuesta activa o sin plan en el SIU, `null`; que el SIU no responda, sí es un error. */
+  async function planOf(person: SiuPerson): Promise<Result<SiuStudyPlan | null, ExternalFailure>> {
+    const program = activePrograms(person)[0]
+    if (!program) return ok(null)
+    const plan = await siu.studyPlan(program.id)
+    if (plan.ok) return plan
+    return plan.error === 'falla-externa' ? fail('falla-externa') : ok(null)
+  }
+
+  /** Las mesas a las que está inscripto y todavía no se tomaron: la fecha, por materia. */
+  async function examDatesOf(who: SiuPersonRef, at: string): Promise<Result<Map<string, string>, ReadError>> {
+    const exams = await examBoardsOf(who, false)
+    if (!exams.ok) return exams
+    const mine = exams.value.boards.filter((b) => exams.value.enrolledIn.has(b.id) && b.date >= at)
+    return ok(new Map(mine.map((b) => [b.subjectId, b.date])))
+  }
+
+  /** Lo que la historia y la actuación provisoria dicen de la persona: notas y materias aprobadas. */
+  async function gradesOf(siuId: string) {
+    const [history, provisional] = await Promise.all([siu.history(siuId), siu.provisionalResults(siuId)])
+    if (!history.ok) return fail(asUnknownPerson(history.error))
+    if (!provisional.ok) return fail(asUnknownPerson(provisional.error))
+    const grades: LoadedGrade[] = rawGrades(history.value, provisional.value)
+    const approved = new Map<string, ApprovedInCareer>(
+      approvedSubjects(history.value).map(({ entry, approval }) => [
+        entry.subjectId,
+        { date: entry.date, grade: entry.grade, approval }
+      ])
+    )
+    return ok({ history: history.value, grades, approved })
+  }
+
+  /** Todo lo que se lee del SIU para armar la carrera, o el primer error. */
+  async function careerReads(who: SiuPersonRef, at: string) {
+    const [plan, mine, loaded, exams] = await Promise.all([
+      planOf(who.person),
+      sectionsInTermsOf(who),
+      gradesOf(who.siuId),
+      examDatesOf(who, at)
+    ])
+    if (!plan.ok) return plan
+    if (!mine.ok) return mine
+    if (!loaded.ok) return loaded
+    if (!exams.ok) return exams
+    const sections = mine.value.sections
+    const schedules = siu.capabilities.hasAssessmentSchedule
+      ? await lookup(unique(sections.map((s) => s.section.id)), (id) => siu.assessments(id))
+      : ok(new Map<string, SiuAssessment[]>())
+    if (!schedules.ok) return schedules
+    const subjects = await subjectsById([
+      ...(plan.value?.subjects.map((s) => s.subjectId) ?? []),
+      ...sections.map((s) => s.subject.id),
+      ...loaded.value.history.map((h) => h.subjectId)
+    ])
+    if (!subjects.ok) return subjects
+    return ok({
+      plan: plan.value,
+      sections,
+      ...loaded.value,
+      exams: exams.value,
+      schedules: schedules.value,
+      subjects: subjects.value
+    })
+  }
+
+  async function career(personId: PersonId): Promise<Result<Career, ReadError>> {
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    if (who.value.person.role === 'profesor') return ok(EMPTY_CAREER)
+    const at = clock.now().toISOString()
+    const read = await careerReads(who.value, at)
+    if (!read.ok) return read
+    const program = activePrograms(who.value.person)[0] ?? null
+    return ok(
+      buildCareer({
+        now: at,
+        program: program && { id: program.id, name: program.name },
+        plan: read.value.plan,
+        subjects: read.value.subjects,
+        sections: read.value.sections.map(
+          ({ section, subject, term, current }): TakenSection => ({
+            subjectId: subject.id,
+            sectionId: section.id,
+            sectionName: section.name,
+            termName: term.name,
+            termStart: term.start,
+            current
+          })
+        ),
+        history: read.value.history,
+        approved: read.value.approved,
+        grades: read.value.grades,
+        schedules: read.value.schedules,
+        exams: read.value.exams,
+        genericName: GENERIC_ASSESSMENT
+      })
+    )
+  }
+
   return {
     subjectsOf: (personId) => fresh(`subjectsOf:${personId}`, () => subjectsOf(personId)),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
@@ -1308,6 +1472,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     upcoming: (personId) => fresh(`upcoming:${personId}`, () => upcoming(personId)),
     openEnrollments: (personId) => fresh(`openEnrollments:${personId}`, () => openEnrollments(personId)),
     record: (personId) => fresh(`record:${personId}`, () => record(personId)),
-    certificate
+    certificate,
+    career: (personId) => fresh(`career:${personId}`, () => career(personId))
   }
 }

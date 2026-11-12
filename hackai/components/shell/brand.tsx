@@ -16,7 +16,7 @@ export function Brand({ school, tone = 'navy' }: { school?: string; tone?: 'navy
       {school && (
         <span
           className={cn(
-            'border-l pl-2.5 text-[11px] leading-tight',
+            'border-l pl-2.5 text-[0.6875rem] leading-tight',
             tone === 'navy' ? 'border-white/30 text-white/75' : 'border-border text-muted-foreground'
           )}
         >
