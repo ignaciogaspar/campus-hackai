@@ -49,6 +49,20 @@ test('escapa comas, punto y coma y saltos, y corta las líneas largas en 75 octe
   assert.ok(file.includes('\r\n ñ'))
 })
 
+test('un final lleva su lugar escapado; un evento sin lugar sale sin LOCATION', () => {
+  const file = calendarFile(
+    [
+      item({ id: 'mesa:mesa-aga-fi-dic', kind: 'final', name: 'Final', location: 'Aula 204, edificio central' }),
+      item({})
+    ],
+    '2026-11-12T15:00:00.000Z'
+  )
+  const [final, parcial] = file.split('BEGIN:VEVENT').slice(1)
+
+  assert.ok(final.split('\r\n').includes('LOCATION:Aula 204\\, edificio central'))
+  assert.ok(!parcial.includes('LOCATION'))
+})
+
 test('sin próximos, el calendario sale vacío pero válido', () => {
   assert.equal(
     calendarFile([], '2026-11-12T15:00:00.000Z'),
