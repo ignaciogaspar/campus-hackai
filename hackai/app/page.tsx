@@ -4,9 +4,12 @@
    y quién entra lo decide Personas. */
 import { UsersRound } from 'lucide-react'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { SignInError } from '@/app/actions/session'
 import { PersonPicker } from '@/components/session/person-picker'
+import { qrImage } from '@/components/session/sign-in-qr'
+import { signInUrl } from '@/components/session/sign-in-url'
 import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
@@ -51,6 +54,8 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
   if (session) redirect(returnTo ?? homeFor(session.role))
 
   const listed = await system().people.demoPeople()
+  const url = signInUrl(await headers())
+  const qr = url ? await qrImage(url) : null
 
   return (
     <>
@@ -66,6 +71,8 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
       </PageHeader>
 
       <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+        {qr && url && <PhoneQr qr={qr} url={url} />}
+
         {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
 
         {!listed.ok ? (
@@ -79,5 +86,26 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         )}
       </main>
     </>
+  )
+}
+
+/** En la compu, el QR para seguir en el celular. En el celular no aparece. */
+function PhoneQr({ qr, url }: { qr: string; url: string }) {
+  return (
+    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 lg:flex'>
+      {/* biome-ignore lint/performance/noImgElement: es un SVG en data:, no hay nada que optimizar */}
+      <img
+        src={qr}
+        alt={`Código QR para abrir HackAI en el celular: ${url}`}
+        width={128}
+        height={128}
+        className='size-32 rounded-[10px] bg-white'
+      />
+      <div className='flex max-w-64 flex-col gap-1'>
+        <p className='text-[0.9375rem] font-bold text-foreground'>Probala en tu celular</p>
+        <p className='text-[0.8125rem] text-muted-foreground'>Escaneá el código con la cámara y entrá desde ahí.</p>
+        <p className='mt-1 font-mono text-[0.8125rem] break-all text-foreground'>{url}</p>
+      </div>
+    </aside>
   )
 }

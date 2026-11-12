@@ -6,12 +6,14 @@
    - un riel con Todos, Alumnos y Docentes;
    - un buscador por nombre, carrera o facultad;
    - la facultad y, para los alumnos, la carrera.
-   Los filtros quedan pegados arriba al bajar. Cada persona es una fila que
+   Las personas del guion de la demo van primeras. Los filtros quedan
+   pegados arriba al bajar. Cada persona es una fila que
    abre su sesión. Solo muestra lo que le da Personas; filtrar es de la
    pantalla. */
 import { Search, SearchX } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { signInAsDemoPerson } from '@/app/actions/session'
+import { byScriptRoleAndSurname } from '@/components/session/person-order'
 import { PersonRow } from '@/components/session/person-row'
 import { activeProgram } from '@/components/session/person-text'
 import { Button } from '@/components/ui/button'
@@ -50,13 +52,6 @@ function detailOf(person: Person): string {
   return program ? `${program.name} · ${school}` : school
 }
 
-/** Alumnos primero y, adentro, por apellido. */
-function byRoleAndSurname(a: Person, b: Person): number {
-  if (a.role !== b.role) return a.role === 'alumno' ? -1 : 1
-  const surname = (p: Person) => p.name.split(' ').at(-1) ?? p.name
-  return surname(a).localeCompare(surname(b), 'es') || a.name.localeCompare(b.name, 'es')
-}
-
 function options(values: { id: string; name: string }[]): { id: string; name: string }[] {
   const unique = new Map(values.map((v) => [v.id, v]))
   return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
@@ -75,7 +70,7 @@ function matches(person: Person, { role, query, school, program }: Filters): boo
 /** `returnTo`: la ruta a la que vuelve al entrar, si se llegó al ingreso
     queriendo abrir algo sin sesión; si no, cada persona va a su inicio. */
 export function PersonPicker({ people, returnTo }: { people: Person[]; returnTo?: string | null }) {
-  const sorted = useMemo(() => [...people].sort(byRoleAndSurname), [people])
+  const sorted = useMemo(() => [...people].sort(byScriptRoleAndSurname), [people])
   const [filters, setFilters] = useState<Filters>({ role: 'todos', query: '', school: ALL, program: ALL })
   const set = (change: Partial<Filters>) => setFilters((f) => ({ ...f, ...change }))
 
