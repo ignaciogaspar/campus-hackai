@@ -225,11 +225,12 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
       ...finals.value.data.map((f) => f.subjectId),
       ...record.value.data.history.map((h) => h.subjectId)
     ])
-    const libre = siu.history.find(
-      (h) => h.personId === '30101' && h.type === 'cursada' && h.result === 'libre' && !shown.has(h.subjectId)
+    const siuId = people.find((p) => p.id === DEMO_STUDENT)!.siuId
+    const lapsed = siu.history.find(
+      (h) => h.personId === siuId && h.type === 'cursada' && h.result === 'libre' && !shown.has(h.subjectId)
     )
-    assert.ok(libre, 'falta una materia libre de un período anterior')
-    assert.ok(subjects.value.data.archived.some((s) => s.subjectId === libre.subjectId))
+    assert.ok(lapsed, 'falta una materia libre de un período anterior')
+    assert.ok(subjects.value.data.archived.some((s) => s.subjectId === lapsed.subjectId))
   })
 
   test(`el ${day} el alumno de la demo tiene dos actividades con créditos abiertas, una que cierra en pocos días`, async () => {

@@ -28,8 +28,10 @@ import type { Result } from '@/lib/result'
 
 export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
 
+const SUBJECTS_DOWN = 'No pudimos traer tus materias del SIU o del Campus Virtual. Probá de nuevo en un rato.'
+
 const ERRORS: Partial<Record<StudiesReadError, string>> = {
-  'falla-externa': 'No pudimos traer tus materias del SIU o del Campus Virtual. Probá de nuevo en un rato.',
+  'falla-externa': SUBJECTS_DOWN,
   'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.'
 }
 
@@ -45,8 +47,13 @@ function Current({ subjects, news }: { subjects: MySubjects; news: UnreadItem[] 
   )
 }
 
-function Count({ read, n }: { read: Read<unknown>; n: number }) {
-  return read.ok ? <span className='text-[11px] text-muted-foreground'>{n}</span> : null
+/** El mensaje de una lectura que falló: el de la caída de cada vista, o el de `ERRORS`. */
+function errorText(error: StudiesReadError, outage: string): string {
+  return error === 'falla-externa' ? outage : (ERRORS[error] ?? 'Algo salió mal al traer tus materias.')
+}
+
+function Count({ n }: { n: number | null }) {
+  return n === null ? null : <span className='text-[11px] text-muted-foreground'>{n}</span>
 }
 
 function StudentViews({
@@ -67,34 +74,38 @@ function StudentViews({
       <Tabs defaultValue='cursando' className='flex flex-col gap-4'>
         <SegmentedList aria-label='Tus materias' className='self-start'>
           <SegmentedTrigger value='cursando'>
-            Cursando <Count read={subjects} n={subjects.ok ? subjects.value.data.current.length : 0} />
+            Cursando <Count n={subjects.ok ? subjects.value.data.current.length : null} />
           </SegmentedTrigger>
           <SegmentedTrigger value='final'>
-            Falta final <Count read={finals} n={finals.ok ? finals.value.data.length : 0} />
+            Falta final <Count n={finals.ok ? finals.value.data.length : null} />
           </SegmentedTrigger>
           <SegmentedTrigger value='aprobadas'>
-            Aprobadas <Count read={record} n={record.ok ? record.value.data.history.length : 0} />
+            Aprobadas <Count n={record.ok ? record.value.data.history.length : null} />
           </SegmentedTrigger>
         </SegmentedList>
         <TabsContent value='cursando'>
           {subjects.ok ? (
             <Current subjects={subjects.value.data} news={news} />
           ) : (
-            <ErrorNotice>{ERRORS[subjects.error] ?? 'Algo salió mal al traer tus materias.'}</ErrorNotice>
+            <ErrorNotice>{errorText(subjects.error, SUBJECTS_DOWN)}</ErrorNotice>
           )}
         </TabsContent>
         <TabsContent value='final'>
           {finals.ok ? (
             <PendingFinals items={finals.value.data} toSpace />
           ) : (
-            <ErrorNotice>No pudimos traer tus finales pendientes del SIU. Probá de nuevo en un rato.</ErrorNotice>
+            <ErrorNotice>
+              {errorText(finals.error, 'No pudimos traer tus finales pendientes del SIU. Probá de nuevo en un rato.')}
+            </ErrorNotice>
           )}
         </TabsContent>
         <TabsContent value='aprobadas'>
           {record.ok ? (
             <AcademicHistory record={record.value.data} />
           ) : (
-            <ErrorNotice>No pudimos traer tus materias aprobadas del SIU. Probá de nuevo en un rato.</ErrorNotice>
+            <ErrorNotice>
+              {errorText(record.error, 'No pudimos traer tus materias aprobadas del SIU. Probá de nuevo en un rato.')}
+            </ErrorNotice>
           )}
         </TabsContent>
       </Tabs>
@@ -134,10 +145,10 @@ export default async function MateriasPage() {
       </PageHeader>
 
       <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
-        {finals && record ? (
+        {student && finals && record ? (
           <StudentViews subjects={result} finals={finals} record={record} news={news} />
         ) : !result.ok ? (
-          <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus materias.'}</ErrorNotice>
+          <ErrorNotice>{errorText(result.error, SUBJECTS_DOWN)}</ErrorNotice>
         ) : (
           <>
             {result.value.stale && <StaleBanner since={result.value.readAt} />}

@@ -921,19 +921,57 @@ test('cada materia del alumno va en una sola vista, y lo libre de un período an
   ])
 
   assert.ok(subjects.ok && finals.ok && record.ok)
-  const cursando = subjects.value.data.current.map((s) => s.subjectId)
-  const faltaFinal = finals.value.data.map((f) => f.subjectId)
-  const aprobadas = record.value.data.history.map((h) => h.subjectId)
-  assert.deepEqual(cursando, ['am1', 'pr1'])
-  // Regulares sin final: Sistemas de Representación (final desaprobado) y Álgebra.
-  assert.deepEqual(faltaFinal, ['sre', 'aga'])
-  // Por final, por promoción y por promoción.
-  assert.deepEqual(aprobadas, ['an1', 'qui', 'iin'])
-  const all = [...cursando, ...faltaFinal, ...aprobadas]
+  const current = subjects.value.data.current.map((s) => s.subjectId)
+  const pending = finals.value.data.map((f) => f.subjectId)
+  const approved = record.value.data.history.map((h) => h.subjectId)
+  // Cursando.
+  assert.deepEqual(current, ['am1', 'pr1'])
+  // Falta final: Sistemas de Representación (final desaprobado) y Álgebra.
+  assert.deepEqual(pending, ['sre', 'aga'])
+  // Aprobadas: por final, por promoción y por promoción.
+  assert.deepEqual(approved, ['an1', 'qui', 'iin'])
+  const all = [...current, ...pending, ...approved]
   assert.equal(new Set(all).size, all.length, 'una materia aparece en dos vistas')
   // Quedó libre en Física I del 1er cuatrimestre: está archivada, pero no va en ninguna vista.
   assert.ok(subjects.value.data.archived.some((s) => s.subjectId === 'fi1'))
   assert.equal(all.includes('fi1'), false)
+})
+
+test('una cursada desaprobada o ausente de un período anterior no va en ninguna vista, y una equivalencia va solo en Aprobadas', async () => {
+  const data = structuredClone(syntheticData)
+  const lapsed = (subjectId: string, result: 'desaprobado' | 'ausente') => ({
+    ...data.siu.history.find((h) => h.personId === '30101' && h.subjectId === 'fi1')!,
+    id: `h-${subjectId}-${result}`,
+    subjectId,
+    result
+  })
+  // Valentina cursó Álgebra (regular) en el 1er cuatrimestre: le sumamos Física I desaprobada y Programación I ausente.
+  data.siu.history.push(
+    { ...lapsed('fi1', 'desaprobado'), personId: '30106' },
+    { ...lapsed('pr1', 'ausente'), personId: '30106' }
+  )
+  const { studies } = build(data)
+
+  const ids = async (personId: string) => {
+    const [subjects, finals, record] = await Promise.all([
+      studies.subjectsOf(personId),
+      studies.pendingFinals(personId),
+      studies.record(personId)
+    ])
+    assert.ok(subjects.ok && finals.ok && record.ok)
+    return [
+      ...subjects.value.data.current.map((s) => s.subjectId),
+      ...finals.value.data.map((f) => f.subjectId),
+      ...record.value.data.history.map((h) => h.subjectId)
+    ]
+  }
+
+  const valentina = await ids('p-vfunes')
+  assert.equal(valentina.includes('fi1'), false)
+  assert.equal(valentina.includes('pr1'), false)
+  // Nicolás tiene Introducción a la Administración por equivalencia y cursa Análisis I y Contabilidad I.
+  const nicolas = await ids('p-nherrera')
+  assert.equal(nicolas.filter((id) => id === 'iad').length, 1)
 })
 
 // Notas, historia y constancias
