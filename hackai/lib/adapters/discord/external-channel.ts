@@ -1,5 +1,6 @@
 /* Canal externo sobre la API REST v10 de Discord, sin gateway: lee consultando
-   desde un cursor, publica, responde en hilos y baja adjuntos. Research:
+   desde un cursor, publica, abre hilos, responde en ellos y baja adjuntos.
+   Research:
    docs/research/2026-11-10-canales-externos-apis.md.
 
    - El bot necesita el intent Message Content: sin él, Discord devuelve el
@@ -223,6 +224,28 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
     return current
   }
 
+  /** Abre el hilo sobre el mensaje si todavía no tiene uno. Un hilo que otro
+      abrió recién (`THREAD_ALREADY_CREATED`) también sirve. */
+  async function ensureThread(
+    channelId: string,
+    messageId: string
+  ): Promise<Result<null, 'canal-inexistente' | 'mensaje-inexistente'>> {
+    const guild = await channelGuild(channelId)
+    if (!guild.ok) return guild
+    const root = orNotFound(
+      await api<DiscordMessage>('GET', `/channels/${channelId}/messages/${messageId}`),
+      'mensaje-inexistente'
+    )
+    if (!root.ok) return root
+    if (root.value.thread) return ok(null)
+    const created = await api<DiscordChannel>('POST', `/channels/${channelId}/messages/${messageId}/threads`, {
+      name: threadName(root.value.content),
+      auto_archive_duration: 10080
+    })
+    if (!created.ok && created.error.code !== THREAD_ALREADY_CREATED) throw new DiscordDown()
+    return ok(null)
+  }
+
   return {
     capabilities: { delivery: 'cursor', threads: true },
 
@@ -271,27 +294,20 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
 
     reply: (channelId, threadId, text) =>
       guard(async () => {
-        const guild = await channelGuild(channelId)
-        if (!guild.ok) return guild
-
-        const root = orNotFound(
-          await api<DiscordMessage>('GET', `/channels/${channelId}/messages/${threadId}`),
-          'mensaje-inexistente'
-        )
-        if (!root.ok) return root
-        if (!root.value.thread) {
-          const created = await api<DiscordChannel>('POST', `/channels/${channelId}/messages/${threadId}/threads`, {
-            name: threadName(root.value.content),
-            auto_archive_duration: 10080
-          })
-          if (!created.ok && created.error.code !== THREAD_ALREADY_CREATED) throw new DiscordDown()
-        }
+        const thread = await ensureThread(channelId, threadId)
+        if (!thread.ok) return thread
 
         const posted = must(
           await api<DiscordMessage>('POST', `/channels/${threadId}/messages`, createMessageBody(text))
         )
         rootOf.set(posted.id, threadId)
         return ok(toMessage(posted, channelId, threadId))
+      }),
+
+    openThread: (channelId, messageId) =>
+      guard(async () => {
+        const thread = await ensureThread(channelId, messageId)
+        return thread.ok ? ok(null) : thread
       }),
 
     download: (attachment) =>

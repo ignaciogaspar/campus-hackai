@@ -165,7 +165,10 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     classroom: ports.classroom,
     files: ports.files,
     clock,
-    store: adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore()
+    store:
+      adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore(),
+    // El tiempo real del proceso, aunque el reloj sea el fijo de la demo.
+    timer: () => performance.now()
   })
   const today = createToday({ studies, spaces, clock })
 

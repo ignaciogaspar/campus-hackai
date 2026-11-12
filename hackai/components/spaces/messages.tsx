@@ -1,9 +1,9 @@
 /* Un mensaje del espacio: avatar con iniciales, quién lo escribió, la hora, el
    texto y los adjuntos. Los mensajes no llevan etiqueta de origen (dirección de
    diseño): alcanza con saber quién escribió. Un docente lleva el avatar lleno y
-   el chip «Docente»; quien escribió desde el canal externo sin cuenta
-   vinculada, el avatar gris y «sin cuenta vinculada», para que no parezca una
-   persona del padrón. */
+   el chip «Docente»; quien escribió desde Discord sin cuenta vinculada, el
+   avatar gris y «desde Discord», para que no parezca una persona del padrón.
+   Lo que todavía no llegó al Discord vinculado dice que se está enviando. */
 import { Paperclip } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { fileSize, initialsOf, messageTime } from '@/components/spaces/format'
@@ -35,10 +35,17 @@ function MessageHead({ message }: { message: Message }) {
       {author.role === 'profesor' && (
         <span className='rounded-full bg-accent px-2 py-px text-[11px] font-bold text-blue'>Docente</span>
       )}
-      {author.role === null && <span className='text-xs text-muted-foreground'>sin cuenta vinculada</span>}
+      {author.role === null && (
+        <span className='text-xs text-muted-foreground'>
+          {message.origin === 'discord' ? 'desde Discord' : 'sin cuenta vinculada'}
+        </span>
+      )}
       <time dateTime={message.createdAt} className='text-xs text-muted-foreground'>
         {messageTime(message.createdAt)}
       </time>
+      {message.status === 'pendiente' && (
+        <span className='text-xs font-semibold text-warning-foreground'>Enviando a Discord: se reintenta solo</span>
+      )}
     </p>
   )
 }

@@ -16,7 +16,7 @@ type SyncError = Extract<Awaited<ReturnType<Spaces['syncAll']>>, { ok: false }>[
 
 /** Cómo vuelve cada error de la sincronización. Es exhaustivo a propósito: si
     Espacios suma un error, el typecheck pide decidir su código acá. */
-const ERROR_STATUS: Record<SyncError, number> = { 'no-implementado': 501 }
+const ERROR_STATUS: Record<SyncError, number> = { 'falla-externa': 502 }
 
 const digest = (text: string) => createHash('sha256').update(text).digest()
 

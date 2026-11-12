@@ -71,7 +71,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `addMaterial(persona, espacio, archivo)` | Sube un archivo al material, con Archivos, en la unidad o el tema que elige el docente |
 | `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
 | `openDirect(persona, otraPersona)` | Canal directo entre alumno y docente |
-| `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
+| `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Devuelve `canal-externo-inexistente` si no lo encuentra y `canal-externo-en-uso` si ya está vinculado con otro canal |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
 | `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
 | `file(persona, archivo)` | Los bytes de un archivo guardado, si la persona ve el espacio de su material o el canal de su adjunto |
@@ -81,14 +81,19 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 - **Un espacio por materia y facultad.** Se crea la primera vez que alguien lo abre, con sus canales por defecto: material de la materia, y `#avisos` y `#consultas` por comisión.
 - **Membresía.** Se deduce de `sectionsOf` de Cursada y no se guarda aparte. Por eso no hay operación para agregar miembros: quien se inscribe ya está adentro.
 - **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión. Con los archivos guardados pasa lo mismo: el material lo baja cualquiera del espacio, y un adjunto, quien ve su canal.
-- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`), así la pantalla no repite estas reglas.
+- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay. Vinculan un canal con el canal externo los docentes que lo gestionan: los de la materia si es de la materia, los de la comisión si es de una comisión; los directos no se vinculan. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`, `canLink`), así la pantalla no repite estas reglas.
 - **Canales por defecto:** el espacio y su canal de material se crean la primera vez que alguien abre el espacio; `#avisos` y `#consultas` de una comisión, la primera vez que lo abre alguien de esa comisión. Los nombres no se repiten entre canales que ven las mismas personas.
 - **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que en la demo está fija.
 - **Sincronización:**
   - Cada mensaje guarda su origen (HackAI, Discord, Moodle) y su id externo, y un mensaje no entra dos veces.
-  - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización.
-  - Los adjuntos externos se copian a Archivos al leerlos, porque las URLs de Discord vencen.
-  - `open` no sincroniza más de una vez cada pocos segundos por espacio.
+  - De ida: lo publicado en un canal vinculado se guarda pendiente y se envía enseguida: primero el texto y al final, en letra chica, quién lo escribió, porque Discord nombra el hilo de una consulta con la primera línea. Una respuesta va al hilo de su mensaje y una consulta abre su hilo. Las menciones (`@everyone`, `@usuario`) no notifican (pregunta abierta 12). Lo que se sube al material se avisa en el canal de material vinculado con el nombre del archivo, sin el archivo; ese aviso no se reintenta (pregunta abierta 18).
+  - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización, en el orden en que se publicó.
+  - De vuelta: se lee el canal externo desde el cursor guardado. En el canal de material, los adjuntos entran al material y el texto no; en los demás, cada mensaje entra al canal, y si es de un hilo, como respuesta a su mensaje. Un mensaje de primer nivel en `#consultas` que no escribió un docente es una consulta. El autor se busca en Personas por su id externo; sin vínculo, queda el nombre con que llegó y la pantalla dice «desde Discord».
+  - Las reglas de quién escribe valen también para lo que llega del canal externo, aunque allá puedan escribir todos: en el canal de material solo entran los adjuntos de docentes de la materia, y en `#avisos`, los mensajes de docentes de la comisión. Los bots y webhooks entran, porque los configura quien administra el servidor. Un alumno o una cuenta sin vincular se ignoran en esos dos canales; en `#consultas` y en los libres entran todos (pregunta abierta 17).
+  - Los adjuntos externos se copian a Archivos al leerlos, porque las URLs de Discord vencen. Uno que ya venció queda con su enlace original en un mensaje y no entra al material.
+  - El cursor avanza solo si se guardó todo lo leído; si algo falla a la mitad, la próxima sincronización relee y los duplicados se descartan por el id externo.
+  - Una sola sincronización a la vez por espacio, para no enviar dos veces el mismo pendiente. `open` no sincroniza más de una vez cada 5 segundos por espacio: lo mide un temporizador obligatorio que se inyecta (`timer`, en `composition` el tiempo real del proceso). No es el reloj: el de la demo está fijo, y con él un espacio se sincronizaba una sola vez por proceso.
+  - Al vincular, el canal externo se lee desde el principio: lo que ya tenía entra a HackAI, pero lo que ya había en HackAI no se envía.
 
 Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Archivos y el reloj.
 
@@ -124,7 +129,7 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **Identidad** | Validar una credencial y devolver quién es | Selector de demo, en memoria. En producción, Microsoft Entra ID (OpenID Connect) |
 | **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
 | **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
-| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, responder en un hilo, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
+| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, abrir un hilo, responder en él, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
 
@@ -192,7 +197,7 @@ Esta tabla es el plan; en la hackathon se construyen solo los adaptadores de la 
   - una inscripción que falla en Moodle deshace la del SIU;
   - un alumno de la comisión A no ve `#consultas` de la B;
   - no hay canal directo entre dos alumnos;
-  - un mensaje nacido en HackAI no vuelve duplicado de Discord;
+  - un mensaje nacido en HackAI no vuelve duplicado de Discord, y uno pendiente se envía en la siguiente sincronización;
   - parciales y finales salen ordenados por fecha.
 
 ## Qué se descartó y por qué

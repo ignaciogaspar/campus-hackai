@@ -98,6 +98,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** si un docente escribe un aviso con `@everyone` o `@alumno` en HackAI y se reenvía a Discord, la mención notifica o no según esto. Afecta la sincronización de avisos y consultas, y es justo el problema que queremos resolver: que los avisos lleguen.
 - **Opciones:** no notificar ninguna mención; notificar solo menciones a personas; notificar también `@everyone` y `@here`, solo si escribe un docente en `#avisos`.
 - **Hipótesis:** hoy el adaptador de Discord manda todo sin menciones (`allowed_mentions` vacío), como opción segura: un texto de HackAI no puede mandar un `@everyone` a todo el servidor por accidente. Falta confirmarlo con el equipo.
+- **Lo que vimos probándolo (11/11/2026, #15):** un `@everyone` escrito en HackAI llega a Discord como texto. Si el servidor tiene las notificaciones en «Solo @menciones», que es lo común en servidores grandes, un aviso publicado desde HackAI no le suena a nadie. Para la tercera opción el núcleo ya sabe quién escribe y en qué canal: es un cambio chico en Espacios y en el adaptador.
 - **Estado:** abierta
 - **Decisión:**
 
@@ -133,6 +134,21 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
   - examen: materias que no aprobó y tiene regulares o está cursando (puede regularizar antes de la mesa, y entonces se avisa), si no está inscripto ya a una mesa de esa materia.
   - Salen tengan o no cupo: la oferta muestra cuántos lugares quedan, así que una materia llena llega a «sin cupo» en vez de desaparecer. Inscripciones muestra solo las de cursada hasta la inscripción a finales (#20).
 - **Opciones:** como está; ocultar las que no tienen cupo en Hoy; solo mesas de materias ya regulares (sin las que está cursando); sumar correlatividades cuando el SIU las exponga.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 17. ¿Quién puede publicar en HackAI desde Discord?
+
+- **Por qué importa:** en Discord escribe cualquiera que tenga acceso al canal. Si todo lo que llega entrara a HackAI, un alumno podría subir material o publicar un aviso que en HackAI solo publican los docentes.
+- **Hipótesis:** así lo implementa Espacios desde #15: en el canal de material solo entran los adjuntos de docentes de la materia, y en `#avisos`, los mensajes de docentes de la comisión, reconocidos por su cuenta de Discord vinculada en Personas. Bots y webhooks entran, porque los configura quien administra el servidor. En `#consultas` y en los libres entra todo. Lo que no entra se ignora sin avisar.
+- **Opciones:** como está; avisar en Discord (una reacción o una respuesta del bot) cuando algo no entra; dejar que entren los ayudantes sin cuenta vinculada; pedirle a cada cátedra que deje esos canales de Discord solo para docentes y no filtrar.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 18. ¿El material que se sube en HackAI se sube también a Discord?
+
+- **Por qué importa:** hoy, al subir material en HackAI, al canal de material vinculado llega un aviso con el nombre del archivo, pero no el archivo: quien está en Discord tiene que ir a HackAI a abrirlo. Al revés, lo que se sube en Discord sí se copia a HackAI.
+- **Opciones:** como está, solo el aviso, y el archivo queda en HackAI detrás de la sesión; subir también el archivo a Discord, lo que exige sumar al puerto del canal externo «publicar con adjunto» (en Discord, un envío multipart) y deja una copia del material en un tercero; mandar un enlace a HackAI.
 - **Estado:** abierta
 - **Decisión:** pendiente
 

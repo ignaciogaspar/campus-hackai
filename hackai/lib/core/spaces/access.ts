@@ -115,6 +115,14 @@ export function canResolve(member: Membership, channel: StoredChannel): boolean 
   return false
 }
 
+/** Vinculan un canal con el canal externo los docentes que lo gestionan: los de la
+    materia si es de la materia, los de la comisión si es de una comisión. Los directos no se vinculan. */
+export function canLink(member: Membership, channel: StoredChannel): boolean {
+  if (channel.scope.kind === 'materia') return canManage(member)
+  if (channel.scope.kind === 'comision') return teachesSection(member, channel.scope.sectionId)
+  return false
+}
+
 export function viewerOf(member: Membership): SpaceViewer {
   return {
     personId: member.personId,

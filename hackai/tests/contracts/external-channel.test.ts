@@ -115,6 +115,30 @@ function contract(name: string, setup: () => Harness) {
       )
     })
 
+    test('abrir un hilo sobre un mensaje no escribe nada y las respuestas quedan en él', async () => {
+      const { port } = setup()
+      const posted = await port.post(consultas.id, '¿Se puede usar calculadora?')
+      assert.ok(posted.ok)
+      assert.deepEqual(await port.openThread(consultas.id, posted.value.id), { ok: true, value: null })
+      // Abrirlo de nuevo no es un error.
+      assert.deepEqual(await port.openThread(consultas.id, posted.value.id), { ok: true, value: null })
+
+      const read = await port.read(consultas.id, posted.value.id)
+      assert.deepEqual(read, { ok: true, value: { messages: [], cursor: posted.value.id } })
+
+      const answer = await port.reply(consultas.id, posted.value.id, 'Sí, la científica')
+      assert.ok(answer.ok)
+      assert.equal(answer.value.threadId, posted.value.id)
+      assert.deepEqual(await port.openThread(consultas.id, '1319999999999999999'), {
+        ok: false,
+        error: 'mensaje-inexistente'
+      })
+      assert.deepEqual(await port.openThread(UNKNOWN_CHANNEL, posted.value.id), {
+        ok: false,
+        error: 'canal-inexistente'
+      })
+    })
+
     test('un canal o un mensaje que no existe vuelve como error', async () => {
       const { port } = setup()
       assert.deepEqual(await port.read(UNKNOWN_CHANNEL, null), { ok: false, error: 'canal-inexistente' })
