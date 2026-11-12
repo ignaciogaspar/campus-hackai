@@ -23,6 +23,7 @@ export const DEMO_SCREENS: DemoScreens[] = [
     role: 'alumno',
     paths: [
       '/hoy',
+      '/novedades',
       '/materias',
       '/materias/am1',
       '/materias/am1?vista=directos',
@@ -32,7 +33,7 @@ export const DEMO_SCREENS: DemoScreens[] = [
       '/inscripciones/am1/final'
     ]
   },
-  { personId: 'p-mledesma', role: 'profesor', paths: ['/hoy', '/materias', '/materias/am1'] }
+  { personId: 'p-mledesma', role: 'profesor', paths: ['/hoy', '/novedades', '/materias', '/materias/am1'] }
 ]
 
 /** Textos con que las pantallas avisan que algo falló. Una pantalla que no
