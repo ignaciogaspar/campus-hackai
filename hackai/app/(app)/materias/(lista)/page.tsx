@@ -17,8 +17,7 @@ import { Archive, BookOpen, Hourglass, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { unreadBySubject, unreadTotal } from '@/components/news/format'
-import { newGradesFor } from '@/components/shell/notifications-bell'
+import { newsTotal, unreadBySubject } from '@/components/news/format'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedCard, CourseCard, PendingFinalCard, SubjectGrid } from '@/components/subjects/subject-grid'
 import { Pagination } from '@/components/ui/pagination'
@@ -28,6 +27,7 @@ import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MySubjects, PendingFinal, StudiesReadError, SubjectStanding } from '@/lib/core/studies'
+import { newGradesFor } from '@/lib/new-grades'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
@@ -165,7 +165,7 @@ export default async function MateriasPage({
         title='Mis materias'
         school={person.ok ? person.value.school.name : undefined}
         art='materias'
-        unread={unread.ok ? unreadTotal(news) + grades.length : undefined}
+        unread={unread.ok ? newsTotal(news, grades.length) : undefined}
       >
         {student && (
           <Link

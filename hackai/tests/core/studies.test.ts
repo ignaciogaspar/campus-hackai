@@ -1201,8 +1201,9 @@ test('las notas nuevas son las cargadas en los últimos 7 días, la más nueva p
   const result = await studies.newGrades('p-taguirre', null)
 
   assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
   assert.deepEqual(
-    result.value.map((g) => [g.subjectName, g.assessmentName, g.grade, g.source, g.loadedAt]),
+    result.value.data.map((g) => [g.subjectName, g.assessmentName, g.grade, g.source, g.loadedAt]),
     [
       ['Análisis Matemático I', 'Primer parcial', 7, 'actuacion-provisoria', '2026-11-10T12:00:00.000Z'],
       ['Programación I', 'TP integrador', 9, 'historia', '2026-11-09T21:00:00.000Z']
@@ -1219,8 +1220,8 @@ test('una nota deja de ser nueva 7 días después de cargada, contados con el re
   const tuesday = await studies.newGrades('p-taguirre', null)
 
   assert.ok(monday.ok && tuesday.ok)
-  assert.deepEqual(named(monday.value), [['Análisis Matemático I', 'Primer parcial', 7]])
-  assert.deepEqual(tuesday.value, [])
+  assert.deepEqual(named(monday.value.data), [['Análisis Matemático I', 'Primer parcial', 7]])
+  assert.deepEqual(tuesday.value.data, [])
 })
 
 test('las notas que ya vio no son nuevas: solo cuentan las cargadas después', async () => {
@@ -1230,7 +1231,7 @@ test('las notas que ya vio no son nuevas: solo cuentan las cargadas después', a
   const result = await studies.newGrades('p-taguirre', '2026-11-10T03:00:00.000Z')
 
   assert.ok(result.ok)
-  assert.deepEqual(named(result.value), [['Análisis Matemático I', 'Primer parcial', 7]])
+  assert.deepEqual(named(result.value.data), [['Análisis Matemático I', 'Primer parcial', 7]])
 })
 
 test('sin fecha de carga, una nota cuenta como nueva desde la fecha de la evaluación; una cargada después de ahora no sale', async () => {
@@ -1248,10 +1249,20 @@ test('sin fecha de carga, una nota cuenta como nueva desde la fecha de la evalua
   const result = await studies.newGrades('p-taguirre', null)
 
   assert.ok(result.ok)
-  assert.deepEqual(named(result.value), [['Análisis Matemático I', 'Primer parcial', 7]])
+  assert.deepEqual(named(result.value.data), [['Análisis Matemático I', 'Primer parcial', 7]])
 })
 
-test('con el SIU caído, las notas nuevas salen de lo último leído; sin nada leído, «falla externa»', async () => {
+test('un ausente no es una nota nueva, aunque su evaluación se haya cargado en la semana', async () => {
+  const { studies } = build()
+
+  // Sofía estuvo ausente en el TP integrador de Programación I, que se cargó el 9/11.
+  const result = await studies.newGrades('p-sdominguez', null)
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.data, [])
+})
+
+test('con el SIU caído, las notas nuevas salen de lo último leído, marcadas como desactualizadas; sin nada leído, «falla externa»', async () => {
   const { studies, siuState } = build()
   siuState.down = true
   assert.deepEqual(await studies.newGrades('p-taguirre', null), { ok: false, error: 'falla-externa' })
@@ -1262,7 +1273,9 @@ test('con el SIU caído, las notas nuevas salen de lo último leído; sin nada l
   const result = await studies.newGrades('p-taguirre', null)
 
   assert.ok(result.ok)
-  assert.equal(result.value.length, 2)
+  assert.equal(result.value.stale, true)
+  assert.equal(result.value.readAt, NOW)
+  assert.equal(result.value.data.length, 2)
 })
 
 test('la historia académica muestra las materias aprobadas con fecha, nota y forma de aprobación, y el promedio', async () => {

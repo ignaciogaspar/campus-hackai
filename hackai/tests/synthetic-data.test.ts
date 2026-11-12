@@ -213,7 +213,7 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
     const result = await studies.newGrades(DEMO_STUDENT, null)
 
     assert.ok(result.ok)
-    assert.deepEqual(sorted(result.value.map((g) => g.source)), ['actuacion-provisoria', 'historia'])
+    assert.deepEqual(sorted(result.value.data.map((g) => g.source)), ['actuacion-provisoria', 'historia'])
   })
 
   test(`el ${day} el alumno de la demo tiene una cursada abierta con lugar y otra comisión sin cupo`, async () => {

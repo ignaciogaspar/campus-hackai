@@ -1,7 +1,7 @@
 /* Cómo se muestran las novedades sin leer que da Espacios: por materia y canal, con a dónde lleva cada una. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { newsBySubject, unreadBySubject, unreadTotal } from '@/components/news/format'
+import { newsBySubject, newsTotal, unreadBySubject, unreadTotal } from '@/components/news/format'
 import type { UnreadItem } from '@/lib/core/spaces'
 
 const ledesma = { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' as const }
@@ -96,4 +96,12 @@ test('la campana suma todo lo sin leer, y Mis materias lo de cada materia', () =
       ['pr1', 1]
     ])
   )
+})
+
+test('el número de la campana suma lo sin leer de los espacios y las notas nuevas', () => {
+  const items = [item({ channelId: 'a', kind: 'avisos', count: 2 })]
+
+  assert.equal(newsTotal(items, 2), 4)
+  assert.equal(newsTotal([], 1), 1)
+  assert.equal(newsTotal([], 0), 0)
 })

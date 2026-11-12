@@ -30,19 +30,24 @@ export async function requireSession(role?: Role): Promise<Session> {
   return session
 }
 
-/** Abre la sesión de la persona. Solo desde una server action o un route handler.
-    La cookie va marcada `Secure` cuando el pedido llegó por HTTPS, que detrás
-    del hosting se sabe por `x-forwarded-proto`. Así también se puede entrar
-    con la imagen de producción en http://localhost. */
-export async function startSession(session: Session): Promise<void> {
+/** Guarda una cookie solo para el servidor. Solo desde una server action o un
+    route handler. Va marcada `Secure` cuando el pedido llegó por HTTPS, que
+    detrás del hosting se sabe por `x-forwarded-proto`. Así también se puede
+    entrar con la imagen de producción en http://localhost. */
+export async function setServerCookie(name: string, value: string, maxAge: number): Promise<void> {
   const [jar, incoming] = await Promise.all([cookies(), headers()])
-  jar.set(SESSION_COOKIE, createSessionToken(session), {
+  jar.set(name, value, {
     httpOnly: true,
     sameSite: 'lax',
     secure: incoming.get('x-forwarded-proto')?.split(',')[0].trim() === 'https',
     path: '/',
-    maxAge: SESSION_MAX_AGE
+    maxAge
   })
+}
+
+/** Abre la sesión de la persona. Solo desde una server action o un route handler. */
+export async function startSession(session: Session): Promise<void> {
+  await setServerCookie(SESSION_COOKIE, createSessionToken(session), SESSION_MAX_AGE)
 }
 
 /** Cierra la sesión. Solo desde una server action o un route handler. */

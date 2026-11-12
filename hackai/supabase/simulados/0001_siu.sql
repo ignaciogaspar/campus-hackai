@@ -188,7 +188,7 @@ alter table siu_history drop constraint if exists siu_history_evaluation_check;
 alter table siu_history add constraint siu_history_evaluation_check
   check ((type = 'evaluacion') = (section_id is not null and assessment_id is not null));
 
--- Cuándo se cargó la nota de una evaluación, si el SIU lo dice (Hoy muestra las nuevas).
+-- Cuándo se cargó la nota de una evaluación, si el SIU lo dice (la campana y Novedades muestran las nuevas).
 alter table siu_history add column if not exists loaded_at timestamptz;
 
 -- Notas cargadas en actas todavía abiertas (actuación provisoria).

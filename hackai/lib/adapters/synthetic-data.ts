@@ -834,8 +834,8 @@ const subjectRows: HistoryRow[] = [
 ]
 
 // Cuándo se cargaron las notas de una evaluación: [comisión, evaluación, cargada].
-// Son las más nuevas, para que Hoy las muestre como nuevas en el ensayo del
-// 12/11 y en la demo del 13/11. Las demás no dicen cuándo se cargaron, como
+// Son las más nuevas, para que la campana y Novedades las muestren como nuevas
+// en el ensayo del 12/11 y en la demo del 13/11. Las demás no dicen cuándo se cargaron, como
 // puede pasar con la API real, y cuentan desde la fecha de la evaluación.
 
 const loadedRows: [string, string, string][] = [

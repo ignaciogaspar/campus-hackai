@@ -12,17 +12,16 @@
 import { CheckCheck, SearchX } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { NEWS_KINDS, type NewsKind, newsBySubject, newsKindOf, unreadTotal } from '@/components/news/format'
+import { NEWS_KINDS, type NewsKind, newsBySubject, newsKindOf, newsTotal, unreadTotal } from '@/components/news/format'
 import { GradeNews } from '@/components/news/grade-news'
 import { NewsList } from '@/components/news/news-list'
-import { newGradesFor } from '@/components/shell/notifications-bell'
 import { PageHeader } from '@/components/shell/page-header'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Spaces, UnreadItem } from '@/lib/core/spaces'
-import type { AssessmentGrade } from '@/lib/core/studies'
+import { newGradesFor } from '@/lib/new-grades'
 import type { ErrorOf } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -43,7 +42,7 @@ const asKind = (value: string | undefined): NewsKind | 'todas' =>
    En el celular, si no entran, el riel se desliza de costado. «Todas» cuenta también las notas nuevas. */
 function KindFilter({ items, grades, current }: { items: UnreadItem[]; grades: number; current: NewsKind | 'todas' }) {
   const options = [
-    { kind: 'todas' as const, label: 'Todas', count: unreadTotal(items) + grades },
+    { kind: 'todas' as const, label: 'Todas', count: newsTotal(items, grades) },
     ...NEWS_KINDS.map((k) => ({
       ...k,
       count: unreadTotal(items.filter((i) => newsKindOf(i.kind) === k.kind))
@@ -71,10 +70,10 @@ function KindFilter({ items, grades, current }: { items: UnreadItem[]; grades: n
   )
 }
 
-function News({ read, kind, grades }: { read: UnreadRead; kind: NewsKind | 'todas'; grades: AssessmentGrade[] }) {
+function News({ read, kind, grades }: { read: UnreadRead; kind: NewsKind | 'todas'; grades: number }) {
   if (!read.ok) return <ErrorNotice>{ERRORS[read.error]}</ErrorNotice>
   // Con notas nuevas no está al día, aunque no haya nada sin leer en los espacios.
-  if (read.value.length === 0 && grades.length > 0) return null
+  if (read.value.length === 0 && grades > 0) return null
   if (read.value.length === 0) {
     return (
       <EmptyState icon={CheckCheck} title='Estás al día'>
@@ -86,7 +85,7 @@ function News({ read, kind, grades }: { read: UnreadRead; kind: NewsKind | 'toda
   const shown = kind === 'todas' ? read.value : read.value.filter((i) => newsKindOf(i.kind) === kind)
   return (
     <>
-      <KindFilter items={read.value} grades={grades.length} current={kind} />
+      <KindFilter items={read.value} grades={grades} current={kind} />
       {shown.length === 0 ? (
         <EmptyState icon={SearchX} title='Nada de este tipo'>
           No tenés novedades sin leer de este tipo. Probá con otro filtro.
@@ -106,7 +105,7 @@ export default async function NovedadesPage({ searchParams }: { searchParams: Pr
     searchParams
   ])
   const kind = asKind(params.tipo)
-  const total = (read.ok ? unreadTotal(read.value) : 0) + grades.length
+  const total = newsTotal(read.ok ? read.value : [], grades.length)
 
   return (
     <>
@@ -122,7 +121,7 @@ export default async function NovedadesPage({ searchParams }: { searchParams: Pr
       <main className='flex w-full flex-col px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         <div className='mx-auto flex w-full max-w-3xl flex-col gap-6'>
           {kind === 'todas' && grades.length > 0 && <GradeNews grades={grades} />}
-          <News read={read} kind={kind} grades={grades} />
+          <News read={read} kind={kind} grades={grades.length} />
         </div>
       </main>
     </>
