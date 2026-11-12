@@ -31,7 +31,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 | Operación | Qué hace |
 | --- | --- |
-| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
+| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha y, si es alumno, sus inasistencias: cuántas, el máximo si el SIU lo da y cuántas le quedan, con un aviso cerca del máximo |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró (mirado con el reloj de cada llamada, aunque sea lo último que se leyó). En una mesa, si para rendir le falta regularizar la cursada |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
@@ -60,7 +60,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Constancias:** si cumple lo dice el SIU (en la API real, solo `cumple_condiciones`). El motivo lo deduce Cursada con lo que la API también da: propuesta activa, inscripción vigente, finales rendidos. Si no lo encuentra, no inventa uno.
 
-**Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. Vale para todas las lecturas, también la oferta y las constancias. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta. Si se cae solo Moodle, `subjectsOf` no usa lo último leído: devuelve las materias al día del SIU, sin enlaces al aula ni tareas, y lo marca con `classroomUnavailable`; Hoy lo anota en `unavailable` como `assignments`.
+**Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. Vale para todas las lecturas, también la oferta y las constancias. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta. Si se cae solo Moodle, `subjectsOf` no usa lo último leído: devuelve las materias al día del SIU, sin enlaces al aula ni tareas, y lo marca con `classroomUnavailable`; Hoy lo anota en `unavailable` como `assignments`. Lo mismo si el SIU responde todo menos las inasistencias: las materias salen al día, sin faltas, con `absencesUnavailable`. En los dos casos esa respuesta no reemplaza a la última lectura completa.
 
 Usa Personas y los puertos del SIU, del aula virtual y el reloj.
 
@@ -140,7 +140,7 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | Puerto | Qué ofrece | Adaptadores |
 | --- | --- | --- |
 | **Identidad** | Validar una credencial y devolver quién es | Selector de demo, en memoria. En producción, Microsoft Entra ID (OpenID Connect) |
-| **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
+| **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, inasistencias y el máximo por comisión, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
 | **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
 | **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, abrir un hilo, responder en él, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |

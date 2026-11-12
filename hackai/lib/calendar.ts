@@ -1,5 +1,5 @@
 /* Archivo de calendario (iCalendar, RFC 5545) con los próximos parciales,
-   finales y entregas. Las horas van en UTC: cada calendario las muestra en su
+   finales y entregas, con el lugar cuando Cursada lo da. Las horas van en UTC: cada calendario las muestra en su
    zona, así que en Buenos Aires salen como en el SIU y en Moodle. */
 import type { UpcomingItem } from '@/lib/core/studies'
 
@@ -51,6 +51,7 @@ export function calendarFile(items: UpcomingItem[], now: string): string {
     `DTSTAMP:${utc(now)}`,
     `DTSTART:${utc(item.date)}`,
     `SUMMARY:${escapeText(summary(item))}`,
+    ...(item.location ? [`LOCATION:${escapeText(item.location)}`] : []),
     `CATEGORIES:${KIND[item.kind]}`,
     'END:VEVENT'
   ])

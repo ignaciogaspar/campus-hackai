@@ -257,7 +257,9 @@ export function AppNav({
       )}
       {more.length > 0 && <MoreSheet sections={more} pathname={pathname} />}
       {subjects.length > 0 && (
-        <div className='hidden min-h-0 flex-1 flex-col lg:flex'>
+        // Al menos el título y dos materias: en una ventana baja, la barra entera
+        // scrollea en vez de que el título se encime con «Cuenta».
+        <div className='hidden min-h-36 flex-1 flex-col lg:flex'>
           <GroupLabel>Tus materias</GroupLabel>
           <div className='flex min-h-0 flex-col overflow-y-auto [scrollbar-width:none]'>
             {subjects.map((s) => {

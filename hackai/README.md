@@ -74,6 +74,8 @@ Cuando la review termina bien, le pone al PR la label `revisado-por-claude`, y c
 
 En `/` se entra eligiendo una persona sintética de la lista, alumno o docente, sin clave. La sesión queda en la cookie firmada `hackai_session` y lleva a `/hoy`, el inicio de los dos roles. Se sale con «Salir», que en el celular está en la hoja que abre el avatar. En producción se entra con la cuenta de Microsoft de la Austral: cambia el adaptador del puerto de identidad, no el núcleo.
 
+Tomás Aguirre y Mariana Ledesma, las personas del guion, van primeras en la lista (`components/session/person-order.ts`). En la compu, arriba de la lista hay un QR para seguir en el celular; en el celular no aparece (se ve desde 768 px de ancho). Apunta siempre al deploy, https://campus-hackai.vercel.app/ (`DEPLOY_URL` en `components/session/sign-in-qr.ts`), también corriendo en local, porque el celular no abre `localhost`. Se genera en el servidor con `qrcode` (ADR 0008).
+
 Para abrir sesiones hace falta `SESSION_SECRET` en el entorno. Sin esa variable la lista se ve, pero al elegir una persona el ingreso avisa que falta.
 
 El ingreso de demo queda abierto a propósito. La identidad en memoria es el único adaptador que hay, y el que se usa si falta `HACKAI_IDENTITY`: cualquiera que llegue a `/` entra como cualquier persona de la lista, también en el deploy público. Para la demo alcanza, porque todos los datos son sintéticos. Antes de cargar datos reales tiene que estar el adaptador de Microsoft.
@@ -139,7 +141,7 @@ Las baterías de contrato del almacén (`tests/contracts/spaces-store.test.ts`) 
 
 ## SIU simulado
 
-Con `HACKAI_SIU=simulado`, el puerto del SIU lee y escribe las tablas `siu_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de la API REST v2 de Guaraní y son solo de la demo: en producción el SIU es la API real.
+Con `HACKAI_SIU=simulado`, el puerto del SIU lee y escribe las tablas `siu_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de la API REST v2 de Guaraní y son solo de la demo: en producción el SIU es la API real. Las inasistencias (`siu_absences`) y el máximo de faltas por comisión (`siu_absence_limits`, una hipótesis: pregunta 22 de `docs/product/preguntas-abiertas.md`) se suman con `npm run demo:preparar`; mientras la base no las tenga, Mis materias sale sin faltas.
 
 Por eso sus migraciones y su seed van **aparte** de las propias, en `supabase/simulados/`, y no en `supabase/migrations/`: en producción no se aplican y se pueden tirar sin tocar nada de HackAI.
 

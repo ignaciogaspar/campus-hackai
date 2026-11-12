@@ -9,7 +9,7 @@
    Todo lleva a algún lado: una inscripción, a su oferta de comisiones o de
    mesas; el próximo parcial o final, al espacio de su materia (o a su mesa, si
    rinde libre). */
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, CalendarPlus } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, shortDate, timeOf } from '@/components/dates'
@@ -21,12 +21,14 @@ import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { dateHref } from '@/components/today/agenda'
 import { TodayCalendar } from '@/components/today/calendar'
 import { classSlotsOf, eventsOf, mondayOf, weekOf } from '@/components/today/calendar-layout'
+import { buttonVariants } from '@/components/ui/button'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
 import type { Person } from '@/lib/core/people'
 import type { OpenEnrollment } from '@/lib/core/studies'
 import type { NextExam, TodayView } from '@/lib/core/today'
 import { dayKey } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 
 const UPCOMING_DOWN = 'No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.'
 const MOODLE_NOTE =
@@ -221,23 +223,28 @@ export function TodayScreen({ view, person }: { view: TodayView; person: Person 
             <NextUp view={view} />
           </div>
         }
+        below={
+          <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
+            <p className='min-w-0 flex-1 basis-64 text-[0.8125rem] text-muted-foreground'>
+              {moodleDown ? ASSIGNMENTS_DOWN : MOODLE_NOTE}
+            </p>
+            <a
+              href='/calendario/exportar'
+              download
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 flex-none')}
+            >
+              <CalendarPlus aria-hidden='true' data-icon='inline-start' />
+              Agregar a mi calendario
+            </a>
+          </div>
+        }
         aside={
           <>
-            <SubjectsCard view={view} />
-            <EnrollmentsCard view={view} />
+            <SubjectsCard key='materias' view={view} />
+            <EnrollmentsCard key='inscripciones' view={view} />
           </>
         }
       />
-      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-1'>
-        <p className='text-[0.8125rem] text-muted-foreground'>{moodleDown ? ASSIGNMENTS_DOWN : MOODLE_NOTE}</p>
-        <a
-          href='/calendario/exportar'
-          download
-          className='inline-flex min-h-11 items-center text-[0.8125rem] font-bold text-blue underline focus-ring'
-        >
-          Agregar a mi calendario
-        </a>
-      </div>
     </div>
   )
 }

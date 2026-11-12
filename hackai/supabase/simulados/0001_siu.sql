@@ -198,6 +198,22 @@ create table if not exists siu_provisional_results (
   date timestamptz not null
 );
 
+-- Inasistencias del alumno (Reportes > Inasistencias), por comisión.
+create table if not exists siu_absences (
+  id text primary key,
+  person_id text not null references siu_persons (id),
+  section_id text not null references siu_sections (id),
+  date timestamptz not null,
+  justified boolean not null
+);
+
+-- Máximo de inasistencias de una comisión. Que el SIU de la Austral lo dé es
+-- una hipótesis (docs/product/preguntas-abiertas.md): sin fila, no hay máximo.
+create table if not exists siu_absence_limits (
+  section_id text primary key references siu_sections (id),
+  max integer not null check (max >= 0)
+);
+
 -- Condiciones de cada constancia (/alumnos/{alumno}/certificados/{certificado}).
 create table if not exists siu_certificates (
   person_id text not null references siu_persons (id),
@@ -221,6 +237,8 @@ alter table siu_exam_enrollments enable row level security;
 alter table siu_assessments enable row level security;
 alter table siu_history enable row level security;
 alter table siu_provisional_results enable row level security;
+alter table siu_absences enable row level security;
+alter table siu_absence_limits enable row level security;
 alter table siu_certificates enable row level security;
 alter table siu_study_plans enable row level security;
 alter table siu_plan_subjects enable row level security;
@@ -228,7 +246,8 @@ alter table siu_plan_subjects enable row level security;
 revoke all on table
   siu_schools, siu_programs, siu_persons, siu_person_programs, siu_terms, siu_subjects, siu_sections,
   siu_course_enrollments, siu_exam_boards, siu_exam_enrollments, siu_assessments, siu_history,
-  siu_provisional_results, siu_certificates, siu_study_plans, siu_plan_subjects
+  siu_provisional_results, siu_certificates, siu_study_plans, siu_plan_subjects, siu_absences,
+  siu_absence_limits
 from anon, authenticated;
 
 commit;

@@ -61,6 +61,8 @@ import type {
 } from '@/lib/ports/classroom'
 import type { ExternalMessage } from '@/lib/ports/external-channel'
 import type {
+  SiuAbsence,
+  SiuAbsenceLimit,
   SiuAssessment,
   SiuCertificateType,
   SiuCourseEnrollment,
@@ -103,6 +105,8 @@ export type SyntheticData = {
     assessments: SiuAssessment[]
     history: SiuHistoryEntry[]
     provisionalResults: SiuProvisionalResult[]
+    absences: SiuAbsence[]
+    absenceLimits: SiuAbsenceLimit[]
     certificates: { personId: string; type: SiuCertificateType; meetsConditions: boolean }[]
     studyPlans: SiuStudyPlan[]
   }
@@ -902,6 +906,40 @@ const provisionalResults: SiuProvisionalResult[] = provisionalRows.map(([personI
   }
 })
 
+// Inasistencias del cuatrimestre: [persona, comisión, fecha, justificada].
+// Análisis I (comisión A) es lunes y miércoles; Programación I, los viernes.
+// Tomás Aguirre está a una falta del máximo en Programación I, para el aviso
+// de la demo, y Joaquín Escobar ya llegó al máximo en Análisis I.
+
+const absenceRows: [string, string, string, boolean][] = [
+  ['p-taguirre', 'sec-am1-fi-a', '2026-09-23', false],
+  ['p-taguirre', 'sec-pr1-fi-a', '2026-09-18', true],
+  ['p-taguirre', 'sec-pr1-fi-a', '2026-10-16', false],
+  ['p-lbenitez', 'sec-am1-fi-a', '2026-09-14', false],
+  ['p-jescobar', 'sec-am1-fi-a', '2026-08-12', false],
+  ['p-jescobar', 'sec-am1-fi-a', '2026-10-05', false],
+  ['p-jescobar', 'sec-am1-fi-a', '2026-10-14', true],
+  ['p-mcabrera', 'sec-am1-fi-b', '2026-09-15', false],
+  ['p-agimenez', 'sec-am1-fce-a', '2026-09-08', false],
+  ['p-agimenez', 'sec-am1-fce-a', '2026-10-13', true]
+]
+
+const absences: SiuAbsence[] = absenceRows.map(([personId, sectionId, date, justified], i) => ({
+  id: `in-${i + 1}`,
+  personId: siu(personId),
+  sectionId,
+  date: at(date, '08:00'),
+  justified
+}))
+
+// Máximo de inasistencias por comisión: en la Austral suele ser 3. Que el SIU
+// lo dé por comisión es una hipótesis (docs/product/preguntas-abiertas.md,
+// pregunta 22).
+
+const ABSENCE_MAX = 3
+
+const absenceLimits: SiuAbsenceLimit[] = sections.map((s) => ({ sectionId: s.id, max: ABSENCE_MAX }))
+
 // Constancias: cumple la de alumno regular quien tiene una propuesta activa
 // (todos menos Federico Juárez), y la de examen final quien rindió un final.
 
@@ -1197,6 +1235,8 @@ export const syntheticData: SyntheticData = {
     assessments,
     history,
     provisionalResults,
+    absences,
+    absenceLimits,
     certificates,
     studyPlans
   },

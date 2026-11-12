@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createQueryRunner, type Query } from '@/lib/adapters/supabase/query'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
+  SiuAbsence,
   SiuAssessment,
   SiuCapabilities,
   SiuCourseEnrollment,
@@ -139,6 +140,8 @@ type ProvisionalRow = {
   grade: number | string | null
   date: string
 }
+type AbsenceRow = { id: string; person_id: string; section_id: string; date: string; justified: boolean }
+type AbsenceLimitRow = { section_id: string; max: number }
 
 const PERSON =
   'id, surname, names, email, role, school:siu_schools(id, name), programs:siu_person_programs(status, position, program:siu_programs(id, name))'
@@ -540,6 +543,40 @@ export function createSimulatedSiu({
           })
         )
       )
+    },
+
+    async absences(personId) {
+      const exists = await requirePerson(personId)
+      if (!exists.ok) return exists
+      const [rows, enrollments] = await Promise.all([
+        list<AbsenceRow>('inasistencias', (s) =>
+          client.from('siu_absences').select('*').eq('person_id', personId).order('date').abortSignal(s)
+        ),
+        list<{ section_id: string }>('inasistencias', (s) =>
+          client.from('siu_course_enrollments').select('section_id').eq('person_id', personId).abortSignal(s)
+        )
+      ])
+      if (!rows.ok) return rows
+      if (!enrollments.ok) return enrollments
+      const sections = [...new Set(enrollments.value.map((e) => e.section_id))]
+      const limits = sections.length
+        ? await list<AbsenceLimitRow>('inasistencias', (s) =>
+            client.from('siu_absence_limits').select('*').in('section_id', sections).order('section_id').abortSignal(s)
+          )
+        : ok<AbsenceLimitRow[]>([])
+      if (!limits.ok) return limits
+      return ok({
+        absences: rows.value.map(
+          (r): SiuAbsence => ({
+            id: r.id,
+            personId: r.person_id,
+            sectionId: r.section_id,
+            date: iso(r.date),
+            justified: r.justified
+          })
+        ),
+        limits: limits.value.map((l) => ({ sectionId: l.section_id, max: Number(l.max) }))
+      })
     },
 
     async meetsCertificateConditions(personId, type) {

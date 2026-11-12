@@ -113,7 +113,12 @@ export type TodayDeps = {
   clock: ClockPort
 }
 
-const EMPTY_SUBJECTS: MySubjects = { current: [], archived: [], classroomUnavailable: false }
+const EMPTY_SUBJECTS: MySubjects = {
+  current: [],
+  archived: [],
+  classroomUnavailable: false,
+  absencesUnavailable: false
+}
 
 /** Los tipos que pueden ser «el próximo parcial o final». */
 const NEXT_EXAM_KINDS: UpcomingItem['kind'][] = ['parcial', 'final']

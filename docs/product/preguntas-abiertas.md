@@ -177,6 +177,15 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 22. ¿El SIU de la Austral da el máximo de inasistencias por comisión, y cuentan las justificadas?
+
+- **Por qué importa:** Mis materias muestra en cada materia actual cuántas faltas lleva el alumno y, si hay máximo, cuántas le quedan, con un aviso cuando se acerca (#60). El glosario dice que el límite de faltas no figura en el SIU; el relevamiento solo vio Reportes > Inasistencias, con las faltas por materia, fecha y si están justificadas.
+- **Lo que sabemos:** según el equipo, en la Austral el máximo suele ser 3 faltas por materia (12/11/2026).
+- **Hipótesis:** el SIU da ese máximo por comisión, y las justificadas cuentan para el máximo como las otras. En el SIU simulado todas las comisiones tienen máximo 3; si una no lo tiene, la tarjeta muestra solo la cuenta. Contar las justificadas es lo prudente: si no cuentan, el alumno tiene más margen del que ve. Avisa cuando le queda una falta y cuando llega al máximo.
+- **Opciones:** como está; no contar las justificadas; sacar el máximo de otra fuente (el reglamento de cada facultad o lo que cargue la cátedra en HackAI); mostrar solo la cuenta.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
