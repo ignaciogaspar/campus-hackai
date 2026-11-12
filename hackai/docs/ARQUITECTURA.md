@@ -77,6 +77,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `resolve(persona, consulta)` | Marca una consulta como resuelta |
 | `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |
 | `addMaterial(persona, espacio, archivo)` | Sube un archivo al material, con Archivos, en la unidad o el tema que elige el docente |
+| `search(persona, espacio, texto)` | Busca en el material por nombre del archivo y por unidad o tema, y en las consultas de los `#consultas` que la persona ve por su texto o el de sus respuestas, sin distinguir mayúsculas ni tildes y con lo buscado como frase. Las consultas vuelven con las resueltas primero. Nunca trae nada de otra comisión y no marca nada leído. La pantalla la pide con `?buscar=` en el canal de material |
 | `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
 | `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Devuelve `canal-externo-inexistente` si no lo encuentra y `canal-externo-en-uso` si ya está vinculado con otro canal |

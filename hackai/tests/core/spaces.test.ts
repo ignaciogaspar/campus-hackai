@@ -2235,3 +2235,104 @@ test('sin espacios abiertos no hay consultas y pedirlas no crea ninguno; si Curs
   siuState.down = true
   assert.deepEqual(await spaces.openQuestions('p-gferreyra'), { ok: false, error: 'falla-externa' })
 })
+
+test('la búsqueda encuentra el material por nombre o por unidad, sin distinguir mayúsculas ni tildes', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  for (const [name, section] of [
+    ['Guía de límites.pdf', 'Unidad 1: Límites'],
+    ['Guía 2.pdf', 'Unidad 1: Límites'],
+    ['Práctica derivadas.pdf', 'Unidad 2: Derivadas'],
+    ['Programa.pdf', null]
+  ] as const) {
+    assert.ok((await spaces.addMaterial('p-mledesma', ids.spaceId, pdf(name, section))).ok)
+  }
+  const names = async (query: string) => {
+    const found = await spaces.search('p-taguirre', ids.spaceId, query)
+    assert.ok(found.ok)
+    return found.value.material.map((m) => m.name)
+  }
+
+  // Por unidad, como frase: «unidad 2» no trae la Guía 2 de la Unidad 1.
+  assert.deepEqual(await names('  UNIDAD   2 '), ['Práctica derivadas.pdf'])
+  // Por nombre, sin tildes ni mayúsculas, el más nuevo primero.
+  assert.deepEqual(await names('guia'), ['Guía 2.pdf', 'Guía de límites.pdf'])
+  assert.deepEqual(await names('limites'), ['Guía 2.pdf', 'Guía de límites.pdf'])
+  assert.deepEqual(await names('PRÁCTICA'), ['Práctica derivadas.pdf'])
+  assert.deepEqual(await names('integrales'), [])
+  assert.deepEqual(await spaces.search('p-taguirre', ids.spaceId, '   '), {
+    ok: true,
+    value: { query: '', material: [], questions: [] }
+  })
+
+  // Cada resultado dice de dónde viene y cómo abrirlo, y buscar no lo marca visto.
+  const found = await spaces.search('p-taguirre', ids.spaceId, 'programa')
+  assert.ok(found.ok)
+  assert.equal(found.value.query, 'programa')
+  assert.deepEqual(
+    found.value.material.map((m) => [m.origin, m.unread, m.url.startsWith('/archivos/')]),
+    [['hackai', true, true]]
+  )
+  assert.deepEqual(await unreadOf(spaces, 'p-taguirre'), { 'avisos (A)': 0, 'consultas (A)': 0, material: 4 })
+})
+
+test('la búsqueda trae las consultas de la comisión del alumno, las resueltas primero, y nunca las de otra', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const ask = async (personId: string, channelId: string, text: string) => {
+    const asked = await spaces.post(personId, channelId, { text })
+    assert.ok(asked.ok)
+    return asked.value.id
+  }
+  const open = await ask('p-taguirre', ids.consultasA, '¿El parcial incluye límites?')
+  const solved = await ask('p-lbenitez', ids.consultasA, '¿Hay que saber la tabla de derivadas?')
+  assert.ok((await spaces.post('p-mledesma', ids.consultasA, { text: 'Sí, entra Límites.', replyTo: solved })).ok)
+  assert.ok((await spaces.resolve('p-mledesma', solved)).ok)
+  await ask('p-mcabrera', ids.consultasB, '¿Entran límites al infinito?')
+  // Lo que no es consulta (un aviso) no aparece.
+  assert.ok((await spaces.post('p-mledesma', ids.avisosA, { text: 'Límites queda para el parcial.' })).ok)
+
+  const found = await spaces.search('p-taguirre', ids.spaceId, 'LIMITES')
+  assert.ok(found.ok)
+  assert.deepEqual(
+    found.value.questions.map((q) => ({ ...q, createdAt: undefined })),
+    [
+      {
+        messageId: solved,
+        channelId: ids.consultasA,
+        sectionName: 'A',
+        text: '¿Hay que saber la tabla de derivadas?',
+        author: { personId: 'p-lbenitez', name: found.value.questions[0]?.author.name, role: 'alumno' },
+        resolved: true,
+        replies: 1,
+        createdAt: undefined
+      },
+      {
+        messageId: open,
+        channelId: ids.consultasA,
+        sectionName: 'A',
+        text: '¿El parcial incluye límites?',
+        author: { personId: 'p-taguirre', name: found.value.questions[1]?.author.name, role: 'alumno' },
+        resolved: false,
+        replies: 0,
+        createdAt: undefined
+      }
+    ]
+  )
+
+  // La alumna de la B solo ve la de su comisión.
+  const fromB = await spaces.search('p-mcabrera', ids.spaceId, 'límites')
+  assert.ok(fromB.ok)
+  assert.deepEqual(
+    fromB.value.questions.map((q) => [q.text, q.sectionName]),
+    [['¿Entran límites al infinito?', 'B']]
+  )
+})
+
+test('no busca en un espacio ajeno ni en uno que no existe', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+
+  assert.deepEqual(await spaces.search('p-agimenez', ids.spaceId, 'guía'), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await spaces.search('p-taguirre', 'sp-nada', 'guía'), { ok: false, error: 'espacio-desconocido' })
+})

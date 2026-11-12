@@ -2,8 +2,8 @@
    del módulo se usa su interfaz. Las piezas viven al lado: quién entra y qué
    puede hacer (access), los canales (channels), lo leído (reading), los
    autores (authors), los mensajes y sus hilos (messages), el material
-   (material), los canales directos (direct) y lo que se trae de Moodle
-   (classroom-import). Los archivos guardados se entregan acá, con la misma
+   (material), los canales directos (direct), la búsqueda (search) y lo que se trae de
+   Moodle (classroom-import). Los archivos guardados se entregan acá, con la misma
    regla de quién ve qué.
 
    `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
@@ -63,6 +63,7 @@ import {
   messagesVersion,
   unreadIn
 } from '@/lib/core/spaces/reading'
+import { searchSpace } from '@/lib/core/spaces/search'
 import { addCounts, createSync } from '@/lib/core/spaces/sync'
 import { unreadFor } from '@/lib/core/spaces/unread'
 import { isFileId } from '@/lib/ports/files'
@@ -536,6 +537,12 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return material.ok ? ok(material.value.view) : material
   }
 
+  const search: Spaces['search'] = async (personId, spaceId, query) => {
+    const found = await inSpace(personId, spaceId)
+    if (!found.ok) return found
+    return searchSpace({ people, store }, found.value.member, found.value.space, query)
+  }
+
   const openDirect: Spaces['openDirect'] = async (personId, spaceId, otherPersonId) => {
     const found = await inSpace(personId, spaceId)
     if (!found.ok) return found
@@ -592,6 +599,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     post,
     createChannel,
     addMaterial,
+    search,
     organizeMaterial,
     openDirect,
     link,

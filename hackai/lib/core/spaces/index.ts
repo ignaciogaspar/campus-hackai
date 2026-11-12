@@ -242,6 +242,30 @@ export type OpenQuestion = {
   replies: number
 }
 
+/** Una consulta que encontró la búsqueda, de un `#consultas` que la persona ve. */
+export type QuestionMatch = {
+  messageId: MessageId
+  channelId: ChannelId
+  /** La comisión del canal, o `null` si el canal es de la materia. */
+  sectionName: string | null
+  text: string
+  author: Author
+  resolved: boolean
+  replies: number
+  createdAt: string
+}
+
+/** Lo que encontró una búsqueda en el espacio. */
+export type SpaceSearch = {
+  /** Lo que se buscó, sin espacios de más. */
+  query: string
+  /** Archivos del material cuyo nombre o unidad tiene lo buscado, el más nuevo primero. */
+  material: MaterialItem[]
+  /** Consultas de los canales que la persona ve cuyo texto o alguna respuesta tiene lo buscado:
+      las resueltas primero y, adentro, la más nueva primero. */
+  questions: QuestionMatch[]
+}
+
 /** Por qué una persona no puede entrar: no existe, no es de la materia o Cursada no respondió. */
 export type AccessError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
 
@@ -294,6 +318,14 @@ export type Spaces = {
     spaceId: SpaceId,
     material: NewMaterial
   ): Promise<Result<MaterialItem, 'espacio-desconocido' | 'solo-docentes' | 'archivo-vacio' | FilesError | AccessError>>
+  /** Busca en el material del espacio por nombre del archivo y por unidad o tema, y en las consultas de los
+      canales que la persona ve, sin distinguir mayúsculas ni tildes. Nunca trae nada de otra comisión.
+      Lo buscado vacío no encuentra nada. No marca nada leído. */
+  search(
+    personId: PersonId,
+    spaceId: SpaceId,
+    query: string
+  ): Promise<Result<SpaceSearch, 'espacio-desconocido' | AccessError>>
   /** Cómo se organiza el material del espacio. Solo docentes de la materia. */
   organizeMaterial(
     personId: PersonId,
