@@ -42,7 +42,10 @@ jobs:
       issues: read
       id-token: write
     outputs:
-      reviso: ${{ steps.claude.outcome == 'success' && 'si' || '' }}
+      # La action escribe `conclusion` solo si Claude corrió: si se saltea (por
+      # ejemplo, en un PR que cambia este archivo) termina en verde igual, y el
+      # PR no tiene que quedar marcado como revisado.
+      reviso: ${{ steps.claude.outputs.conclusion == 'success' && 'si' || '' }}
     steps:
       # Un push que esperó a que termine otra review trae las labels de antes
       # de que esa review pusiera la suya: se vuelven a mirar ahora.
@@ -97,8 +100,10 @@ jobs:
     if: needs.review.outputs.reviso == 'si'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # issues para crear la label; pull-requests para ponérsela a un PR.
     permissions:
       issues: write
+      pull-requests: write
     steps:
       - name: Marcar el PR como revisado
         env:
