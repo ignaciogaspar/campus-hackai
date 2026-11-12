@@ -58,7 +58,9 @@ export function DiscordLink({ subjectId, channel }: { subjectId: string; channel
             HackAI tiene que estar en el servidor.
           </span>
         </label>
-        <SubmitButton className={cn(buttonVariants({ size: 'sm' }), 'h-10 self-start rounded-[10px] px-4 font-bold')}>
+        <SubmitButton
+          className={cn(buttonVariants({ size: 'sm' }), 'min-h-11 self-start rounded-[10px] px-4 font-bold')}
+        >
           {linked ? 'Cambiar el canal' : 'Vincular'}
         </SubmitButton>
       </ActionForm>

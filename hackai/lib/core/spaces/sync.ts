@@ -117,11 +117,14 @@ export function createSync({ people, studies, externalChannel, files, store, tim
     return `${body.slice(0, MAX_TEXT - signature.length - 1)}\n${signature}`
   }
 
-  /** El id externo del mensaje al que responde, si ya llegó al canal externo. */
-  async function externalRoot(replyTo: MessageId): Promise<Result<string, ExternalFailure>> {
+  /** El id externo del mensaje al que responde. `null` si nunca va a tener uno (se
+      publicó antes de vincular el canal): la respuesta va suelta. Si la raíz todavía
+      está pendiente, falla, y la respuesta espera a que salga. */
+  async function externalRoot(replyTo: MessageId): Promise<Result<string | null, ExternalFailure>> {
     const root = await store.message(replyTo)
     if (!root.ok) return root
-    return root.value?.externalId ? ok(root.value.externalId) : fail('falla-externa')
+    if (root.value?.externalId) return ok(root.value.externalId)
+    return root.value?.status === 'pendiente' ? fail('falla-externa') : ok(null)
   }
 
   type Sent = Result<ExternalMessage, ExternalChannelError | 'mensaje-inexistente' | 'no-soportado'>
@@ -129,7 +132,7 @@ export function createSync({ people, studies, externalChannel, files, store, tim
   async function sendReply(link: ExternalLink, replyTo: MessageId, text: string): Promise<Sent> {
     const root = await externalRoot(replyTo)
     if (!root.ok) return root
-    if (!externalChannel.capabilities.threads) return externalChannel.post(link.channelId, text)
+    if (root.value === null || !externalChannel.capabilities.threads) return externalChannel.post(link.channelId, text)
     const replied = await externalChannel.reply(link.channelId, root.value, text)
     // Si borraron el mensaje en el canal externo, la respuesta va suelta.
     return !replied.ok && replied.error === 'mensaje-inexistente' ? externalChannel.post(link.channelId, text) : replied

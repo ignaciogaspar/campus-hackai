@@ -1349,3 +1349,29 @@ test('en #avisos de Discord, lo que escribe un alumno no se publica en HackAI', 
     ]
   )
 })
+
+test('una respuesta a un mensaje de antes de vincular el canal sale suelta y no traba lo que sigue', async () => {
+  const { spaces, discord } = buildSynced()
+  const ids = await am1(spaces)
+  // Publicado antes de vincular: nunca llega a Discord, así que no tiene id externo.
+  const old = await spaces.post('p-taguirre', ids.consultasA, { text: '¿El TP se entrega impreso?' })
+  assert.ok(old.ok)
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, { system: 'discord', channelId: discordConsultas.id })).ok)
+
+  const answer = await spaces.post('p-mledesma', ids.consultasA, { text: 'No, por el aula.', replyTo: old.value.id })
+  const next = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Y la fecha?' })
+  assert.ok(answer.ok && next.ok)
+  assert.deepEqual([answer.value.status, next.value.status], ['publicado', 'publicado'])
+  // En HackAI sigue en su hilo; en Discord va suelta, porque su mensaje no está allá.
+  assert.equal(answer.value.replyTo, old.value.id)
+  const inDiscord = await discord.read(discordConsultas.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.deepEqual(
+    inDiscord.value.messages.map((m) => [m.id, m.threadId]),
+    [
+      [answer.value.externalId, null],
+      [next.value.externalId, null]
+    ]
+  )
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 0 } })
+})
