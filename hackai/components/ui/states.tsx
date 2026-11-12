@@ -22,15 +22,22 @@ function Notice({
   icon: Icon,
   tone,
   role,
+  kind,
   children
 }: {
   icon: LucideIcon
   tone: string
   role: 'status' | 'alert'
+  /** Qué aviso es, en `data-aviso`. */
+  kind?: 'error'
   children: ReactNode
 }) {
   return (
-    <div role={role} className={cn('flex items-start gap-3 rounded-[14px] px-4 py-3 text-[0.8125rem]', tone)}>
+    <div
+      role={role}
+      data-aviso={kind}
+      className={cn('flex items-start gap-3 rounded-[14px] px-4 py-3 text-[0.8125rem]', tone)}
+    >
       <Icon aria-hidden='true' className='mt-px size-5 flex-none' strokeWidth={1.8} />
       <div className='flex flex-col items-start gap-2'>{children}</div>
     </div>
@@ -46,10 +53,16 @@ export function StaleNotice({ children }: { children: ReactNode }) {
   )
 }
 
-/* Algo falló y no hay copia: solo en el bloque que falló. */
+/* Algo falló y no hay copia: solo en el bloque que falló. `data-aviso` lo
+   marca para la prueba de pantallas de la demo (lib/demo-base/screens.ts). */
 export function ErrorNotice({ children }: { children: ReactNode }) {
   return (
-    <Notice icon={CircleAlert} tone='bg-error-background text-error-foreground [&>svg]:text-destructive' role='alert'>
+    <Notice
+      icon={CircleAlert}
+      tone='bg-error-background text-error-foreground [&>svg]:text-destructive'
+      role='alert'
+      kind='error'
+    >
       {children}
     </Notice>
   )
