@@ -28,7 +28,7 @@ Esto ya lo cubre otra cosa o ya está decidido:
 
 - Formato, orden de imports, comillas y punto y coma: lo resuelve Biome.
 - Errores de tipos, tests que fallan y build roto: lo marca CI en sus checks.
-- Las reglas que chequea `scripts/checks/reglas.sh` (`campus/` en un commit aparte, lo simulado fuera de `migrations/`, RLS, ADR por paquete nuevo, secretos): lo marca CI.
+- Las reglas que chequea `scripts/checks/reglas.sh` (`campus/` en un commit aparte, lo simulado fuera de `migrations/`, RLS, imports del núcleo y de los adaptadores, ADR por paquete nuevo, secretos): lo marca CI.
 - Las funciones que ya llevan un `biome-ignore` de complejidad: están anotadas en la issue #30.
 - El `!` de TypeScript: decisión de la ADR 0007.
 - Lo que el PR deja escrito como pendiente o «a confirmar con el equipo»: entra solo si es un riesgo para la demo.

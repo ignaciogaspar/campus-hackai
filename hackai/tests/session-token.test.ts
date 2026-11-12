@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import type { Role } from '@/lib/core/people'
 import {
   createSessionToken,
   forgeSessionCookie,
@@ -18,6 +19,8 @@ test('una cookie forjada se verifica y devuelve persona y rol', () => {
   const cookie = forgeSessionCookie('persona-de-prueba', 'alumno')
   assert.ok(cookie.startsWith(`${SESSION_COOKIE}=`))
   assert.deepEqual(verifySessionToken(tokenOf(cookie)), { personId: 'persona-de-prueba', role: 'alumno' })
+  const docente = forgeSessionCookie('docente-de-prueba', 'profesor')
+  assert.deepEqual(verifySessionToken(tokenOf(docente)), { personId: 'docente-de-prueba', role: 'profesor' })
 })
 
 test('un token alterado o vacío no da sesión', () => {
@@ -30,6 +33,11 @@ test('un token alterado o vacío no da sesión', () => {
   assert.equal(verifySessionToken(`${body}.${mac}x`), null)
   assert.equal(verifySessionToken(''), null)
   assert.equal(verifySessionToken(undefined), null)
+})
+
+test('un token bien firmado con un rol que no existe no da sesión', () => {
+  const token = createSessionToken({ personId: 'persona-de-prueba', role: 'admin' as Role })
+  assert.equal(verifySessionToken(token), null)
 })
 
 test('un token firmado con otro secreto no da sesión', () => {
