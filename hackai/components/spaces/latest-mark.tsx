@@ -10,7 +10,9 @@
      persona subió a leer algo, no se la mueve.
    El margen de la marca deja el mensaje por encima del campo para escribir,
    fijo abajo en el celular (y de la navegación inferior) y pegado al pie de
-   la columna en compu. */
+   la columna en compu. En el celular cuenta también la línea de «Mensaje
+   enviado.», que agranda el campo un rato: 67 px de navegación, unos 90 del
+   campo con esa línea y un respiro. */
 import { type ReactNode, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -72,7 +74,7 @@ export function LatestMark({ scope, latest, at, children }: Props) {
       aria-hidden='true'
       className={cn(
         'h-0',
-        at === 'bottom' ? 'scroll-mb-[calc(150px+env(safe-area-inset-bottom))] lg:scroll-mb-24' : 'scroll-mt-4'
+        at === 'bottom' ? 'scroll-mb-[calc(180px+env(safe-area-inset-bottom))] lg:scroll-mb-24' : 'scroll-mt-4'
       )}
     />
   )
