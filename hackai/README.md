@@ -129,6 +129,7 @@ El espacio y sus canales se crean la primera vez que alguien los abre. Sin confi
 | `supabase/migrations/0002_spaces.sql` | Crea `spaces`, `space_channels`, `space_messages`, `space_material` y `space_reads`, y la función `space_mark_read`, que marca leído sin retroceder. Tablas propias de HackAI: van también en producción. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
 | `supabase/migrations/0003_files.sql` | Crea el bucket privado `hackai-files`, de hasta 10 MB por archivo. Sin políticas: solo lo toca el servidor con el service role. |
 | `supabase/migrations/0004_spaces_sync.sql` | Suma a `space_channels` el cursor de lectura del canal externo vinculado (`external_cursor`). Idempotente. |
+| `supabase/migrations/0005_spaces_external_server.sql` | Suma a `spaces` el servidor del canal externo con que lo conectó un docente (`external_system`, `external_server_id`), para «Conectar con Discord» (`docs/discord.md`). Idempotente. |
 
 Se aplican con `npm run demo:preparar`, que además vacía lo que dejaron los ensayos («Base de la demo»).
 

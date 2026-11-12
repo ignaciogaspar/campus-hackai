@@ -151,6 +151,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Hipótesis:** como lo implementa Espacios desde #15, entra todo lo que se publica en el canal vinculado, escriba quien escriba, y un autor sin cuenta vinculada aparece con su nombre y «desde Discord», como pide #15. Quién puede escribir en cada canal lo decide el servidor de Discord: la cátedra deja Material y `#avisos` solo para docentes.
 - **Lo que vimos (11/11/2026, #15):** se probó un filtro que solo dejaba entrar a Material lo de docentes de la materia y a `#avisos` lo de docentes de la comisión, con su cuenta de Discord vinculada. Se sacó hasta que el equipo decida: descartaba sin avisar lo de cuentas sin vincular, y como el cursor avanza, eso no volvía aunque después se vinculara la cuenta.
 - **Opciones:** como está, sin filtro; filtrar en Material y `#avisos` como se probó; filtrar y avisar en Discord (una reacción o una respuesta del bot) cuando algo no entra; filtrar pero dejar entrar a los ayudantes sin cuenta vinculada.
+- **Lo que cambió (12/11/2026, #64):** los canales que crea «Crear canales en Discord» ya vienen con `#avisos` y Material solo para el rol de docentes de la materia, y «Conectar con Discord» vincula la cuenta del docente sin tocar la base. En esos canales, la hipótesis se cumple sola; en un canal vinculado a mano sigue dependiendo de la cátedra.
 - **Estado:** abierta
 - **Decisión:** pendiente
 

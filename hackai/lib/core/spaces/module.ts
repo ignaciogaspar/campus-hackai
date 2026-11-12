@@ -64,6 +64,7 @@ import {
   unreadIn
 } from '@/lib/core/spaces/reading'
 import { searchSpace } from '@/lib/core/spaces/search'
+import { createServerLink } from '@/lib/core/spaces/server'
 import { addCounts, createSync } from '@/lib/core/spaces/sync'
 import { unreadFor } from '@/lib/core/spaces/unread'
 import { isFileId } from '@/lib/ports/files'
@@ -95,6 +96,7 @@ const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(m
 export function createSpacesModule(deps: SpacesDeps): Spaces {
   const { people, studies, classroom, files, clock, store, externalChannel, timer } = deps
   const sync = createSync({ people, externalChannel, files, store, timer })
+  const server = createServerLink({ people, externalChannel, store })
   /** Cuándo trajo `open` lo nuevo de Moodle de cada espacio, en milisegundos del reloj. */
   const lastSync = new Map<string, number>()
 
@@ -144,6 +146,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       viewer: viewerOf(member),
       channels: shown,
       material: materialView(space.materialLayout, items),
+      externalServer: space.externalServer,
       staleSince: member.staleSince
     })
   }
@@ -499,6 +502,33 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok(toChannel(member, linked.value, 0))
   }
 
+  const connect: Spaces['connect'] = async (personId, spaceId, external, accountId) => {
+    const found = await managing(personId, spaceId)
+    if (!found.ok) return found
+    return server.connect(found.value, personId, external, accountId)
+  }
+
+  const serverChannels: Spaces['serverChannels'] = async (personId, spaceId) => {
+    const found = await managing(personId, spaceId)
+    if (!found.ok) return found
+    return server.serverChannels(found.value, personId)
+  }
+
+  const createExternalChannels: Spaces['createExternalChannels'] = async (personId, spaceId) => {
+    const found = await managing(personId, spaceId)
+    if (!found.ok) return found
+    const { member, space } = found.value
+    // Los canales de sus comisiones, aunque todavía no haya abierto el espacio.
+    const channels = await ensureChannels(store, space, member)
+    if (!channels.ok) return channels
+    const report = await server.createChannels(found.value, channels.value)
+    if (!report.ok) return report
+    return ok({
+      created: report.value.created.map((c) => toChannel(member, c, 0)),
+      alreadyLinked: report.value.alreadyLinked
+    })
+  }
+
   const version: Spaces['version'] = async (channelId) => {
     const channel = await store.channel(channelId)
     if (!channel.ok) return channel
@@ -603,6 +633,9 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     organizeMaterial,
     openDirect,
     link,
+    connect,
+    serverChannels,
+    createExternalChannels,
     syncAll,
     unreadFor: (personId) => unreadFor({ studies, people, store }, personId),
     openQuestions: (personId) => openQuestions(studies, people, store, personId),

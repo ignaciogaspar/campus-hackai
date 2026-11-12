@@ -7,10 +7,10 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
-import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
+import { createMemoryExternalChannel, MEMORY_SERVER } from '@/lib/adapters/memoria/external-channel'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import type { ExternalAttachment, ExternalChannelPort } from '@/lib/ports/external-channel'
-import { createFakeDiscord, seedFromSynthetic } from '@/tests/contracts/fake-discord'
+import { createFakeDiscord, GUILD, seedFromSynthetic } from '@/tests/contracts/fake-discord'
 
 type Harness = {
   port: ExternalChannelPort
@@ -20,6 +20,10 @@ type Harness = {
 
 const [avisos, consultas, material] = syntheticData.discord.channels
 const UNKNOWN_CHANNEL = '1309999999999999999'
+const UNKNOWN_SERVER = '1300000000000000999'
+/** Las cuentas de Discord de las personas sintéticas: son miembros del servidor de la cátedra. */
+const MEMBERS = syntheticData.people.flatMap((p) => (p.discordId ? [p.discordId] : []))
+const LEDESMA = syntheticData.people.find((p) => p.id === 'p-mledesma')!.discordId!
 
 /** Un adjunto cuya URL ya venció. */
 const expired = (a: ExternalAttachment): ExternalAttachment => ({ ...a, url: `${a.url}&vencido=1` })
@@ -27,7 +31,53 @@ const expired = (a: ExternalAttachment): ExternalAttachment => ({ ...a, url: `${
 function contract(name: string, setup: () => Harness) {
   describe(`contrato del canal externo: ${name}`, () => {
     test('se lee desde un cursor y declara que soporta hilos', () => {
-      assert.deepEqual(setup().port.capabilities, { delivery: 'cursor', threads: true })
+      assert.deepEqual(setup().port.capabilities, { delivery: 'cursor', threads: true, servers: true })
+    })
+
+    test('lista los canales de texto del servidor, y un servidor desconocido no existe', async () => {
+      const { port } = setup()
+      assert.deepEqual(await port.serverChannels(MEMORY_SERVER), {
+        ok: true,
+        value: [avisos, consultas, material].map((c) => ({ id: c.id, name: c.name, category: null }))
+      })
+      assert.deepEqual(await port.serverChannels(UNKNOWN_SERVER), { ok: false, error: 'servidor-inexistente' })
+    })
+
+    test('sabe si una cuenta es miembro del servidor', async () => {
+      const { port } = setup()
+      assert.deepEqual(await port.isMember(MEMORY_SERVER, LEDESMA), { ok: true, value: true })
+      assert.deepEqual(await port.isMember(MEMORY_SERVER, '1290000000000009999'), { ok: true, value: false })
+      assert.deepEqual(await port.isMember(UNKNOWN_SERVER, LEDESMA), { ok: false, error: 'servidor-inexistente' })
+    })
+
+    test('crea la categoría y el rol de la materia una sola vez, y canales en ella que se leen y se publican', async () => {
+      const { port } = setup()
+      const group = await port.prepareGroup(MEMORY_SERVER, { name: 'Análisis Matemático I', teacherIds: [LEDESMA] })
+      assert.ok(group.ok)
+      const again = await port.prepareGroup(MEMORY_SERVER, { name: 'Análisis Matemático I', teacherIds: [LEDESMA] })
+      assert.deepEqual(again, group, 'la segunda vez encuentra la categoría y el rol por su nombre')
+
+      const created = await port.createChannel(MEMORY_SERVER, group.value, { name: 'avisos-a', writers: 'docentes' })
+      assert.ok(created.ok)
+      assert.deepEqual(
+        { ...created.value, id: undefined, category: undefined },
+        { id: undefined, name: 'avisos-a', category: undefined }
+      )
+      const listed = await port.serverChannels(MEMORY_SERVER)
+      assert.ok(listed.ok)
+      assert.deepEqual(listed.value.at(-1), { ...created.value, category: 'Análisis Matemático I' })
+
+      const empty = await port.read(created.value.id, null)
+      assert.deepEqual(empty, { ok: true, value: { messages: [], cursor: null } })
+      assert.ok((await port.post(created.value.id, 'Primer aviso')).ok)
+    })
+
+    test('en un servidor desconocido no se crea nada', async () => {
+      const { port } = setup()
+      assert.deepEqual(await port.prepareGroup(UNKNOWN_SERVER, { name: 'Materia', teacherIds: [] }), {
+        ok: false,
+        error: 'servidor-inexistente'
+      })
     })
 
     test('leer desde el principio devuelve cada mensaje con su autor, texto, adjuntos e hilo, del más viejo al más nuevo', async () => {
@@ -170,7 +220,8 @@ contract('memoria', () => ({
 
 contract('Discord', () => {
   const fake = createFakeDiscord()
-  seedFromSynthetic(fake, syntheticData.discord.channels, syntheticData.discord.files)
+  seedFromSynthetic(fake, syntheticData.discord.channels, syntheticData.discord.files, MEMBERS)
+  assert.equal(GUILD, MEMORY_SERVER, 'los dos arrancan con el mismo servidor')
   return {
     port: createDiscordExternalChannel({ token: 'token-de-prueba', fetch: fake.fetch, sleep: async () => {} }),
     throttleNext: () => fake.throttle(1, 0.5)

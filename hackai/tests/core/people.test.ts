@@ -202,3 +202,29 @@ test('demoPeople con el SIU caído devuelve «falla externa» como valor', async
 
   assert.deepEqual(await people.demoPeople(), { ok: false, error: 'falla-externa' })
 })
+
+test('linkAccount vincula la cuenta de Discord con que la persona volvió de autorizar a HackAI', async () => {
+  const people = build()
+  const nueva = '1290000000000000777'
+
+  assert.deepEqual(await people.linkAccount('p-mcabrera', 'discord', nueva), { ok: true, value: null })
+
+  assert.deepEqual(await people.accountIn('p-mcabrera', 'discord'), { ok: true, value: nueva })
+  assert.deepEqual(await people.byExternalAccount('discord', nueva), { ok: true, value: 'p-mcabrera' })
+})
+
+test('linkAccount no vincula una cuenta de otra persona, ni cuentas de los sistemas de origen', async () => {
+  const people = build()
+  const deBenitez = '1290000000000000012'
+
+  assert.deepEqual(await people.linkAccount('p-taguirre', 'discord', deBenitez), { ok: false, error: 'cuenta-en-uso' })
+  assert.deepEqual(await people.byExternalAccount('discord', deBenitez), { ok: true, value: 'p-lbenitez' })
+  assert.deepEqual(await people.linkAccount('p-taguirre', 'siu', '99999'), {
+    ok: false,
+    error: 'solo-canales-externos'
+  })
+  assert.deepEqual(await people.linkAccount('p-nadie', 'discord', '1290000000000000778'), {
+    ok: false,
+    error: 'persona-desconocida'
+  })
+})

@@ -45,7 +45,7 @@ function fresh() {
 
 type Ids = ReturnType<typeof fresh>
 
-const spaceOf = (ids: Ids, n = 1, schoolId = 'fi'): Omit<StoredSpace, 'id'> => ({
+const spaceOf = (ids: Ids, n = 1, schoolId = 'fi'): Omit<StoredSpace, 'id' | 'externalServer'> => ({
   subjectId: ids.subject(n),
   subjectCode: `MAT${n}`,
   schoolId,
@@ -102,7 +102,7 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
 
   it('crea un espacio y lo encuentra por id y por materia y facultad', async (store, ids) => {
     const space = await newSpace(store, ids)
-    assert.deepEqual(withoutIds(space), spaceOf(ids))
+    assert.deepEqual(withoutIds(space), { ...spaceOf(ids), externalServer: null })
     assert.deepEqual(value(await store.space(space.id)), space)
     assert.deepEqual(value(await store.spacesFor([{ subjectId: ids.subject(1), schoolId: 'fi' }])), [space])
   })
@@ -139,6 +139,15 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
     const space = await newSpace(store, ids)
     assert.deepEqual(value(await store.setMaterialLayout(space.id, 'semana')), { ...space, materialLayout: 'semana' })
     assert.equal(value(await store.space(space.id))?.materialLayout, 'semana')
+  })
+
+  it('conecta el espacio con un servidor del canal externo y lo desconecta', async (store, ids) => {
+    const space = await newSpace(store, ids)
+    const server = { system: 'discord', serverId: '1300000000000000001' } as const
+    assert.deepEqual(value(await store.setExternalServer(space.id, server)), { ...space, externalServer: server })
+    assert.deepEqual(value(await store.space(space.id))?.externalServer, server)
+    assert.deepEqual(value(await store.setExternalServer(space.id, null)), { ...space, externalServer: null })
+    assert.equal(value(await store.setExternalServer(randomUUID(), server)), null)
   })
 
   it('lo que no existe vuelve como null, tenga o no forma de id', async (store) => {
@@ -439,7 +448,16 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
 /** Las tablas de 0002_spaces.sql, con las columnas que asigna la base y sus claves únicas. */
 const TABLES = {
   spaces: {
-    columns: ['id', 'subject_id', 'subject_code', 'school_id', 'name', 'material_layout'],
+    columns: [
+      'id',
+      'subject_id',
+      'subject_code',
+      'school_id',
+      'name',
+      'material_layout',
+      'external_system',
+      'external_server_id'
+    ],
     uuid: ['id'],
     generated: { id: 'uuid' },
     unique: [['id'], ['subject_id', 'school_id']]
