@@ -1,0 +1,4 @@
+# Los seeds versionados se comparan byte a byte con los que genera el set
+# sintético (tests/adapters/*-seed.test.ts): en Windows, sin esto, el checkout
+# los pasa a CRLF y esos tests fallan aunque el seed esté al día.
+*.sql text eol=lf
