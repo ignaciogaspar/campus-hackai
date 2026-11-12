@@ -1,7 +1,9 @@
 /* Lo que se ve en cada pestaña de mensajes: Avisos, Consultas (con su filtro)
    y los canales que crea un docente, más el hilo de una consulta. Lo que puede
    hacer cada uno (escribir, marcar resuelta) lo dicen `canPost` y
-   `canResolve` del canal: acá no se decide nada. */
+   `canResolve` del canal: acá no se decide nada. LatestMark deja a la vista lo
+   más nuevo al abrir y al enviar: al pie en las conversaciones, arriba en
+   Avisos, que va de lo más nuevo a lo más viejo. */
 
 import { Check, Megaphone, MessagesSquare } from 'lucide-react'
 import Link from 'next/link'
@@ -11,7 +13,8 @@ import { ArrowKeysList } from '@/components/spaces/arrow-keys'
 import { BackLink } from '@/components/spaces/back-link'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
-import { spaceHref } from '@/components/spaces/format'
+import { latestOf, spaceHref } from '@/components/spaces/format'
+import { LatestMark } from '@/components/spaces/latest-mark'
 import { MessageCard, ReplyBlock } from '@/components/spaces/messages'
 import { buttonVariants } from '@/components/ui/button'
 import { railItem, railTrack } from '@/components/ui/rail'
@@ -20,7 +23,15 @@ import type { Role } from '@/lib/core/people'
 import type { Channel, Thread } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
-type PanelProps = { subjectId: string; channel: Channel; threads: Thread[] }
+type PanelProps = {
+  subjectId: string
+  channel: Channel
+  threads: Thread[]
+  /** Quien mira: lo que acaba de enviar se deja a la vista. */
+  viewerId: string
+}
+
+type ListProps = Omit<PanelProps, 'viewerId'>
 
 /** «la Comisión A» o «toda la materia», para los textos. */
 function audience(channel: Channel): string {
@@ -89,7 +100,7 @@ function ThreadCard({ subjectId, channel, thread }: { subjectId: string; channel
   )
 }
 
-function ThreadList({ subjectId, channel, threads }: PanelProps) {
+function ThreadList({ subjectId, channel, threads }: ListProps) {
   return (
     <ol className='flex flex-col gap-3'>
       {threads.map((t) => (
@@ -100,18 +111,20 @@ function ThreadList({ subjectId, channel, threads }: PanelProps) {
 }
 
 /* Avisos: lo más nuevo arriba. Escriben solo los docentes de la comisión. */
-export function AnnouncementsPanel({ subjectId, channel, threads }: PanelProps) {
+export function AnnouncementsPanel({ subjectId, channel, threads, viewerId }: PanelProps) {
   return (
     <>
-      {threads.length ? (
-        <ThreadList subjectId={subjectId} channel={channel} threads={[...threads].reverse()} />
-      ) : (
-        <EmptyState icon={Megaphone} title='Todavía no hay avisos'>
-          {channel.canPost
-            ? `Lo que publiques acá les llega a los alumnos de ${audience(channel)}.`
-            : 'Cuando tu docente publique un aviso, te llega acá.'}
-        </EmptyState>
-      )}
+      <LatestMark scope={channel.id} latest={latestOf(threads, viewerId)} at='top'>
+        {threads.length ? (
+          <ThreadList subjectId={subjectId} channel={channel} threads={[...threads].reverse()} />
+        ) : (
+          <EmptyState icon={Megaphone} title='Todavía no hay avisos'>
+            {channel.canPost
+              ? `Lo que publiques acá les llega a los alumnos de ${audience(channel)}.`
+              : 'Cuando tu docente publique un aviso, te llega acá.'}
+          </EmptyState>
+        )}
+      </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
           <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Aviso para ${audience(channel)}`} />
@@ -136,7 +149,7 @@ function matches(filter: QuestionFilter, thread: Thread): boolean {
   return true
 }
 
-function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & { filter: QuestionFilter }) {
+function QuestionFilters({ subjectId, channel, threads, filter }: ListProps & { filter: QuestionFilter }) {
   const open = threads.filter((t) => matches('abiertas', t)).length
   const resolved = threads.filter((t) => matches('resueltas', t)).length
   const options: [QuestionFilter, string, number | null][] = [
@@ -164,33 +177,42 @@ function QuestionFilters({ subjectId, channel, threads, filter }: PanelProps & {
   )
 }
 
+/** Las consultas que deja ver el filtro, o por qué no hay ninguna. */
+function QuestionList({ subjectId, channel, threads, filter }: ListProps & { filter: QuestionFilter }) {
+  if (!threads.length) {
+    return (
+      <EmptyState icon={MessagesSquare} title='Nadie preguntó todavía'>
+        {`Si tenés una duda, escribila abajo: la ven todos los de ${audience(channel)} y los docentes responden acá.`}
+      </EmptyState>
+    )
+  }
+  const shown = threads.filter((t) => matches(filter, t))
+  if (shown.length) return <ThreadList subjectId={subjectId} channel={channel} threads={shown} />
+  return (
+    <p role='status' className='px-1 text-[0.8125rem] text-muted-foreground'>
+      {filter === 'abiertas' ? 'No quedan consultas abiertas.' : 'Todavía no hay consultas resueltas.'}
+    </p>
+  )
+}
+
 /* Consultas: en orden, la más nueva abajo, cerca del campo para preguntar. */
 export function QuestionsPanel({
   subjectId,
   channel,
   threads,
+  viewerId,
   filter,
   role
 }: PanelProps & { filter: QuestionFilter; role: Role }) {
   const shown = threads.filter((t) => matches(filter, t))
   return (
     <>
-      {threads.length ? (
-        <>
-          <QuestionFilters subjectId={subjectId} channel={channel} threads={threads} filter={filter} />
-          {shown.length ? (
-            <ThreadList subjectId={subjectId} channel={channel} threads={shown} />
-          ) : (
-            <p role='status' className='px-1 text-[0.8125rem] text-muted-foreground'>
-              {filter === 'abiertas' ? 'No quedan consultas abiertas.' : 'Todavía no hay consultas resueltas.'}
-            </p>
-          )}
-        </>
-      ) : (
-        <EmptyState icon={MessagesSquare} title='Nadie preguntó todavía'>
-          {`Si tenés una duda, escribila abajo: la ven todos los de ${audience(channel)} y los docentes responden acá.`}
-        </EmptyState>
+      {threads.length > 0 && (
+        <QuestionFilters subjectId={subjectId} channel={channel} threads={threads} filter={filter} />
       )}
+      <LatestMark scope={`${channel.id}:${filter}`} latest={latestOf(shown, viewerId)} at='bottom'>
+        <QuestionList subjectId={subjectId} channel={channel} threads={threads} filter={filter} />
+      </LatestMark>
       {channel.canPost && (
         <ComposerDock>
           <Composer
@@ -205,16 +227,18 @@ export function QuestionsPanel({
 }
 
 /* Un canal que creó un docente: mensajes en orden y el campo si se puede escribir. */
-export function FreeChannelPanel({ subjectId, channel, threads }: PanelProps) {
+export function FreeChannelPanel({ subjectId, channel, threads, viewerId }: PanelProps) {
   return (
     <>
-      {threads.length ? (
-        <ThreadList subjectId={subjectId} channel={channel} threads={threads} />
-      ) : (
-        <EmptyState icon={MessagesSquare} title={`#${channel.name}`}>
-          {`Un canal de ${audience(channel)}. Todavía no hay mensajes.`}
-        </EmptyState>
-      )}
+      <LatestMark scope={channel.id} latest={latestOf(threads, viewerId)} at='bottom'>
+        {threads.length ? (
+          <ThreadList subjectId={subjectId} channel={channel} threads={threads} />
+        ) : (
+          <EmptyState icon={MessagesSquare} title={`#${channel.name}`}>
+            {`Un canal de ${audience(channel)}. Todavía no hay mensajes.`}
+          </EmptyState>
+        )}
+      </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
           <Composer subjectId={subjectId} channelId={channel.id} placeholder='Escribí un mensaje' />
@@ -232,6 +256,7 @@ export function ThreadPanel({
   subjectId,
   channel,
   threads,
+  viewerId,
   threadId,
   backLabel
 }: PanelProps & { threadId: string; backLabel: string }) {
@@ -256,25 +281,27 @@ export function ThreadPanel({
           <ResolveButton subjectId={subjectId} channel={channel} thread={thread} />
         </div>
       </MessageCard>
-      <section
-        aria-labelledby='respuestas'
-        className='flex flex-col gap-3 border-l-2 border-border pl-3 lg:ml-4 lg:pl-5'
-      >
-        <h2 id='respuestas' className='text-[0.8125rem] font-bold text-muted-foreground'>
-          {thread.replies.length === 1 ? '1 respuesta' : `${thread.replies.length} respuestas`}
-        </h2>
-        {thread.replies.length ? (
-          <ol className='flex flex-col gap-3'>
-            {thread.replies.map((r) => (
-              <li key={r.id}>
-                <MessageCard message={r} />
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className='text-[0.8125rem] text-muted-foreground'>Todavía nadie respondió.</p>
-        )}
-      </section>
+      <LatestMark scope={`${channel.id}:${thread.message.id}`} latest={latestOf([thread], viewerId)} at='bottom'>
+        <section
+          aria-labelledby='respuestas'
+          className='flex flex-col gap-3 border-l-2 border-border pl-3 lg:ml-4 lg:pl-5'
+        >
+          <h2 id='respuestas' className='text-[0.8125rem] font-bold text-muted-foreground'>
+            {thread.replies.length === 1 ? '1 respuesta' : `${thread.replies.length} respuestas`}
+          </h2>
+          {thread.replies.length ? (
+            <ol className='flex flex-col gap-3'>
+              {thread.replies.map((r) => (
+                <li key={r.id}>
+                  <MessageCard message={r} />
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className='text-[0.8125rem] text-muted-foreground'>Todavía nadie respondió.</p>
+          )}
+        </section>
+      </LatestMark>
       {channel.canPost && (
         <ComposerDock>
           <Composer

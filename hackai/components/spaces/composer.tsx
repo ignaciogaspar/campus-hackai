@@ -1,16 +1,31 @@
 'use client'
 
 /* El campo para escribir en un canal o responder en un hilo: crece con el
-   texto, deja adjuntar un archivo y no se puede mandar vacío. Mientras se
-   manda queda deshabilitado; si sale bien se vacía, y si no, el texto queda
-   para corregir y el error se anuncia. Ctrl o ⌘ + Enter también envía.
+   texto, deja adjuntar un archivo y no se puede mandar vacío. Al mandar se
+   vacía, como en cualquier chat, así se puede seguir escribiendo; el botón
+   queda deshabilitado hasta que llega la respuesta. Si sale bien se confirma
+   con un texto de estado («Mensaje enviado.») que se va al rato o al seguir
+   escribiendo; si no, el texto vuelve para corregirlo y el error se anuncia.
+   En la compu Enter
+   envía y Shift+Enter salta de línea; en el celular Enter salta de línea y se
+   envía con el botón (composer-keys.ts). Ctrl o ⌘ + Enter envía siempre.
    Dónde se ubica (pegado abajo en el celular) lo pone ComposerDock. */
 import { Paperclip, SendHorizontal, X } from 'lucide-react'
-import { type ChangeEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
+import { type ChangeEvent, type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { postMessage } from '@/app/actions/spaces'
 import { FormFeedback, useSpaceAction } from '@/components/spaces/action-form'
+import { sendsOnKey } from '@/components/spaces/composer-keys'
 
 const MAX_HEIGHT = 160
+/** Cuánto queda a la vista la confirmación de que se envió. */
+const NOTICE_MS = 4000
+
+/** El alto justo para el texto, hasta MAX_HEIGHT; de ahí en más se scrollea adentro. */
+function fitHeight(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`
+}
 
 type Props = {
   subjectId: string
@@ -24,48 +39,67 @@ export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) 
   const { state, dispatch, pending, submit, error } = useSpaceAction(postMessage)
   const [text, setText] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const textarea = useRef<HTMLTextAreaElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const form = useRef<HTMLFormElement>(null)
+  // Lo que se está mandando, para devolverlo al campo si no sale.
+  const sent = useRef<{ text: string; file: File | null } | null>(null)
   const id = useId()
-
-  function grow() {
-    const el = textarea.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`
-  }
 
   function clearFile() {
     setFile(null)
     if (fileInput.current) fileInput.current.value = ''
   }
 
-  // Salió bien: se vacía todo y el campo vuelve a una línea.
-  useEffect(() => {
-    if (state.status !== 'ok') return
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!submit(event)) return
+    sent.current = { text, file }
     setText('')
-    setFile(null)
-    if (fileInput.current) fileInput.current.value = ''
+    setNotice(null)
     if (textarea.current) textarea.current.style.height = ''
+  }
+
+  useEffect(() => {
+    const was = sent.current
+    if (state.status === 'idle' || !was) return
+    sent.current = null
+    if (state.status === 'error') {
+      // Lo escrito vuelve para corregirlo, salvo que mientras tanto se haya escrito otra cosa.
+      if (textarea.current?.value === '') {
+        setText(was.text)
+        requestAnimationFrame(() => fitHeight(textarea.current))
+      }
+      return
+    }
+    // El archivo queda elegido mientras se manda: se quita si sigue siendo el mismo.
+    const input = fileInput.current
+    if (input && (input.files?.[0] ?? null) === was.file) {
+      setFile(null)
+      input.value = ''
+    }
+    setNotice(state.message)
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS)
+    return () => clearTimeout(timer)
   }, [state])
 
   function onText(event: ChangeEvent<HTMLTextAreaElement>) {
     setText(event.target.value)
-    grow()
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault()
-      form.current?.requestSubmit()
-    }
+    setNotice(null)
+    fitHeight(event.target)
   }
 
   const empty = text.trim() === '' && !file
 
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    if (!sendsOnKey(event.nativeEvent, { finePointer, canSend: !empty && !pending })) return
+    event.preventDefault()
+    form.current?.requestSubmit()
+  }
+
   return (
-    <form ref={form} action={dispatch} onSubmit={submit} className='flex flex-col gap-1'>
+    <form ref={form} action={dispatch} onSubmit={onSubmit} className='flex flex-col gap-1'>
       <input type='hidden' name='subjectId' value={subjectId} />
       <input type='hidden' name='channelId' value={channelId} />
       {replyTo && <input type='hidden' name='replyTo' value={replyTo} />}
@@ -128,7 +162,7 @@ export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) 
         </button>
       </div>
 
-      <FormFeedback error={error} />
+      <FormFeedback error={error} success={notice} />
     </form>
   )
 }

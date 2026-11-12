@@ -9,6 +9,9 @@
    En el celular es una columna y el campo para escribir queda pegado abajo.
    En compu, tres columnas: canales, conversación y un panel de contexto.
 
+   Mientras está abierto se actualiza solo (LiveRefresh): lo nuevo del canal
+   externo, de Moodle o de otros aparece sin recargar.
+
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído. */
 import { ChevronRight } from 'lucide-react'
@@ -34,6 +37,7 @@ import {
   type SpaceQuery,
   spaceHref
 } from '@/components/spaces/format'
+import { LiveRefresh } from '@/components/spaces/live-refresh'
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
@@ -141,7 +145,7 @@ function ChannelArea({
     )
   }
   const { channel, threads, material } = opened.value
-  const props = { subjectId, channel, threads }
+  const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
   if (query.hilo && channel.kind !== 'directo') {
     const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
     return <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
@@ -248,6 +252,8 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
   const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
   const channels = view.channels.map((c) => (c.id === selected?.id ? selected : c))
+  // Si tenía no leídos, los de la barra lateral quedaron viejos: LiveRefresh la vuelve a leer.
+  const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
 
   return (
     <>
@@ -293,6 +299,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           />
         </div>
       </main>
+      <LiveRefresh readChannel={hadUnread && selected ? selected.id : null} />
     </>
   )
 }
