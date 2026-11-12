@@ -1,9 +1,12 @@
 /* Las fechas de Hoy: parciales y finales del SIU y, como complemento, las
    entregas de Moodle. En el celular, una lista de las próximas 2 semanas; en
-   compu, el calendario de esta semana y la próxima. Solo muestra lo que da Hoy. */
+   compu, el calendario de esta semana y la próxima. Cada fecha lleva al
+   espacio de su materia, y cada final dice su turno y, si el SIU lo da, dónde
+   se rinde. Solo muestra lo que da Hoy. */
 import { CalendarCheck, ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { dayParts, longDay, shortDate, shortDay, timeOf } from '@/components/dates'
+import { spaceHref } from '@/components/spaces/format'
 import type { Agenda, Calendar } from '@/components/today/agenda'
 import { CalendarDay } from '@/components/ui/calendar-day'
 import { Card } from '@/components/ui/card'
@@ -44,11 +47,24 @@ function DateBlock({ item }: { item: UpcomingItem }) {
   )
 }
 
-/** Una fecha: día, qué es, de qué materia, a qué hora y de dónde viene. Las pasadas, atenuadas y con «ya pasó». */
-export function UpcomingRow({ item }: { item: UpcomingItem }) {
+/** El turno de examen y el lugar de un final, si los hay: «Turno Diciembre 2026 · Campus Pilar, aula 12». */
+export function examDetail(item: UpcomingItem): string {
+  return [item.examPeriod, item.location].filter(Boolean).join(' · ')
+}
+
+/** Qué es y a qué hora, con el lugar si el SIU lo da: «Final · 09:00 · Campus Pilar, aula 12». */
+function whatAndWhen(item: UpcomingItem): string {
   const time = timeOf(item.date)
+  if (item.kind === 'entrega') return `Entrega · vence ${time}`
+  return [KIND[item.kind], time, item.location].filter(Boolean).join(' · ')
+}
+
+/** Una fecha: día, qué es, de qué materia, a qué hora, dónde y de dónde viene. Lleva al espacio de la materia.
+    Las pasadas, atenuadas y con «ya pasó». */
+export function UpcomingRow({ item }: { item: UpcomingItem }) {
   return (
     <ListItem
+      href={spaceHref(item.subjectId)}
       className={cn('items-center', item.past && 'text-muted-foreground')}
       start={<DateBlock item={item} />}
       title={
@@ -57,11 +73,11 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
           {item.past && <span className='font-medium'> · ya pasó</span>}
         </>
       }
-      description={item.subjectName}
+      description={item.examPeriod ? `${item.subjectName} · ${item.examPeriod}` : item.subjectName}
       meta={
         <span>
           <span className='sr-only'>{longDay(item.date)}, </span>
-          {item.kind === 'entrega' ? `Entrega · vence ${time}` : `${KIND[item.kind]} · ${time}`}
+          {whatAndWhen(item)}
         </span>
       }
       end={<OriginBadge origin={item.source} />}

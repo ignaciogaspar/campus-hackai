@@ -17,7 +17,9 @@ const item = (id: string, date: string, past = false): UpcomingItem => ({
   subjectName: 'Análisis Matemático I',
   name: id,
   date,
-  past
+  past,
+  examPeriod: null,
+  location: null
 })
 
 const ids = (items: { id?: string }[]) => items.map((i) => i.id)

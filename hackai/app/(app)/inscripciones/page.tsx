@@ -11,8 +11,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, readTime, shortDate, timeOf } from '@/components/dates'
+import { offerHref } from '@/components/enrollment/offer-href'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { PageHeader } from '@/components/shell/page-header'
+import { examDetail } from '@/components/today/upcoming'
 import { Card } from '@/components/ui/card'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -22,12 +24,6 @@ import type { OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 export const metadata: Metadata = { title: 'Inscripciones · Campus HackAI' }
 
 const KIND_NAME: Record<OpenEnrollment['kind'], string> = { cursada: 'Cursada', examen: 'Final' }
-
-/** La oferta de una materia: sus comisiones o sus mesas de examen. */
-function offerHref(subjectId: string, kind: OpenEnrollment['kind']): string {
-  const subject = `/inscripciones/${encodeURIComponent(subjectId)}`
-  return kind === 'examen' ? `${subject}/final` : subject
-}
 
 /** Una fila que lleva a la oferta: la materia y, debajo, de qué se trata. */
 function OfferLink({ href, title, children }: { href: string; title: string; children: ReactNode }) {
@@ -80,6 +76,7 @@ function MyFinals({ finals }: { finals: UpcomingItem[] }) {
                 <span className='block text-[0.8125rem] text-muted-foreground'>
                   Final · <time dateTime={f.date}>{`${longDay(f.date)} · ${timeOf(f.date)}`}</time>
                 </span>
+                {examDetail(f) && <span className='block text-[0.8125rem] text-muted-foreground'>{examDetail(f)}</span>}
               </OfferLink>
             </li>
           ))}

@@ -916,6 +916,7 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
       channelId: ids.avisosA,
       channelName: 'avisos',
       kind: 'avisos',
+      sectionId: 'sec-am1-fi-a',
       count: 2,
       latest: undefined
     }
@@ -2049,4 +2050,84 @@ test('un canal directo no le quita el nombre a un canal que crea el docente', as
 
   assert.ok(created.ok)
   assert.equal(created.value.kind, 'libre')
+})
+
+// Consultas que le tocan responder a un docente, para su Hoy.
+
+test('al docente le tocan las consultas sin resolver de sus comisiones actuales, la más vieja primero', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  const limits = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  setNow('2026-11-09T13:00:00.000Z')
+  const resolved = await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Hay clase el jueves?' })
+  await spaces.post('p-mcabrera', ids.consultasB, { text: '¿Puedo rendir en la A?' })
+  setNow('2026-11-10T09:00:00.000Z')
+  const derivatives = await spaces.post('p-jescobar', ids.consultasA, { text: '¿Y derivadas?' })
+  assert.ok(limits.ok && resolved.ok && derivatives.ok)
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'Sí.', replyTo: limits.value.id })
+  await spaces.post('p-lbenitez', ids.consultasA, { text: 'Gracias', replyTo: limits.value.id })
+  await spaces.resolve('p-mledesma', resolved.value.id)
+  // Un aviso no es una consulta.
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+
+  const ledesma = await spaces.openQuestions('p-mledesma')
+  const ferreyra = await spaces.openQuestions('p-gferreyra')
+
+  assert.ok(ledesma.ok)
+  assert.deepEqual(
+    ledesma.value.map((q) => [q.text, q.author.name, q.sectionName, q.replies, q.createdAt]),
+    [
+      ['¿Entra límites?', 'Tomás Aguirre', 'A', 2, '2026-11-09T12:00:00.000Z'],
+      ['¿Y derivadas?', 'Joaquín Escobar', 'A', 0, '2026-11-10T09:00:00.000Z']
+    ]
+  )
+  assert.deepEqual(
+    { ...ledesma.value[0], author: undefined },
+    {
+      messageId: limits.value.id,
+      channelId: ids.consultasA,
+      spaceId: ids.spaceId,
+      subjectId: 'am1',
+      subjectName: 'Análisis Matemático I',
+      sectionName: 'A',
+      text: '¿Entra límites?',
+      author: undefined,
+      origin: 'hackai',
+      createdAt: '2026-11-09T12:00:00.000Z',
+      replies: 2
+    }
+  )
+  assert.ok(ferreyra.ok)
+  assert.deepEqual(
+    ferreyra.value.map((q) => q.text),
+    ['¿Puedo rendir en la A?']
+  )
+})
+
+test('a un alumno no le toca ninguna consulta, ni al docente las de una comisión archivada', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  const aga = await spaces.open('p-mledesma', 'aga')
+  assert.ok(aga.ok)
+  await spaces.post('p-taguirre', named(aga.value, 'consultas', 'A').id, { text: '¿Cuándo es el final?' })
+
+  assert.deepEqual(await spaces.openQuestions('p-lbenitez'), { ok: true, value: [] })
+  const ledesma = await spaces.openQuestions('p-mledesma')
+  assert.ok(ledesma.ok)
+  assert.deepEqual(
+    ledesma.value.map((q) => q.subjectName),
+    ['Análisis Matemático I']
+  )
+})
+
+test('sin espacios abiertos no hay consultas y pedirlas no crea ninguno; si Cursada no responde, falla externa', async () => {
+  const { spaces, store, siuState } = build()
+
+  assert.deepEqual(await spaces.openQuestions('p-mledesma'), { ok: true, value: [] })
+  assert.deepEqual(await store.spacesFor([{ subjectId: 'am1', schoolId: 'fi' }]), { ok: true, value: [] })
+  assert.deepEqual(await spaces.openQuestions('p-nadie'), { ok: false, error: 'persona-desconocida' })
+  siuState.down = true
+  assert.deepEqual(await spaces.openQuestions('p-gferreyra'), { ok: false, error: 'falla-externa' })
 })

@@ -238,7 +238,7 @@ export default function MuestraPage() {
         </Section>
 
         <Section title='Días del calendario'>
-          <CalendarLegend />
+          <CalendarLegend next='Próximo parcial' />
           <div className='grid grid-cols-3 gap-1.5 sm:grid-cols-7'>
             <CalendarDay day={9} past events={[]} />
             <CalendarDay day={10} today events={[]} />

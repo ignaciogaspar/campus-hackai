@@ -3,26 +3,11 @@
    existen: pedir novedades no crea espacios. */
 import type { PersonId } from '@/lib/core/people'
 import type { SpacesStore, StoredChannel, StoredSpace, UnreadItem } from '@/lib/core/spaces'
-import { type Membership, membershipFrom, sectionsOf } from '@/lib/core/spaces/access'
+import { currentMemberships, sectionsOf } from '@/lib/core/spaces/access'
 import { visibleChannels } from '@/lib/core/spaces/channels'
 import { loadSnapshot, type Snapshot, unreadIn } from '@/lib/core/spaces/reading'
-import type { MySection, Studies } from '@/lib/core/studies'
+import type { Studies } from '@/lib/core/studies'
 import { type ExternalFailure, ok, type Result } from '@/lib/result'
-
-/** Una membresía por materia, con la facultad de su primera comisión actual. */
-function membershipsOf(personId: PersonId, sections: MySection[]): Membership[] {
-  const current = sections.filter((s) => s.current)
-  const subjectIds = [...new Set(current.map((s) => s.subjectId))]
-  return subjectIds.map((subjectId) => {
-    const ofSubject = current.filter((s) => s.subjectId === subjectId)
-    const school = ofSubject[0].schoolId
-    return membershipFrom(
-      personId,
-      ofSubject.filter((s) => s.schoolId === school),
-      null
-    )
-  })
-}
 
 /** Los canales que la persona ve en un espacio. */
 type Visible = { space: StoredSpace; channels: StoredChannel[] }
@@ -39,6 +24,7 @@ function itemsIn({ space, channels }: Visible, snapshot: Snapshot): UnreadItem[]
         channelId: channel.id,
         channelName: channel.name,
         kind: channel.kind,
+        sectionId: channel.scope.kind === 'comision' ? channel.scope.sectionId : null,
         count,
         latest
       }
@@ -56,7 +42,7 @@ export async function unreadFor(
 ): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>> {
   const read = await sectionsOf(studies, personId)
   if (!read.ok) return read
-  const members = membershipsOf(personId, read.value.sections)
+  const members = currentMemberships(personId, read.value.sections)
   if (members.length === 0) return ok([])
   const spaces = await store.spacesFor(members.map((m) => ({ subjectId: m.subjectId, schoolId: m.schoolId })))
   if (!spaces.ok) return spaces

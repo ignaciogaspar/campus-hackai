@@ -2,6 +2,7 @@
    próximas 2 semanas, lo que viene después y lo que ya pasó; en compu, un
    calendario de esta semana y la próxima. Qué es un parcial, qué pasó y cuál
    es el próximo lo decide Hoy: acá solo se agrupa por día. */
+import { spaceHref } from '@/components/spaces/format'
 import type { CalendarEvent } from '@/components/ui/calendar-day'
 import type { UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, weekdayIndex } from '@/lib/dates'
@@ -62,6 +63,8 @@ export function calendarOf(items: UpcomingItem[], now: string, next: UpcomingIte
           id: item.id,
           code: item.subjectCode,
           title: item.name,
+          href: spaceHref(item.subjectId),
+          location: item.location,
           origin: item.source,
           past: item.past,
           next: isSame(item, next)

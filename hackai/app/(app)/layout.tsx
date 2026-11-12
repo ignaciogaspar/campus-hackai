@@ -35,7 +35,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppShell school={person.ok ? person.value.school.name : undefined} subjects={[...nav.values()]}>
+    <AppShell
+      school={person.ok ? person.value.school.name : undefined}
+      subjects={[...nav.values()]}
+      teaches={session.role === 'profesor'}
+    >
       {children}
     </AppShell>
   )

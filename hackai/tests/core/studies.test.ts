@@ -457,8 +457,51 @@ test('los parciales y finales de todas sus materias salen juntos y ordenados por
     subjectName: 'Álgebra y Geometría Analítica',
     name: 'Final',
     date: '2026-12-09T12:00:00.000Z',
-    past: false
+    past: false,
+    examPeriod: 'Turno Diciembre 2026',
+    location: 'Campus Pilar, aula 12'
   })
+  // Los parciales no tienen turno, y el cronograma del SIU no dice dónde se rinden.
+  assert.deepEqual(
+    result.value.data.filter((i) => i.kind !== 'final').map((i) => [i.examPeriod, i.location]),
+    Array(5).fill([null, null])
+  )
+})
+
+test('un final sin lugar en el SIU sale con su turno y sin lugar', async () => {
+  const data = structuredClone(syntheticData)
+  data.siu.examBoards.find((b) => b.id === 'mesa-aga-fi-dic')!.location = '  '
+  const { studies } = build(data)
+
+  const result = await studies.upcoming('p-taguirre')
+
+  assert.ok(result.ok)
+  const final = result.value.data.find((i) => i.id === 'mesa:mesa-aga-fi-dic')
+  assert.deepEqual([final?.examPeriod, final?.location], ['Turno Diciembre 2026', null])
+})
+
+test('al docente le salen los parciales de sus comisiones actuales y las mesas que integra, no las de otros', async () => {
+  const { studies } = build()
+
+  const ledesma = await studies.upcoming('p-mledesma')
+  const bustos = await studies.upcoming('p-cbustos')
+
+  assert.ok(ledesma.ok)
+  assert.deepEqual(
+    ledesma.value.data.map((i) => [i.subjectCode, i.name, i.past, i.location]),
+    [
+      ['AM1', 'Primer parcial', true, null],
+      ['AM1', 'Segundo parcial', false, null],
+      ['AM1', 'Recuperatorio', false, null],
+      ['AGA', 'Final', false, 'Campus Pilar, aula 12'],
+      ['AM1', 'Final', false, 'Campus Pilar, aula 14']
+    ]
+  )
+  assert.ok(bustos.ok)
+  assert.deepEqual(
+    bustos.value.data.filter((i) => i.kind === 'final').map((i) => i.id),
+    ['mesa:mesa-iec-fce-dic']
+  )
 })
 
 test('los finales son los de las mesas a las que está inscripto: ni una baja ni las mesas de otros', async () => {

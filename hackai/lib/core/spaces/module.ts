@@ -54,6 +54,7 @@ import { importFromClassroom } from '@/lib/core/spaces/classroom-import'
 import { counterpartOf, directChannel } from '@/lib/core/spaces/direct'
 import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
+import { openQuestions } from '@/lib/core/spaces/questions'
 import {
   isUnreadMessage,
   loadSnapshot,
@@ -596,6 +597,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     link,
     syncAll,
     unreadFor: (personId) => unreadFor(studies, store, personId),
+    openQuestions: (personId) => openQuestions(studies, people, store, personId),
     file
   }
 }
