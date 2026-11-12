@@ -26,6 +26,7 @@ import {
   ThreadPanel
 } from '@/components/spaces/channel-panels'
 import { ChannelTabs } from '@/components/spaces/channel-tabs'
+import { ChannelUpdates } from '@/components/spaces/channel-updates'
 import { ContextPanel, shownSections } from '@/components/spaces/context-panel'
 import { DiscordLink } from '@/components/spaces/discord-link'
 import { channelLabel, hasSeveralSections, messageTime, type SpaceQuery, spaceHref } from '@/components/spaces/format'
@@ -134,14 +135,22 @@ function ChannelArea({
       </ErrorNotice>
     )
   }
-  const { channel, threads } = opened.value
+  const { channel, threads, version } = opened.value
   const props = { subjectId, channel, threads }
+  // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
+  const updates = <ChannelUpdates channelId={channel.id} version={version} />
   if (query.hilo) {
     const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
-    return <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
+    return (
+      <>
+        {updates}
+        <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
+      </>
+    )
   }
   return (
     <>
+      {updates}
       <DiscordLink subjectId={subjectId} channel={channel} />
       <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} />
     </>

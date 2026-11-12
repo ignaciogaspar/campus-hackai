@@ -46,7 +46,14 @@ import { authorsFrom } from '@/lib/core/spaces/authors'
 import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
 import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
-import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from '@/lib/core/spaces/reading'
+import {
+  isUnreadMessage,
+  loadSnapshot,
+  markOf,
+  materialVersion,
+  messagesVersion,
+  unreadIn
+} from '@/lib/core/spaces/reading'
 import { addCounts, createSync } from '@/lib/core/spaces/sync'
 import { unreadFor } from '@/lib/core/spaces/unread'
 import { isFileId } from '@/lib/ports/files'
@@ -139,6 +146,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok({
       space: toSpace(space),
       channel: toChannel(member, channel, 0),
+      version: materialVersion(material.value.lastSeq),
       threads: [],
       material: material.value.view
     })
@@ -162,6 +170,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok({
       space: toSpace(space),
       channel: toChannel(member, channel, 0),
+      version: messagesVersion(stored.value),
       threads: threadsOf(messages),
       material: null
     })
@@ -447,6 +456,22 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok(toChannel(member, linked.value, 0))
   }
 
+  const version: Spaces['version'] = async (channelId) => {
+    const channel = await store.channel(channelId)
+    if (!channel.ok) return channel
+    if (!channel.value) return fail('canal-desconocido')
+    const { spaceId, kind } = channel.value
+    const channels = await store.channels([spaceId])
+    if (!channels.ok) return channels
+    await sync.ifDue(spaceId, channels.value)
+    if (kind === 'material') {
+      const material = await store.material([spaceId])
+      return material.ok ? ok(materialVersion(maxSeq(material.value))) : material
+    }
+    const messages = await store.messages([channelId])
+    return messages.ok ? ok(messagesVersion(messages.value)) : messages
+  }
+
   const syncAll: Spaces['syncAll'] = async () => {
     const linked = await store.linkedChannels()
     if (!linked.ok) return linked
@@ -504,6 +529,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       if (!found.ok) return found
       return found.value.channel.kind === 'material' ? readMaterial(found.value) : readMessages(found.value)
     },
+    version,
     post,
     createChannel,
     addMaterial,

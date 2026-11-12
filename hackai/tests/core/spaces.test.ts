@@ -1375,3 +1375,45 @@ test('una respuesta a un mensaje de antes de vincular el canal sale suelta y no 
   )
   assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 0 } })
 })
+
+test('la versión de un canal cambia cuando entra algo de HackAI o de Discord, y no cambia si no pasó nada', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, { system: 'discord', channelId: discordConsultas.id })).ok)
+  const versionOf = async (channelId: string) => {
+    const v = await spaces.version(channelId)
+    assert.ok(v.ok)
+    return v.value
+  }
+
+  const seen = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(seen.ok)
+  const start = seen.value.version
+  assert.equal(await versionOf(ids.consultasA), start, 'la de leer el canal es la misma')
+  assert.equal(await versionOf(ids.consultasA), start, 'sin nada nuevo, no cambia')
+
+  // Lo que llega de Discord entra al chequear, respetando el espaciado de las sincronizaciones.
+  discord.receive(discordConsultas.id, { author: LEDESMA_EN_DISCORD, text: 'Mañana hay consulta.' })
+  wait(10)
+  const afterDiscord = await versionOf(ids.consultasA)
+  assert.notEqual(afterDiscord, start)
+
+  const question = await spaces.post('p-taguirre', ids.consultasA, { text: '¿A qué hora?' })
+  assert.ok(question.ok)
+  const afterPost = await versionOf(ids.consultasA)
+  assert.notEqual(afterPost, afterDiscord)
+
+  assert.ok((await spaces.resolve('p-mledesma', question.value.id)).ok)
+  assert.notEqual(await versionOf(ids.consultasA), afterPost)
+
+  // El material: cambia cuando se sube un archivo.
+  const material = await versionOf(ids.material)
+  await spaces.addMaterial('p-mledesma', ids.spaceId, {
+    name: 'Guía 6.pdf',
+    contentType: 'application/pdf',
+    bytes: new TextEncoder().encode('Guía 6')
+  })
+  assert.notEqual(await versionOf(ids.material), material)
+
+  assert.deepEqual(await spaces.version('no-existe'), { ok: false, error: 'canal-desconocido' })
+})

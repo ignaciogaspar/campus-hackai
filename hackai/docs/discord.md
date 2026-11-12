@@ -99,7 +99,7 @@ Sin `HACKAI_EXTERNAL_CHANNEL`, la app usa el canal externo en memoria con los da
 
 1. Entrá como docente de la materia (en la demo, Mariana Ledesma dicta AM1 comisión A) y abrí el espacio en **Mis materias**.
 2. Elegí el canal (`#avisos`, `#consultas`, `#material` o uno creado), abrí **Vincular con un canal de Discord**, pegá el ID del paso 4 y tocá **Vincular**.
-3. Lo que ya tenía el canal de Discord entra a HackAI. Desde ahí, abrir el espacio trae lo nuevo (no más de una vez cada 5 segundos) y la corrida periódica (`/api/cron/sync`, README, «Corrida periódica») sincroniza aunque nadie lo abra.
+3. Lo que ya tenía el canal de Discord entra a HackAI. Desde ahí, abrir el espacio trae lo nuevo (no más de una vez cada 5 segundos); con el canal abierto, la pantalla se fija cada 15 segundos si hay algo nuevo y se actualiza sola, sin recargar. La corrida periódica (`/api/cron/sync`, README, «Corrida periódica») sincroniza aunque nadie lo abra.
 
 Un canal de Discord se vincula con un solo canal de HackAI. Lo vinculan los docentes de la comisión del canal, o los de la materia si el canal es de toda la materia.
 

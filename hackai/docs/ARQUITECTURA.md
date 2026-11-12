@@ -65,6 +65,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | --- | --- |
 | `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos, el material y qué puede hacer. Crea el espacio y los canales de sus comisiones si no existen |
 | `channel(persona, canal)` | Mensajes del canal, con las consultas y sus respuestas en hilos; en el de material, el material. Marca leído |
+| `version(canal)` | Si hay algo nuevo en el canal, sin leerlo: trae lo nuevo del canal externo y devuelve una versión que cambia cuando entra, se envía o se resuelve algo. No chequea la membresía, para no consultar Cursada en cada chequeo: dice si el canal cambió, nunca qué tiene. La pantalla abierta la pregunta cada 15 segundos (`/api/canales/<id>/version`) y se vuelve a pedir solo si cambió |
 | `post(persona, canal, mensaje)` | Publica y lo envía al canal externo vinculado |
 | `resolve(persona, consulta)` | Marca una consulta como resuelta |
 | `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |

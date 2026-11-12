@@ -168,6 +168,8 @@ export type SpaceView = {
 export type ChannelView = {
   space: Space
   channel: Channel
+  /** Cambia cuando el canal cambia: la misma que devuelve `version`. */
+  version: string
   /** Mensajes de primer nivel con sus respuestas, del más viejo al más nuevo. Vacío en el canal de material. */
   threads: Thread[]
   /** Solo en el canal de material: el material del espacio. */
@@ -206,6 +208,12 @@ export type Spaces = {
   open(personId: PersonId, subjectId: string): Promise<Result<SpaceView, AccessError>>
   /** Mensajes del canal, con las consultas y sus respuestas; marca leído. */
   channel(personId: PersonId, channelId: ChannelId): Promise<Result<ChannelView, 'canal-desconocido' | AccessError>>
+  /** Si hay algo nuevo en un canal, sin volver a leerlo: trae lo nuevo del canal externo
+      (no más de una vez cada pocos segundos por espacio) y devuelve una versión que
+      cambia cuando entra un mensaje o un archivo, cuando uno pendiente se envía o cuando
+      se resuelve una consulta. No chequea la membresía, para no preguntarle a Cursada en
+      cada chequeo: dice si el canal cambió, nunca qué tiene. */
+  version(channelId: ChannelId): Promise<Result<string, 'canal-desconocido' | SpacesStoreError>>
   /** Publica y lo envía al canal externo vinculado. Si el envío falla, queda pendiente. El canal de
       material no lleva mensajes (`sin-mensajes`): el material se sube con `addMaterial`. */
   post(

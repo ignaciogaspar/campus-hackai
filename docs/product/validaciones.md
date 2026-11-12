@@ -9,7 +9,7 @@ Cuánto tarda en llegar un aviso o un material nuevo.
 | Fecha | Quién | Tipo | Sentido | Resultado | Notas |
 | --- | --- | --- | --- | --- | --- |
 | 11/11/2026 | Equipo | Informal | HackAI → Discord | Casi instantáneo | Se envía al publicar. La notificación de Discord depende de cómo cada uno tenga configurado el servidor (pregunta abierta 12). |
-| 11/11/2026 | Equipo | Informal | Discord → HackAI | Unos segundos: dos recargas | HackAI lee Discord al abrir el espacio, como mucho una vez cada 5 segundos por espacio. La primera recarga cayó dentro de esos 5 segundos y no leyó; la segunda, sí. La página no se actualiza sola. |
+| 11/11/2026 | Equipo | Informal | Discord → HackAI | Unos segundos: dos recargas | HackAI lee Discord al abrir el espacio, como mucho una vez cada 5 segundos por espacio. La primera recarga cayó dentro de esos 5 segundos y no leyó; la segunda, sí. En ese momento la página no se actualizaba sola; desde entonces, con el canal abierto se fija cada 15 segundos (hasta unos 15 segundos sin tocar nada). |
 
 Contexto: build de producción en Docker, con Discord real (servidor del equipo) y el resto en memoria. Rama `feat/15-sync-discord` (#15).
 
