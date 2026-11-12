@@ -43,6 +43,27 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     assert.deepEqual(await siu.person('99999'), { ok: false, error: 'no-encontrado' })
   })
 
+  it('mantiene «no encontrado» en lecturas y escrituras de una persona inexistente', async (siu) => {
+    const person = '99999'
+    const target = { kind: 'comision', sectionId: 'sec-pr1-fi-v' } as const
+    const results = await Promise.all([
+      siu.examEnrollments(person),
+      siu.history(person),
+      siu.provisionalResults(person),
+      siu.meetsCertificateConditions(person, 'alumno-regular'),
+      siu.enroll(person, target),
+      siu.drop(person, target)
+    ])
+    for (const result of results) assert.deepEqual(result, { ok: false, error: 'no-encontrado' })
+  })
+
+  it('lee materias en lote, omite las inexistentes y acepta una lista vacía', async (siu) => {
+    const result = await siu.subjects(['am1', 'inexistente', 'pr1', 'am1'])
+    assert.ok(result.ok)
+    assert.deepEqual(sorted(result.value.map((item) => item.id)), ['am1', 'pr1'])
+    assert.deepEqual(await siu.subjects([]), { ok: true, value: [] })
+  })
+
   it('lista los períodos lectivos', async (siu) => {
     const terms = await siu.terms()
     assert.ok(terms.ok)

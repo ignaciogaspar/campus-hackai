@@ -44,7 +44,9 @@
    Cada ticket que suma un adaptador lo agrega a su lista acá. Un valor
    desconocido o una variable que falta corta el arranque: es un error de
    configuración, no algo que el núcleo pueda resolver. */
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { cache as reactCache } from 'react'
 import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
@@ -74,6 +76,7 @@ import type { ExternalChannelPort } from '@/lib/ports/external-channel'
 import type { FilesPort } from '@/lib/ports/files'
 import type { IdentityPort } from '@/lib/ports/identity'
 import type { SiuPort } from '@/lib/ports/siu'
+import { memoRead, type RequestScope } from '@/lib/request-memo'
 
 export type Env = Record<string, string | undefined>
 
@@ -163,7 +166,11 @@ function outagesFrom(env: Env): OutageSwitch | null {
 
 /** Arma todos los módulos con los adaptadores que piden las variables de
     entorno. Cada llamada tiene su propia copia de los datos en memoria. */
-export function compose(env: Env = process.env, data: SyntheticData = syntheticData): System {
+export function compose(
+  env: Env = process.env,
+  data: SyntheticData = syntheticData,
+  requestScope?: RequestScope
+): System {
   const adapters: AdapterChoice = {
     identity: choose(env, 'identity'),
     siu: choose(env, 'siu'),
@@ -181,11 +188,16 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   const supabase = () => (client ??= supabaseFromEnv(env))
 
   const outages = outagesFrom(env)
-  const cache = { staticTtlMs: cacheTtlFrom(env) }
+  const cache = { staticTtlMs: cacheTtlFrom(env), requestScope }
   const siu =
     adapters.siu === 'simulado'
       ? withSiuCache(
-          createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl }),
+          createSimulatedSiu({
+            client: supabase(),
+            clock,
+            selfServiceBaseUrl: data.siu.selfServiceBaseUrl,
+            personTtlMs: cache.staticTtlMs
+          }),
           cache
         )
       : createMemorySiu(data, clock)
@@ -206,42 +218,123 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     clock
   }
 
-  const people = createPeople({
-    identity: ports.identity,
-    siu: ports.siu,
-    store:
-      adapters.store === 'supabase'
-        ? withPeopleStoreCache(createSupabasePeopleStore({ client: supabase() }), cache)
-        : createMemoryPeopleStore(data)
-  })
-  const studies = createStudies({ people, siu: ports.siu, classroom: ports.classroom, clock })
-  const spaces = createSpaces({
-    people,
-    studies,
-    externalChannel: ports.externalChannel,
-    classroom: ports.classroom,
-    files: ports.files,
-    clock,
-    store:
-      adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore(),
-    // El tiempo real del proceso, aunque el reloj sea el fijo de la demo.
-    timer: () => performance.now()
-  })
+  const people = memoPeople(
+    createPeople({
+      identity: ports.identity,
+      siu: ports.siu,
+      store:
+        adapters.store === 'supabase'
+          ? withPeopleStoreCache(createSupabasePeopleStore({ client: supabase() }), cache)
+          : createMemoryPeopleStore(data)
+    }),
+    requestScope
+  )
+  const studies = memoStudies(
+    createStudies({ people, siu: ports.siu, classroom: ports.classroom, clock }),
+    requestScope
+  )
+  const spaces = memoSpaces(
+    createSpaces({
+      people,
+      studies,
+      externalChannel: ports.externalChannel,
+      classroom: ports.classroom,
+      files: ports.files,
+      clock,
+      store:
+        adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore(),
+      // El tiempo real del proceso, aunque el reloj sea el fijo de la demo.
+      timer: () => performance.now()
+    }),
+    requestScope
+  )
   const today = createToday({ studies, spaces, clock })
 
   const now = () => clock.now().toISOString()
   return { adapters, ports, now, outages, people, studies, spaces, today }
 }
 
-/** Guardado en `globalThis` porque Next.js empaqueta las páginas, las server
-    actions y las rutas en capas distintas, cada una con su copia de este
-    módulo: con una variable de módulo, lo que una acción inscribe en memoria
-    no lo vería la página, ni la ruta /archivos el material que se subió. */
-const holder = globalThis as typeof globalThis & { __hackaiSystem?: System }
+function memoPeople(people: People, scope: RequestScope | undefined): People {
+  return { ...people, get: memoRead(scope, 'people.get', people.get) }
+}
 
-/** El sistema de la app, armado una vez por proceso con `process.env`. Los
-    adaptadores en memoria guardan su estado mientras viva el proceso. */
+function memoStudies(studies: Studies, scope: RequestScope | undefined): Studies {
+  return {
+    ...studies,
+    subjectsOf: memoRead(scope, 'studies.subjectsOf', studies.subjectsOf),
+    newGrades: memoRead(scope, 'studies.newGrades', studies.newGrades),
+    career: memoRead(scope, 'studies.career', studies.career),
+    upcoming: memoRead(scope, 'studies.upcoming', studies.upcoming),
+    openEnrollments: memoRead(scope, 'studies.openEnrollments', studies.openEnrollments),
+    sectionsOf: memoRead(scope, 'studies.sectionsOf', studies.sectionsOf),
+    enroll: clearAfter(studies.enroll, () => scope?.()?.clear()),
+    drop: clearAfter(studies.drop, () => scope?.()?.clear())
+  }
+}
+
+function clearAfter<A extends unknown[], R>(write: (...args: A) => Promise<R>, clear: () => void) {
+  return async (...args: A) => {
+    try {
+      return await write(...args)
+    } finally {
+      clear()
+    }
+  }
+}
+
+function memoSpaces(spaces: Spaces, scope: RequestScope | undefined): Spaces {
+  // Abrir importa novedades, leer un canal marca lo leído y publicar también lo actualiza.
+  const clear = () => {
+    const entries = scope?.()
+    if (!entries) return
+    for (const key of entries.keys()) if (key.startsWith('spaces.unreadFor:')) entries.delete(key)
+  }
+  return {
+    ...spaces,
+    unreadFor: memoRead(scope, 'spaces.unreadFor', spaces.unreadFor),
+    open: clearAfter(spaces.open, clear),
+    channel: clearAfter(spaces.channel, clear),
+    post: clearAfter(spaces.post, clear),
+    addMaterial: clearAfter(spaces.addMaterial, clear),
+    createChannel: clearAfter(spaces.createChannel, clear),
+    openDirect: clearAfter(spaces.openDirect, clear),
+    link: clearAfter(spaces.link, clear),
+    syncAll: clearAfter(spaces.syncAll, clear)
+  }
+}
+
+/** Next empaqueta páginas, acciones y rutas por separado. Se comparte el estado
+    de los adaptadores entre capas, pero cada render obtiene su alcance de React. */
+type RenderScope = NonNullable<ReturnType<RequestScope>>
+const holder = globalThis as typeof globalThis & {
+  __hackaiSystem?: System
+  __hackaiRenderScope?: AsyncLocalStorage<RenderScope>
+}
+const scopeOfRender = reactCache(() => new Map<string, Promise<unknown>>())
+
+function inRender<T extends object>(target: T, storage: AsyncLocalStorage<RenderScope>, scope: RenderScope): T {
+  return Object.fromEntries(
+    Object.entries(target).map(([name, method]) => [
+      name,
+      (...args: unknown[]) => storage.run(scope, () => method(...args))
+    ])
+  ) as T
+}
+
+/** Los adaptadores en memoria guardan su estado mientras viva el proceso. */
 export function system(): System {
-  holder.__hackaiSystem ??= compose(process.env)
-  return holder.__hackaiSystem
+  holder.__hackaiRenderScope ??= new AsyncLocalStorage<RenderScope>()
+  const storage = holder.__hackaiRenderScope
+  holder.__hackaiSystem ??= compose(process.env, syntheticData, () => storage.getStore())
+  const base = holder.__hackaiSystem
+  const scope = scopeOfRender()
+  // Fuera del render React ejecuta la función en cada llamada.
+  if (scope !== scopeOfRender()) return base
+  return {
+    ...base,
+    people: inRender(base.people, storage, scope),
+    studies: inRender(base.studies, storage, scope),
+    spaces: inRender(base.spaces, storage, scope),
+    today: inRender(base.today, storage, scope)
+  }
 }

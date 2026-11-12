@@ -303,6 +303,29 @@ Según la [documentación de Vercel](https://vercel.com/docs/cron-jobs/usage-and
 */5 * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://<dominio>/api/cron/sync
 ```
 
+## Rendimiento de la demo
+
+En Vercel, confirmá en Settings → Functions que Fluid compute esté activo. Antes de presentar,
+corré `npm run demo:probar -- https://campus-hackai.vercel.app` con el `SESSION_SECRET`
+del deploy en `.env.local` para abrir las pantallas del alumno y del docente.
+
+Para contar consultas a Supabase en las pantallas de solo lectura del issue #91, compilá con
+`npm run build` y levantá el servidor local con los adaptadores de la demo:
+
+```bash
+node --import ./scripts/medir-consultas.mjs node_modules/next/dist/bin/next start > /tmp/hackai-consultas.log 2>&1
+```
+
+En otra terminal, sin otro tráfico al servidor:
+
+```bash
+node --env-file-if-exists=.env.local --import tsx scripts/medir-pantallas.ts /tmp/hackai-consultas.log
+```
+
+La salida muestra ruta, total de consultas, lecturas de `siu_persons` y `space_reads`,
+tiempo total y estado. Para medir cada pantalla en frío, reiniciá el servidor antes de cada ruta
+y pasala como tercer argumento después del log y la URL local.
+
 ## Si el SIU o Moodle no responden
 
 Todas las lecturas de Cursada toleran caídas, también la oferta (`offer`) y las constancias (`certificate`). El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy, Calendario, Mis materias, Inscripciones, Notas, Estado de la carrera y Trámites lo muestran con el aviso de `components/ui/stale-banner.tsx`: «actualizado hace 20 min» y la hora. El «hace…» se cuenta con el reloj de la app (`system().now()`), el mismo que marcó la lectura, así que también tiene sentido con el reloj fijo. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló. Lo que pasó, las inscripciones que cerraron y si una comisión ya abrió su inscripción se miran contra el reloj al armar la pantalla, aunque la lectura sea vieja.

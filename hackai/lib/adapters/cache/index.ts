@@ -9,11 +9,10 @@
      comisiones, planes, cronogramas, cursos de cada comisión) se guarda unos
      minutos.
    - Lo que cambia al inscribirse o al publicar (inscripciones, historia, cupos,
-     actuación provisoria, inasistencias, cursos de una persona) no se guarda: solo se
-     comparte la consulta mientras está en vuelo, así dos partes de la misma
-     pantalla que piden lo mismo a la vez hacen una sola consulta. En Vercel
-     cada pedido puede caer en otra instancia, y guardar esto mostraría una
-     inscripción vieja.
+     actuación provisoria, inasistencias) se comparte durante el render y,
+     fuera de ese alcance, solo mientras la consulta está en vuelo. Los cursos
+     de una persona solo se comparten en vuelo. Guardar estos datos entre
+     pedidos podría mostrar una inscripción vieja.
    - Lo que trae el aula de cada curso (avisos, recursos, tareas) se guarda un
      minuto: lo publica el docente en Moodle y ya llega con demora.
    - Los vínculos de cada persona con el SIU, Moodle y Discord (el almacén de
@@ -23,6 +22,8 @@
 import type { PeopleStore } from '@/lib/core/people'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
+import { memoRead, type RequestScope } from '@/lib/request-memo'
+import { fail, ok } from '@/lib/result'
 
 /** Lo que no cambia con lo que hace el alumno. */
 export const STATIC_TTL_MS = 5 * 60_000
@@ -45,7 +46,7 @@ type Entry = { at: number; value: Promise<unknown> }
 type Reader<A extends unknown[], R> = (...args: A) => Promise<R>
 
 /** Las lecturas guardadas de un adaptador. `ttl` 0: solo se comparte la que está en vuelo. */
-function createStore(now: () => number) {
+export function createStore(now: () => number) {
   const entries = new Map<string, Entry>()
 
   /** Borra lo que venció hasta para la lectura que más dura; si igual quedan demasiadas, todo lo que no
@@ -85,34 +86,69 @@ function createStore(now: () => number) {
     }
   }
 
-  return { read }
+  return { read, clear: () => entries.clear() }
 }
 
 /** El SIU con las lecturas guardadas. */
 export function withSiuCache(
   siu: SiuPort,
-  { now = Date.now, staticTtlMs = STATIC_TTL_MS }: CacheOptions = {}
+  { now = Date.now, staticTtlMs = STATIC_TTL_MS, requestScope }: CacheOptions & { requestScope?: RequestScope } = {}
 ): SiuPort {
   const { read } = createStore(now)
+  const inFlightStore = createStore(now)
+  const subject = read('subject', staticTtlMs, siu.subject)
+
+  const subjects: SiuPort['subjects'] = async (ids) => {
+    const missing: string[] = []
+    // Cada id se registra antes de lanzar el lote, para compartirlo con otras lecturas concurrentes.
+    const batch = Promise.resolve().then(() => (missing.length ? siu.subjects(missing) : ok([])))
+    const byId = batch.then((result) => (result.ok ? ok(new Map(result.value.map((item) => [item.id, item]))) : result))
+    const readSubject = read('subject', staticTtlMs, async (id: string) => {
+      missing.push(id)
+      const found = await byId
+      if (!found.ok) return found
+      const item = found.value.get(id)
+      return item ? ok(item) : fail('no-encontrado' as const)
+    })
+    const results = await Promise.all([...new Set(ids)].map((id) => readSubject(id)))
+    if (results.some((item) => !item.ok && item.error === 'falla-externa')) return fail('falla-externa')
+    return ok(results.flatMap((item) => (item.ok ? [item.value] : [])))
+  }
+  function dynamic<A extends unknown[], R extends { ok: boolean }>(name: string, reader: Reader<A, R>) {
+    const scoped = memoRead(requestScope, name, reader)
+    const inFlight = inFlightStore.read(name, 0, reader)
+    return (...args: A) => (requestScope?.() ? scoped(...args) : inFlight(...args))
+  }
+  function write<R>(change: Reader<Parameters<SiuPort['enroll']>, R>) {
+    return async (...args: Parameters<SiuPort['enroll']>) => {
+      try {
+        return await change(...args)
+      } finally {
+        requestScope?.()?.clear()
+        inFlightStore.clear()
+      }
+    }
+  }
   return {
     capabilities: siu.capabilities,
     person: read('person', staticTtlMs, siu.person),
     terms: read('terms', staticTtlMs, siu.terms),
-    subject: read('subject', staticTtlMs, siu.subject),
+    subject,
+    subjects,
     section: read('section', staticTtlMs, siu.section),
     teacherSections: read('teacherSections', staticTtlMs, siu.teacherSections),
     assessments: read('assessments', staticTtlMs, siu.assessments),
     studyPlan: read('studyPlan', staticTtlMs, siu.studyPlan),
-    sections: read('sections', 0, siu.sections),
-    courseEnrollments: read('courseEnrollments', 0, siu.courseEnrollments),
-    examBoards: read('examBoards', 0, siu.examBoards),
-    examEnrollments: read('examEnrollments', 0, siu.examEnrollments),
-    history: read('history', 0, siu.history),
-    provisionalResults: read('provisionalResults', 0, siu.provisionalResults),
-    absences: read('absences', 0, siu.absences),
-    meetsCertificateConditions: read('meetsCertificateConditions', 0, siu.meetsCertificateConditions),
-    enroll: siu.enroll,
-    drop: siu.drop,
+    sections: dynamic('sections', siu.sections),
+    courseEnrollments: dynamic('courseEnrollments', siu.courseEnrollments),
+    examBoards: dynamic('examBoards', siu.examBoards),
+    examEnrollments: dynamic('examEnrollments', siu.examEnrollments),
+    history: dynamic('history', siu.history),
+    provisionalResults: dynamic('provisionalResults', siu.provisionalResults),
+    absences: dynamic('absences', siu.absences),
+    meetsCertificateConditions: dynamic('meetsCertificateConditions', siu.meetsCertificateConditions),
+    enroll: write(siu.enroll),
+    drop: write(siu.drop),
     selfServiceUrl: siu.selfServiceUrl
   }
 }

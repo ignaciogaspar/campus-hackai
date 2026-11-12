@@ -58,7 +58,7 @@ test('si la red falla, cada operación devuelve «falla externa» sin tirar', as
 
 test('lee cuándo se cargó cada nota, y `null` si la columna viene vacía', async () => {
   const tables: Record<string, unknown[]> = {
-    siu_persons: [{ id: '30101' }],
+    siu_persons: [{ id: '30101', programs: [] }],
     siu_provisional_results: [
       {
         id: 'ap-1',
@@ -103,4 +103,31 @@ test('si la base responde con error devuelve «falla externa»', async () => {
   )
 
   assert.deepEqual(await siu.subject('am1'), { ok: false, error: 'falla-externa' })
+})
+
+test('comparte una sola consulta de persona entre el padrón y las lecturas del SIU', async () => {
+  const tables: string[] = []
+  const { siu } = siuWith(async (input) => {
+    const table = new URL(String(input)).pathname.split('/').at(-1) ?? ''
+    tables.push(table)
+    const rows = table === 'siu_persons' ? [{ id: '30101', programs: [] }] : []
+    return Response.json(rows)
+  })
+
+  const results = await Promise.all([siu.person('30101'), siu.history('30101'), siu.provisionalResults('30101')])
+  assert.ok(results.every((result) => result.ok))
+  assert.ok((await siu.history('30101')).ok)
+  assert.equal(tables.filter((table) => table === 'siu_persons').length, 1)
+})
+
+test('una persona inexistente se vuelve a buscar y las lecturas mantienen no-encontrado', async () => {
+  let reads = 0
+  const { siu } = siuWith(async (input) => {
+    if (new URL(String(input)).pathname.endsWith('/siu_persons')) reads += 1
+    return Response.json([])
+  })
+
+  assert.deepEqual(await siu.history('99999'), { ok: false, error: 'no-encontrado' })
+  assert.deepEqual(await siu.provisionalResults('99999'), { ok: false, error: 'no-encontrado' })
+  assert.equal(reads, 2)
 })

@@ -1,18 +1,20 @@
 'use client'
 
-/* Trae lo nuevo del canal abierto sin que haya que recargar. Cada 5 segundos
-   pregunta la versión del canal (app/api/canales/[canal]/version), que es
-   liviana, y solo si cambió vuelve a pedir la página. Pregunta únicamente con
-   la pestaña a la vista; al volver a ella, pregunta enseguida. Si el chequeo
-   falla, no hace nada: la página se ve igual y el próximo chequeo reintenta.
-   No dibuja nada. */
+/* El canal abierto consulta su versión con la pestaña visible. Espacios
+   limita la sincronización con Discord a una vez cada 5 s por espacio. */
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
+import { FIRST_POLL_MS, nextPollDelay } from '@/components/spaces/poll-delay'
 
-/** Espacios lee el canal externo como mucho una vez cada 10 segundos por
-    espacio: preguntando cada 5, lo nuevo de Discord se ve en unos 15 como
-    mucho, que es lo que pide la tarea T3 («enterarme»). */
-const EVERY_MS = 5_000
+async function channelVersion(channelId: string, signal: AbortSignal): Promise<string | undefined> {
+  const response = await fetch(`/api/canales/${encodeURIComponent(channelId)}/version`, {
+    cache: 'no-store',
+    signal
+  })
+  if (!response.ok) return
+  const { version } = (await response.json()) as { version?: string }
+  return version
+}
 
 export function ChannelUpdates({ channelId, version }: { channelId: string; version: string }) {
   const router = useRouter()
@@ -24,34 +26,55 @@ export function ChannelUpdates({ channelId, version }: { channelId: string; vers
   }, [version])
 
   useEffect(() => {
-    let checking = false
+    let delay = FIRST_POLL_MS
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let pending: AbortController | undefined
 
-    async function check() {
-      if (checking || document.visibilityState !== 'visible') return
-      checking = true
-      try {
-        const response = await fetch(`/api/canales/${encodeURIComponent(channelId)}/version`, { cache: 'no-store' })
-        if (!response.ok) return
-        const { version: latest } = (await response.json()) as { version?: string }
-        if (latest && latest !== known.current) {
-          known.current = latest
-          router.refresh()
-        }
-      } catch {
-        // Sin red o con el servidor caído: se reintenta en el próximo chequeo.
-      } finally {
-        checking = false
+    function schedule() {
+      timer = setTimeout(check, delay)
+    }
+
+    function update(latest: string | undefined, signal: AbortSignal, resumed: boolean) {
+      if (signal.aborted || !latest) return
+      const changed = latest !== known.current
+      delay = nextPollDelay(delay, changed || resumed)
+      if (changed) {
+        known.current = latest
+        router.refresh()
       }
     }
 
-    const timer = setInterval(check, EVERY_MS)
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void check()
+    async function check(resumed = false) {
+      if (pending || document.visibilityState !== 'visible') return
+      const controller = new AbortController()
+      pending = controller
+      try {
+        update(await channelVersion(channelId, controller.signal), controller.signal, resumed)
+      } catch {
+        // Sin red: se reintenta cuando toque el próximo chequeo.
+      } finally {
+        if (pending === controller) {
+          pending = undefined
+          if (document.visibilityState === 'visible') schedule()
+        }
+      }
     }
-    document.addEventListener('visibilitychange', onVisible)
+
+    const reset = () => {
+      clearTimeout(timer)
+      pending?.abort()
+      pending = undefined
+      delay = FIRST_POLL_MS
+    }
+    const onVisibility = () => {
+      reset()
+      if (document.visibilityState === 'visible') void check(true)
+    }
+    if (document.visibilityState === 'visible') schedule()
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
-      clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
+      reset()
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [channelId, router])
 
