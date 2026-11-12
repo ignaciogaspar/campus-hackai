@@ -26,6 +26,9 @@ export function isRole(value: unknown): value is Role {
 /** Sistemas en los que una persona tiene una cuenta propia. */
 export type ExternalSystem = 'identity' | 'siu' | 'moodle' | 'discord'
 
+/** Los canales externos: la persona vincula su cuenta ella misma (`linkAccount`). */
+const CHANNEL_SYSTEMS: readonly ExternalSystem[] = ['discord']
+
 export type Person = {
   id: PersonId
   name: string
@@ -53,6 +56,14 @@ export type People = {
   accountIn(personId: PersonId, system: ExternalSystem): Promise<Result<string, 'sin-cuenta' | PeopleError>>
   /** La persona dueña de ese id externo, o `null`. Se vincula por id, nunca por nombre o mail. */
   byExternalAccount(system: ExternalSystem, externalId: string): Promise<Result<PersonId | null, ExternalFailure>>
+  /** Vincula su cuenta de un canal externo, por ejemplo la de Discord con que autorizó a HackAI. Reemplaza la
+      que tenía en ese sistema. Una cuenta que ya es de otra persona es `cuenta-en-uso`. La identidad, el SIU y
+      Moodle no se vinculan así: vienen de los sistemas de origen (`solo-canales-externos`). */
+  linkAccount(
+    personId: PersonId,
+    system: ExternalSystem,
+    externalId: string
+  ): Promise<Result<null, 'cuenta-en-uso' | 'solo-canales-externos' | PeopleError>>
 }
 
 /** Sus ids en cada sistema. Un sistema sin entrada es que no tiene cuenta. */
@@ -65,6 +76,12 @@ export type PeopleStore = {
   accountsOf(personId: PersonId): Promise<Result<PersonAccounts | null, ExternalFailure>>
   /** La persona dueña de ese id externo, o `null`. */
   ownerOf(system: ExternalSystem, externalId: string): Promise<Result<PersonId | null, ExternalFailure>>
+  /** Guarda su id en ese sistema, en lugar del que tenía. `duplicado` si ese id ya es de otra persona. */
+  setAccount(
+    personId: PersonId,
+    system: ExternalSystem,
+    externalId: string
+  ): Promise<Result<null, 'duplicado' | ExternalFailure>>
 }
 
 export type PeopleDeps = {
@@ -135,6 +152,17 @@ export function createPeople({ identity, siu, store }: PeopleDeps): People {
 
     async byExternalAccount(system, externalId) {
       return store.ownerOf(system, externalId)
+    },
+
+    async linkAccount(personId, system, externalId) {
+      if (!CHANNEL_SYSTEMS.includes(system)) return fail('solo-canales-externos')
+      const accounts = await store.accountsOf(personId)
+      if (!accounts.ok) return accounts
+      if (!accounts.value) return fail('persona-desconocida')
+      if (accounts.value[system] === externalId) return ok(null)
+      const saved = await store.setAccount(personId, system, externalId)
+      if (!saved.ok) return fail(saved.error === 'duplicado' ? 'cuenta-en-uso' : saved.error)
+      return ok(null)
     }
   }
 }

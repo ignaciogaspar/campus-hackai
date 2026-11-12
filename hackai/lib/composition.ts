@@ -34,7 +34,10 @@
    (supabase/migrations/0003_files.sql), con las mismas dos variables.
 
    Con `discord`, el token del bot va en `DISCORD_BOT_TOKEN` (guía:
-   docs/discord.md).
+   docs/discord.md). «Conectar con Discord» necesita además `DISCORD_CLIENT_ID`
+   y `DISCORD_CLIENT_SECRET`; sin ellos, el espacio solo se vincula pegando el
+   enlace o el ID de cada canal. `DISCORD_REDIRECT_URI` fija la URL de vuelta
+   si la del pedido no es la que está cargada en el Developer Portal.
 
    `HACKAI_CAIDAS=si` envuelve al SIU y al aula virtual con un interruptor que
    los hace responder como caídos, para mostrarlo en la demo desde `/caidas`
@@ -50,6 +53,7 @@ import { cache as reactCache } from 'react'
 import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
+import { createDiscordOAuth, type DiscordOAuth } from '@/lib/adapters/discord/oauth'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
@@ -125,6 +129,10 @@ export type System = {
   now(): string
   /** El interruptor de caídas de la demo, o `null` si `HACKAI_CAIDAS` no lo pide. */
   outages: OutageSwitch | null
+  /** «Conectar con Discord», o `null` si el canal externo no es Discord o falta la aplicación de Discord. */
+  discordOAuth: DiscordOAuth | null
+  /** La URL de vuelta de Discord fijada por `DISCORD_REDIRECT_URI`, o `null` para usar la del pedido. */
+  discordRedirectUri: string | null
   people: People
   studies: Studies
   spaces: Spaces
@@ -251,7 +259,26 @@ export function compose(
   const today = createToday({ studies, spaces, clock })
 
   const now = () => clock.now().toISOString()
-  return { adapters, ports, now, outages, people, studies, spaces, today }
+  return {
+    adapters,
+    ports,
+    now,
+    outages,
+    discordOAuth: discordOAuthFrom(env, adapters),
+    discordRedirectUri: env.DISCORD_REDIRECT_URI?.trim() || null,
+    people,
+    studies,
+    spaces,
+    today
+  }
+}
+
+/** «Conectar con Discord», solo con el canal externo de Discord y su aplicación configurada. */
+function discordOAuthFrom(env: Env, adapters: AdapterChoice): DiscordOAuth | null {
+  const clientId = env.DISCORD_CLIENT_ID?.trim()
+  const clientSecret = env.DISCORD_CLIENT_SECRET?.trim()
+  if (adapters.externalChannel !== 'discord' || !clientId || !clientSecret) return null
+  return createDiscordOAuth({ clientId, clientSecret })
 }
 
 function memoPeople(people: People, scope: RequestScope | undefined): People {

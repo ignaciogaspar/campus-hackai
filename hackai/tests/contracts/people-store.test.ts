@@ -46,10 +46,36 @@ function peopleStoreContract(name: string, make: () => PeopleStore, skip: string
     assert.deepEqual(await store.ownerOf('siu', '99999'), { ok: true, value: null })
     assert.deepEqual(await store.ownerOf('moodle', '20101'), { ok: true, value: null })
   })
+
+  it('vincular una cuenta reemplaza la que tenía en ese sistema', async (store) => {
+    const before = '1290000000000000011'
+    const after = '1290000000000000777'
+    try {
+      assert.deepEqual(await store.setAccount('p-taguirre', 'discord', after), { ok: true, value: null })
+      const accounts = await store.accountsOf('p-taguirre')
+      assert.ok(accounts.ok)
+      assert.equal(accounts.value?.discord, after)
+      assert.equal(accounts.value?.siu, '30101', 'las cuentas de los otros sistemas no cambian')
+      assert.deepEqual(await store.ownerOf('discord', after), { ok: true, value: 'p-taguirre' })
+      assert.deepEqual(await store.ownerOf('discord', before), { ok: true, value: null })
+    } finally {
+      // Contra una base de verdad, deja el seed como estaba.
+      await store.setAccount('p-taguirre', 'discord', before)
+    }
+  })
+
+  it('una cuenta que ya es de otra persona no se vincula', async (store) => {
+    assert.deepEqual(await store.setAccount('p-taguirre', 'discord', '1290000000000000012'), {
+      ok: false,
+      error: 'duplicado'
+    })
+    assert.deepEqual(await store.ownerOf('discord', '1290000000000000012'), { ok: true, value: 'p-lbenitez' })
+  })
 }
 
 /** PostgREST de mentira para `people_accounts`: responde las lecturas con
-    filtros `eq` sobre las filas del seed. Cualquier otra cosa es un 400, así
+    filtros `eq` sobre las filas del seed y el upsert por (persona, sistema),
+    con la clave única (sistema, id externo). Cualquier otra cosa es un 400, así
     una consulta con otra forma hace fallar la batería. */
 const COLUMNS = ['person_id', 'system', 'external_id'] as const
 type Column = (typeof COLUMNS)[number]
@@ -76,10 +102,28 @@ function query(rows: PeopleAccountRow[], params: URLSearchParams): Record<string
 function fakePostgrest(rows: PeopleAccountRow[]): typeof globalThis.fetch {
   const bad = (message: string) => new Response(JSON.stringify({ code: 'PGRST100', message }), { status: 400 })
 
+  /** Upsert por (persona, sistema). Un id externo de otra persona choca con la clave única, como en Postgres. */
+  function upsert(url: URL, body: string): Response {
+    if (url.searchParams.get('on_conflict') !== 'person_id,system')
+      return bad('upsert sin on_conflict=person_id,system')
+    const incoming = [JSON.parse(body)].flat() as PeopleAccountRow[]
+    for (const row of incoming) {
+      const taken = rows.some(
+        (r) => r.system === row.system && r.external_id === row.external_id && r.person_id !== row.person_id
+      )
+      if (taken) return new Response(JSON.stringify({ code: '23505', message: 'duplicate key' }), { status: 409 })
+      const index = rows.findIndex((r) => r.person_id === row.person_id && r.system === row.system)
+      if (index >= 0) rows[index] = row
+      else rows.push(row)
+    }
+    return new Response(null, { status: 201 })
+  }
+
   return async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input)
-    if ((init?.method ?? 'GET') !== 'GET' || url.pathname !== '/rest/v1/people_accounts')
-      return bad('solo lecturas de people_accounts')
+    if (url.pathname !== '/rest/v1/people_accounts') return bad('solo people_accounts')
+    if (init?.method === 'POST') return upsert(url, String(init.body))
+    if ((init?.method ?? 'GET') !== 'GET') return bad('solo lecturas y upsert de people_accounts')
     const body = query(rows, url.searchParams)
     if (typeof body === 'string') return bad(body)
     return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } })

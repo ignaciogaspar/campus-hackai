@@ -147,7 +147,8 @@ test('los vínculos de cada persona se leen una vez cada cinco minutos', async (
         reads += 1
         return Promise.resolve(ok({ siu: `siu-${personId}` }))
       },
-      ownerOf: () => Promise.resolve(ok(null))
+      ownerOf: () => Promise.resolve(ok(null)),
+      setAccount: () => Promise.resolve(ok(null))
     },
     time
   )

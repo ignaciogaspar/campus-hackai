@@ -22,6 +22,7 @@ Quién es quién.
 | `get(persona)` | Rol (alumno o docente), facultad y propuesta. Si el SIU no responde, la persona como se leyó la última vez |
 | `accountIn(persona, sistema)` | Su id en un sistema de origen o canal externo (SIU, Moodle, Discord) |
 | `byExternalAccount(sistema, idExterno)` | La persona dueña de ese id, o nada. Se vincula por id, porque nombres de usuario y mails cambian o se repiten |
+| `linkAccount(persona, sistema, idExterno)` | Vincula su cuenta de un canal externo (Discord), por ejemplo la con que autorizó a HackAI. Reemplaza la que tenía; una cuenta de otra persona es `cuenta-en-uso`. La identidad, el SIU y Moodle no se vinculan así |
 
 Usa el puerto de identidad, el del SIU para los datos de la persona y su almacén para los vínculos con cada sistema. Los adaptadores nunca adivinan a quién corresponde un id: se lo preguntan a Personas.
 
@@ -82,6 +83,9 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
 | `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Devuelve `canal-externo-inexistente` si no lo encuentra y `canal-externo-en-uso` si ya está vinculado con otro canal |
+| `connect(persona, espacio, servidor, cuenta)` | Conecta el espacio con el servidor de la cátedra en el canal externo y vincula en Personas la cuenta externa con que lo autorizó. Solo docentes de la materia. Comprueba antes que el bot esté en el servidor: si algo falla, no conecta nada |
+| `serverChannels(persona, espacio)` | Los canales de texto del servidor conectado, con cuál de HackAI está vinculado cada uno, para elegir uno al vincular. Solo si la cuenta externa del docente es miembro del servidor (`no-es-miembro`) |
+| `createExternalChannels(persona, espacio)` | Crea en el servidor conectado una categoría con el nombre de la materia y un canal por cada canal del espacio que la persona puede vincular y no está vinculado, y los vincula. En `#avisos` y el material escriben solo los docentes; en el resto, todos. Cada canal se vincula apenas se crea: si el canal externo falla a mitad de camino, reintentar crea solo lo que falta |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
 | `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Novedades, Hoy y la navegación: por canal, cuántas y la más nueva, con quién la publicó (y su texto o, si solo trae un adjunto, el nombre del archivo); en un directo, de quién es; si todo es de un mismo hilo, cuál; y la comisión del canal. No crea espacios |
 | `openQuestions(persona)` | Las consultas sin resolver que le tocan responder, de todos sus espacios, la más vieja primero, con cuántas respuestas tienen: las de los canales de sus comisiones actuales en los que puede marcarlas resueltas. A un alumno no le toca ninguna. Como `unreadFor`, no crea espacios |
@@ -143,9 +147,11 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **Identidad** | Validar una credencial y devolver quién es | Selector de demo, en memoria. En producción, Microsoft Entra ID (OpenID Connect) |
 | **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, inasistencias y el máximo por comisión, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
 | **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
-| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, abrir un hilo, responder en él, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
+| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, abrir un hilo, responder en él, bajar un adjunto. En el servidor de la cátedra: listar sus canales, saber si una cuenta es miembro, preparar la categoría y el rol de docentes de una materia y crear un canal con quién escribe | Discord, en memoria. Slack queda diseñado |
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
+
+**Conectar con Discord** (`adapters/discord/oauth.ts`): la autorización OAuth2 de Discord no es un puerto, porque solo tiene un adaptador. `composition` la arma si el canal externo es Discord y están `DISCORD_CLIENT_ID` y `DISCORD_CLIENT_SECRET`, y las rutas `app/discord/conectar` y `app/discord/vuelta` la usan a través de `system()`. La vuelta solo vale con el `state` firmado y de un solo uso de `lib/oauth-state.ts`, y lo que conecta lo decide Espacios con `connect`.
 
 **Caché de lecturas** (`adapters/cache/`): con el SIU y Moodle simulados, y con el almacén de Personas en Supabase, `composition` envuelve a cada adaptador con una caché en memoria, porque cada lectura es una consulta a la base y una pantalla hace muchas. Lo que no cambia con lo que hace el alumno (personas, materias, comisiones, planes, cronogramas, vínculos) se guarda `HACKAI_CACHE_SEGUNDOS` (300 por defecto); lo del aula, un minuto como mucho; lo que cambia al inscribirse (inscripciones, historia, cupos, actuación provisoria, inasistencias) solo se comparte mientras la consulta está en vuelo, así nunca se ve una inscripción vieja aunque otra instancia atienda el pedido siguiente. Un error no se guarda e inscribir pasa directo. El núcleo no se entera.
 

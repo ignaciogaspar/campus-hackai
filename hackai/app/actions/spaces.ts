@@ -1,5 +1,6 @@
 /* Lo que se hace en el espacio de la materia: publicar, responder, marcar una
-   consulta resuelta, crear un canal, vincularlo con Discord, subir y organizar
+   consulta resuelta, crear un canal, vincularlo con Discord (o crear los canales
+   allá en el servidor conectado), subir y organizar
    el material y abrir un canal directo con un docente. Quién
    puede hacer qué lo decide Espacios; estas acciones validan lo que llega del
    navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
@@ -8,6 +9,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { discordChannelIdFrom } from '@/components/spaces/discord-format'
 import { spaceHref } from '@/components/spaces/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -28,6 +30,7 @@ type SpaceError =
   | ErrorOf<ReturnType<Spaces['organizeMaterial']>>
   | ErrorOf<ReturnType<Spaces['link']>>
   | ErrorOf<ReturnType<Spaces['openDirect']>>
+  | ErrorOf<ReturnType<Spaces['createExternalChannels']>>
 
 const ERRORS: Record<SpaceError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
@@ -47,12 +50,15 @@ const ERRORS: Record<SpaceError, string> = {
   'canal-externo-inexistente':
     'No encontramos ese canal en Discord. Revisá el ID y que el bot de HackAI esté invitado al servidor.',
   'canal-externo-en-uso': 'Ese canal de Discord ya está vinculado con otro canal de HackAI.',
+  'sin-servidor': 'Primero conectá la materia con Discord.',
+  'no-soportado': 'El canal externo de esta instalación de HackAI no permite crear canales.',
+  'servidor-inexistente':
+    'El bot de HackAI ya no está en el servidor de Discord. Volvé a tocar «Conectar con Discord».',
+  'sin-permisos':
+    'Al bot de HackAI le faltan permisos en el servidor (Gestionar canales y Gestionar roles). Volvé a tocar «Conectar con Discord» sin desmarcarlos.',
   'solo-alumno-docente': 'Los mensajes directos son solo entre un alumno y un docente.',
   'sin-comision-en-comun': 'Solo podés escribirle en privado a los docentes de tu comisión.'
 }
-
-/** El ID de un canal de Discord: un número de 17 a 20 dígitos. */
-const DISCORD_ID = /^\d{17,20}$/
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
 const LAYOUTS: readonly MaterialLayout[] = ['unidad', 'semana', 'todo']
@@ -198,8 +204,12 @@ export async function linkChannel(_prev: SpaceActionState, form: FormData): Prom
   const subjectId = text(form, 'subjectId')
   const channelId = text(form, 'channelId')
   if (!subjectId || !channelId) return failed(UNEXPECTED)
-  const externalId = text(form, 'discordChannelId')?.trim() ?? ''
-  if (!DISCORD_ID.test(externalId)) return failed('Pegá el ID del canal de Discord: un número de 18 o 19 dígitos.')
+  const externalId = discordChannelIdFrom(text(form, 'discordChannelId') ?? '')
+  if (!externalId) {
+    return failed(
+      'Pegá el enlace del canal (clic derecho sobre el canal → «Copiar enlace») o su ID, un número de 18 o 19 dígitos.'
+    )
+  }
 
   const result = await system().spaces.link(session.personId, channelId, { system: 'discord', channelId: externalId })
   if (!result.ok) {
@@ -211,6 +221,35 @@ export async function linkChannel(_prev: SpaceActionState, form: FormData): Prom
   }
   refresh(subjectId)
   return done('Listo: este canal queda sincronizado con Discord.')
+}
+
+/** Crea en el servidor de Discord conectado los canales del espacio que gestiona la persona, ya vinculados. */
+export async function createDiscordChannels(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const spaceId = text(form, 'spaceId')
+  if (!subjectId || !spaceId) return failed(UNEXPECTED)
+
+  const result = await system().spaces.createExternalChannels(session.personId, spaceId)
+  refresh(subjectId)
+  if (!result.ok) {
+    // Lo que se creó antes de la falla ya quedó vinculado: volver a tocar crea lo que falta.
+    if (result.error === 'falla-externa')
+      return failed('Discord no respondió y puede que falten canales. Tocá de nuevo para crear los que faltan.')
+    return failed(
+      result.error === 'solo-docentes'
+        ? 'Solo los docentes de la materia crean los canales en Discord.'
+        : ERRORS[result.error]
+    )
+  }
+  const { created, alreadyLinked } = result.value
+  if (created.length === 0)
+    return done(
+      'Tus canales ya estaban vinculados con Discord. Los docentes con su cuenta vinculada pueden escribir en avisos y material.'
+    )
+  const names = created.map((c) => `#${c.name}${c.sectionName ? ` (${c.sectionName})` : ''}`).join(', ')
+  const before = alreadyLinked ? ` Otros ${alreadyLinked} ya estaban vinculados.` : ''
+  return done(`Listo: se crearon en Discord y quedaron sincronizados ${names}.${before}`)
 }
 
 /** Cambia cómo se agrupa el material: por unidad, por semana o sin secciones. */

@@ -47,6 +47,8 @@ type SpaceRow = {
   school_id: string
   name: string
   material_layout: MaterialLayout
+  external_system: 'discord' | null
+  external_server_id: string | null
 }
 
 type ChannelRow = {
@@ -94,7 +96,8 @@ type MaterialRow = {
   added_at: string
 }
 
-const SPACE_COLUMNS = 'id, subject_id, subject_code, school_id, name, material_layout'
+const SPACE_COLUMNS =
+  'id, subject_id, subject_code, school_id, name, material_layout, external_system, external_server_id'
 const CHANNEL_COLUMNS =
   'id, space_id, name, kind, scope_kind, section_id, person_ids, scope_key, external_system, external_channel_id'
 const MESSAGE_COLUMNS =
@@ -123,7 +126,11 @@ function toSpace(row: SpaceRow): StoredSpace {
     subjectCode: row.subject_code,
     schoolId: row.school_id,
     name: row.name,
-    materialLayout: row.material_layout
+    materialLayout: row.material_layout,
+    externalServer:
+      row.external_system && row.external_server_id
+        ? { system: row.external_system, serverId: row.external_server_id }
+        : null
   }
 }
 
@@ -309,6 +316,21 @@ export function createSupabaseSpacesStore({
         client
           .from('spaces')
           .update({ material_layout: layout })
+          .eq('id', spaceId)
+          .select(SPACE_COLUMNS)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!row.ok) return fail('falla-externa')
+      return ok(row.value ? toSpace(row.value) : null)
+    },
+
+    async setExternalServer(spaceId, server) {
+      if (!isUuid(spaceId)) return ok(null)
+      const row = await run<SpaceRow>('conectar servidor', (s) =>
+        client
+          .from('spaces')
+          .update({ external_system: server?.system ?? null, external_server_id: server?.serverId ?? null })
           .eq('id', spaceId)
           .select(SPACE_COLUMNS)
           .abortSignal(s)

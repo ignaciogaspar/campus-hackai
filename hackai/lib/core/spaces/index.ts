@@ -24,7 +24,7 @@ import { createSpacesModule } from '@/lib/core/spaces/module'
 import type { Studies } from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
-import type { ExternalChannelPort } from '@/lib/ports/external-channel'
+import type { ExternalChannelPort, ExternalServerError } from '@/lib/ports/external-channel'
 import type { FileContent, FilesError, FilesPort } from '@/lib/ports/files'
 import type { ExternalFailure, Result } from '@/lib/result'
 
@@ -43,6 +43,20 @@ export type ChannelScope =
 export type ChannelKind = 'material' | 'avisos' | 'consultas' | 'directo' | 'libre'
 
 export type ExternalLink = { system: 'discord'; channelId: string }
+
+/** El servidor del canal externo de la cátedra con que está conectado el espacio (en Discord, su servidor). */
+export type ExternalServer = { system: 'discord'; serverId: string }
+
+/** Un canal de texto del servidor conectado, para elegirlo al vincular: con su categoría y, si ya está
+    vinculado, con qué canal de HackAI. */
+export type ServerChannel = { id: string; name: string; category: string | null; linkedTo: ChannelId | null }
+
+/** Lo que hizo `createExternalChannels`: los canales que creó y vinculó, y cuántos ya estaban vinculados. */
+export type ExternalChannelsReport = { created: Channel[]; alreadyLinked: number }
+
+/** Por qué no se pudo hablar con el servidor: no existe o el bot no está (`servidor-inexistente`), al bot le
+    falta un permiso (`sin-permisos`), o no responde. `no-soportado`: el canal externo no tiene servidores. */
+export type ServerError = ExternalServerError | 'no-soportado'
 
 /** Un canal visto por una persona: sus no leídos y lo que puede hacer en él. */
 export type Channel = {
@@ -170,6 +184,8 @@ export type SpaceView = {
   /** Los canales que la persona ve, en el orden en que se muestran. */
   channels: Channel[]
   material: MaterialView
+  /** El servidor del canal externo con que está conectado el espacio, o `null`. */
+  externalServer: ExternalServer | null
   /** Si la membresía salió de una lectura desactualizada de Cursada, su hora; si no, `null`. */
   staleSince: string | null
 }
@@ -354,6 +370,50 @@ export type Spaces = {
       'canal-desconocido' | 'solo-docentes' | 'canal-externo-inexistente' | 'canal-externo-en-uso' | AccessError
     >
   >
+  /** Conecta el espacio con el servidor de la cátedra en el canal externo, y vincula con la persona la cuenta
+      externa con que lo autorizó. Solo docentes de la materia. Si la cuenta ya es de otra persona
+      (`cuenta-en-uso`), no es miembro del servidor (`no-es-miembro`) o el bot no está, no conecta nada. Un espacio conectado no cambia de
+      servidor (`otro-servidor`); volver a conectar el mismo vincula la cuenta de otro docente. */
+  connect(
+    personId: PersonId,
+    spaceId: SpaceId,
+    server: ExternalServer,
+    accountId: string
+  ): Promise<
+    Result<
+      ExternalServer,
+      | 'espacio-desconocido'
+      | 'solo-docentes'
+      | 'otro-servidor'
+      | 'no-es-miembro'
+      | 'cuenta-en-uso'
+      | ServerError
+      | AccessError
+    >
+  >
+  /** Los canales de texto del servidor conectado, para elegir uno al vincular. Solo docentes de la materia, y
+      solo si su cuenta externa vinculada es miembro de ese servidor (`no-es-miembro`). */
+  serverChannels(
+    personId: PersonId,
+    spaceId: SpaceId
+  ): Promise<
+    Result<
+      ServerChannel[],
+      'espacio-desconocido' | 'solo-docentes' | 'sin-servidor' | 'no-es-miembro' | ServerError | AccessError
+    >
+  >
+  /** Crea en el servidor conectado una categoría con el nombre de la materia y adentro un canal por cada canal
+      del espacio que la persona gestiona hoy (el material y los de sus comisiones vigentes) y no está vinculado,
+      y los vincula. En `#avisos` y el material escriben solo los docentes; en el resto, todos. Les da el rol de
+      docentes a los que tienen su cuenta vinculada, aunque no falte ningún canal. Solo docentes de la materia.
+      Si falla a mitad de camino, lo creado ya quedó vinculado y volver a llamarla crea lo que falta, reusando
+      el canal que se creó allá y no llegó a vincularse. */
+  createExternalChannels(
+    personId: PersonId,
+    spaceId: SpaceId
+  ): Promise<
+    Result<ExternalChannelsReport, 'espacio-desconocido' | 'solo-docentes' | 'sin-servidor' | ServerError | AccessError>
+  >
   /** Sincroniza todos los canales vinculados: la corrida periódica. */
   syncAll(): Promise<Result<SyncReport, ExternalFailure>>
   /** Novedades sin leer de todos sus espacios, por canal, para Novedades, Hoy y la navegación. No crea espacios. */
@@ -380,6 +440,8 @@ export type StoredSpace = {
   schoolId: string
   name: string
   materialLayout: MaterialLayout
+  /** El servidor del canal externo con que lo conectó un docente, o `null`. */
+  externalServer: ExternalServer | null
 }
 
 /** Un canal guardado. Único por espacio, alcance y nombre (dos comisiones pueden tener cada una su `avisos`). */
@@ -444,9 +506,14 @@ export type SpacesStore = {
   /** Los espacios de esas materias y facultades que ya existen. */
   spacesFor(keys: { subjectId: string; schoolId: string }[]): Promise<Result<StoredSpace[], SpacesStoreError>>
   space(spaceId: SpaceId): Promise<Result<StoredSpace | null, SpacesStoreError>>
-  /** Crea el espacio; si ya existe uno para esa materia y facultad, devuelve ese. */
-  createSpace(space: Omit<StoredSpace, 'id'>): Promise<Result<StoredSpace, SpacesStoreError>>
+  /** Crea el espacio, sin servidor externo; si ya existe uno para esa materia y facultad, devuelve ese. */
+  createSpace(space: Omit<StoredSpace, 'id' | 'externalServer'>): Promise<Result<StoredSpace, SpacesStoreError>>
   setMaterialLayout(spaceId: SpaceId, layout: MaterialLayout): Promise<Result<StoredSpace | null, SpacesStoreError>>
+  /** Conecta el espacio con un servidor del canal externo, o lo desconecta con `null`. */
+  setExternalServer(
+    spaceId: SpaceId,
+    server: ExternalServer | null
+  ): Promise<Result<StoredSpace | null, SpacesStoreError>>
 
   /** Los canales de esos espacios, en el orden en que se crearon. */
   channels(spaceIds: SpaceId[]): Promise<Result<StoredChannel[], SpacesStoreError>>

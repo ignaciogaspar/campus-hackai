@@ -170,14 +170,20 @@ export function withClassroomCache(
   }
 }
 
-/** El almacén de Personas con sus lecturas guardadas: los vínculos no cambian mientras la app corre. */
+/** El almacén de Personas con sus lecturas guardadas: los vínculos casi no cambian mientras la app corre. Vincular
+    una cuenta pasa directo y borra lo guardado, así se ve enseguida en esta instancia; en otra, cuando vence. */
 export function withPeopleStoreCache(
   store: PeopleStore,
   { now = Date.now, staticTtlMs = STATIC_TTL_MS }: CacheOptions = {}
 ): PeopleStore {
-  const { read } = createStore(now)
+  let cache = createStore(now)
   return {
-    accountsOf: read('accountsOf', staticTtlMs, store.accountsOf),
-    ownerOf: read('ownerOf', staticTtlMs, store.ownerOf)
+    accountsOf: (...args) => cache.read('accountsOf', staticTtlMs, store.accountsOf)(...args),
+    ownerOf: (...args) => cache.read('ownerOf', staticTtlMs, store.ownerOf)(...args),
+    async setAccount(personId, system, externalId) {
+      const saved = await store.setAccount(personId, system, externalId)
+      cache = createStore(now)
+      return saved
+    }
   }
 }

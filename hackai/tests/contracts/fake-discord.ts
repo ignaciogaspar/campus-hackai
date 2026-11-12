@@ -1,11 +1,15 @@
 /* Discord falso para los tests: un `fetch` que responde como la API REST v10 y
    la CDN de Discord, sin red. Guarda los mensajes en crudo, con la forma de la
    API (snake_case, hilos como canales aparte, mensajes de sistema), para que
-   el adaptador real haga toda su traducción. */
+   el adaptador real haga toda su traducción.
+
+   Tiene un servidor (`GUILD`) con sus canales, categorías, roles y miembros,
+   para crear la categoría, el rol de docentes y los canales de una materia.
+   Con `denyManage`, el bot no tiene Gestionar canales ni Gestionar roles. */
 import type { ExternalMessage } from '@/lib/ports/external-channel'
 
 export const BOT_USER = { id: '1302000000000000001', username: 'HackAI', global_name: null, bot: true }
-const GUILD = '1300000000000000001'
+export const GUILD = '1300000000000000001'
 
 export type RawMessage = {
   id: string
@@ -20,16 +24,23 @@ export type RawMessage = {
   thread?: { id: string; name: string }
 }
 
+export type Overwrite = { id: string; type: number; allow: string; deny: string }
+
 type RawChannel = {
   id: string
   type: number
+  name: string
+  position: number
   guild_id: string
   parent_id: string | null
   last_message_id: string | null
+  permission_overwrites?: Overwrite[]
   thread_metadata?: { archived: boolean; archive_timestamp: string }
 }
 
-export type RecordedRequest = { method: string; url: string; headers: Record<string, string> }
+type RawRole = { id: string; name: string; members: Set<string> }
+
+export type RecordedRequest = { method: string; url: string; headers: Record<string, string>; body?: unknown }
 
 export function createFakeDiscord() {
   const channels = new Map<string, RawChannel>()
@@ -39,13 +50,18 @@ export function createFakeDiscord() {
   let lastId = 1320000000000000000n
   let throttled: { times: number; retryAfter: number }[] = []
   let down = false
+  let manageDenied = false
+  const members = new Set<string>()
+  const roles: RawRole[] = []
 
   const nextId = () => String(++lastId)
 
-  function addChannel(id: string, parentId: string | null = null): RawChannel {
+  function addChannel(id: string, parentId: string | null = null, name = `canal-${id.slice(-4)}`): RawChannel {
     const channel: RawChannel = {
       id,
       type: parentId ? 11 : 0,
+      name,
+      position: channels.size,
       guild_id: GUILD,
       parent_id: parentId,
       last_message_id: null
@@ -95,6 +111,55 @@ export function createFakeDiscord() {
   }
 
   const notFound = (code: number) => json(404, { message: 'Unknown', code })
+  const missingPermissions = () => json(403, { message: 'Missing Permissions', code: 50013 })
+
+  /** Rutas del servidor: sus canales, sus roles y sus miembros. */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: un `if` por ruta, como `handle`.
+  function handleGuild(method: string, path: string[], body: unknown): Response {
+    if (path[1] !== GUILD) return notFound(10004)
+    const [, , resource, id, sub, roleId] = path
+    // GET /guilds/{guild}/channels: los canales del servidor, sin los hilos.
+    if (resource === 'channels' && !id && method === 'GET')
+      return json(
+        200,
+        [...channels.values()].filter((c) => c.type !== 11)
+      )
+    // POST /guilds/{guild}/channels
+    if (resource === 'channels' && !id && method === 'POST') {
+      if (manageDenied) return missingPermissions()
+      const wanted = body as { name: string; type: number; parent_id?: string; permission_overwrites?: Overwrite[] }
+      const created = addChannel(nextId(), null, wanted.name)
+      created.type = wanted.type
+      created.parent_id = wanted.parent_id ?? null
+      created.permission_overwrites = wanted.permission_overwrites ?? []
+      return json(201, created)
+    }
+    // GET /guilds/{guild}/roles y POST /guilds/{guild}/roles
+    if (resource === 'roles' && method === 'GET')
+      return json(
+        200,
+        roles.map(({ id, name }) => ({ id, name }))
+      )
+    if (resource === 'roles' && method === 'POST') {
+      if (manageDenied) return missingPermissions()
+      const role = { id: nextId(), name: (body as { name: string }).name, members: new Set<string>() }
+      roles.push(role)
+      return json(200, { id: role.id, name: role.name })
+    }
+    if (resource !== 'members' || !id) return json(400, { message: 'Ruta desconocida', code: 0 })
+    if (!members.has(id)) return notFound(10007)
+    // GET /guilds/{guild}/members/{user}
+    if (!sub && method === 'GET') return json(200, { user: { id }, roles: [] })
+    // PUT /guilds/{guild}/members/{user}/roles/{role}
+    if (sub === 'roles' && method === 'PUT') {
+      if (manageDenied) return missingPermissions()
+      const role = roles.find((r) => r.id === roleId)
+      if (!role) return notFound(10011)
+      role.members.add(id)
+      return new Response(null, { status: 204 })
+    }
+    return json(400, { message: 'Ruta desconocida', code: 0 })
+  }
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 48 (máximo 15). Se refactoriza después de la demo (#30).
   async function handle(method: string, url: URL, body: unknown): Promise<Response> {
@@ -108,6 +173,8 @@ export function createFakeDiscord() {
       return json(400, { message: 'Ruta desconocida', code: 0 })
     const path = url.pathname.slice('/api/v10'.length).split('/').filter(Boolean)
 
+    // GET /users/@me: el bot.
+    if (path[0] === 'users' && path[1] === '@me' && method === 'GET') return json(200, BOT_USER)
     // GET /guilds/{guild}/threads/active
     if (path[0] === 'guilds' && path[2] === 'threads' && method === 'GET') {
       return json(200, {
@@ -115,6 +182,7 @@ export function createFakeDiscord() {
         members: []
       })
     }
+    if (path[0] === 'guilds') return handleGuild(method, path, body)
     if (path[0] !== 'channels') return json(400, { message: 'Ruta desconocida', code: 0 })
     const channel = channels.get(path[1])
     if (!channel) return notFound(10003)
@@ -188,6 +256,7 @@ export function createFakeDiscord() {
       )
     }
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+    requests.at(-1)!.body = body
     return handle(method, url, body)
   }
 
@@ -208,6 +277,22 @@ export function createFakeDiscord() {
     setDown(value: boolean) {
       down = value
     },
+    /** Que el bot no tenga Gestionar canales ni Gestionar roles. */
+    denyManage(value: boolean) {
+      manageDenied = value
+    },
+    /** Suma cuentas como miembros del servidor. */
+    addMembers(...ids: string[]) {
+      for (const id of ids) members.add(id)
+    },
+    /** Los canales del servidor, con su tipo, su categoría y sus permisos. */
+    guildChannels() {
+      return [...channels.values()].filter((c) => c.type !== 11)
+    },
+    /** Los roles del servidor, con sus miembros. */
+    roles() {
+      return roles.map((r) => ({ id: r.id, name: r.name, members: [...r.members] }))
+    },
     messagesOf(channelId: string) {
       return messages.get(channelId) ?? []
     }
@@ -220,11 +305,13 @@ export type FakeDiscord = ReturnType<typeof createFakeDiscord>
     forma cruda de la API: los mensajes con `threadId` van al canal del hilo. */
 export function seedFromSynthetic(
   fake: FakeDiscord,
-  channels: { id: string; messages: ExternalMessage[] }[],
-  files: Record<string, string>
+  channels: { id: string; name: string; messages: ExternalMessage[] }[],
+  files: Record<string, string>,
+  members: string[] = []
 ) {
+  fake.addMembers(...members)
   for (const channel of channels) {
-    fake.addChannel(channel.id)
+    fake.addChannel(channel.id, null, channel.name)
     for (const m of channel.messages.filter((m) => m.threadId === null)) fake.addMessage(toRaw(m, channel.id))
     for (const m of channel.messages.filter((m) => m.threadId !== null)) {
       if (!fake.messagesOf(m.threadId!).length) fake.startThread(channel.id, m.threadId!, 'Consulta')

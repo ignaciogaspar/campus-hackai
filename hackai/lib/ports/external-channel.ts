@@ -11,6 +11,8 @@ export type ExternalChannelCapabilities = {
   delivery: 'cursor' | 'evento'
   /** Soporta responder en hilos. */
   threads: boolean
+  /** Lista y crea canales en el servidor de la cátedra (`serverChannels`, `prepareGroup`, `createChannel`). */
+  servers: boolean
 }
 
 export type ExternalAttachment = {
@@ -45,6 +47,19 @@ export type ExternalDownload = { filename: string; contentType: string; bytes: U
 
 export type ExternalChannelError = 'canal-inexistente' | ExternalFailure
 
+/** Un canal de texto del servidor de la cátedra, con el nombre de su categoría si tiene. */
+export type ExternalServerChannel = { id: string; name: string; category: string | null }
+
+/** Quién escribe en un canal que crea HackAI: solo los docentes, o todos los del servidor. */
+export type ExternalWriters = 'docentes' | 'todos'
+
+/** El lugar de una materia en el servidor: su categoría y el rol de sus docentes. */
+export type ExternalGroup = { categoryId: string; teachersRoleId: string }
+
+/** `servidor-inexistente`: el servidor no existe o el bot no está en él. `sin-permisos`: el bot está, pero
+    le falta un permiso (en Discord, Gestionar canales o Gestionar roles). */
+export type ExternalServerError = 'servidor-inexistente' | 'sin-permisos' | ExternalFailure
+
 export type ExternalChannelPort = {
   capabilities: ExternalChannelCapabilities
 
@@ -63,4 +78,22 @@ export type ExternalChannelPort = {
     messageId: string
   ): Promise<Result<null, ExternalChannelError | 'mensaje-inexistente' | 'no-soportado'>>
   download(attachment: ExternalAttachment): Promise<Result<ExternalDownload, 'adjunto-vencido' | ExternalFailure>>
+
+  /** Los canales de texto del servidor, en el orden en que los muestra. */
+  serverChannels(serverId: string): Promise<Result<ExternalServerChannel[], ExternalServerError>>
+  /** Si esa cuenta es miembro del servidor. */
+  isMember(serverId: string, userId: string): Promise<Result<boolean, ExternalServerError>>
+  /** La categoría de la materia y el rol de sus docentes, que crea si no existen (los busca por nombre),
+      y les da el rol a las cuentas de los docentes que son miembros del servidor. */
+  prepareGroup(
+    serverId: string,
+    group: { name: string; teacherIds: string[] }
+  ): Promise<Result<ExternalGroup, ExternalServerError>>
+  /** Crea un canal de texto en la categoría de la materia. Con `docentes`, solo los del rol de docentes
+      (y el bot) escriben en él y en sus hilos; con `todos`, cualquiera del servidor. */
+  createChannel(
+    serverId: string,
+    group: ExternalGroup,
+    channel: { name: string; writers: ExternalWriters }
+  ): Promise<Result<ExternalServerChannel, ExternalServerError>>
 }
