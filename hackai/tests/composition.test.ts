@@ -33,12 +33,6 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   })
 })
 
-test('cada módulo expone su interfaz completa y lo que falta devuelve «no implementado»', async () => {
-  const { spaces } = compose({})
-  const p = 'persona'
-  assert.deepEqual(await spaces.openDirect(p, 'otra'), { ok: false, error: 'no-implementado' })
-})
-
 test('cada puerto se elige por su variable de entorno y un valor desconocido se rechaza al armar', () => {
   const system = compose({ HACKAI_SIU: 'memoria', HACKAI_CLOCK: 'sistema' })
   assert.equal(system.adapters.siu, 'memoria')

@@ -1,119 +1,46 @@
 /* Oferta de comisiones de una materia: cada una con su cupo, horario y
    docentes, y el botón para inscribirse en un paso o darse de baja. Qué
    comisiones se ofrecen, si la inscripción está abierta y si ya está
-   inscripto lo decide Cursada. */
-import { CalendarClock, CalendarX, MapPin, UserRound, Users } from 'lucide-react'
+   inscripto lo decide Cursada. Las mesas de examen de la materia están en
+   `final/`. */
+import { CalendarClock, CalendarX, MapPin, UserRound } from 'lucide-react'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
-import { shortDate } from '@/components/dates'
-import { capacityText, modalityName, scheduleLine } from '@/components/enrollment/format'
+import { subjectIdFrom } from '@/app/(app)/inscripciones/subject-param'
+import { modalityName, scheduleLine } from '@/components/enrollment/format'
+import { InfoRow, OfferCard } from '@/components/enrollment/offer-card'
 import { readErrorText } from '@/components/enrollment/read-error'
-import { SectionActions } from '@/components/enrollment/section-actions'
 import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { OfferItem } from '@/lib/core/studies'
-import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Comisiones · Campus HackAI' }
 
-function WindowNote({ item }: { item: OfferItem }) {
-  if (item.enrollmentOpen) {
-    return (
-      <>
-        Inscripción abierta hasta el <time dateTime={item.enrollmentEnd}>{shortDate(item.enrollmentEnd)}</time>
-      </>
-    )
-  }
-  return (
-    <>
-      Inscripción cerrada · fue del {shortDate(item.enrollmentStart)} al {shortDate(item.enrollmentEnd)}
-    </>
-  )
-}
-
 function SectionCard({ item }: { item: OfferItem }) {
   if (item.target.kind !== 'comision') return null
-  const capacity = capacityText(item)
-  const label = `${item.subjectName}, comisión ${item.name}`
   const modality = modalityName(item.modality)
   const place = modality === item.location ? [item.location] : [modality, item.location]
-
   return (
-    <li
-      className={cn(
-        'flex flex-col gap-3 rounded-[22px] bg-card p-4 shadow-card',
-        !item.enrollmentOpen && 'bg-muted/60 shadow-none'
-      )}
+    <OfferCard
+      item={item}
+      title={`Comisión ${item.name}`}
+      label={`${item.subjectName}, comisión ${item.name}`}
+      enrollAction={enrollAction}
+      dropAction={dropAction}
     >
-      <div className='flex items-start justify-between gap-3'>
-        <div className='min-w-0'>
-          <h2 className='text-base leading-snug font-semibold'>Comisión {item.name}</h2>
-          <p className='text-sm text-muted-foreground'>{item.period}</p>
-        </div>
-        {item.alreadyEnrolled && (
-          <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary'>
-            Inscripto
-          </span>
-        )}
-      </div>
-
-      <dl className='flex flex-col gap-1.5 text-sm'>
-        <div className='flex gap-2'>
-          <dt>
-            <CalendarClock aria-hidden className='mt-0.5 size-4 text-muted-foreground' />
-            <span className='sr-only'>Horario</span>
-          </dt>
-          <dd>{item.schedule.map(scheduleLine).join(' · ') || 'Horario a confirmar'}</dd>
-        </div>
-        <div className='flex gap-2'>
-          <dt>
-            <MapPin aria-hidden className='mt-0.5 size-4 text-muted-foreground' />
-            <span className='sr-only'>Lugar</span>
-          </dt>
-          <dd>{place.filter(Boolean).join(' · ')}</dd>
-        </div>
-        <div className='flex gap-2'>
-          <dt>
-            <UserRound aria-hidden className='mt-0.5 size-4 text-muted-foreground' />
-            <span className='sr-only'>Docentes</span>
-          </dt>
-          <dd>{item.teachers.map((t) => t.name).join(', ') || 'Docentes a confirmar'}</dd>
-        </div>
-        <div className='flex gap-2'>
-          <dt>
-            <Users aria-hidden className='mt-0.5 size-4 text-muted-foreground' />
-            <span className='sr-only'>Cupo</span>
-          </dt>
-          <dd className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</dd>
-        </div>
-      </dl>
-
-      <p className='text-xs text-muted-foreground'>
-        <WindowNote item={item} />
-      </p>
-
-      <SectionActions
-        sectionId={item.target.sectionId}
-        subjectId={item.subjectId}
-        label={label}
-        status={item}
-        enrollAction={enrollAction}
-        dropAction={dropAction}
-      />
-    </li>
+      <InfoRow icon={CalendarClock} label='Horario'>
+        {item.schedule.map(scheduleLine).join(' · ') || 'Horario a confirmar'}
+      </InfoRow>
+      <InfoRow icon={MapPin} label='Lugar'>
+        {place.filter(Boolean).join(' · ')}
+      </InfoRow>
+      <InfoRow icon={UserRound} label='Docentes'>
+        {item.teachers.map((t) => t.name).join(', ') || 'Docentes a confirmar'}
+      </InfoRow>
+    </OfferCard>
   )
-}
-
-/** El id de la materia de la URL. Un `%` mal formado no es una materia: 404. */
-function subjectIdFrom(segment: string): string {
-  try {
-    return decodeURIComponent(segment)
-  } catch {
-    notFound()
-  }
 }
 
 export default async function OfertaPage({ params }: { params: Promise<{ materia: string }> }) {

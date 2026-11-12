@@ -60,9 +60,11 @@ const DEFAULT_NAMES: Partial<Record<ChannelKind, string>> = {
 }
 
 /** Avisos, Consultas y Material para los canales por defecto; los que crea un
-    docente, con `#`. Si la persona ve canales de más de una comisión, cada uno
-    lleva su comisión: «Avisos · A». */
+    docente, con `#`; un directo, con el nombre de la otra persona. Si la
+    persona ve canales de más de una comisión, cada uno lleva su comisión:
+    «Avisos · A». */
 export function channelLabel(channel: Channel, severalSections: boolean): string {
+  if (channel.kind === 'directo') return channel.counterpart?.name ?? 'Mensaje directo'
   const base = DEFAULT_NAMES[channel.kind] ?? `#${channel.name}`
   return severalSections && channel.sectionName ? `${base} · ${channel.sectionName}` : base
 }
@@ -80,7 +82,26 @@ export function hasSeveralSections(channels: Channel[]): boolean {
   return sections.size > 1
 }
 
-export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal' }
+/** Si el canal va en la pestaña Directos y no suelto en el riel. */
+export const isDirect = (channel: Channel) => channel.kind === 'directo'
+
+/** El espacio de una materia, como lo necesitan los formularios: la ruta va por materia y el módulo, por espacio. */
+export type SpaceRef = { subjectId: string; spaceId: string }
+
+/** Una pieza del riel de canales: un canal, o la pestaña Directos, que junta los canales directos. */
+export type RailTab = {
+  id: string
+  href: string
+  label: string
+  kind: ChannelKind
+  /** A quién llega: «Toda la materia», «Comisión A». */
+  audience: string
+  unread: number
+  selected: boolean
+}
+
+/** `?vista=directos` es la lista de mensajes directos; un canal, directo o no, va en `?canal=` con su id. */
+export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal'; vista?: 'directos' }
 
 /** El enlace a una pestaña, un hilo o un filtro del espacio. */
 export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {

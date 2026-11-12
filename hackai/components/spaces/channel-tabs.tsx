@@ -1,5 +1,7 @@
 /* Los canales del espacio como un riel (components/ui/rail.tsx), con sus no
-   leídos.
+   leídos. Los canales directos no van sueltos: los junta la pestaña Directos,
+   al final, con la suma de sus no leídos, que queda elegida también mientras
+   se lee uno.
    - En el celular, un riel de hasta cuatro piezas con ícono: los primeros
      canales y, si no entran todos o la persona es docente, «Más», que abre
      una hoja con el resto y «Crear canal».
@@ -11,8 +13,15 @@ import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { ArrowKeysList } from '@/components/spaces/arrow-keys'
 import { ChannelIcon } from '@/components/spaces/channel-icon'
-import { channelAudience, channelLabel, hasSeveralSections, spaceHref } from '@/components/spaces/format'
-import { type MoreChannel, MoreChannels } from '@/components/spaces/more-channels'
+import {
+  channelAudience,
+  channelLabel,
+  hasSeveralSections,
+  isDirect,
+  type RailTab,
+  spaceHref
+} from '@/components/spaces/format'
+import { MoreChannels } from '@/components/spaces/more-channels'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Channel } from '@/lib/core/spaces'
@@ -23,37 +32,31 @@ const PHONE_SLOTS = 4
 type Props = {
   subjectId: string
   channels: Channel[]
+  /** El canal abierto, que puede ser uno directo; `null` si no hay ninguno abierto. */
   selectedId: string | null
   /** Docente: suma «Canal», que abre el formulario de canal nuevo. */
   canManage: boolean
   creating: boolean
+  /** Si está a la vista la lista de Directos. */
+  showingDirects: boolean
 }
 
-type Tab = { channel: Channel; href: string; label: string; selected: boolean }
+type RailProps = Pick<Props, 'subjectId' | 'canManage' | 'creating'> & { tabs: RailTab[] }
 
-function PhoneRail({ subjectId, tabs, canManage, creating }: Omit<Props, 'channels' | 'selectedId'> & { tabs: Tab[] }) {
+function PhoneRail({ subjectId, tabs, canManage, creating }: RailProps) {
   const needsMore = canManage || tabs.length > PHONE_SLOTS
   const shown = needsMore ? tabs.slice(0, PHONE_SLOTS - 1) : tabs
-  const rest = needsMore ? tabs.slice(PHONE_SLOTS - 1) : []
-  const more: MoreChannel[] = rest.map(({ channel, href, label, selected }) => ({
-    id: channel.id,
-    href,
-    label,
-    kind: channel.kind,
-    audience: channelAudience(channel),
-    unread: channel.unread,
-    selected
-  }))
+  const more = needsMore ? tabs.slice(PHONE_SLOTS - 1) : []
 
   return (
     <nav aria-label='Canales del espacio' className='lg:hidden'>
       <ArrowKeysList className={railTrack({ size: 'md' })}>
-        {shown.map(({ channel, href, label, selected }) => (
-          <li key={channel.id} className='flex min-w-0 [&>*]:flex-1'>
+        {shown.map(({ id, kind, href, label, unread, selected }) => (
+          <li key={id} className='flex min-w-0 [&>*]:flex-1'>
             <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'md' })}>
-              <ChannelIcon kind={channel.kind} />
+              <ChannelIcon kind={kind} />
               <span className='max-w-full truncate px-1'>{label}</span>
-              <UnreadCount count={channel.unread} className='absolute top-1 right-[calc(50%-28px)]' />
+              <UnreadCount count={unread} className='absolute top-1 right-[calc(50%-28px)]' />
             </Link>
           </li>
         ))}
@@ -71,21 +74,16 @@ function PhoneRail({ subjectId, tabs, canManage, creating }: Omit<Props, 'channe
   )
 }
 
-function DesktopRail({
-  subjectId,
-  tabs,
-  canManage,
-  creating
-}: Omit<Props, 'channels' | 'selectedId'> & { tabs: Tab[] }) {
+function DesktopRail({ subjectId, tabs, canManage, creating }: RailProps) {
   return (
     <nav aria-label='Canales del espacio' className='hidden lg:sticky lg:top-4 lg:block'>
       <ArrowKeysList className={railTrack({ size: 'column' })}>
-        {tabs.map(({ channel, href, label, selected }) => (
-          <li key={channel.id} className='flex [&>*]:flex-1'>
+        {tabs.map(({ id, kind, href, label, unread, selected }) => (
+          <li key={id} className='flex [&>*]:flex-1'>
             <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'column' })}>
-              <ChannelIcon kind={channel.kind} />
+              <ChannelIcon kind={kind} />
               <span className='min-w-0 flex-1 truncate'>{label}</span>
-              <UnreadCount count={channel.unread} />
+              <UnreadCount count={unread} />
             </Link>
           </li>
         ))}
@@ -107,14 +105,36 @@ function DesktopRail({
   )
 }
 
-export function ChannelTabs({ subjectId, channels, selectedId, canManage, creating }: Props) {
+/** La pestaña Directos: queda elegida con la lista a la vista y también mientras se lee una conversación. */
+function directsTab(subjectId: string, directs: Channel[], selected: boolean): RailTab {
+  return {
+    id: 'directos',
+    href: spaceHref(subjectId, { vista: 'directos' }),
+    label: 'Directos',
+    kind: 'directo',
+    audience: 'Mensajes privados',
+    unread: directs.reduce((sum, c) => sum + c.unread, 0),
+    selected
+  }
+}
+
+export function ChannelTabs({ subjectId, channels, selectedId, canManage, creating, showingDirects }: Props) {
   const several = hasSeveralSections(channels)
-  const tabs = channels.map((channel) => ({
-    channel,
-    href: spaceHref(subjectId, { canal: channel.id }),
-    label: channelLabel(channel, several),
-    selected: channel.id === selectedId && !creating
-  }))
+  const directs = channels.filter(isDirect)
+  const tabs: RailTab[] = channels
+    .filter((c) => !isDirect(c))
+    .map((channel) => ({
+      id: channel.id,
+      href: spaceHref(subjectId, { canal: channel.id }),
+      label: channelLabel(channel, several),
+      kind: channel.kind,
+      audience: channelAudience(channel),
+      unread: channel.unread,
+      selected: channel.id === selectedId && !creating
+    }))
+  // Directos va siempre, aunque esté vacío: ahí el alumno les escribe a los docentes de su comisión.
+  const readingDirect = directs.some((c) => c.id === selectedId)
+  tabs.push(directsTab(subjectId, directs, !creating && (showingDirects || readingDirect)))
   return (
     <>
       <PhoneRail subjectId={subjectId} tabs={tabs} canManage={canManage} creating={creating} />

@@ -27,10 +27,11 @@ export function modalityName(modality: OfferItem['modality']): string | null {
 }
 
 /** Cupo para mostrar, con los lugares que calcula Cursada: «Quedan 12 lugares
-    de 40», «Sin cupo» o «Sin límite de cupo». */
+    de 40», «Queda 1 lugar de 2», «Sin cupo» o «Sin límite de cupo». */
 export function capacityText(item: Pick<OfferItem, 'capacity' | 'spotsLeft'>): { text: string; full: boolean } {
   const { capacity, spotsLeft } = item
   if (capacity === null || spotsLeft === null) return { text: 'Sin límite de cupo', full: false }
   if (spotsLeft === 0) return { text: `Sin cupo · ${capacity} de ${capacity} lugares ocupados`, full: true }
-  return { text: `Quedan ${spotsLeft} ${spotsLeft === 1 ? 'lugar' : 'lugares'} de ${capacity}`, full: false }
+  const left = spotsLeft === 1 ? 'Queda 1 lugar' : `Quedan ${spotsLeft} lugares`
+  return { text: `${left} de ${capacity}`, full: false }
 }

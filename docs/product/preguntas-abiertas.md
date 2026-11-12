@@ -132,12 +132,20 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Hipótesis:** así lo implementa Cursada desde los issues #17 y #18 (`openEnrollments`), siempre de su facultad, con la inscripción abierta, una por materia y las que cierran antes primero:
   - cursada: materias que no cursa en ninguna facultad (una sola comisión vigente por materia, como en la inscripción), no tiene regulares ni aprobó;
   - examen: materias que no aprobó y tiene regulares o está cursando (puede regularizar antes de la mesa, y entonces se avisa), si no está inscripto ya a una mesa de esa materia.
-  - Salen tengan o no cupo: la oferta muestra cuántos lugares quedan, así que una materia llena llega a «sin cupo» en vez de desaparecer. Inscripciones muestra solo las de cursada hasta la inscripción a finales (#20).
+  - Salen tengan o no cupo: la oferta muestra cuántos lugares quedan, así que una materia llena llega a «sin cupo» en vez de desaparecer. Inscripciones muestra las de cursada y las de examen; cada una lleva a su oferta de comisiones o de mesas (#20).
 - **Opciones:** como está; ocultar las que no tienen cupo en Hoy; solo mesas de materias ya regulares (sin las que está cursando); sumar correlatividades cuando el SIU las exponga.
 - **Estado:** abierta
 - **Decisión:** pendiente
 
-### 17. ¿Quién puede publicar en HackAI desde Discord?
+### 17. ¿Se puede escribir un mensaje directo en una materia archivada?
+
+- **Por qué importa:** quien ya terminó de cursar puede necesitar escribirle al docente, por ejemplo antes de rendir el final, pero los espacios y sus mensajes directos se archivan al cerrar el cuatrimestre (#7).
+- **Hipótesis:** desde el issue #19, `openDirect` acepta cualquier comisión en común del espacio, actual o archivada, como el resto del espacio: quien dictó una comisión archivada sigue escribiendo en sus `#avisos`. Como las novedades cuentan solo las comisiones actuales, un mensaje directo en una materia archivada no llega a la campana.
+- **Opciones:** como está; solo con una comisión actual en común; dejar leer pero no escribir en un espacio archivado.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 18. ¿Quién puede publicar en HackAI desde Discord?
 
 - **Por qué importa:** en Discord escribe cualquiera que tenga acceso al canal. Si todo lo que llega entrara a HackAI, un alumno podría subir material o publicar un aviso que en HackAI solo publican los docentes.
 - **Hipótesis:** así lo implementa Espacios desde #15: en el canal de material solo entran los adjuntos de docentes de la materia, y en `#avisos`, los mensajes de docentes de la comisión, reconocidos por su cuenta de Discord vinculada en Personas. Bots y webhooks entran, porque los configura quien administra el servidor. En `#consultas` y en los libres entra todo. Lo que no entra se ignora sin avisar.
@@ -145,7 +153,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
-### 18. ¿El material que se sube en HackAI se sube también a Discord?
+### 19. ¿El material que se sube en HackAI se sube también a Discord?
 
 - **Por qué importa:** hoy, al subir material en HackAI, al canal de material vinculado llega un aviso con el nombre del archivo, pero no el archivo: quien está en Discord tiene que ir a HackAI a abrirlo. Al revés, lo que se sube en Discord sí se copia a HackAI.
 - **Opciones:** como está, solo el aviso, y el archivo queda en HackAI detrás de la sesión; subir también el archivo a Discord, lo que exige sumar al puerto del canal externo «publicar con adjunto» (en Discord, un envío multipart) y deja una copia del material en un tercero; mandar un enlace a HackAI.

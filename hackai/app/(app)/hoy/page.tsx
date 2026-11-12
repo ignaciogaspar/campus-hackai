@@ -7,9 +7,10 @@
 
    Al docente, por ahora, lo saluda, dice dónde dicta y lo lleva a Mis materias:
    su Hoy no está diseñado todavía, así que la página elige la vista según el
-   rol de la sesión y al docente no le pide Hoy. Más allá de eso y de sumar los
-   no leídos para la campana, no decide nada: qué hay en cada parte lo dicen
-   Personas y Hoy. */
+   rol de la sesión y al docente no le pide Hoy: su campana suma los no leídos
+   de Espacios, como los mensajes directos de sus alumnos. Más allá de eso y de
+   sumar los no leídos, no decide nada: qué hay en cada parte lo dicen
+   Personas, Hoy y Espacios. */
 import { CalendarDays } from 'lucide-react'
 import type { Metadata } from 'next'
 import { longDay } from '@/components/dates'
@@ -50,17 +51,26 @@ function TeacherHome() {
   )
 }
 
+const total = (items: { count: number }[]) => items.reduce((n, u) => n + u.count, 0)
+
+/** Para la campana del docente: lo que no leyó en sus espacios, como los directos de sus alumnos. */
+async function unreadInSpaces(personId: string): Promise<number> {
+  const read = await system().spaces.unreadFor(personId)
+  return read.ok ? total(read.value) : 0
+}
+
 export default async function HoyPage() {
   const session = await requireSession()
   const student = session.role === 'alumno'
   // Hoy no depende de que Personas responda: con el SIU caído, muestra lo último que leyó.
-  const [found, today] = await Promise.all([
+  const [found, today, teacherUnread] = await Promise.all([
     system().people.get(session.personId),
-    student ? system().today.today(session.personId) : null
+    student ? system().today.today(session.personId) : null,
+    student ? 0 : unreadInSpaces(session.personId)
   ])
   const person = found.ok ? found.value : null
   const view: TodayView | null = today?.ok ? today.value : null
-  const unread = view ? view.unread.reduce((n, u) => n + u.count, 0) : 0
+  const unread = view ? total(view.unread) : teacherUnread
 
   let content = <TeacherHome />
   if (view) content = <TodayScreen view={view} />
