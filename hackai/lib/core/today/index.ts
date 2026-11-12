@@ -33,7 +33,6 @@ import type { PersonId } from '@/lib/core/people'
 import type { OpenQuestion, Spaces, UnreadItem } from '@/lib/core/spaces'
 import {
   compareUpcoming,
-  type Fresh,
   type MySection,
   type MySubject,
   type MySubjects,
@@ -42,6 +41,7 @@ import {
   type UpcomingItem
 } from '@/lib/core/studies'
 import { daysBetween } from '@/lib/dates'
+import { staleSince } from '@/lib/fresh'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
 
@@ -168,11 +168,6 @@ function failed<P extends string>(reads: Record<P, Read<unknown>>): P[] {
   return (Object.keys(reads) as P[]).filter((part) => !reads[part].ok)
 }
 
-/** La hora de la lectura desactualizada más vieja, o `null`. */
-function oldestStale(reads: Read<Fresh<unknown>>[]): string | null {
-  return reads.flatMap((r) => (r.ok && r.value.stale ? [r.value.readAt] : [])).sort()[0] ?? null
-}
-
 export function createToday({ studies, spaces, clock }: TodayDeps): Today {
   return {
     async teaching(personId) {
@@ -194,7 +189,7 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         questions: valueOr(questions, []),
         dates: (dates.ok ? dates.value.data : []).filter((d) => d.date >= now),
         unread: unreadItems,
-        staleSince: oldestStale([sections, dates]),
+        staleSince: staleSince([sections, dates]),
         unavailable: failed<TeachingPart>(reads)
       })
     },
@@ -222,7 +217,7 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         next: nextExam(coming, now),
         unread: valueOr(unread, []),
         openEnrollments: openEnrollments.ok ? openEnrollments.value.data.filter((o) => o.closesAt >= now) : [],
-        staleSince: oldestStale([subjects, upcoming, openEnrollments]),
+        staleSince: staleSince([subjects, upcoming, openEnrollments]),
         unavailable: failed<TodayPart>(reads)
       })
     }

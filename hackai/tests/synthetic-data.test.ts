@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
+import { createFixedClock } from '@/lib/adapters/memoria/clock'
+import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
+import { createMemoryFiles } from '@/lib/adapters/memoria/files'
+import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
+import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
+import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
+import { createPeople } from '@/lib/core/people'
+import { createSpaces } from '@/lib/core/spaces'
+import { createStudies } from '@/lib/core/studies'
+import { createToday } from '@/lib/core/today'
 
 const { siu, moodle, discord, people } = syntheticData
 
@@ -125,4 +137,128 @@ test('las notas de la historia y de actuación provisoria apuntan a materias, co
     assert.ok(personIds.has(r.personId), r.id)
     assert.equal(assessmentOf(r.assessmentId)?.sectionId, r.sectionId, r.id)
   }
+})
+
+// La historia de la demo: con el reloj del sistema, el set tiene que contarla el
+// jueves 12/11 (ensayo) y el viernes 13/11 (demo y pitch), al mediodía.
+
+/** El alumno de la demo: Tomás Aguirre, con Discord vinculado. */
+const DEMO_STUDENT = 'p-taguirre'
+/** Cada día, con los días que faltan hasta el segundo parcial de Análisis Matemático I (lunes 16/11). */
+const DEMO_DAYS = [
+  { day: 'jueves 12/11', now: '2026-11-12T12:00:00-03:00', daysToExam: 4 },
+  { day: 'viernes 13/11', now: '2026-11-13T12:00:00-03:00', daysToExam: 3 }
+]
+
+/** Personas, Cursada, Espacios y Hoy reales sobre los puertos en memoria, con el reloj en esa fecha. */
+function systemAt(now: string) {
+  const clock = createFixedClock(new Date(now).toISOString())
+  const siuPort = createMemorySiu(syntheticData, clock)
+  const classroom = createMemoryClassroom(syntheticData)
+  const peopleModule = createPeople({
+    identity: createMemoryIdentity(syntheticData),
+    siu: siuPort,
+    store: createMemoryPeopleStore(syntheticData)
+  })
+  const studies = createStudies({ people: peopleModule, siu: siuPort, classroom, clock })
+  const spaces = createSpaces({
+    people: peopleModule,
+    studies,
+    externalChannel: createMemoryExternalChannel(syntheticData, clock),
+    classroom,
+    files: createMemoryFiles(),
+    clock,
+    timer: () => 0,
+    store: createMemorySpacesStore()
+  })
+  return { studies, classroom, today: createToday({ studies, spaces, clock }) }
+}
+
+for (const { day, now, daysToExam } of DEMO_DAYS) {
+  test(`el ${day} Hoy muestra ese día y un parcial dentro de los próximos 7 días, con los días que faltan`, async () => {
+    const { today } = systemAt(now)
+
+    const result = await today.today(DEMO_STUDENT)
+
+    assert.ok(result.ok)
+    assert.equal(result.value.now, new Date(now).toISOString())
+    const next = result.value.next
+    assert.deepEqual([next?.kind, next?.subjectCode, next?.name], ['parcial', 'AM1', 'Segundo parcial'])
+    assert.equal(next?.daysLeft, daysToExam)
+    assert.ok(daysToExam <= 7)
+  })
+
+  test(`el ${day} el alumno de la demo tiene una cursada abierta con lugar y otra comisión sin cupo`, async () => {
+    const { studies } = systemAt(now)
+
+    const open = await studies.openEnrollments(DEMO_STUDENT)
+    assert.ok(open.ok)
+    const offers = await Promise.all(
+      open.value.data
+        .filter((o) => o.kind === 'cursada')
+        .map((o) => studies.offer(DEMO_STUDENT, { kind: 'cursada', subjectId: o.subjectId }))
+    )
+    const sections = offers.flatMap((o) => (o.ok ? o.value : [])).filter((s) => s.enrollmentWindow === 'abierta')
+    const available = sections.filter((s) => !s.alreadyEnrolled && !s.enrolledElsewhere && s.spotsLeft !== 0)
+    assert.ok(available.length >= 1, 'falta una comisión abierta con lugar a la que se pueda inscribir')
+    assert.ok(
+      sections.some((s) => s.spotsLeft === 0),
+      'falta una comisión sin cupo'
+    )
+  })
+
+  test(`el ${day} el alumno de la demo tiene dos actividades con créditos abiertas, una que cierra en pocos días`, async () => {
+    const { studies } = systemAt(now)
+
+    const open = await studies.openEnrollments(DEMO_STUDENT)
+
+    assert.ok(open.ok)
+    const activities = open.value.data.filter((o) => o.kind === 'actividad')
+    assert.ok(activities.length >= 2, 'faltan actividades con créditos abiertas')
+    assert.ok(activities.every((a) => a.credits !== null && a.credits > 0))
+    assert.ok(
+      activities.some((a) => a.closesInDays <= 4),
+      'falta una actividad que cierre en pocos días'
+    )
+  })
+
+  test(`el ${day} el alumno de la demo puede anotarse a una mesa de examen a la que le queda un solo lugar`, async () => {
+    const { studies } = systemAt(now)
+
+    const open = await studies.openEnrollments(DEMO_STUDENT)
+    assert.ok(open.ok)
+    const offers = await Promise.all(
+      open.value.data
+        .filter((o) => o.kind === 'examen')
+        .map((o) => studies.offer(DEMO_STUDENT, { kind: 'examen', subjectId: o.subjectId }))
+    )
+    const boards = offers.flatMap((o) => (o.ok ? o.value : []))
+    assert.ok(
+      boards.some((b) => b.enrollmentWindow === 'abierta' && !b.alreadyEnrolled && b.spotsLeft === 1),
+      'falta una mesa abierta con un solo lugar'
+    )
+  })
+
+  test(`el ${day} al menos dos materias actuales del alumno de la demo tienen avisos, material y tareas con fecha`, async () => {
+    const { studies, classroom } = systemAt(now)
+
+    const subjects = await studies.subjectsOf(DEMO_STUDENT)
+
+    assert.ok(subjects.ok)
+    const complete = []
+    for (const subject of subjects.value.data.current) {
+      const courseIds = subject.classrooms.map((c) => c.courseId)
+      const announcements = await Promise.all(courseIds.map((id) => classroom.announcements(id)))
+      const contents = await Promise.all(courseIds.map((id) => classroom.contents(id)))
+      const hasAnnouncements = announcements.some((r) => r.ok && r.value.length > 0)
+      const hasContents = contents.some((r) => r.ok && r.value.length > 0)
+      if (hasAnnouncements && hasContents && subject.assignments.length > 0) complete.push(subject.code)
+    }
+    assert.ok(complete.length >= 2, `solo ${complete.join(', ') || 'ninguna'} tiene avisos, material y tareas`)
+  })
+}
+
+test('algún alumno tiene un final desaprobado', () => {
+  const students = new Set(siu.persons.filter((p) => p.role === 'alumno').map((p) => p.id))
+  assert.ok(siu.history.some((h) => students.has(h.personId) && h.type === 'examen' && h.result === 'desaprobado'))
 })

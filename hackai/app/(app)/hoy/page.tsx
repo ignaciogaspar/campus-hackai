@@ -5,11 +5,13 @@
    docente, sus comisiones, las consultas sin resolver, lo que no leyó y sus
    parciales y mesas (components/today/teaching-screen.tsx). Si el SIU o Moodle
    no responden, cada parte muestra lo último leído o su error y el resto se ve
-   igual. La campana suma los no leídos que da Hoy.
+   igual. La campana suma los no leídos que da Hoy; si Hoy no responde, se los
+   pide a Espacios.
 
    No decide nada: qué hay en cada parte lo dicen Personas y Hoy. */
 import type { Metadata } from 'next'
 import { longDay } from '@/components/dates'
+import { unreadTotal } from '@/components/news/format'
 import { activeProgram, firstName } from '@/components/session/person-text'
 import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'
@@ -36,8 +38,6 @@ function belonging(person: Person): string {
   return program ? `Cursás ${program.name}` : `Cursás en la ${person.school.name}`
 }
 
-const total = (items: { count: number }[]) => items.reduce((n, u) => n + u.count, 0)
-
 /** El Hoy que le toca a la sesión: el del alumno o el del docente. */
 async function todayFor(personId: string, student: boolean) {
   const { today } = system()
@@ -63,6 +63,8 @@ export default async function HoyPage() {
   ])
   const person = found.ok ? found.value : null
   const view: TodayView | TeachingView | null = today.ok ? today.view : null
+  // Hoy ya trae los no leídos; si no respondió, la campana se los pide a Espacios.
+  const unread = view ? unreadTotal(view.unread) : undefined
 
   return (
     <>
@@ -70,7 +72,7 @@ export default async function HoyPage() {
         title={person ? `Hola, ${firstName(person)}` : 'Hoy'}
         kicker={view ? longDay(view.now) : person ? belonging(person) : undefined}
         school={person?.school.name}
-        unread={view ? total(view.unread) : 0}
+        unread={unread}
         actions={
           person ? (
             <>

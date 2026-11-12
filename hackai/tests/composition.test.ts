@@ -33,6 +33,18 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   })
 })
 
+test('con el reloj del sistema, el de la demo, Hoy se arma con la fecha y la hora reales y no con las del set', async () => {
+  const { today } = compose({ HACKAI_CLOCK: 'sistema' })
+
+  const before = Date.now()
+  const result = await today.today('p-taguirre')
+  const after = Date.now()
+
+  assert.ok(result.ok)
+  const now = Date.parse(result.value.now)
+  assert.ok(before <= now && now <= after, `Hoy dice ${result.value.now}`)
+})
+
 test('cada puerto se elige por su variable de entorno y un valor desconocido se rechaza al armar', () => {
   const system = compose({ HACKAI_SIU: 'memoria', HACKAI_CLOCK: 'sistema' })
   assert.equal(system.adapters.siu, 'memoria')

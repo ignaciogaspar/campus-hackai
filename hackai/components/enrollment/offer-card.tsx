@@ -52,7 +52,7 @@ export function OfferCard({ item, title, label, enrollAction, dropAction, childr
     <li
       className={cn(
         'flex flex-col gap-3 rounded-[22px] bg-card p-4 shadow-card',
-        !item.enrollmentOpen && 'bg-muted/60 shadow-none'
+        item.enrollmentWindow !== 'abierta' && 'bg-muted/60 shadow-none'
       )}
     >
       <div className='flex items-start justify-between gap-3'>

@@ -65,7 +65,7 @@ npm test
 npm run build
 ```
 
-Migraciones: los archivos de `hackai/supabase/migrations/` se aplican en orden con `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f <archivo>`.
+Base de la demo: `npm run demo:preparar` aplica las migraciones, las tablas simuladas y los seeds y vacía lo de los ensayos, y `npm run demo:verificar` dice si está lista. Todo en `hackai/README.md`, «Base de la demo».
 
 ## Documentación
 

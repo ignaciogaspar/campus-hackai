@@ -15,7 +15,7 @@ Cuánto tarda en llegar un aviso o un material nuevo.
 Es mecánico y está acotado:
 
 - **HackAI → Discord:** inmediato. Se envía al publicar; si Discord no responde, queda pendiente y sale en la siguiente sincronización.
-- **Discord → HackAI, con el canal abierto:** 20 segundos como mucho. La pantalla pregunta cada 15 segundos si hay algo nuevo, y HackAI lee Discord como mucho una vez cada 5 segundos por espacio.
+- **Discord → HackAI, con el canal abierto:** 15 segundos como mucho. La pantalla pregunta cada 5 segundos si hay algo nuevo, y HackAI lee Discord como mucho una vez cada 10 segundos por espacio.
 - **Discord → HackAI, entrando después:** lo ve al abrir el espacio.
 
 | Fecha | Sentido | Resultado | Notas |

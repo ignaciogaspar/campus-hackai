@@ -81,9 +81,12 @@ export function visibleChannels(member: Membership, channels: StoredChannel[]): 
 const MAX_NAME = 40
 
 /** El nombre como se guarda: sin `#`, en minúsculas, con guiones en vez de
-    espacios y solo letras, dígitos, `-` y `_`. `null` si no queda nada. */
+    espacios y solo letras, dígitos, `-` y `_`. `null` si no queda nada. Las
+    tildes se juntan con su letra antes (NFC): pegada de un PDF o escrita en
+    una Mac, «á» puede llegar como «a» más la tilde suelta, que no es letra. */
 export function channelName(raw: string): string | null {
   const name = raw
+    .normalize('NFC')
     .trim()
     .replace(/^#+/, '')
     .toLowerCase()

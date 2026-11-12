@@ -43,7 +43,8 @@ export function useSpaceAction(action: SpaceAction) {
   const [state, dispatch, pending] = useActionState(action, IDLE)
   const [localError, setLocalError] = useState<string | null>(null)
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  /** Manda el formulario. Devuelve si lo mandó: no lo hace si un archivo pasa el máximo. */
+  function submit(event: FormEvent<HTMLFormElement>): boolean {
     event.preventDefault()
     const submitter = (event.nativeEvent as SubmitEvent).submitter
     const data = new FormData(event.currentTarget, submitter)
@@ -53,10 +54,11 @@ export function useSpaceAction(action: SpaceAction) {
     }
     if (tooLarge(data)) {
       setLocalError(TOO_LARGE)
-      return
+      return false
     }
     setLocalError(null)
     startTransition(() => dispatch(data))
+    return true
   }
 
   const error = localError ?? (state.status === 'error' ? state.message : null)
@@ -90,18 +92,18 @@ export function ActionForm({
   )
 }
 
-/** El error o la confirmación de un formulario, anunciados al lector de pantalla. */
+/** El error o la confirmación de un formulario, anunciados al lector de pantalla. Los dos párrafos
+    están siempre, ocultos si no tienen texto: un lector de pantalla anuncia lo que cambia adentro de
+    una región que ya estaba, no una que aparece con el texto puesto. */
 export function FormFeedback({ error, success }: { error: string | null; success?: string | null }) {
   return (
     <>
       <p role='alert' className={cn('text-[0.8125rem] font-semibold text-destructive', !error && 'sr-only')}>
         {error}
       </p>
-      {success && (
-        <p role='status' className='text-[0.8125rem] font-semibold text-success'>
-          {success}
-        </p>
-      )}
+      <p role='status' className={cn('text-[0.8125rem] font-semibold text-success', !success && 'sr-only')}>
+        {success}
+      </p>
     </>
   )
 }

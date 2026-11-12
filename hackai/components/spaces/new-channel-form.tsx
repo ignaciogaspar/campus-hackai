@@ -1,6 +1,8 @@
 /* Canal nuevo, para el docente: un nombre y quién lo ve, toda la materia o una
-   de las comisiones que dicta. Si sale bien, la acción lleva al canal nuevo.
-   Si el nombre no sirve o se repite, lo dice Espacios. */
+   de las comisiones que dicta. El nombre se escribe como venga, con espacios,
+   mayúsculas o tildes: Espacios lo pasa a minúsculas y con guiones. Si sale
+   bien, la acción lleva al canal nuevo, ya con su nombre final. Si no queda
+   nada del nombre o se repite, lo dice Espacios. */
 import Link from 'next/link'
 import { createChannel } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -42,7 +44,7 @@ export function NewChannelForm({ subjectId, spaceId, sections, cancelHref }: Pro
             />
           </span>
           <span id='canal-nuevo-ayuda' className='font-normal text-muted-foreground'>
-            En minúsculas y con guiones en vez de espacios.
+            Escribilo como quieras: «Parciales Viejos» queda #parciales-viejos.
           </span>
         </label>
         <fieldset className='flex flex-col gap-1'>

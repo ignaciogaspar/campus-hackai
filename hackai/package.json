@@ -17,6 +17,9 @@
     "moodle:seed": "tsx scripts/moodle-seed.ts",
     "people:seed": "tsx scripts/people-seed.ts",
     "discord:probar": "node --env-file-if-exists=.env.local --import tsx scripts/discord-probar.ts",
+    "demo:preparar": "node --env-file-if-exists=.env.local --import tsx scripts/demo-preparar.ts",
+    "demo:verificar": "node --env-file-if-exists=.env.local --import tsx scripts/demo-verificar.ts",
+    "demo:probar": "node --env-file-if-exists=.env.local --import tsx scripts/demo-probar.ts",
     "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\""
   },
   "dependencies": {

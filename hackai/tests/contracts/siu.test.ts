@@ -50,17 +50,21 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       current,
       syntheticData.siu.terms.find((t) => t.id === '2c-2026')
     )
-    assert.deepEqual(sorted(terms.value.map((t) => t.id)), ['1c-2026', '2c-2026', 'verano-2027'])
+    assert.deepEqual(sorted(terms.value.map((t) => t.id)), ['1c-2026', '2c-2026', 'act-2c-2026', 'verano-2027'])
   })
 
   it('devuelve una materia y una comisión, o «no encontrado»', async (siu) => {
     assert.deepEqual(await siu.subject('am1'), {
       ok: true,
-      value: { id: 'am1', code: 'AM1', name: 'Análisis Matemático I' }
+      value: { id: 'am1', code: 'AM1', name: 'Análisis Matemático I', credits: null }
     })
     assert.deepEqual(await siu.section('sec-am1-fi-a'), {
       ok: true,
       value: syntheticData.siu.sections.find((s) => s.id === 'sec-am1-fi-a')
+    })
+    assert.deepEqual(await siu.subject('tor'), {
+      ok: true,
+      value: { id: 'tor', code: 'TOR', name: 'Taller de Oratoria', credits: 2 }
     })
     assert.deepEqual(await siu.subject('nada'), { ok: false, error: 'no-encontrado' })
     assert.deepEqual(await siu.section('nada'), { ok: false, error: 'no-encontrado' })
@@ -76,7 +80,13 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
     const summer = await siu.sections({ termId: 'verano-2027' })
     assert.ok(summer.ok)
-    assert.deepEqual(sorted(summer.value.map((s) => s.id)), ['sec-am1-fce-v', 'sec-fi1-fi-v', 'sec-pr1-fi-v'])
+    assert.deepEqual(sorted(summer.value.map((s) => s.id)), [
+      'sec-am1-fce-v',
+      'sec-fi1-fi-v',
+      'sec-fi1-fi-vt',
+      'sec-lid-fi-v',
+      'sec-pr1-fi-v'
+    ])
   })
 
   it('devuelve las comisiones que dicta un docente', async (siu) => {
@@ -111,7 +121,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
     const exams = await siu.examEnrollments(siuId('p-taguirre'))
     assert.ok(exams.ok)
-    assert.deepEqual(exams.value, syntheticData.siu.examEnrollments)
+    assert.deepEqual(
+      exams.value,
+      syntheticData.siu.examEnrollments.filter((e) => e.personId === siuId('p-taguirre'))
+    )
   })
 
   it('devuelve el cronograma de una comisión', async (siu) => {

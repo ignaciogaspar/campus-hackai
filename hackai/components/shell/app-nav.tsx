@@ -1,6 +1,6 @@
 'use client'
 
-import { GraduationCap, House, LibraryBig, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, GraduationCap, House, LibraryBig, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Brand } from '@/components/shell/brand'
@@ -12,14 +12,16 @@ export type NavSubject = { href: string; code: string; name: string; unread: num
 const SECTIONS: { href: string; label: string; icon: LucideIcon; studentOnly?: boolean }[] = [
   { href: '/hoy', label: 'Hoy', icon: House },
   { href: '/materias', label: 'Materias', icon: LibraryBig },
+  { href: '/inscripciones', label: 'Inscripciones', icon: CalendarCheck, studentOnly: true },
   { href: '/academico', label: 'Académico', icon: GraduationCap, studentOnly: true }
 ]
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
-/* En el celular, barra inferior. En compu, barra lateral con la marca y las
-   materias que cursa, que scrollean solas si son muchas. Académico (notas,
-   historia y constancias) es del alumno: al docente no se le ofrece. */
+/* En el celular, barra inferior con las secciones. En compu, barra lateral con
+   la marca y las materias que cursa, que scrollean solas si son muchas.
+   Inscripciones y Académico (notas, historia y constancias) son del alumno: al
+   docente no se le ofrecen. */
 export function AppNav({
   school,
   subjects,
@@ -36,7 +38,7 @@ export function AppNav({
       aria-label='Navegación principal'
       className={cn(
         'fixed inset-x-0 bottom-0 z-10 grid border-t border-border bg-card px-2 pt-1.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:inset-y-0 lg:right-auto lg:flex lg:w-62 lg:flex-col lg:gap-1 lg:border-t-0 lg:border-r lg:px-3 lg:py-5',
-        sections.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+        sections.length === 2 ? 'grid-cols-2' : 'grid-cols-4'
       )}
     >
       <div className='hidden px-2 pb-5 lg:block'>
@@ -50,7 +52,7 @@ export function AppNav({
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-muted-foreground focus-ring lg:flex-row lg:gap-3 lg:p-3 lg:text-[0.9375rem]',
+              'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[0.6875rem] font-semibold whitespace-nowrap text-muted-foreground focus-ring lg:flex-row lg:gap-3 lg:p-3 lg:text-[0.9375rem]',
               active && 'text-blue-light lg:bg-accent lg:text-blue'
             )}
           >

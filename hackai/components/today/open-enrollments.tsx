@@ -4,6 +4,7 @@
    solo se muestran. */
 import { CalendarClock, CalendarX } from 'lucide-react'
 import { shortDate } from '@/components/dates'
+import { creditsText } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
@@ -13,6 +14,7 @@ import type { OpenEnrollment } from '@/lib/core/studies'
 
 const TITLE: Record<OpenEnrollment['kind'], string> = {
   cursada: 'Cursada de',
+  actividad: 'Actividad:',
   examen: 'Final de'
 }
 
@@ -38,7 +40,13 @@ export function OpenEnrollmentList({ items }: { items: OpenEnrollment[] }) {
               </span>
             }
             title={`${TITLE[item.kind]} ${item.subjectName}`}
-            description={item.needsRegularity ? 'Para rendirlo, antes tenés que regularizar la cursada.' : undefined}
+            description={
+              item.credits !== null
+                ? creditsText(item.credits)
+                : item.needsRegularity
+                  ? 'Para rendirlo, antes tenés que regularizar la cursada.'
+                  : undefined
+            }
             meta={
               <>
                 <OriginBadge origin='siu' />

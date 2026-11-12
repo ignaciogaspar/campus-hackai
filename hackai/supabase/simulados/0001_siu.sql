@@ -64,6 +64,7 @@ create table if not exists siu_subjects (
   code text not null,                 -- actividad_codigo
   name text not null                  -- actividad_nombre
 );
+alter table siu_subjects add column if not exists credits integer;   -- creditos
 
 -- Comisiones (/comisiones, esquema Comision).
 create table if not exists siu_sections (

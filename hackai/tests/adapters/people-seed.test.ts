@@ -34,6 +34,19 @@ test('el seed es idempotente: borra los vínculos de las personas del set y los 
   assert.match(sql, /on conflict \(person_id, system\) do update set external_id = excluded\.external_id;/)
 })
 
+test('resembrar no pisa los vínculos de Discord: no los borra y el del set entra solo si la persona no tiene uno', () => {
+  const sql = peopleSeedSql(syntheticData)
+  const [deleted] = sql.match(/delete from people_accounts[^;]*;/) ?? ['']
+  const inserts = sql.split(/;\n/).filter((s) => s.trimStart().startsWith('insert into'))
+  const withDiscord = inserts.filter((s) => s.includes("'discord'"))
+
+  assert.match(deleted, /and system <> all \(array\['discord'\]::text\[\]\)/)
+  assert.equal(withDiscord.length, 1, 'los vínculos de Discord van en un insert aparte')
+  assert.match(withDiscord[0], /\('p-mledesma', 'discord', '1290000000000000001'\)/)
+  assert.match(withDiscord[0], /on conflict do nothing$/)
+  assert.doesNotMatch(withDiscord[0], /do update/)
+})
+
 test('el seed escapa las comillas de los ids', () => {
   const data = structuredClone(syntheticData)
   data.people[0].identitySubject = "demo:d'angelo"

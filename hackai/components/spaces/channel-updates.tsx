@@ -1,6 +1,6 @@
 'use client'
 
-/* Trae lo nuevo del canal abierto sin que haya que recargar. Cada 15 segundos
+/* Trae lo nuevo del canal abierto sin que haya que recargar. Cada 5 segundos
    pregunta la versión del canal (app/api/canales/[canal]/version), que es
    liviana, y solo si cambió vuelve a pedir la página. Pregunta únicamente con
    la pestaña a la vista; al volver a ella, pregunta enseguida. Si el chequeo
@@ -9,7 +9,10 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 
-const EVERY_MS = 15_000
+/** Espacios lee el canal externo como mucho una vez cada 10 segundos por
+    espacio: preguntando cada 5, lo nuevo de Discord se ve en unos 15 como
+    mucho, que es lo que pide la tarea T3 («enterarme»). */
+const EVERY_MS = 5_000
 
 export function ChannelUpdates({ channelId, version }: { channelId: string; version: string }) {
   const router = useRouter()

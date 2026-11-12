@@ -9,6 +9,8 @@
      de la misma materia devuelve `ya-inscripto`.
    - La baja es el camino inverso: desmatricula y después da de baja en el SIU;
      si el SIU la rechaza, vuelve a matricular.
+   - Inscribirse y darse de baja es de alumnos: un docente recibe
+     `solo-alumnos` sin que se toque el SIU ni el aula.
    - Si el SIU no deja inscribir por API, devuelve `requiere-autogestion` con el
      enlace: es un paso más, no un error.
    - Las lecturas toleran caídas: devuelven lo último leído, marcado como
@@ -30,6 +32,10 @@
      Cada final lleva su turno de examen y, si el SIU lo da, dónde se rinde. Salen solo del SIU, así que una caída
      de Moodle no los toca: las tareas con fecha vienen con `subjectsOf` y las
      suma Hoy. Sin cronograma en el SIU (la API real) salen solo los finales.
+   - Oferta (`offer`): comisiones o mesas con cupo, horario y docentes, y si
+     su inscripción todavía no abrió, está abierta o ya cerró según el reloj.
+     Una mesa dice si para rendir le falta regularizar la cursada (no la tiene
+     regular ni aprobada); no lo bloquea.
    - Inscripciones abiertas (`openEnrollments`), las que cierran antes primero,
      una por materia. Qué le sirve al alumno es una hipótesis, sin confirmar
      con el equipo (docs/product/preguntas-abiertas.md, pregunta 16):
@@ -41,13 +47,21 @@
        que no aprobó y tiene regulares o está cursando (puede regularizar
        antes de la mesa, y entonces se marca `needsRegularity`), si no está
        inscripto ya a una mesa de esa materia.
-     Salen tengan o no cupo: cuántos lugares quedan lo dice la oferta.
+     Una cursada de una actividad que da créditos sale como `actividad`, con sus
+     créditos. Salen tengan o no cupo, con los lugares que quedan entre todas las
+     comisiones (o mesas) abiertas de la materia, sin tope si alguna no lo
+     tiene, y los días que faltan para que cierre, contados con el reloj de
+     cada llamada aunque sea lo último que se leyó.
      Se muestran aunque el SIU no deje inscribir por API: se completan en la
      Autogestión. Un docente no tiene.
    - Notas: las de parciales, recuperatorios y TP salen juntas, vengan de la
      historia (renglones `evaluacion`) o de actuación provisoria, cada una con
      su origen y la más reciente primero. Sin cronograma en el SIU (la API
      real), salen igual con el nombre «Evaluación».
+   - Finales pendientes (`pendingFinals`): materias que tiene regulares y no
+     aprobó (un final desaprobado sigue pendiente), con la próxima mesa de su
+     facultad: aquella en la que está inscripto o, si no, la primera cuya
+     inscripción todavía no cerró. Un docente no tiene.
    - Historia: solo las materias aprobadas (promoción, final o equivalencia) y
      su promedio. Las cursadas regulares y las evaluaciones no entran.
    - Constancias: si cumple las condiciones lo dice el SIU. Si no cumple,
@@ -58,6 +72,8 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
+import { daysBetween } from '@/lib/dates'
+import type { Fresh } from '@/lib/fresh'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
@@ -81,7 +97,7 @@ import { all, type ExternalFailure, fail, type NotImplemented, ok, type Result }
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
-export type Fresh<T> = { data: T; readAt: string; stale: boolean }
+export type { Fresh }
 
 /** Una comisión (cursada) o una mesa (examen). */
 export type Target = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
@@ -133,6 +149,9 @@ export type MySection = {
   teachers: Teacher[]
 }
 
+/** La ventana de inscripción de una comisión o una mesa según el reloj: todavía no abrió, está abierta o ya cerró. */
+export type EnrollmentWindow = 'no-abrio' | 'abierta' | 'cerrada'
+
 export type OfferItem = {
   target: Target
   subjectId: string
@@ -155,12 +174,15 @@ export type OfferItem = {
   spotsLeft: number | null
   enrollmentStart: string
   enrollmentEnd: string
-  /** La ventana de inscripción está abierta según el reloj. */
-  enrollmentOpen: boolean
+  /** Si la inscripción todavía no abrió, está abierta o ya cerró, según el reloj. */
+  enrollmentWindow: EnrollmentWindow
   alreadyEnrolled: boolean
   /** Comisión: el nombre de otra comisión de la materia en la que ya está
       inscripto, que le impide inscribirse en esta. Mesa: `null`. */
   enrolledElsewhere: string | null
+  /** Mesa: no tiene la materia regular (ni aprobada), así que para rendir el
+      final antes tiene que regularizar la cursada. Comisión: `false`. */
+  needsRegularity: boolean
 }
 
 export type Receipt = { transactionNumber: string; date: string; target: Target }
@@ -178,14 +200,24 @@ export type DropOutcome = { kind: 'baja'; receipt: Receipt } | { kind: 'requiere
       distinto del aula y alguien tiene que mirarlo. */
 export type TwoSystemsError = 'sin-cuenta-del-aula' | 'a-medias'
 
+/** Inscribirse y darse de baja es de alumnos: un docente no tiene cursadas ni finales propios. */
+export type StudentsOnly = 'solo-alumnos'
+
 export type EnrollError =
   | 'sin-cupo'
   | 'fuera-de-periodo'
   | 'ya-inscripto'
   | 'objetivo-desconocido'
+  | StudentsOnly
   | TwoSystemsError
   | ExternalFailure
-export type DropError = 'no-inscripto' | 'fuera-de-periodo' | 'objetivo-desconocido' | TwoSystemsError | ExternalFailure
+export type DropError =
+  | 'no-inscripto'
+  | 'fuera-de-periodo'
+  | 'objetivo-desconocido'
+  | StudentsOnly
+  | TwoSystemsError
+  | ExternalFailure
 
 /** Parcial o final del SIU, o, como complemento, una entrega con fecha de Moodle (esas las suma Hoy). */
 export type UpcomingItem = {
@@ -214,13 +246,41 @@ export const compareUpcoming = (a: UpcomingItem, b: UpcomingItem) =>
   a.date.localeCompare(b.date) || a.subjectName.localeCompare(b.subjectName, 'es') || a.name.localeCompare(b.name, 'es')
 
 export type OpenEnrollment = {
-  kind: 'cursada' | 'examen'
+  /** `actividad`: la cursada de una actividad que da créditos. Se inscribe igual que una cursada. */
+  kind: 'cursada' | 'actividad' | 'examen'
   subjectId: string
   subjectName: string
   opensAt: string
   closesAt: string
+  /** Días de calendario en Buenos Aires que faltan para que cierre, según el reloj de cada llamada: `0` si cierra hoy. */
+  closesInDays: number
+  /** Lugares que quedan entre todas las comisiones (o mesas) de la materia con la
+      inscripción abierta: `0` si están todas llenas, `null` si alguna no tiene tope. */
+  spotsLeft: number | null
   /** Examen de una materia que está cursando y todavía no tiene regular: necesita regularizarla antes de la mesa. */
   needsRegularity: boolean
+  /** Créditos que da una actividad; en una cursada o un examen, `null`. */
+  credits: number | null
+}
+
+/** Cómo está la inscripción a la próxima mesa de un final pendiente. */
+export type PendingFinalStatus = 'inscripto' | 'abierta' | 'sin-cupo' | 'no-abrio'
+
+/** Materia regular sin aprobar, con su próxima mesa (`null` si no hay ninguna a la que se pueda anotar). */
+export type PendingFinal = {
+  subjectId: string
+  subjectName: string
+  /** Fecha de la cursada regular más reciente. */
+  regularSince: string
+  next: {
+    examBoardId: string
+    examPeriod: string
+    date: string
+    location: string
+    enrollmentStart: string
+    enrollmentEnd: string
+    status: PendingFinalStatus
+  } | null
 }
 
 /** Nota de un parcial, venga de la historia académica o de la actuación provisoria. */
@@ -294,6 +354,8 @@ export type Studies = {
   upcoming(personId: PersonId): Promise<Result<Fresh<UpcomingItem[]>, ReadError>>
   /** Inscripciones abiertas que le sirven. */
   openEnrollments(personId: PersonId): Promise<Result<Fresh<OpenEnrollment[]>, ReadError>>
+  /** Materias regulares sin aprobar, con la próxima mesa y el estado de su inscripción. */
+  pendingFinals(personId: PersonId): Promise<Result<Fresh<PendingFinal[]>, ReadError>>
   /** Notas de parciales unificadas e historia académica. */
   record(personId: PersonId): Promise<Result<Fresh<AcademicRecord>, ReadError>>
   /** Si cumple las condiciones de la constancia y el enlace a la Autogestión del SIU. */
@@ -337,38 +399,92 @@ const subjectRef = (subject: SiuSubject) => ({
     inscribió en un período que no terminó), la tiene regular o la aprobó. */
 type SubjectProgress = { taking: Set<string>; regular: Set<string>; approved: Set<string> }
 
-/** Una inscripción abierta antes de ponerle el nombre a la materia. */
-type Opening = Omit<OpenEnrollment, 'subjectName'>
+/** Una inscripción abierta antes de ponerle el nombre a la materia y contar los días que faltan para que cierre. */
+type Opening = Omit<OpenEnrollment, 'subjectName' | 'closesInDays' | 'credits'>
+
+/** Una inscripción abierta tal como se lee del SIU: los días para el cierre se cuentan al devolverla. */
+type NamedOpening = Omit<OpenEnrollment, 'closesInDays'>
 
 const isRegular = (h: SiuHistoryEntry) => h.type === 'cursada' && h.result === 'regular'
 
 const isApproved = (h: SiuHistoryEntry) => approvalOf(h) !== null
 
-const isOpenAt = (at: string, start: string, end: string) => start <= at && at <= end
+function windowAt(at: string, start: string, end: string): EnrollmentWindow {
+  if (at < start) return 'no-abrio'
+  return at <= end ? 'abierta' : 'cerrada'
+}
+
+const isOpenAt = (at: string, start: string, end: string) => windowAt(at, start, end) === 'abierta'
 
 /** Le sirve cursarla si no la está cursando, no la tiene regular y no la aprobó. */
 const needsCourseAttempt = (subjectId: string, p: SubjectProgress) =>
   !p.taking.has(subjectId) && !p.regular.has(subjectId) && !p.approved.has(subjectId)
 
+/** Para rendirla le falta la regularidad: no la tiene regular ni la aprobó. */
+const needsRegularity = (subjectId: string, p: SubjectProgress) =>
+  !p.regular.has(subjectId) && !p.approved.has(subjectId)
+
 /** Le sirve rendirla si no la aprobó y la tiene regular o la está cursando (puede regularizarla antes de la mesa). */
 const needsExam = (subjectId: string, p: SubjectProgress) =>
   !p.approved.has(subjectId) && (p.regular.has(subjectId) || p.taking.has(subjectId))
 
+/** Lugares que quedan con un cupo y sus inscriptos: `null` es sin tope. */
+const spotsLeft = (capacity: number | null, enrolled: number) =>
+  capacity === null ? null : Math.max(capacity - enrolled, 0)
+
+/** Los lugares de dos comisiones o mesas juntas: sin tope si alguna no lo tiene. */
+const addSpots = (a: number | null, b: number | null) => (a === null || b === null ? null : a + b)
+
 /** La que cierra antes primero; el mismo día, por materia. */
-const byClosing = (a: OpenEnrollment, b: OpenEnrollment) =>
+const byClosing = (a: NamedOpening, b: NamedOpening) =>
   a.closesAt.localeCompare(b.closesAt) ||
   a.subjectName.localeCompare(b.subjectName, 'es') ||
   a.kind.localeCompare(b.kind)
 
-/** Una por materia y tipo: la que cierra antes. Espera la lista ya ordenada. */
-function onePerSubject(items: OpenEnrollment[]): OpenEnrollment[] {
-  const seen = new Set<string>()
-  return items.filter((i) => {
-    const key = `${i.kind}:${i.subjectId}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+/** Una por materia y tipo: la que cierra antes, con los lugares de todas. Espera la lista ya ordenada. */
+function onePerSubject(items: NamedOpening[]): NamedOpening[] {
+  const bySubject = new Map<string, NamedOpening>()
+  for (const item of items) {
+    const key = `${item.kind}:${item.subjectId}`
+    const kept = bySubject.get(key)
+    if (kept) kept.spotsLeft = addSpots(kept.spotsLeft, item.spotsLeft)
+    else bySubject.set(key, { ...item })
+  }
+  return [...bySubject.values()]
+}
+
+/** La mesa en la que está inscripto o, si no, la primera cuya inscripción no cerró, entre las que no se tomaron. */
+function nextBoardFor(subjectId: string, { boards, enrolledIn }: ExamBoardsOf, at: string): PendingFinal['next'] {
+  const upcoming = boards
+    .filter((b) => b.subjectId === subjectId && b.date >= at)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const enrolled = upcoming.find((b) => enrolledIn.has(b.id))
+  const board = enrolled ?? upcoming.find((b) => at <= b.enrollmentEnd)
+  if (!board) return null
+  let status: PendingFinalStatus = 'abierta'
+  if (enrolled) status = 'inscripto'
+  else if (at < board.enrollmentStart) status = 'no-abrio'
+  else if (spotsLeft(board.capacity, board.enrolled) === 0) status = 'sin-cupo'
+  const { id, examPeriod, date, location, enrollmentStart, enrollmentEnd } = board
+  return { examBoardId: id, examPeriod, date, location, enrollmentStart, enrollmentEnd, status }
+}
+
+/** Las materias regulares sin aprobar, cada una con la fecha de su cursada regular más reciente. */
+function regularNotApproved(history: SiuHistoryEntry[]): Map<string, string> {
+  const approved = new Set(history.filter(isApproved).map((h) => h.subjectId))
+  const since = new Map<string, string>()
+  for (const h of history.filter((e) => isRegular(e) && !approved.has(e.subjectId))) {
+    if (h.date > (since.get(h.subjectId) ?? '')) since.set(h.subjectId, h.date)
+  }
+  return since
+}
+
+/** Primero las que tienen mesa, por fecha; el resto, por materia. */
+function byNextBoard(a: PendingFinal, b: PendingFinal): number {
+  if (a.next && b.next)
+    return a.next.date.localeCompare(b.next.date) || a.subjectName.localeCompare(b.subjectName, 'es')
+  if (a.next || b.next) return a.next ? -1 : 1
+  return a.subjectName.localeCompare(b.subjectName, 'es')
 }
 
 /** Actuales primero (por inicio del período) y archivadas después (la más reciente primero), cada grupo por materia. */
@@ -759,9 +875,6 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     )
   }
 
-  const spotsLeft = (capacity: number | null, enrolled: number) =>
-    capacity === null ? null : Math.max(capacity - enrolled, 0)
-
   /** Lo que una comisión y una mesa de la oferta tienen en común. */
   type OfferCommon = Pick<
     OfferItem,
@@ -773,7 +886,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     | 'spotsLeft'
     | 'enrollmentStart'
     | 'enrollmentEnd'
-    | 'enrollmentOpen'
+    | 'enrollmentWindow'
   >
 
   function offerCommon(
@@ -791,7 +904,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       spotsLeft: spotsLeft(seats.capacity, seats.enrolled),
       enrollmentStart: window.enrollmentStart,
       enrollmentEnd: window.enrollmentEnd,
-      enrollmentOpen: isOpenAt(clock.now().toISOString(), window.enrollmentStart, window.enrollmentEnd)
+      enrollmentWindow: windowAt(clock.now().toISOString(), window.enrollmentStart, window.enrollmentEnd)
     }
   }
 
@@ -858,21 +971,25 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           location: section.location,
           modality: section.modality,
           alreadyEnrolled: sameSubject.some((s) => s.id === section.id),
-          enrolledElsewhere: sameSubject.find((s) => s.id !== section.id)?.name ?? null
+          enrolledElsewhere: sameSubject.find((s) => s.id !== section.id)?.name ?? null,
+          needsRegularity: false
         })
       )
     )
   }
 
-  /** Mesas de la materia en la facultad que todavía no se tomaron. */
+  /** Mesas de la materia en la facultad que todavía no se tomaron, y si para rendirla le falta la regularidad.
+      La regularidad es solo un aviso: si la historia no se pudo leer, las mesas salen igual, sin él. */
   async function boardOffer(person: SiuPersonRef, subject: SiuSubject): Promise<Result<OfferItem[], ReadError>> {
     const at = clock.now().toISOString()
-    const [boards, enrollments] = await Promise.all([
+    const [boards, enrollments, progress] = await Promise.all([
       siu.examBoards({ subjectId: subject.id, schoolId: person.schoolId }),
-      examEnrollmentsOf(person.siuId)
+      examEnrollmentsOf(person.siuId),
+      progressOf(person)
     ])
     if (!boards.ok) return boards
     if (!enrollments.ok) return enrollments
+    const known = progress.ok ? progress.value : null
     const upcoming = boards.value.filter((b) => b.date >= at).sort((a, b) => a.date.localeCompare(b.date))
     const teachers = all(await Promise.all(upcoming.map((b) => teachersOf(b))))
     if (!teachers.ok) return teachers
@@ -888,7 +1005,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           location: board.location,
           modality: null,
           alreadyEnrolled: enrollments.value.some((e) => e.examBoardId === board.id),
-          enrolledElsewhere: null
+          enrolledElsewhere: null,
+          needsRegularity: known ? needsRegularity(subject.id, known) : false
         })
       )
     )
@@ -930,13 +1048,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok({ subjectId: section.value.subjectId, enrollmentStart, enrollmentEnd })
   }
 
-  /** La persona en el SIU y el objetivo, que tiene que existir y ser de su facultad. */
+  /** La persona en el SIU, que tiene que ser alumno, y el objetivo, que tiene que existir y ser de su facultad. */
   async function resolveTarget(
     personId: PersonId,
     target: Target
-  ): Promise<Result<{ siuId: string } & TargetInfo, ReadError | TargetError>> {
+  ): Promise<Result<{ siuId: string } & TargetInfo, ReadError | TargetError | StudentsOnly>> {
     const siuPerson = await siuPersonOf(personId)
     if (!siuPerson.ok) return siuPerson
+    if (siuPerson.value.person.role !== 'alumno') return fail('solo-alumnos')
     const { schoolId } = siuPerson.value
     const info =
       target.kind === 'mesa'
@@ -1250,6 +1369,28 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
+  /** Materias regulares sin aprobar, con su próxima mesa: la regla está en el encabezado. */
+  async function pendingFinals(personId: PersonId): Promise<Result<PendingFinal[], ReadError>> {
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    if (who.value.person.role === 'profesor') return ok([])
+    const [history, exams] = await Promise.all([siu.history(who.value.siuId), examBoardsOf(who.value, false)])
+    if (!history.ok) return fail(asUnknownPerson(history.error))
+    if (!exams.ok) return exams
+    const regularSince = regularNotApproved(history.value)
+    const subjects = await subjectsById([...regularSince.keys()])
+    if (!subjects.ok) return subjects
+    const at = clock.now().toISOString()
+    const items = [...regularSince].flatMap(([subjectId, since]): PendingFinal[] => {
+      const subject = subjects.value.get(subjectId)
+      if (!subject) return []
+      return [
+        { subjectId, subjectName: subject.name, regularSince: since, next: nextBoardFor(subjectId, exams.value, at) }
+      ]
+    })
+    return ok(items.sort(byNextBoard))
+  }
+
   /** Comisiones de su facultad con la inscripción del período abierta, de materias que le falta cursar. Tengan o no cupo: lo dice la oferta. */
   async function openCourseEnrollments(
     schoolId: string,
@@ -1271,6 +1412,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
               subjectId: s.subjectId,
               opensAt: open[i].enrollmentStart,
               closesAt: open[i].enrollmentEnd,
+              spotsLeft: spotsLeft(s.capacity, s.enrolled),
               needsRegularity: false
             })
           )
@@ -1302,14 +1444,15 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
             subjectId: b.subjectId,
             opensAt: b.enrollmentStart,
             closesAt: b.enrollmentEnd,
-            needsRegularity: !progress.regular.has(b.subjectId)
+            spotsLeft: spotsLeft(b.capacity, b.enrolled),
+            needsRegularity: needsRegularity(b.subjectId, progress)
           })
         )
     )
   }
 
   /** Inscripciones abiertas que le sirven, a cursada y a examen: la regla está en el encabezado. */
-  async function openEnrollments(personId: PersonId): Promise<Result<OpenEnrollment[], ReadError>> {
+  async function openEnrollments(personId: PersonId): Promise<Result<NamedOpening[], ReadError>> {
     const who = await siuPersonOf(personId)
     if (!who.ok) return who
     if (who.value.person.role === 'profesor') return ok([])
@@ -1325,11 +1468,32 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const openings = [...courses.value, ...exams.value]
     const subjects = await subjectsById(openings.map((o) => o.subjectId))
     if (!subjects.ok) return subjects
-    const named = openings.flatMap((o): OpenEnrollment[] => {
+    const named = openings.flatMap((o): NamedOpening[] => {
       const subject = subjects.value.get(o.subjectId)
-      return subject ? [{ ...o, subjectName: subject.name }] : []
+      if (!subject) return []
+      const activity = o.kind === 'cursada' && subject.credits !== null
+      return [
+        {
+          ...o,
+          kind: activity ? 'actividad' : o.kind,
+          subjectName: subject.name,
+          credits: activity ? subject.credits : null
+        }
+      ]
     })
     return ok(onePerSubject(named.sort(byClosing)))
+  }
+
+  /** Las inscripciones abiertas con los días que faltan para que cierren, contados con el reloj de ahora y no
+      con el de la lectura: lo último que se leyó puede ser de otro día. */
+  async function openEnrollmentsNow(personId: PersonId): Promise<Result<Fresh<OpenEnrollment[]>, ReadError>> {
+    const read = await fresh(`openEnrollments:${personId}`, () => openEnrollments(personId))
+    if (!read.ok) return read
+    const at = clock.now().toISOString()
+    return ok({
+      ...read.value,
+      data: read.value.data.map((o) => ({ ...o, closesInDays: daysBetween(at, o.closesAt) }))
+    })
   }
 
   return {
@@ -1339,7 +1503,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     enroll,
     drop,
     upcoming: (personId) => fresh(`upcoming:${personId}`, () => upcoming(personId)),
-    openEnrollments: (personId) => fresh(`openEnrollments:${personId}`, () => openEnrollments(personId)),
+    openEnrollments: openEnrollmentsNow,
+    pendingFinals: (personId) => fresh(`pendingFinals:${personId}`, () => pendingFinals(personId)),
     record: (personId) => fresh(`record:${personId}`, () => record(personId)),
     certificate
   }

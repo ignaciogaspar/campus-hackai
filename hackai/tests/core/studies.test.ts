@@ -6,7 +6,13 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu, type MemorySiuOptions } from '@/lib/adapters/memoria/siu'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
-import { createStudies, type MySubject, type OpenEnrollment, type UpcomingItem } from '@/lib/core/studies'
+import {
+  createStudies,
+  type MySubject,
+  type OpenEnrollment,
+  type PendingFinal,
+  type UpcomingItem
+} from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
@@ -222,7 +228,8 @@ test('sectionsOf de un docente devuelve las comisiones que dicta, y de un alumno
     docente.value.data.map((s) => [s.sectionId, s.role]),
     [
       ['sec-am1-fi-b', 'profesor'],
-      ['sec-fi1-fi-v', 'profesor']
+      ['sec-fi1-fi-v', 'profesor'],
+      ['sec-fi1-fi-vt', 'profesor']
     ]
   )
 
@@ -653,25 +660,99 @@ test('ve las mesas de lo que tiene regular o está cursando y las comisiones de 
   const { studies } = build()
 
   // Valentina tiene Álgebra regular, cursa Análisis I y no cursó Física I ni Programación I.
+  // Las actividades de Ingeniería que dan créditos salen como «actividad».
   const result = await studies.openEnrollments('p-vfunes')
 
   assert.ok(result.ok)
   assert.equal(result.value.stale, false)
   assert.equal(result.value.readAt, NOW)
   assert.deepEqual(openings(result.value.data), [
+    ['actividad', 'tor', '2026-11-17T02:59:00.000Z'],
     ['examen', 'aga', '2026-12-05T02:59:00.000Z'],
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
     ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
-    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z']
+    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z'],
+    ['actividad', 'lid', '2026-12-19T02:59:00.000Z']
   ])
-  assert.deepEqual(result.value.data[3], {
+  assert.deepEqual(result.value.data[4], {
     kind: 'cursada',
     subjectId: 'pr1',
     subjectName: 'Programación I',
     opensAt: '2026-11-02T03:00:00.000Z',
     closesAt: '2026-12-19T02:59:00.000Z',
-    needsRegularity: false
+    closesInDays: 38,
+    spotsLeft: null,
+    needsRegularity: false,
+    credits: null
   })
+  assert.equal(result.value.data[0].credits, 2)
+  assert.equal(result.value.data[5].credits, 3)
+})
+
+test('cada inscripción abierta dice en cuántos días cierra y cuántos lugares quedan', async () => {
+  const { studies } = build()
+
+  // Al 10/11: las mesas cierran el 4/12 y el verano el 18/12. En la mesa de
+  // Álgebra queda 1 de 2, la de Análisis I está vacía, en Física I de verano
+  // la mañana está llena y la tarde tiene 25, y Programación I de verano no tiene tope.
+  const result = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.map((i) => [i.kind, i.subjectId, i.closesInDays, i.spotsLeft]),
+    [
+      ['actividad', 'tor', 6, 30],
+      ['examen', 'aga', 24, 1],
+      ['examen', 'am1', 24, 40],
+      ['cursada', 'fi1', 38, 25],
+      ['cursada', 'pr1', 38, null],
+      ['actividad', 'lid', 38, 40]
+    ]
+  )
+})
+
+test('los lugares de una materia con varias comisiones abiertas son los de todas, y sin tope si alguna no lo tiene', async () => {
+  const data = structuredClone(syntheticData)
+  const fi1 = data.siu.sections.find((s) => s.id === 'sec-fi1-fi-v')!
+  const pr1 = data.siu.sections.find((s) => s.id === 'sec-pr1-fi-v')!
+  data.siu.sections.push(
+    { ...fi1, id: 'sec-fi1-fi-v2', name: 'Verano 2', capacity: 10 },
+    { ...pr1, id: 'sec-pr1-fi-v2', name: 'Verano 2', capacity: 30 }
+  )
+  const { studies } = build(data)
+
+  // Física I: la mañana llena, 25 en la tarde y 10 en la nueva.
+  const result = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.filter((i) => i.kind === 'cursada').map((i) => [i.subjectId, i.spotsLeft]),
+    [
+      ['fi1', 35],
+      ['pr1', null]
+    ]
+  )
+})
+
+test('los días para el cierre se cuentan con el reloj de cada lectura, aunque sea lo último que se leyó', async () => {
+  const { studies, siuState, advance } = build()
+  const days = (items: OpenEnrollment[]) => items.map((i) => [i.kind, i.subjectId, i.closesInDays])
+  assert.ok((await studies.openEnrollments('p-vfunes')).ok)
+
+  advance(24 * 24 * 60) // 4/12 al mediodía: las mesas cierran hoy.
+  siuState.down = true
+  const stale = await studies.openEnrollments('p-vfunes')
+
+  assert.ok(stale.ok)
+  assert.equal(stale.value.stale, true)
+  assert.deepEqual(days(stale.value.data), [
+    ['actividad', 'tor', -18],
+    ['examen', 'aga', 0],
+    ['examen', 'am1', 0],
+    ['cursada', 'fi1', 14],
+    ['cursada', 'pr1', 14],
+    ['actividad', 'lid', 14]
+  ])
 })
 
 test('la mesa de una materia que está cursando avisa que le falta la regularidad; la de una regular, no', async () => {
@@ -693,20 +774,25 @@ test('la mesa de una materia que está cursando avisa que le falta la regularida
 test('no ve la mesa a la que ya se inscribió ni el verano de lo que está cursando', async () => {
   const { studies } = build()
 
-  // Tomás ya está en la mesa de Álgebra y cursa Análisis I y Programación I.
+  // Tomás ya está en la mesa de Álgebra, tiene regular Sistemas de Representación y cursa Análisis I y Programación I.
   const result = await studies.openEnrollments('p-taguirre')
 
   assert.ok(result.ok)
   assert.deepEqual(openings(result.value.data), [
+    ['actividad', 'tor', '2026-11-17T02:59:00.000Z'],
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
-    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z']
+    ['examen', 'sre', '2026-12-05T02:59:00.000Z'],
+    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
+    ['actividad', 'lid', '2026-12-19T02:59:00.000Z']
   ])
 })
 
 test('una materia sin lugar en sus comisiones igual aparece: cuántos lugares quedan lo dice la oferta', async () => {
-  const { studies } = build()
+  // Sin la comisión de la tarde, la única de Física I de verano está llena.
+  const data = structuredClone(syntheticData)
+  data.siu.sections = data.siu.sections.filter((s) => s.id !== 'sec-fi1-fi-vt')
+  const { studies } = build(data)
 
-  // La única comisión de Física I de verano está llena.
   const result = await studies.openEnrollments('p-vfunes')
   const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'fi1' })
 
@@ -753,7 +839,8 @@ test('cuando cierra la inscripción a las mesas dejan de aparecer, y sin nada ab
     december.value.data.map((i) => [i.kind, i.subjectId]),
     [
       ['cursada', 'fi1'],
-      ['cursada', 'pr1']
+      ['cursada', 'pr1'],
+      ['actividad', 'lid']
     ]
   )
   assert.deepEqual(later.value.data, [])
@@ -782,6 +869,102 @@ test('las inscripciones abiertas con el SIU caído devuelven lo último que ley�
     value: { data: first.value.data, readAt: NOW, stale: true }
   })
   assert.deepEqual(await studies.openEnrollments('p-taguirre'), { ok: false, error: 'falla-externa' })
+})
+
+// Finales pendientes
+
+const pending = (items: PendingFinal[]) =>
+  items.map((p) => [p.subjectId, p.next?.examBoardId ?? null, p.next?.status ?? null])
+
+test('los finales pendientes son lo regular sin aprobar, con la próxima mesa por fecha; un final desaprobado sigue pendiente', async () => {
+  const { studies } = build()
+
+  // Tomás tiene regular Álgebra (ya inscripto a la mesa) y Sistemas de Representación (desaprobó el final en febrero).
+  const result = await studies.pendingFinals('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(pending(result.value.data), [
+    ['sre', 'mesa-sre-fi-dic', 'abierta'],
+    ['aga', 'mesa-aga-fi-dic', 'inscripto']
+  ])
+  assert.equal(result.value.data[0].regularSince, '2025-11-27T03:00:00.000Z')
+  assert.equal(result.value.data[0].next?.examPeriod, 'Turno Diciembre 2026')
+})
+
+test('una materia aprobada por promoción, final o equivalencia no es un final pendiente', async () => {
+  const data = structuredClone(syntheticData)
+  const regular = (personId: string, subjectId: string) => ({
+    ...data.siu.history.find((h) => h.type === 'cursada' && h.result === 'regular')!,
+    id: `h-${personId}-${subjectId}`,
+    personId,
+    subjectId,
+    date: '2024-12-01T03:00:00.000Z'
+  })
+  // Regulares antes de aprobarlas: Química (promoción), Antropología (final) e Introducción a la Administración (equivalencia).
+  data.siu.history.push(regular('30101', 'qui'), regular('30101', 'an1'), regular('30108', 'iad'))
+  const { studies } = build(data)
+
+  const tomas = await studies.pendingFinals('p-taguirre')
+  const nicolas = await studies.pendingFinals('p-nherrera')
+
+  assert.ok(tomas.ok && nicolas.ok)
+  assert.deepEqual(
+    tomas.value.data.map((p) => p.subjectId),
+    ['sre', 'aga']
+  )
+  assert.deepEqual(nicolas.value.data, [])
+})
+
+test('la próxima mesa de un final pendiente dice si está sin cupo o si todavía no abrió', async () => {
+  const full = structuredClone(syntheticData)
+  full.siu.examEnrollments.push({ ...full.siu.examEnrollments[0], id: 'ie-extra', personId: '30105' })
+  const later = structuredClone(syntheticData)
+  later.siu.examBoards = later.siu.examBoards.map((b) =>
+    b.id === 'mesa-aga-fi-dic' ? { ...b, enrollmentStart: '2026-11-20T03:00:00.000Z' } : b
+  )
+
+  // Valentina tiene regular Álgebra y no se anotó a la mesa.
+  const sinCupo = await build(full).studies.pendingFinals('p-vfunes')
+  const noAbrio = await build(later).studies.pendingFinals('p-vfunes')
+
+  assert.ok(sinCupo.ok && noAbrio.ok)
+  assert.deepEqual(pending(sinCupo.value.data), [['aga', 'mesa-aga-fi-dic', 'sin-cupo']])
+  assert.deepEqual(pending(noAbrio.value.data), [['aga', 'mesa-aga-fi-dic', 'no-abrio']])
+})
+
+test('cuando cierra la inscripción a la mesa, el pendiente queda sin mesa; si ya estaba inscripto, la conserva', async () => {
+  const { studies, advance } = build()
+
+  advance(25 * 24 * 60) // 5/12: cerraron las mesas de diciembre, que todavía no se tomaron.
+  const valentina = await studies.pendingFinals('p-vfunes')
+  const tomas = await studies.pendingFinals('p-taguirre')
+
+  assert.ok(valentina.ok && tomas.ok)
+  assert.deepEqual(pending(valentina.value.data), [['aga', null, null]])
+  assert.deepEqual(pending(tomas.value.data), [
+    ['aga', 'mesa-aga-fi-dic', 'inscripto'],
+    ['sre', null, null]
+  ])
+})
+
+test('un docente no tiene finales pendientes; con el SIU caído vuelve lo último leído, y de alguien que no existe, «persona desconocida»', async () => {
+  const { studies, siuState, advance } = build()
+  assert.deepEqual(await studies.pendingFinals('p-mledesma'), {
+    ok: true,
+    value: { data: [], readAt: NOW, stale: false }
+  })
+  assert.deepEqual(await studies.pendingFinals('p-nadie'), { ok: false, error: 'persona-desconocida' })
+  const first = await studies.pendingFinals('p-taguirre')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+
+  assert.deepEqual(await studies.pendingFinals('p-taguirre'), {
+    ok: true,
+    value: { data: first.value.data, readAt: NOW, stale: true }
+  })
+  assert.deepEqual(await studies.pendingFinals('p-vfunes'), { ok: false, error: 'falla-externa' })
 })
 
 // Notas, historia y constancias
@@ -929,7 +1112,7 @@ test('si cumple las condiciones de la constancia de alumno regular, trae el enla
       type: 'alumno-regular',
       meetsConditions: true,
       reasons: [],
-      url: 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=alumno-regular'
+      url: '/simulado/siu/constancias/solicitar?tipo=alumno-regular'
     }
   })
 })
@@ -950,7 +1133,7 @@ test('si no cumple la de alumno regular porque su propuesta está pasiva, lo dic
   assert.ok(result.ok)
   assert.equal(result.value.meetsConditions, false)
   assert.deepEqual(result.value.reasons, ['sin-propuesta-activa'])
-  assert.equal(result.value.url, 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=alumno-regular')
+  assert.equal(result.value.url, '/simulado/siu/constancias/solicitar?tipo=alumno-regular')
 })
 
 test('si no cumple la de alumno regular porque no tiene inscripciones a cursada vigentes, lo dice', async () => {
@@ -983,7 +1166,7 @@ test('si no cumple la de examen final porque no rindió ningún final, lo dice',
   assert.ok(result.ok)
   assert.equal(result.value.meetsConditions, false)
   assert.deepEqual(result.value.reasons, ['sin-examenes-rendidos'])
-  assert.equal(result.value.url, 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=examen-final')
+  assert.equal(result.value.url, '/simulado/siu/constancias/solicitar?tipo=examen-final')
 })
 
 test('la constancia de examen final la cumple quien ya rindió un final', async () => {
@@ -1056,10 +1239,10 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
 
   assert.ok(result.ok)
   assert.deepEqual(
-    result.value.map((o) => [o.target, o.alreadyEnrolled, o.enrollmentOpen]),
+    result.value.map((o) => [o.target, o.alreadyEnrolled, o.enrollmentWindow]),
     [
-      [{ kind: 'comision', sectionId: 'sec-pr1-fi-a' }, true, false],
-      [{ kind: 'comision', sectionId: 'sec-pr1-fi-v' }, false, true]
+      [{ kind: 'comision', sectionId: 'sec-pr1-fi-a' }, true, 'cerrada'],
+      [{ kind: 'comision', sectionId: 'sec-pr1-fi-v' }, false, 'abierta']
     ]
   )
   assert.deepEqual(result.value[1], {
@@ -1078,10 +1261,33 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
     spotsLeft: null,
     enrollmentStart: '2026-11-02T03:00:00.000Z',
     enrollmentEnd: '2026-12-19T02:59:00.000Z',
-    enrollmentOpen: true,
+    enrollmentWindow: 'abierta',
     alreadyEnrolled: false,
-    enrolledElsewhere: 'A'
+    enrolledElsewhere: 'A',
+    needsRegularity: false
   })
+})
+
+test('la oferta distingue una inscripción que todavía no abrió de una que ya cerró, según el reloj', async () => {
+  // La inscripción al verano abre el 20/11 en vez del 2/11.
+  const data = structuredClone(syntheticData)
+  data.siu.terms.find((t) => t.id === 'verano-2027')!.enrollmentStart = '2026-11-20T03:00:00.000Z'
+  const { studies, advance } = build(data)
+  const windows = async () => {
+    const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'pr1' })
+    assert.ok(offer.ok)
+    return offer.value.map((o) => [o.name, o.enrollmentWindow])
+  }
+
+  assert.deepEqual(await windows(), [
+    ['A', 'cerrada'],
+    ['Verano', 'no-abrio']
+  ])
+  advance(10 * 24 * 60) // 20/11 al mediodía.
+  assert.deepEqual(await windows(), [
+    ['A', 'cerrada'],
+    ['Verano', 'abierta']
+  ])
 })
 
 test('la oferta nunca trae comisiones de otra facultad ni de períodos que ya terminaron', async () => {
@@ -1277,6 +1483,22 @@ test('una comisión que no existe o es de otra facultad vuelve «objetivo descon
   assert.deepEqual(await studies.enroll('p-nadie', PR1_VERANO), { ok: false, error: 'persona-desconocida' })
 })
 
+test('un docente no se puede inscribir ni dar de baja: vuelve «solo alumnos» sin tocar el SIU ni el aula', async () => {
+  const MARIANA = { siu: '20101', moodle: '301' }
+  const { studies, siu, classroom } = build()
+  const coursesBefore = await classroom.coursesOf(MARIANA.moodle)
+
+  assert.deepEqual(await studies.enroll('p-mledesma', PR1_VERANO), { ok: false, error: 'solo-alumnos' })
+  assert.deepEqual(await studies.enroll('p-mledesma', { kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }), {
+    ok: false,
+    error: 'solo-alumnos'
+  })
+  assert.deepEqual(await studies.drop('p-mledesma', PR1_VERANO), { ok: false, error: 'solo-alumnos' })
+  assert.deepEqual(await siuSections(siu, MARIANA.siu), [])
+  assert.deepEqual(await siuBoards(siu, MARIANA.siu), [])
+  assert.deepEqual(await classroom.coursesOf(MARIANA.moodle), coursesBefore)
+})
+
 test('si el SIU no deja inscribir por API, devuelve «requiere autogestión» con el enlace a la comisión, sin tocar nada', async () => {
   const { studies, siu, classroom } = build(syntheticData, {}, { siu: { capabilities: { canEnroll: false } } })
 
@@ -1461,7 +1683,10 @@ test('las inscripciones abiertas a cursada son las materias de su facultad con u
       subjectName: 'Física I',
       opensAt: '2026-11-02T03:00:00.000Z',
       closesAt: '2026-12-19T02:59:00.000Z',
-      needsRegularity: false
+      closesInDays: 38,
+      spotsLeft: 25,
+      needsRegularity: false,
+      credits: null
     }
   ])
   assert.deepEqual(
@@ -1532,8 +1757,11 @@ test('la oferta dice cuántos lugares quedan: ninguno si se llenó, y sin tope s
 
   assert.ok(fi1.ok && am1.ok && pr1.ok)
   assert.deepEqual(
-    fi1.value.map((o) => o.spotsLeft),
-    [0]
+    fi1.value.map((o) => [o.name, o.capacity, o.spotsLeft]),
+    [
+      ['Verano', 2, 0],
+      ['Verano tarde', 25, 25]
+    ]
   )
   assert.deepEqual(
     am1.value.map((o) => [o.name, o.capacity, o.enrolled, o.spotsLeft]),
@@ -1608,6 +1836,42 @@ test('la oferta de mesas trae las de su facultad que no se tomaron, por fecha, c
   assert.deepEqual(
     result.value[0].teachers.map((t) => t.name),
     ['Mariana Ledesma', 'Gustavo Ferreyra']
+  )
+})
+
+test('la oferta de mesas avisa si para rendir le falta regularizar la cursada; las comisiones, nunca', async () => {
+  const { studies } = build()
+
+  // Valentina tiene Álgebra regular y cursa Análisis I, todavía sin regularizar.
+  const aga = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'aga' })
+  const am1 = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'am1' })
+  const sections = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'pr1' })
+
+  assert.ok(aga.ok && am1.ok && sections.ok)
+  assert.deepEqual(
+    aga.value.map((o) => o.needsRegularity),
+    [false]
+  )
+  assert.deepEqual(
+    am1.value.map((o) => o.needsRegularity),
+    [true]
+  )
+  assert.deepEqual(
+    sections.value.map((o) => o.needsRegularity),
+    [false, false]
+  )
+})
+
+test('si la historia no se puede leer, la oferta de mesas sale igual, sin el aviso de regularidad', async () => {
+  const { studies } = build(syntheticData, {}, { siuOverrides: { history: async () => fail('falla-externa') } })
+
+  const am1 = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'am1' })
+
+  assert.ok(am1.ok)
+  assert.ok(am1.value.length > 0)
+  assert.deepEqual(
+    am1.value.map((o) => o.needsRegularity),
+    am1.value.map(() => false)
   )
 })
 
