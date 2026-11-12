@@ -184,7 +184,8 @@ export function siuSeedSql(data: SyntheticData): string {
         result: text(h.result),
         grade_record: text(h.gradeRecord),
         section_id: text(h.sectionId),
-        assessment_id: text(h.assessmentId)
+        assessment_id: text(h.assessmentId),
+        loaded_at: text(h.loadedAt)
       }))
     ),
     upsert(
@@ -196,7 +197,8 @@ export function siuSeedSql(data: SyntheticData): string {
         section_id: text(r.sectionId),
         assessment_id: text(r.assessmentId),
         grade: num(r.grade),
-        date: text(r.date)
+        date: text(r.date),
+        loaded_at: text(r.loadedAt)
       }))
     ),
     upsert(

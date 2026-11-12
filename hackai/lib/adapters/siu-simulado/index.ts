@@ -54,6 +54,7 @@ type TargetKind = SiuTarget['kind']
 
 /** Postgres devuelve `+00:00`; el puerto habla en ISO 8601 de `toISOString`. */
 const iso = (value: string) => new Date(value).toISOString()
+const optionalIso = (value: string | null | undefined) => (value ? iso(value) : null)
 
 // Filas de las tablas, tal como las devuelve PostgREST.
 
@@ -123,6 +124,7 @@ type HistoryRow = {
   grade_record: string
   section_id: string | null
   assessment_id: string | null
+  loaded_at: string | null
 }
 type StudyPlanRow = {
   program_id: string
@@ -139,6 +141,7 @@ type ProvisionalRow = {
   assessment_id: string
   grade: number | string | null
   date: string
+  loaded_at: string | null
 }
 type AbsenceRow = { id: string; person_id: string; section_id: string; date: string; justified: boolean }
 type AbsenceLimitRow = { section_id: string; max: number }
@@ -492,7 +495,8 @@ export function createSimulatedSiu({
             result: r.result,
             gradeRecord: r.grade_record,
             sectionId: r.section_id,
-            assessmentId: r.assessment_id
+            assessmentId: r.assessment_id,
+            loadedAt: optionalIso(r.loaded_at)
           })
         )
       )
@@ -539,7 +543,8 @@ export function createSimulatedSiu({
             sectionId: r.section_id,
             assessmentId: r.assessment_id,
             grade: grade(r.grade),
-            date: iso(r.date)
+            date: iso(r.date),
+            loadedAt: optionalIso(r.loaded_at)
           })
         )
       )

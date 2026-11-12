@@ -1,9 +1,10 @@
 import { Bell } from 'lucide-react'
 import Link from 'next/link'
-import { unreadTotal } from '@/components/news/format'
+import { newsTotal } from '@/components/news/format'
 import { UnreadCount } from '@/components/ui/unread-count'
 import { getSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { newGradesFor } from '@/lib/new-grades'
 import { cn } from '@/lib/utils'
 
 /* Campana del encabezado: lleva a Novedades, con lo que hay sin leer de todas
@@ -36,12 +37,14 @@ export function NotificationsBell({ unread }: { unread: number }) {
 
 /* La campana de quien entró. Pide los no leídos a Espacios cada vez que se
    dibuja una pantalla, después de que la pantalla abrió lo suyo: así el número
-   es el mismo en todas y baja apenas se lee un canal. No sale del layout,
-   porque Next.js no lo vuelve a ejecutar al navegar entre pantallas. Sin
-   sesión no hay campana; si Espacios no responde, se ve sin número. */
+   es el mismo en todas y baja apenas se lee un canal. Al alumno le suma las
+   notas nuevas (lib/new-grades.ts), que dejan de contar cuando las toca en
+   Novedades. No sale del layout, porque Next.js no lo vuelve a ejecutar al
+   navegar entre pantallas. Sin sesión no hay campana; si Espacios no responde,
+   se ve sin número. */
 export async function SessionBell() {
   const session = await getSession()
   if (!session) return null
-  const read = await system().spaces.unreadFor(session.personId)
-  return <NotificationsBell unread={read.ok ? unreadTotal(read.value) : 0} />
+  const [read, grades] = await Promise.all([system().spaces.unreadFor(session.personId), newGradesFor(session)])
+  return <NotificationsBell unread={newsTotal(read.ok ? read.value : [], grades.length)} />
 }

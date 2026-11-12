@@ -208,6 +208,28 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     })
   })
 
+  it('cada nota de evaluación dice cuándo se cargó, si se sabe; los demás renglones de la historia, no', async (siu) => {
+    // Tomás: Álgebra sin fecha de carga, el TP de Programación I cargado el 9/11 y el
+    // primer parcial de Análisis I, en actuación provisoria, el 10/11.
+    const tomas = siuId('p-taguirre')
+    const history = await siu.history(tomas)
+    const provisional = await siu.provisionalResults(tomas)
+    assert.ok(history.ok && provisional.ok)
+    assert.deepEqual(
+      history.value.filter((h) => h.type === 'evaluacion').map((h) => [h.sectionId, h.loadedAt]),
+      [
+        ['sec-aga-fi-a', null],
+        ['sec-aga-fi-a', null],
+        ['sec-pr1-fi-a', '2026-11-09T21:00:00.000Z']
+      ]
+    )
+    assert.ok(history.value.filter((h) => h.type !== 'evaluacion').every((h) => h.loadedAt === null))
+    assert.deepEqual(
+      provisional.value.map((r) => [r.sectionId, r.loadedAt]),
+      [['sec-am1-fi-a', '2026-11-10T12:00:00.000Z']]
+    )
+  })
+
   it('devuelve las inasistencias por fecha y el máximo de las comisiones que cursa', async (siu) => {
     const tomas = await siu.absences(siuId('p-taguirre'))
     assert.ok(tomas.ok)

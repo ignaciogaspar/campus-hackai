@@ -1,7 +1,7 @@
 /* Cómo se muestran las novedades sin leer que da Espacios: agrupadas por
    materia y, dentro de cada una, una fila por canal con quién publicó lo
    último, el texto, cuándo y a dónde lleva. También los totales de la campana
-   y de cada materia. Sin reglas de negocio: qué está sin leer, de quién es un
+   (con las notas nuevas) y de cada materia. Sin reglas de negocio: qué está sin leer, de quién es un
    directo y si todo es de un mismo hilo lo dice Espacios. */
 import { channelTitle, messageTime, spaceHref } from '@/components/spaces/format'
 import type { Author, ChannelKind, Origin, UnreadItem } from '@/lib/core/spaces'
@@ -87,6 +87,11 @@ export function newsBySubject(items: UnreadItem[]): SubjectNews[] {
 /** Todo lo sin leer, para la campana. */
 export function unreadTotal(items: { count: number }[]): number {
   return items.reduce((n, item) => n + item.count, 0)
+}
+
+/** El número de la campana: lo sin leer de los espacios más las notas nuevas del alumno. */
+export function newsTotal(items: { count: number }[], newGrades: number): number {
+  return unreadTotal(items) + newGrades
 }
 
 /** Lo sin leer de cada materia, para la barra lateral y Mis materias. */

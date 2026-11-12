@@ -262,47 +262,47 @@ insert into siu_assessments (id, section_id, name, kind, date) values
   ('ev-14', 'sec-co1-fce-a', 'Segundo parcial', 'parcial', '2026-11-24T21:00:00.000Z')
 on conflict (id) do update set section_id = excluded.section_id, name = excluded.name, kind = excluded.kind, date = excluded.date;
 
-insert into siu_history (id, person_id, subject_id, type, date, grade, result, grade_record, section_id, assessment_id) values
-  ('ha-1', '30101', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 6, 'regular', 'C-2026-0412', null, null),
-  ('ha-2', '30106', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 7, 'regular', 'C-2026-0412', null, null),
-  ('ha-3', '30108', 'iec', 'promocion', '2026-07-06T03:00:00.000Z', 9, 'promocionado', 'P-2026-0087', null, null),
-  ('ha-4', '30101', 'iin', 'promocion', '2025-07-04T03:00:00.000Z', 8, 'promocionado', 'P-2025-0101', null, null),
-  ('ha-5', '30101', 'qui', 'promocion', '2025-12-05T03:00:00.000Z', 7, 'promocionado', 'P-2025-0230', null, null),
-  ('ha-6', '30101', 'an1', 'examen', '2025-12-15T03:00:00.000Z', 9, 'aprobado', 'E-2025-0318', null, null),
-  ('ha-7', '30108', 'iad', 'equivalencia', '2026-03-20T03:00:00.000Z', 8, 'aprobado', 'R-2026-0014', null, null),
-  ('ha-8', '30104', 'iin', 'promocion', '2025-07-04T03:00:00.000Z', 8, 'promocionado', 'P-2025-0101', null, null),
-  ('ha-9', '30104', 'tor', 'promocion', '2025-11-20T03:00:00.000Z', null, 'promocionado', 'P-2025-0198', null, null),
-  ('ha-10', '30104', 'qui', 'examen', '2025-12-12T03:00:00.000Z', 6, 'aprobado', 'E-2025-0301', null, null),
-  ('ha-11', '30104', 'an1', 'examen', '2025-12-15T03:00:00.000Z', 7, 'aprobado', 'E-2025-0318', null, null),
-  ('ha-12', '30104', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 7, 'regular', 'C-2026-0412', null, null),
-  ('ha-13', '30101', 'sre', 'cursada', '2025-11-27T03:00:00.000Z', 6, 'regular', 'C-2025-0577', null, null),
-  ('ha-14', '30105', 'sre', 'cursada', '2025-11-27T03:00:00.000Z', 7, 'regular', 'C-2025-0577', null, null),
-  ('ha-15', '30101', 'sre', 'examen', '2026-02-23T03:00:00.000Z', 2, 'desaprobado', 'E-2026-0045', null, null),
-  ('ha-16', '30101', 'aga', 'evaluacion', '2026-04-21T11:00:00.000Z', 6, 'aprobado', 'EV-2026-0103', 'sec-aga-fi-a', 'ev-1'),
-  ('ha-17', '30101', 'aga', 'evaluacion', '2026-06-23T11:00:00.000Z', 7, 'aprobado', 'EV-2026-0188', 'sec-aga-fi-a', 'ev-2'),
-  ('ha-18', '30106', 'aga', 'evaluacion', '2026-04-21T11:00:00.000Z', 8, 'aprobado', 'EV-2026-0103', 'sec-aga-fi-a', 'ev-1'),
-  ('ha-19', '30106', 'aga', 'evaluacion', '2026-06-23T11:00:00.000Z', 6, 'aprobado', 'EV-2026-0188', 'sec-aga-fi-a', 'ev-2'),
-  ('ha-20', '30104', 'aga', 'evaluacion', '2026-04-21T11:00:00.000Z', 7, 'aprobado', 'EV-2026-0103', 'sec-aga-fi-a', 'ev-1'),
-  ('ha-21', '30104', 'aga', 'evaluacion', '2026-06-23T11:00:00.000Z', 6, 'aprobado', 'EV-2026-0188', 'sec-aga-fi-a', 'ev-2'),
-  ('ha-22', '30101', 'pr1', 'evaluacion', '2026-10-16T12:00:00.000Z', 9, 'aprobado', 'EV-2026-0412', 'sec-pr1-fi-a', 'ev-11'),
-  ('ha-23', '30102', 'pr1', 'evaluacion', '2026-10-16T12:00:00.000Z', 8, 'aprobado', 'EV-2026-0412', 'sec-pr1-fi-a', 'ev-11'),
-  ('ha-24', '30104', 'pr1', 'evaluacion', '2026-10-16T12:00:00.000Z', null, 'ausente', 'EV-2026-0412', 'sec-pr1-fi-a', 'ev-11')
-on conflict (id) do update set person_id = excluded.person_id, subject_id = excluded.subject_id, type = excluded.type, date = excluded.date, grade = excluded.grade, result = excluded.result, grade_record = excluded.grade_record, section_id = excluded.section_id, assessment_id = excluded.assessment_id;
+insert into siu_history (id, person_id, subject_id, type, date, grade, result, grade_record, section_id, assessment_id, loaded_at) values
+  ('ha-1', '30101', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 6, 'regular', 'C-2026-0412', null, null, null),
+  ('ha-2', '30106', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 7, 'regular', 'C-2026-0412', null, null, null),
+  ('ha-3', '30108', 'iec', 'promocion', '2026-07-06T03:00:00.000Z', 9, 'promocionado', 'P-2026-0087', null, null, null),
+  ('ha-4', '30101', 'iin', 'promocion', '2025-07-04T03:00:00.000Z', 8, 'promocionado', 'P-2025-0101', null, null, null),
+  ('ha-5', '30101', 'qui', 'promocion', '2025-12-05T03:00:00.000Z', 7, 'promocionado', 'P-2025-0230', null, null, null),
+  ('ha-6', '30101', 'an1', 'examen', '2025-12-15T03:00:00.000Z', 9, 'aprobado', 'E-2025-0318', null, null, null),
+  ('ha-7', '30108', 'iad', 'equivalencia', '2026-03-20T03:00:00.000Z', 8, 'aprobado', 'R-2026-0014', null, null, null),
+  ('ha-8', '30104', 'iin', 'promocion', '2025-07-04T03:00:00.000Z', 8, 'promocionado', 'P-2025-0101', null, null, null),
+  ('ha-9', '30104', 'tor', 'promocion', '2025-11-20T03:00:00.000Z', null, 'promocionado', 'P-2025-0198', null, null, null),
+  ('ha-10', '30104', 'qui', 'examen', '2025-12-12T03:00:00.000Z', 6, 'aprobado', 'E-2025-0301', null, null, null),
+  ('ha-11', '30104', 'an1', 'examen', '2025-12-15T03:00:00.000Z', 7, 'aprobado', 'E-2025-0318', null, null, null),
+  ('ha-12', '30104', 'aga', 'cursada', '2026-07-08T03:00:00.000Z', 7, 'regular', 'C-2026-0412', null, null, null),
+  ('ha-13', '30101', 'sre', 'cursada', '2025-11-27T03:00:00.000Z', 6, 'regular', 'C-2025-0577', null, null, null),
+  ('ha-14', '30105', 'sre', 'cursada', '2025-11-27T03:00:00.000Z', 7, 'regular', 'C-2025-0577', null, null, null),
+  ('ha-15', '30101', 'sre', 'examen', '2026-02-23T03:00:00.000Z', 2, 'desaprobado', 'E-2026-0045', null, null, null),
+  ('ha-16', '30101', 'aga', 'evaluacion', '2026-04-21T11:00:00.000Z', 6, 'aprobado', 'EV-2026-0103', 'sec-aga-fi-a', 'ev-1', null),
+  ('ha-17', '30101', 'aga', 'evaluacion', '2026-06-23T11:00:00.000Z', 7, 'aprobado', 'EV-2026-0188', 'sec-aga-fi-a', 'ev-2', null),
+  ('ha-18', '30106', 'aga', 'evaluacion', '2026-04-21T11:00:00.000Z', 8, 'aprobado', 'EV-2026-0103', 'sec-aga-fi-a', 'ev-1', null),
+  ('ha-19', '30106', 'aga', 'evaluacion', '2026-06-23T11:00:00.000Z', 6, 'aprobado', 'EV-2026-0188', 'sec-aga-fi-a', 'ev-2', null),
+  ('ha-20', '30104', 'aga', 'evaluacion', '2026-04-21T11:00:00.000Z', 7, 'aprobado', 'EV-2026-0103', 'sec-aga-fi-a', 'ev-1', null),
+  ('ha-21', '30104', 'aga', 'evaluacion', '2026-06-23T11:00:00.000Z', 6, 'aprobado', 'EV-2026-0188', 'sec-aga-fi-a', 'ev-2', null),
+  ('ha-22', '30101', 'pr1', 'evaluacion', '2026-10-16T12:00:00.000Z', 9, 'aprobado', 'EV-2026-0412', 'sec-pr1-fi-a', 'ev-11', '2026-11-09T21:00:00.000Z'),
+  ('ha-23', '30102', 'pr1', 'evaluacion', '2026-10-16T12:00:00.000Z', 8, 'aprobado', 'EV-2026-0412', 'sec-pr1-fi-a', 'ev-11', '2026-11-09T21:00:00.000Z'),
+  ('ha-24', '30104', 'pr1', 'evaluacion', '2026-10-16T12:00:00.000Z', null, 'ausente', 'EV-2026-0412', 'sec-pr1-fi-a', 'ev-11', '2026-11-09T21:00:00.000Z')
+on conflict (id) do update set person_id = excluded.person_id, subject_id = excluded.subject_id, type = excluded.type, date = excluded.date, grade = excluded.grade, result = excluded.result, grade_record = excluded.grade_record, section_id = excluded.section_id, assessment_id = excluded.assessment_id, loaded_at = excluded.loaded_at;
 
-insert into siu_provisional_results (id, person_id, section_id, assessment_id, grade, date) values
-  ('ap-1', '30101', 'sec-am1-fi-a', 'ev-4', 7, '2026-09-21T11:00:00.000Z'),
-  ('ap-2', '30102', 'sec-am1-fi-a', 'ev-4', 8, '2026-09-21T11:00:00.000Z'),
-  ('ap-3', '30105', 'sec-am1-fi-a', 'ev-4', 4, '2026-09-21T11:00:00.000Z'),
-  ('ap-4', '30103', 'sec-am1-fi-b', 'ev-7', 6, '2026-09-22T17:00:00.000Z'),
-  ('ap-5', '30104', 'sec-am1-fi-b', 'ev-7', 9, '2026-09-22T17:00:00.000Z'),
-  ('ap-6', '30106', 'sec-am1-fi-b', 'ev-7', 5, '2026-09-22T17:00:00.000Z'),
-  ('ap-7', '30107', 'sec-am1-fce-a', 'ev-9', 8, '2026-09-28T21:00:00.000Z'),
-  ('ap-8', '30108', 'sec-am1-fce-a', 'ev-9', 7, '2026-09-28T21:00:00.000Z'),
-  ('ap-9', '30109', 'sec-am1-fce-a', 'ev-9', 6, '2026-09-28T21:00:00.000Z'),
-  ('ap-10', '30107', 'sec-co1-fce-a', 'ev-13', 6, '2026-10-06T21:00:00.000Z'),
-  ('ap-11', '30108', 'sec-co1-fce-a', 'ev-13', 8, '2026-10-06T21:00:00.000Z'),
-  ('ap-12', '30110', 'sec-co1-fce-a', 'ev-13', 7, '2026-10-06T21:00:00.000Z')
-on conflict (id) do update set person_id = excluded.person_id, section_id = excluded.section_id, assessment_id = excluded.assessment_id, grade = excluded.grade, date = excluded.date;
+insert into siu_provisional_results (id, person_id, section_id, assessment_id, grade, date, loaded_at) values
+  ('ap-1', '30101', 'sec-am1-fi-a', 'ev-4', 7, '2026-09-21T11:00:00.000Z', '2026-11-10T12:00:00.000Z'),
+  ('ap-2', '30102', 'sec-am1-fi-a', 'ev-4', 8, '2026-09-21T11:00:00.000Z', '2026-11-10T12:00:00.000Z'),
+  ('ap-3', '30105', 'sec-am1-fi-a', 'ev-4', 4, '2026-09-21T11:00:00.000Z', '2026-11-10T12:00:00.000Z'),
+  ('ap-4', '30103', 'sec-am1-fi-b', 'ev-7', 6, '2026-09-22T17:00:00.000Z', null),
+  ('ap-5', '30104', 'sec-am1-fi-b', 'ev-7', 9, '2026-09-22T17:00:00.000Z', null),
+  ('ap-6', '30106', 'sec-am1-fi-b', 'ev-7', 5, '2026-09-22T17:00:00.000Z', null),
+  ('ap-7', '30107', 'sec-am1-fce-a', 'ev-9', 8, '2026-09-28T21:00:00.000Z', null),
+  ('ap-8', '30108', 'sec-am1-fce-a', 'ev-9', 7, '2026-09-28T21:00:00.000Z', null),
+  ('ap-9', '30109', 'sec-am1-fce-a', 'ev-9', 6, '2026-09-28T21:00:00.000Z', null),
+  ('ap-10', '30107', 'sec-co1-fce-a', 'ev-13', 6, '2026-10-06T21:00:00.000Z', null),
+  ('ap-11', '30108', 'sec-co1-fce-a', 'ev-13', 8, '2026-10-06T21:00:00.000Z', null),
+  ('ap-12', '30110', 'sec-co1-fce-a', 'ev-13', 7, '2026-10-06T21:00:00.000Z', null)
+on conflict (id) do update set person_id = excluded.person_id, section_id = excluded.section_id, assessment_id = excluded.assessment_id, grade = excluded.grade, date = excluded.date, loaded_at = excluded.loaded_at;
 
 insert into siu_absences (id, person_id, section_id, date, justified) values
   ('in-1', '30101', 'sec-am1-fi-a', '2026-09-23T11:00:00.000Z', false),

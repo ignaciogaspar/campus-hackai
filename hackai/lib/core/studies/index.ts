@@ -353,7 +353,10 @@ export type AssessmentGrade = {
   subjectName: string
   assessmentName: string
   grade: number | null
+  /** Fecha de la evaluación. */
   date: string
+  /** Cuándo se cargó la nota, si el SIU lo dice; si no, `null`. */
+  loadedAt: string | null
   source: 'historia' | 'actuacion-provisoria'
 }
 
@@ -421,6 +424,11 @@ export type Studies = {
   pendingFinals(personId: PersonId): Promise<Result<Fresh<PendingFinal[]>, ReadError>>
   /** Notas de parciales unificadas e historia académica. */
   record(personId: PersonId): Promise<Result<Fresh<AcademicRecord>, ReadError>>
+  /** Notas de evaluaciones (parciales, recuperatorios y TP, como en `record`) con número, cargadas en los
+      últimos 7 días y después de `seenAt` (cuando vio sus notas por última vez, o `null`), la más nueva
+      primero. Sin fecha de carga, cuenta la de la evaluación. Con el SIU caído, salen de lo último leído de
+      `record`, marcadas como desactualizadas. */
+  newGrades(personId: PersonId, seenAt: string | null): Promise<Result<Fresh<AssessmentGrade[]>, ReadError>>
   /** Si cumple las condiciones de la constancia y el enlace a la Autogestión del SIU. */
   certificate(personId: PersonId, type: CertificateType): Promise<Result<Fresh<CertificateStatus>, ReadError>>
   /** Su plan de estudios con el estado y las notas de cada materia, y el avance de la carrera. */
@@ -580,6 +588,7 @@ type RawGrade = {
   subjectId: string | null
   grade: number | null
   date: string
+  loadedAt: string | null
   source: AssessmentGrade['source']
 }
 
@@ -629,6 +638,7 @@ function rawGrades(history: SiuHistoryEntry[], provisional: SiuProvisionalResult
             subjectId: h.subjectId,
             grade: h.grade,
             date: h.date,
+            loadedAt: h.loadedAt,
             source: 'historia'
           }
         ]
@@ -641,10 +651,26 @@ function rawGrades(history: SiuHistoryEntry[], provisional: SiuProvisionalResult
       subjectId: null,
       grade: r.grade,
       date: r.date,
+      loadedAt: r.loadedAt,
       source: 'actuacion-provisoria'
     })
   )
   return [...fromHistory, ...fromProvisional]
+}
+
+/** Cuántos días es nueva una nota desde que se cargó. */
+const NEW_GRADE_DAYS = 7
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Las notas con número cargadas en los últimos 7 días, después de `seenAt` y no después de ahora, la más nueva
+    primero. Sin fecha de carga, cuenta la de la evaluación. Un ausente no es una nota que llega. */
+function newGradesOf(grades: AssessmentGrade[], now: string, seenAt: string | null): AssessmentGrade[] {
+  const weekAgo = new Date(new Date(now).getTime() - NEW_GRADE_DAYS * DAY_MS).toISOString()
+  const since = seenAt && seenAt > weekAgo ? seenAt : weekAgo
+  const loaded = (g: AssessmentGrade) => g.loadedAt ?? g.date
+  return grades
+    .filter((g) => g.grade !== null && loaded(g) > since && loaded(g) <= now)
+    .sort((a, b) => loaded(b).localeCompare(loaded(a)))
 }
 
 /** La más reciente primero y, a igual fecha, por materia. */
@@ -889,6 +915,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           assessmentName: names.value.assessmentName(r),
           grade: r.grade,
           date: r.date,
+          loadedAt: r.loadedAt,
           source: r.source
         }
       })
@@ -1713,6 +1740,19 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
+  const recordFresh = (personId: PersonId) => fresh(`record:${personId}`, () => record(personId))
+
+  /** Las notas nuevas, miradas con el reloj de ahora: una nota de lo último que se leyó puede haber dejado de ser
+      nueva. */
+  async function newGradesNow(
+    personId: PersonId,
+    seenAt: string | null
+  ): Promise<Result<Fresh<AssessmentGrade[]>, ReadError>> {
+    const read = await recordFresh(personId)
+    if (!read.ok) return read
+    return ok({ ...read.value, data: newGradesOf(read.value.data.grades, clock.now().toISOString(), seenAt) })
+  }
+
   /** La oferta, con la ventana de inscripción mirada con el reloj de ahora: lo último que se leyó puede ser de antes
       de que abriera o cerrara. */
   async function offerNow(personId: PersonId, query: OfferQuery): Promise<Result<Fresh<OfferItem[]>, ReadError>> {
@@ -1739,7 +1779,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     upcoming: (personId) => fresh(`upcoming:${personId}`, () => upcoming(personId)),
     openEnrollments: openEnrollmentsNow,
     pendingFinals: (personId) => fresh(`pendingFinals:${personId}`, () => pendingFinals(personId)),
-    record: (personId) => fresh(`record:${personId}`, () => record(personId)),
+    record: recordFresh,
+    newGrades: newGradesNow,
     certificate: (personId, type) => fresh(`certificate:${personId}:${type}`, () => certificate(personId, type)),
     career: (personId) => fresh(`career:${personId}`, () => career(personId))
   }

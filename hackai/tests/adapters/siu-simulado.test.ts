@@ -56,6 +56,47 @@ test('si la red falla, cada operación devuelve «falla externa» sin tirar', as
   )
 })
 
+test('lee cuándo se cargó cada nota, y `null` si la columna viene vacía', async () => {
+  const tables: Record<string, unknown[]> = {
+    siu_persons: [{ id: '30101' }],
+    siu_provisional_results: [
+      {
+        id: 'ap-1',
+        person_id: '30101',
+        section_id: 'sec-am1-fi-a',
+        assessment_id: 'ev-3',
+        grade: '7',
+        date: '2026-09-21T11:00:00+00:00',
+        loaded_at: '2026-11-10T12:00:00+00:00'
+      },
+      {
+        id: 'ap-2',
+        person_id: '30101',
+        section_id: 'sec-am1-fi-a',
+        assessment_id: 'ev-4',
+        grade: null,
+        date: '2026-11-16T11:00:00+00:00',
+        loaded_at: null
+      }
+    ]
+  }
+  const { siu } = siuWith(async (input) => {
+    const table = new URL(String(input)).pathname.split('/').at(-1) ?? ''
+    return new Response(JSON.stringify(tables[table] ?? []), { headers: { 'content-type': 'application/json' } })
+  })
+
+  const result = await siu.provisionalResults('30101')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.map((r) => [r.id, r.grade, r.loadedAt]),
+    [
+      ['ap-1', 7, '2026-11-10T12:00:00.000Z'],
+      ['ap-2', null, null]
+    ]
+  )
+})
+
 test('si la base responde con error devuelve «falla externa»', async () => {
   const { siu } = siuWith(
     async () => new Response(JSON.stringify({ code: '42P01', message: 'relation does not exist' }), { status: 404 })

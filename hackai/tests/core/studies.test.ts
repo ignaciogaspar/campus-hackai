@@ -1142,7 +1142,7 @@ test('un docente no tiene finales pendientes; con el SIU caído vuelve lo últim
 
 // Notas, historia y constancias
 
-test('las notas de parciales salen juntas, vengan de la historia o de actuación provisoria, la más reciente primero', async () => {
+test('las notas de parciales salen juntas, vengan de la historia o de actuación provisoria, la más reciente primero, con cuándo se cargó cada una si el SIU lo dice', async () => {
   const { studies } = build()
 
   const result = await studies.record('p-taguirre')
@@ -1156,6 +1156,7 @@ test('las notas de parciales salen juntas, vengan de la historia o de actuación
       assessmentName: 'TP integrador',
       grade: 9,
       date: '2026-10-16T12:00:00.000Z',
+      loadedAt: '2026-11-09T21:00:00.000Z',
       source: 'historia'
     },
     {
@@ -1164,6 +1165,7 @@ test('las notas de parciales salen juntas, vengan de la historia o de actuación
       assessmentName: 'Primer parcial',
       grade: 7,
       date: '2026-09-21T11:00:00.000Z',
+      loadedAt: '2026-11-10T12:00:00.000Z',
       source: 'actuacion-provisoria'
     },
     {
@@ -1172,6 +1174,7 @@ test('las notas de parciales salen juntas, vengan de la historia o de actuación
       assessmentName: 'Segundo parcial',
       grade: 7,
       date: '2026-06-23T11:00:00.000Z',
+      loadedAt: null,
       source: 'historia'
     },
     {
@@ -1180,9 +1183,99 @@ test('las notas de parciales salen juntas, vengan de la historia o de actuación
       assessmentName: 'Primer parcial',
       grade: 6,
       date: '2026-04-21T11:00:00.000Z',
+      loadedAt: null,
       source: 'historia'
     }
   ])
+})
+
+// Notas nuevas
+
+/** Las notas nuevas como [materia, evaluación, nota]. */
+const named = (grades: { subjectName: string; assessmentName: string; grade: number | null }[]) =>
+  grades.map((g) => [g.subjectName, g.assessmentName, g.grade])
+
+test('las notas nuevas son las cargadas en los últimos 7 días, la más nueva primero, vengan de la historia o de actuación provisoria', async () => {
+  const { studies } = build()
+
+  const result = await studies.newGrades('p-taguirre', null)
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.deepEqual(
+    result.value.data.map((g) => [g.subjectName, g.assessmentName, g.grade, g.source, g.loadedAt]),
+    [
+      ['Análisis Matemático I', 'Primer parcial', 7, 'actuacion-provisoria', '2026-11-10T12:00:00.000Z'],
+      ['Programación I', 'TP integrador', 9, 'historia', '2026-11-09T21:00:00.000Z']
+    ]
+  )
+})
+
+test('una nota deja de ser nueva 7 días después de cargada, contados con el reloj', async () => {
+  const { studies, advance } = build()
+
+  advance((6 * 24 + 8) * 60) // lunes 16/11 a las 20:00: el TP se cargó hace 7 días y 2 horas
+  const monday = await studies.newGrades('p-taguirre', null)
+  advance(14 * 60) // martes 17/11 a las 10:00: el parcial se cargó hace 7 días y 1 hora
+  const tuesday = await studies.newGrades('p-taguirre', null)
+
+  assert.ok(monday.ok && tuesday.ok)
+  assert.deepEqual(named(monday.value.data), [['Análisis Matemático I', 'Primer parcial', 7]])
+  assert.deepEqual(tuesday.value.data, [])
+})
+
+test('las notas que ya vio no son nuevas: solo cuentan las cargadas después', async () => {
+  const { studies } = build()
+
+  // Vio sus notas el martes 10/11 a la medianoche: después se cargó solo el parcial de Análisis I.
+  const result = await studies.newGrades('p-taguirre', '2026-11-10T03:00:00.000Z')
+
+  assert.ok(result.ok)
+  assert.deepEqual(named(result.value.data), [['Análisis Matemático I', 'Primer parcial', 7]])
+})
+
+test('sin fecha de carga, una nota cuenta como nueva desde la fecha de la evaluación; una cargada después de ahora no sale', async () => {
+  const data = structuredClone(syntheticData)
+  const tomas = data.people.find((p) => p.id === 'p-taguirre')!.siuId
+  for (const r of data.siu.provisionalResults.filter((r) => r.personId === tomas)) {
+    r.loadedAt = null
+    r.date = '2026-11-06T13:00:00.000Z' // viernes 6/11, hace 4 días
+  }
+  for (const h of data.siu.history.filter((h) => h.personId === tomas && h.type === 'evaluacion')) {
+    h.loadedAt = '2026-11-10T18:00:00.000Z' // hoy a las 15, después del mediodía de los tests
+  }
+  const { studies } = build(data)
+
+  const result = await studies.newGrades('p-taguirre', null)
+
+  assert.ok(result.ok)
+  assert.deepEqual(named(result.value.data), [['Análisis Matemático I', 'Primer parcial', 7]])
+})
+
+test('un ausente no es una nota nueva, aunque su evaluación se haya cargado en la semana', async () => {
+  const { studies } = build()
+
+  // Sofía estuvo ausente en el TP integrador de Programación I, que se cargó el 9/11.
+  const result = await studies.newGrades('p-sdominguez', null)
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.data, [])
+})
+
+test('con el SIU caído, las notas nuevas salen de lo último leído, marcadas como desactualizadas; sin nada leído, «falla externa»', async () => {
+  const { studies, siuState } = build()
+  siuState.down = true
+  assert.deepEqual(await studies.newGrades('p-taguirre', null), { ok: false, error: 'falla-externa' })
+
+  siuState.down = false
+  await studies.record('p-taguirre')
+  siuState.down = true
+  const result = await studies.newGrades('p-taguirre', null)
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, true)
+  assert.equal(result.value.readAt, NOW)
+  assert.equal(result.value.data.length, 2)
 })
 
 test('la historia académica muestra las materias aprobadas con fecha, nota y forma de aprobación, y el promedio', async () => {

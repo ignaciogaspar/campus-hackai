@@ -15,6 +15,7 @@ import { createStudies } from '@/lib/core/studies'
 import { createToday } from '@/lib/core/today'
 
 const { siu, moodle, discord, people } = syntheticData
+const sorted = (values: string[]) => [...values].sort()
 
 test('hay dos facultades y una misma materia dictada en las dos', () => {
   const schools = new Set(siu.persons.map((p) => p.school.id))
@@ -204,6 +205,15 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
     assert.deepEqual([next?.kind, next?.subjectCode, next?.name], ['parcial', 'AM1', 'Segundo parcial'])
     assert.equal(next?.daysLeft, daysToExam)
     assert.ok(daysToExam <= 7)
+  })
+
+  test(`el ${day} el alumno de la demo tiene notas nuevas, una de la historia y otra de actuación provisoria`, async () => {
+    const { studies } = systemAt(now)
+
+    const result = await studies.newGrades(DEMO_STUDENT, null)
+
+    assert.ok(result.ok)
+    assert.deepEqual(sorted(result.value.data.map((g) => g.source)), ['actuacion-provisoria', 'historia'])
   })
 
   test(`el ${day} el alumno de la demo tiene una cursada abierta con lugar y otra comisión sin cupo`, async () => {

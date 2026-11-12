@@ -11,7 +11,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
-import { unreadBySubject, unreadTotal } from '@/components/news/format'
+import { newsTotal, unreadBySubject } from '@/components/news/format'
 import { activeProgram } from '@/components/session/person-text'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
@@ -22,6 +22,7 @@ import { UnreadRefresh } from '@/components/spaces/unread-refresh'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Person } from '@/lib/core/people'
+import { newGradesFor } from '@/lib/new-grades'
 
 /** Debajo del nombre en el perfil: qué cursa el alumno o que es docente. La facultad ya va en la marca. */
 function profileDetail(person: Person): string {
@@ -31,10 +32,11 @@ function profileDetail(person: Person): string {
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await requireSession()
-  const [person, subjects, unread, jar] = await Promise.all([
+  const [person, subjects, unread, grades, jar] = await Promise.all([
     system().people.get(session.personId),
     system().studies.subjectsOf(session.personId),
     system().spaces.unreadFor(session.personId),
+    newGradesFor(session),
     cookies()
   ])
   if (!person.ok && person.error === 'persona-desconocida') redirect('/salir')
@@ -55,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppShell
       school={found?.school.name}
       subjects={[...nav.values()]}
-      unread={unread.ok ? unreadTotal(unread.value) : 0}
+      unread={newsTotal(unread.ok ? unread.value : [], grades.length)}
       shell={{ person: found, detail: found ? profileDetail(found) : undefined }}
       sidebarCollapsed={jar.get(SIDEBAR_COOKIE)?.value === 'plegada'}
     >
