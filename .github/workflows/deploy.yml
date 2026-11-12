@@ -26,10 +26,11 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
-# Un push nuevo al mismo PR, o a main, cancela el deploy anterior.
+# Un push nuevo al mismo PR cancela el preview anterior. En main los deploys a
+# producción hacen fila: uno a medias nunca se corta.
 concurrency:
   group: deploy-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
