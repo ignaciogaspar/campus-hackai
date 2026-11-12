@@ -32,6 +32,24 @@ export function capacityText(item: Pick<OfferItem, 'capacity' | 'spotsLeft'>): {
   const { capacity, spotsLeft } = item
   if (capacity === null || spotsLeft === null) return { text: 'Sin límite de cupo', full: false }
   if (spotsLeft === 0) return { text: `Sin cupo · ${capacity} de ${capacity} lugares ocupados`, full: true }
-  const left = spotsLeft === 1 ? 'Queda 1 lugar' : `Quedan ${spotsLeft} lugares`
-  return { text: `${left} de ${capacity}`, full: false }
+  return { text: `${leftText(spotsLeft)} de ${capacity}`, full: false }
+}
+
+const leftText = (spotsLeft: number) => (spotsLeft === 1 ? 'Queda 1 lugar' : `Quedan ${spotsLeft} lugares`)
+
+/** Los lugares que quedan en una inscripción abierta de la lista, entre todas
+    sus comisiones o mesas: «Quedan 12 lugares», «Sin cupo» o «Sin límite de cupo». */
+export function spotsLeftText(spotsLeft: number | null): { text: string; full: boolean } {
+  if (spotsLeft === null) return { text: 'Sin límite de cupo', full: false }
+  if (spotsLeft === 0) return { text: 'Sin cupo', full: true }
+  return { text: leftText(spotsLeft), full: false }
+}
+
+/** Cuándo cierra una inscripción, con los días que cuenta Cursada: «cierra hoy»,
+    «cierra mañana», «cierra en 24 días». Una lectura vieja puede traer una que ya cerró. */
+export function closingText(closesInDays: number): string {
+  if (closesInDays < 0) return 'ya cerró'
+  if (closesInDays === 0) return 'cierra hoy'
+  if (closesInDays === 1) return 'cierra mañana'
+  return `cierra en ${closesInDays} días`
 }

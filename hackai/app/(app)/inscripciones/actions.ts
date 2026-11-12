@@ -26,6 +26,7 @@ const SECTION_ENROLL_ERRORS: EnrollErrorText = {
   'sin-cupo': 'La comisión se quedó sin cupo. Probá con otra comisión.',
   'fuera-de-periodo': 'La inscripción a esta comisión no está abierta.',
   'ya-inscripto': 'Ya estás inscripto en esta materia. Para cambiarte de comisión, primero date de baja de la otra.',
+  'solo-alumnos': 'Inscribirse es solo para alumnos: con tu cuenta de docente no te podemos inscribir.',
   'falla-externa':
     'El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada. Probá de nuevo en un rato.',
   'sin-cuenta-del-aula':
@@ -51,6 +52,7 @@ const SECTION_DROP_ERRORS: DropErrorText = {
   'persona-desconocida': UNKNOWN_PERSON_TEXT,
   'no-inscripto': 'No estás inscripto en esta comisión.',
   'fuera-de-periodo': 'Ya no te podés dar de baja: el período de inscripción cerró.',
+  'solo-alumnos': 'Darse de baja es solo para alumnos: con tu cuenta de docente no hay nada que dar de baja.',
   'falla-externa':
     'El SIU o el Campus Virtual no respondieron, así que seguís inscripto como antes. Probá de nuevo en un rato.',
   'sin-cuenta-del-aula':
