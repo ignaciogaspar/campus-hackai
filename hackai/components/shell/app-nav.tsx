@@ -95,7 +95,7 @@ function SignOutButton() {
       aria-busy={pending}
       aria-label={pending ? 'Saliendo…' : 'Salir'}
       title='Salir'
-      className='grid size-9 flex-none cursor-pointer place-items-center rounded-lg text-destructive transition-colors duration-150 hover:bg-destructive/10 focus-ring disabled:cursor-progress disabled:opacity-60'
+      className='grid size-11 flex-none cursor-pointer place-items-center rounded-lg text-destructive transition-colors duration-150 hover:bg-destructive/10 focus-ring disabled:cursor-progress disabled:opacity-60'
     >
       <LogOut aria-hidden='true' className={ICON} strokeWidth={1.8} />
     </button>
@@ -126,7 +126,9 @@ function SidebarAccount({ person, detail }: { person: Person; detail?: string })
   )
 }
 
-/* Arriba de la barra: la marca y el botón para plegarla. Plegada queda solo el botón. */
+/* Arriba de la barra: la marca y el botón para plegarla. Plegada queda solo el botón.
+   Es solo de compu (en el celular no hay barra lateral que plegar): por eso el
+   botón mide 36 px y no los 44 de un área táctil, para entrar en la barra plegada. */
 function SidebarTop() {
   const { collapsed, toggle } = useSidebar()
   return (
