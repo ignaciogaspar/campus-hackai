@@ -72,7 +72,9 @@ function matches(person: Person, { role, query, school, program }: Filters): boo
   return plain(`${person.name} ${detailOf(person)} ${person.school.name}`).includes(plain(query))
 }
 
-export function PersonPicker({ people }: { people: Person[] }) {
+/** `returnTo`: la ruta a la que vuelve al entrar, si se llegó al ingreso
+    queriendo abrir algo sin sesión; si no, cada persona va a su inicio. */
+export function PersonPicker({ people, returnTo }: { people: Person[]; returnTo?: string | null }) {
   const sorted = useMemo(() => [...people].sort(byRoleAndSurname), [people])
   const [filters, setFilters] = useState<Filters>({ role: 'todos', query: '', school: ALL, program: ALL })
   const set = (change: Partial<Filters>) => setFilters((f) => ({ ...f, ...change }))
@@ -170,6 +172,7 @@ export function PersonPicker({ people }: { people: Person[] }) {
                 className='border-b border-border sm:odd:border-r xl:border-r xl:[&:nth-child(3n)]:border-r-0'
               >
                 <form action={signInAsDemoPerson.bind(null, person.id)}>
+                  {returnTo && <input type='hidden' name='next' value={returnTo} />}
                   <PersonRow person={person} detail={detailOf(person)} />
                 </form>
               </li>
