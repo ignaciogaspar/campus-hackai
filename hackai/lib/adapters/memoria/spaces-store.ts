@@ -46,7 +46,7 @@ export function createMemorySpacesStore(): SpacesStore {
       const existing = spaces.find((s) => s.subjectId === space.subjectId && s.schoolId === space.schoolId)
       if (existing) return ok(copy(existing))
       counters.space += 1
-      const created: StoredSpace = { ...copy(space), id: `sp-${counters.space}` }
+      const created: StoredSpace = { ...copy(space), id: `sp-${counters.space}`, externalServer: null }
       spaces.push(created)
       return ok(copy(created))
     },
@@ -55,6 +55,13 @@ export function createMemorySpacesStore(): SpacesStore {
       const found = spaces.find((s) => s.id === spaceId)
       if (!found) return ok(null)
       found.materialLayout = layout
+      return ok(copy(found))
+    },
+
+    async setExternalServer(spaceId, server) {
+      const found = spaces.find((s) => s.id === spaceId)
+      if (!found) return ok(null)
+      found.externalServer = copy(server)
       return ok(copy(found))
     },
 

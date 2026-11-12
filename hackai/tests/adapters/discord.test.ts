@@ -289,3 +289,61 @@ test('pagina de a 100 y, si hay más de lo que lee de una vez, el cursor queda e
 test('sin token no se arma', () => {
   assert.throws(() => createDiscordExternalChannel({ token: ' ' }), /DISCORD_BOT_TOKEN/)
 })
+
+// El servidor de la cátedra: categoría, rol de docentes y canales con permisos.
+
+const GUILD_ID = '1300000000000000001'
+const TEACHER = '1290000000000000001'
+const STUDENT = '1290000000000000011'
+/** Mensajes, hilos y respuestas en hilos: lo que se niega o se permite para escribir. */
+const WRITE = String((1n << 11n) | (1n << 35n) | (1n << 38n))
+
+test('un canal solo para docentes le niega escribir a @everyone y se lo da al rol de docentes y al bot', async () => {
+  const { fake, port } = setup()
+  fake.addMembers(TEACHER, STUDENT)
+
+  const group = await port.prepareGroup(GUILD_ID, {
+    name: 'Análisis Matemático I',
+    teacherIds: [TEACHER, '1290000000000009999']
+  })
+  assert.ok(group.ok)
+  // El rol queda con el docente; la cuenta que no es miembro del servidor se saltea.
+  assert.deepEqual(fake.roles(), [
+    { id: group.value.teachersRoleId, name: 'Docentes · Análisis Matemático I', members: [TEACHER] }
+  ])
+
+  const avisos = await port.createChannel(GUILD_ID, group.value, { name: 'avisos-a', writers: 'docentes' })
+  const consultas = await port.createChannel(GUILD_ID, group.value, { name: 'consultas-a', writers: 'todos' })
+  assert.ok(avisos.ok && consultas.ok)
+
+  const created = (id: string) => fake.guildChannels().find((c) => c.id === id)!
+  const bot = {
+    id: '1302000000000000001',
+    type: 1,
+    allow: String((1n << 10n) | (1n << 16n) | BigInt(WRITE)),
+    deny: '0'
+  }
+  assert.equal(created(avisos.value.id).parent_id, group.value.categoryId)
+  assert.deepEqual(created(avisos.value.id).permission_overwrites, [
+    { id: GUILD_ID, type: 0, allow: '0', deny: WRITE },
+    { id: group.value.teachersRoleId, type: 0, allow: WRITE, deny: '0' },
+    bot
+  ])
+  assert.deepEqual(created(consultas.value.id).permission_overwrites, [bot])
+})
+
+test('si al bot le faltan Gestionar canales o Gestionar roles, crear devuelve sin-permisos', async () => {
+  const { fake, port } = setup()
+  fake.denyManage(true)
+  assert.deepEqual(await port.prepareGroup(GUILD_ID, { name: 'Materia', teacherIds: [] }), {
+    ok: false,
+    error: 'sin-permisos'
+  })
+})
+
+test('con Discord caído, las operaciones del servidor devuelven falla-externa', async () => {
+  const { fake, port } = setup()
+  fake.setDown(true)
+  assert.deepEqual(await port.serverChannels(GUILD_ID), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await port.isMember(GUILD_ID, TEACHER), { ok: false, error: 'falla-externa' })
+})

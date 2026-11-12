@@ -2,11 +2,25 @@
    snowflake, lectura desde un cursor, hilos y adjuntos que se bajan por URL.
    Arranca con los canales del set de datos sintéticos. Además del puerto,
    `receive` simula que alguien escribe en el canal externo, para probar la
-   vuelta sin Discord. */
+   vuelta sin Discord.
+
+   Los canales sintéticos están en un servidor (`MEMORY_SERVER`) del que son
+   miembros todas las personas sintéticas con cuenta de Discord. Ahí se crean
+   la categoría, el rol de docentes y los canales; `serverState` muestra cómo
+   quedaron, con quién escribe en cada canal. */
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 import type { ClockPort } from '@/lib/ports/clock'
-import type { ExternalAttachment, ExternalChannelPort, ExternalMessage } from '@/lib/ports/external-channel'
+import type {
+  ExternalAttachment,
+  ExternalChannelPort,
+  ExternalMessage,
+  ExternalServerChannel,
+  ExternalWriters
+} from '@/lib/ports/external-channel'
 import { fail, ok } from '@/lib/result'
+
+/** El servidor de la cátedra en memoria. */
+export const MEMORY_SERVER = '1300000000000000001'
 
 /** El bot de HackAI en el canal externo. */
 const BOT = { id: '1302000000000000001', name: 'HackAI', isBot: true }
@@ -19,10 +33,29 @@ export type IncomingMessage = {
   attachments?: { filename: string; contentType: string; content: string; expired?: boolean }[]
 }
 
+/** Cómo quedó el servidor: sus categorías, sus roles con sus miembros y sus canales con quién escribe. */
+export type MemoryServerState = {
+  categories: { id: string; name: string }[]
+  roles: { id: string; name: string; members: string[] }[]
+  channels: (ExternalServerChannel & { writers: ExternalWriters | null })[]
+}
+
 export type MemoryExternalChannel = ExternalChannelPort & {
   /** Simula un mensaje de una persona en el canal externo. `null` si el canal no existe. */
   receive(channelId: string, message: IncomingMessage): ExternalMessage | null
+  /** Cómo quedó un servidor, o `null` si no existe. */
+  serverState(serverId: string): MemoryServerState | null
 }
+
+type MemoryServer = {
+  members: Set<string>
+  categories: { id: string; name: string }[]
+  roles: { id: string; name: string; members: Set<string> }[]
+  /** Los canales del servidor, con su categoría y quién escribe (`null` en los que no creó HackAI). */
+  channels: { id: string; categoryId: string | null; writers: ExternalWriters | null }[]
+}
+
+const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase('es') === b.trim().toLocaleLowerCase('es')
 
 export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPort): MemoryExternalChannel {
   const channels = structuredClone(data.discord.channels)
@@ -33,6 +66,24 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
     .reduce((max, id) => (id > max ? id : max), 1310000000000000000n)
 
   const copy = <T>(value: T): T => structuredClone(value)
+
+  const servers = new Map<string, MemoryServer>([
+    [
+      MEMORY_SERVER,
+      {
+        members: new Set(data.people.flatMap((p) => (p.discordId ? [p.discordId] : []))),
+        categories: [],
+        roles: [],
+        channels: channels.map((c) => ({ id: c.id, categoryId: null, writers: null }))
+      }
+    ]
+  ])
+
+  function toServerChannel(server: MemoryServer, entry: MemoryServer['channels'][number]): ExternalServerChannel {
+    const name = channels.find((c) => c.id === entry.id)?.name ?? ''
+    const category = server.categories.find((c) => c.id === entry.categoryId)?.name ?? null
+    return { id: entry.id, name, category }
+  }
 
   const nextId = () => {
     lastId += 1n
@@ -77,7 +128,7 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
   }
 
   return {
-    capabilities: { delivery: 'cursor', threads: true },
+    capabilities: { delivery: 'cursor', threads: true, servers: true },
 
     async read(channelId, cursor) {
       const channel = channels.find((c) => c.id === channelId)
@@ -112,6 +163,55 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
       const author = { isBot: false, ...incoming.author }
       const attachments = (incoming.attachments ?? []).map((a) => attachmentOf(channelId, a))
       return copy(append(channelId, incoming.text, incoming.threadId ?? null, { author, attachments }))
+    },
+
+    serverState(serverId) {
+      const server = servers.get(serverId)
+      if (!server) return null
+      return copy({
+        categories: server.categories,
+        roles: server.roles.map((r) => ({ id: r.id, name: r.name, members: [...r.members] })),
+        channels: server.channels.map((c) => ({ ...toServerChannel(server, c), writers: c.writers }))
+      })
+    },
+
+    async serverChannels(serverId) {
+      const server = servers.get(serverId)
+      if (!server) return fail('servidor-inexistente')
+      return ok(server.channels.map((c) => toServerChannel(server, c)))
+    },
+
+    async isMember(serverId, userId) {
+      const server = servers.get(serverId)
+      return server ? ok(server.members.has(userId)) : fail('servidor-inexistente')
+    },
+
+    async prepareGroup(serverId, group) {
+      const server = servers.get(serverId)
+      if (!server) return fail('servidor-inexistente')
+      let category = server.categories.find((c) => sameName(c.name, group.name))
+      if (!category) {
+        category = { id: nextId(), name: group.name }
+        server.categories.push(category)
+      }
+      const roleName = `Docentes · ${group.name}`
+      let role = server.roles.find((r) => sameName(r.name, roleName))
+      if (!role) {
+        role = { id: nextId(), name: roleName, members: new Set() }
+        server.roles.push(role)
+      }
+      for (const id of group.teacherIds) if (server.members.has(id)) role.members.add(id)
+      return ok({ categoryId: category.id, teachersRoleId: role.id })
+    },
+
+    async createChannel(serverId, group, channel) {
+      const server = servers.get(serverId)
+      if (!server) return fail('servidor-inexistente')
+      const id = nextId()
+      channels.push({ id, name: channel.name, messages: [] })
+      const entry = { id, categoryId: group.categoryId, writers: channel.writers }
+      server.channels.push(entry)
+      return ok(toServerChannel(server, entry))
     },
 
     async download(attachment) {

@@ -53,6 +53,19 @@ export function createSupabasePeopleStore({
       )
       if (!row.ok) return fail('falla-externa')
       return ok(row.value?.person_id ?? null)
+    },
+
+    async setAccount(personId, system, externalId) {
+      // La clave es (persona, sistema): reemplaza la cuenta que tenía. Si el id es de otra persona, choca con
+      // la clave única (sistema, id externo).
+      const saved = await run<null>('vincular cuenta', (s) =>
+        client
+          .from(TABLE)
+          .upsert({ person_id: personId, system, external_id: externalId }, { onConflict: 'person_id,system' })
+          .abortSignal(s)
+      )
+      if (saved.ok) return ok(null)
+      return fail(saved.error === 'duplicado' ? 'duplicado' : 'falla-externa')
     }
   }
 }

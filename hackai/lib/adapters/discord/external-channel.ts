@@ -20,8 +20,21 @@
      Una caída, un tiempo agotado o un error del servidor también vuelven como
      `falla-externa`.
    - El token solo viaja en el header `Authorization` hacia la API: nunca a la
-     CDN, ni en errores ni en logs. */
-import type { ExternalAttachment, ExternalChannelPort, ExternalMessage } from '@/lib/ports/external-channel'
+     CDN, ni en errores ni en logs.
+   - En el servidor de la cátedra lista los canales de texto y crea la
+     categoría de la materia, el rol de sus docentes y sus canales. Un canal
+     solo para docentes niega escribir a @everyone y se lo permite al rol de
+     docentes y al bot, que si no quedaría afuera. Para eso el bot necesita
+     Gestionar canales y Gestionar roles (docs/discord.md). */
+import type {
+  ExternalAttachment,
+  ExternalChannelPort,
+  ExternalGroup,
+  ExternalMessage,
+  ExternalServerChannel,
+  ExternalServerError,
+  ExternalWriters
+} from '@/lib/ports/external-channel'
 import { type ExternalFailure, fail, type Ok, ok, type Result } from '@/lib/result'
 
 export type DiscordOptions = {
@@ -54,6 +67,26 @@ const DEFAULT = 0
 const REPLY = 19
 /** Error de la API de Discord (JSON Error Codes) al abrir un hilo que ya existe. */
 const THREAD_ALREADY_CREATED = 160004
+/** Tipos de canal de Discord: de texto, de anuncios y categoría. */
+const GUILD_TEXT = 0
+const GUILD_ANNOUNCEMENT = 5
+const GUILD_CATEGORY = 4
+/** Tipos de destinatario de un permiso por canal: un rol o un miembro. */
+const ROLE = 0
+const MEMBER = 1
+/** Permisos de Discord (bits). */
+const VIEW_CHANNEL = 1n << 10n
+const SEND_MESSAGES = 1n << 11n
+const READ_MESSAGE_HISTORY = 1n << 16n
+const CREATE_PUBLIC_THREADS = 1n << 35n
+const SEND_MESSAGES_IN_THREADS = 1n << 38n
+/** Escribir en un canal: mensajes, hilos y respuestas en hilos. */
+const WRITE = SEND_MESSAGES | CREATE_PUBLIC_THREADS | SEND_MESSAGES_IN_THREADS
+/** Lo que el bot necesita en cada canal que crea: verlo, leerlo y escribir. */
+const BOT_ALLOW = VIEW_CHANNEL | READ_MESSAGE_HISTORY | WRITE
+/** Errores de la API (JSON Error Codes) de un miembro o un usuario que no existen. */
+const UNKNOWN_MEMBER = 10007
+const UNKNOWN_USER = 10013
 /** Origen de los snowflakes de Discord: 2015-01-01 en milisegundos. */
 const DISCORD_EPOCH = 1420070400000n
 
@@ -83,11 +116,15 @@ type DiscordMessage = {
 type DiscordChannel = {
   id: string
   type: number
+  name?: string
+  position?: number
   guild_id?: string
   parent_id?: string | null
   last_message_id?: string | null
   thread_metadata?: { archived: boolean; archive_timestamp: string }
 }
+
+type DiscordRole = { id: string; name: string }
 
 type ArchivedThreads = { threads: DiscordChannel[]; has_more: boolean }
 
@@ -140,7 +177,7 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
 
   /** Request a la API con el token del bot. Devuelve el JSON o el error HTTP;
       una caída tira `DiscordDown`, que `guard` convierte en `falla-externa`. */
-  async function api<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<ApiResult<T>> {
+  async function api<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<ApiResult<T>> {
     const headers: Record<string, string> = { Authorization: `Bot ${options.token}`, 'User-Agent': USER_AGENT }
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     const outcome = await send(`${API}${path}`, {
@@ -150,6 +187,8 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
     })
     if (outcome.kind === 'caida') throw new DiscordDown()
     if (outcome.kind === 'http') return { ok: false, error: { status: outcome.status, code: outcome.code } }
+    // Sin contenido, como al darle un rol a un miembro.
+    if (outcome.response.status === 204) return ok(null as T)
     try {
       return ok((await outcome.response.json()) as T)
     } catch {
@@ -246,8 +285,69 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
     return ok(null)
   }
 
+  /** El id de usuario del bot, para darle permiso en los canales que crea. */
+  let botId: string | null = null
+  async function botUserId(): Promise<string> {
+    botId ??= must(await api<DiscordUser>('GET', '/users/@me')).id
+    return botId
+  }
+
+  /** Los canales del servidor, de todos los tipos. */
+  async function guildChannels(serverId: string): Promise<Result<DiscordChannel[], ExternalServerError>> {
+    return orServerError(await api<DiscordChannel[]>('GET', `/guilds/${serverId}/channels`))
+  }
+
+  /** La categoría con ese nombre, o una nueva. */
+  async function ensureCategory(serverId: string, name: string): Promise<Result<string, ExternalServerError>> {
+    const channels = await guildChannels(serverId)
+    if (!channels.ok) return channels
+    const found = channels.value.find((c) => c.type === GUILD_CATEGORY && sameName(c.name, name))
+    if (found) return ok(found.id)
+    const created = orServerError(
+      await api<DiscordChannel>('POST', `/guilds/${serverId}/channels`, { name, type: GUILD_CATEGORY })
+    )
+    return created.ok ? ok(created.value.id) : created
+  }
+
+  /** El rol con ese nombre, o uno nuevo, sin permisos propios ni menciones. */
+  async function ensureRole(serverId: string, name: string): Promise<Result<string, ExternalServerError>> {
+    const roles = orServerError(await api<DiscordRole[]>('GET', `/guilds/${serverId}/roles`))
+    if (!roles.ok) return roles
+    const found = roles.value.find((r) => sameName(r.name, name))
+    if (found) return ok(found.id)
+    const created = orServerError(
+      await api<DiscordRole>('POST', `/guilds/${serverId}/roles`, { name, permissions: '0', mentionable: false })
+    )
+    return created.ok ? ok(created.value.id) : created
+  }
+
+  /** Le da el rol a cada cuenta. Una que no es miembro del servidor (404) se saltea. */
+  async function grantRole(
+    serverId: string,
+    roleId: string,
+    userIds: string[]
+  ): Promise<Result<null, ExternalServerError>> {
+    for (const userId of userIds) {
+      const granted = await api<null>('PUT', `/guilds/${serverId}/members/${userId}/roles/${roleId}`)
+      if (!granted.ok && granted.error.status !== 404) return orServerError(granted)
+    }
+    return ok(null)
+  }
+
+  /** Permisos del canal: con `docentes`, @everyone no escribe y el rol de docentes sí. El bot, siempre. */
+  async function overwritesFor(serverId: string, group: ExternalGroup, writers: ExternalWriters) {
+    const bot = { id: await botUserId(), type: MEMBER, allow: String(BOT_ALLOW), deny: '0' }
+    if (writers === 'todos') return [bot]
+    return [
+      // El id del rol @everyone es el del servidor.
+      { id: serverId, type: ROLE, allow: '0', deny: String(WRITE) },
+      { id: group.teachersRoleId, type: ROLE, allow: String(WRITE), deny: '0' },
+      bot
+    ]
+  }
+
   return {
-    capabilities: { delivery: 'cursor', threads: true },
+    capabilities: { delivery: 'cursor', threads: true, servers: true },
 
     read: (channelId, cursor) =>
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 39 (máximo 15). Se refactoriza después de la demo (#30).
@@ -319,8 +419,82 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
           return fail([403, 404, 410].includes(outcome.status) ? 'adjunto-vencido' : 'falla-externa')
         const bytes = new Uint8Array(await outcome.response.arrayBuffer())
         return ok({ filename: attachment.filename, contentType: attachment.contentType, bytes })
+      }),
+
+    serverChannels: (serverId) =>
+      guard(async () => {
+        const channels = await guildChannels(serverId)
+        if (!channels.ok) return channels
+        const categories = new Map(
+          channels.value.filter((c) => c.type === GUILD_CATEGORY).map((c) => [c.id, c.name ?? ''])
+        )
+        const text = channels.value
+          .filter((c) => c.type === GUILD_TEXT || c.type === GUILD_ANNOUNCEMENT)
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || byId(a, b))
+        return ok(text.map((c) => toServerChannel(c, categories)))
+      }),
+
+    isMember: (serverId, userId) =>
+      guard(async () => {
+        const member = await api<unknown>('GET', `/guilds/${serverId}/members/${userId}`)
+        if (member.ok) return ok(true)
+        const unknown = member.error.code === UNKNOWN_MEMBER || member.error.code === UNKNOWN_USER
+        return member.error.status === 404 && unknown ? ok(false) : orServerError(member)
+      }),
+
+    prepareGroup: (serverId, group) =>
+      guard(async () => {
+        const categoryId = await ensureCategory(serverId, group.name)
+        if (!categoryId.ok) return categoryId
+        const teachersRoleId = await ensureRole(serverId, teachersRoleName(group.name))
+        if (!teachersRoleId.ok) return teachersRoleId
+        const granted = await grantRole(serverId, teachersRoleId.value, group.teacherIds)
+        if (!granted.ok) return granted
+        return ok({ categoryId: categoryId.value, teachersRoleId: teachersRoleId.value })
+      }),
+
+    createChannel: (serverId, group, channel) =>
+      guard(async () => {
+        const created = orServerError(
+          await api<DiscordChannel>('POST', `/guilds/${serverId}/channels`, {
+            name: channel.name,
+            type: GUILD_TEXT,
+            parent_id: group.categoryId,
+            permission_overwrites: await overwritesFor(serverId, group, channel.writers)
+          })
+        )
+        if (!created.ok) return created
+        guildOf.set(created.value.id, serverId)
+        return ok(toServerChannel(created.value, new Map()))
       })
   }
+}
+
+/** El nombre del rol de los docentes de una materia. Discord corta los nombres de rol en 100 caracteres. */
+function teachersRoleName(subject: string): string {
+  return `Docentes · ${subject}`.slice(0, 100)
+}
+
+/** Si dos nombres de categoría o de rol se ven iguales, sin distinguir mayúsculas. */
+function sameName(a: string | undefined, b: string): boolean {
+  return (a ?? '').trim().toLocaleLowerCase('es') === b.trim().toLocaleLowerCase('es')
+}
+
+function toServerChannel(raw: DiscordChannel, categories: Map<string, string>): ExternalServerChannel {
+  return {
+    id: raw.id,
+    name: raw.name ?? '',
+    category: raw.parent_id ? (categories.get(raw.parent_id) ?? null) : null
+  }
+}
+
+/** En el servidor, un 404 es que no existe (o el bot no está) y un 403, que al bot le falta un permiso.
+    Cualquier otro error es una caída. */
+function orServerError<T>(res: ApiResult<T>): Result<T, ExternalServerError> {
+  if (res.ok) return res
+  if (res.error.status === 404) return fail('servidor-inexistente')
+  if (res.error.status === 403) return fail('sin-permisos')
+  throw new DiscordDown()
 }
 
 /** Una caída o una respuesta con forma inesperada vuelven como `falla-externa`, no como excepción. */

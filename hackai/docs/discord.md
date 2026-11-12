@@ -21,13 +21,13 @@ Tienen que terminar con `fail 0`.
    - **Reset Token**, copiá el token y pegalo en `hackai/.env.local` (paso 3).
    - En **Privileged Gateway Intents**, activá **Message Content Intent** y guardá. Sin él, los mensajes llegan con el texto y los adjuntos vacíos. En menos de 100 servidores se activa sin revisión.
 3. En **General Information**, copiá el **Application ID**. No es secreto.
-4. Invitá el bot al servidor abriendo esta URL con tu Application ID. Hace falta ser admin del servidor:
+4. Invitá el bot al servidor abriendo esta URL con tu Application ID. Hace falta poder gestionar el servidor. Si vas a usar **Conectar con Discord** (sección 7), no hace falta: ese botón agrega el bot.
 
 ```text
-https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&scope=bot&permissions=309237713920
+https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&scope=bot&permissions=309506149392
 ```
 
-`309237713920` son los permisos que usa el adaptador: ver canales, enviar mensajes, leer el historial, crear hilos públicos y enviar mensajes en hilos. Si el canal tiene permisos propios, el rol del bot los necesita también ahí. El bot aparece desconectado en la lista de miembros: es normal, porque no mantiene una conexión abierta.
+`309506149392` son los permisos que usa el adaptador: ver canales, enviar mensajes, leer el historial, crear hilos públicos, enviar mensajes en hilos, **gestionar canales** y **gestionar roles**. Los dos últimos son para crear los canales de una materia con sus permisos (sección 7); el bot que se invitó antes con `309237713920` sincroniza igual, pero no puede crearlos. Si el canal tiene permisos propios, el rol del bot los necesita también ahí. El bot aparece desconectado en la lista de miembros: es normal, porque no mantiene una conexión abierta.
 
 El bot del equipo ya existe (Application ID `1569889274470334484`). Para usarlo en otra máquina, pedí el token a quien lo creó por un canal privado, o generá uno nuevo con **Reset Token**, que invalida el anterior.
 
@@ -95,23 +95,53 @@ DISCORD_BOT_TOKEN=...
 
 Sin `HACKAI_EXTERNAL_CHANNEL`, la app usa el canal externo en memoria con los datos sintéticos. Sus canales son los del set sintético: `1301000000000000001` (avisos de AM1, comisión A), `1301000000000000002` (consultas) y `1301000000000000003` (material).
 
-## 7. Vincular un canal del espacio
+## 7. Conectar con Discord y crear los canales (el camino del docente)
+
+Dos botones en el espacio de la materia, en la tarjeta **Discord de la cátedra**, que ve solo el docente que lo gestiona:
+
+1. **Conectar con Discord** lleva a la página de autorización de Discord (OAuth2, scopes `bot` e `identify`). El docente elige el servidor de su cátedra (Discord pide que pueda gestionarlo) y el bot se agrega con los permisos de la sección 2. Al volver a HackAI, su cuenta de Discord queda vinculada con su persona en Personas y el espacio recuerda el servidor. La vuelta lleva un `state` firmado con `SESSION_SECRET`, de un solo uso y que vence en 10 minutos (`lib/oauth-state.ts`): una vuelta que no empezó en HackAI, que se repite o que es de otra persona va a `/discord/rechazado`.
+2. **Crear canales en Discord** crea una categoría con el nombre de la materia y adentro un canal por cada canal del espacio que el docente gestiona y no está vinculado: `#material`, y `#avisos-a` y `#consultas-a` por cada comisión que dicta. Los deja vinculados y con permisos: en avisos y material escriben solo los docentes (un rol `Docentes · <materia>` que se les da a los docentes con cuenta vinculada) y el bot; en consultas, todos. Si un canal ya está vinculado, no se crea otro. Si Discord falla a mitad de camino, lo creado queda vinculado y volver a tocar crea lo que falta.
+
+Con el servidor conectado, **Vincular con un canal de Discord** muestra además la lista de canales de texto del servidor para elegir uno, si la cuenta de Discord del docente es miembro de ese servidor.
+
+**Qué configurar, una vez por equipo:**
+
+1. En el [Developer Portal](https://discord.com/developers/applications), en la aplicación `HackAI` → **OAuth2**:
+   - En **Redirects**, agregá la URL de vuelta de cada lugar donde corre HackAI, exacta: `http://localhost:3000/discord/vuelta` para la compu y `https://<dominio del hosting>/discord/vuelta` para el hosting. Si la de un lugar no es `<origen>/discord/vuelta` (por ejemplo, detrás de un proxy), fijala con `DISCORD_REDIRECT_URI`.
+   - **Reset Secret** y copiá el Client Secret.
+2. En **Bot**, dejá **Public Bot** activado para que cualquier docente pueda agregarlo a su servidor (apagado, solo puede quien creó la aplicación), y **Requires OAuth2 Code Grant** apagado.
+3. En `hackai/.env.local` y en el hosting, además de `DISCORD_BOT_TOKEN` y `HACKAI_EXTERNAL_CHANNEL=discord`:
+
+```text
+DISCORD_CLIENT_ID=el-application-id
+DISCORD_CLIENT_SECRET=el-client-secret
+```
+
+El Client Secret, como el token, va solo en `.env.local` y en el hosting. Sin estas dos variables la tarjeta no ofrece **Conectar con Discord** y queda vincular a mano (abajo).
+
+4. Con `HACKAI_STORE=supabase`, aplicá `supabase/migrations/0005_spaces_external_server.sql`, que guarda el servidor de cada espacio.
+
+**Prueba manual con el servidor del equipo:** entrá como Mariana Ledesma, abrí AM1, tocá **Conectar con Discord**, elegí el servidor del equipo y autorizá. Vuelve con «Listo: la materia quedó conectada…». Tocá **Crear canales en Discord**: en el servidor aparece la categoría «Análisis Matemático I» con `#avisos-a`, `#consultas-a` y `#material`. Publicá un aviso en HackAI y mirá que llegue; con una cuenta sin el rol de docentes, comprobá que en `#avisos-a` no se puede escribir y en `#consultas-a` sí.
+
+## 8. Vincular un canal a mano
+
+La alternativa a crear los canales, por ejemplo para usar canales que la cátedra ya tiene:
 
 1. Entrá como docente de la materia (en la demo, Mariana Ledesma dicta AM1 comisión A) y abrí el espacio en **Mis materias**.
-2. Elegí el canal (`#avisos`, `#consultas`, `#material` o uno creado), abrí **Vincular con un canal de Discord**, pegá el ID del paso 4 y tocá **Vincular**.
+2. Elegí el canal (`#avisos`, `#consultas`, `#material` o uno creado) y abrí **Vincular con un canal de Discord**. Elegí el canal de la lista del servidor conectado, o pegá su enlace (en Discord, clic derecho sobre el canal → **Copiar enlace**, sin modo desarrollador) o su ID (sección 4), y tocá **Vincular**.
 3. Lo que ya tenía el canal de Discord entra a HackAI. Desde ahí, abrir el espacio trae lo nuevo (no más de una vez cada 10 segundos); con el canal abierto, la pantalla se fija cada 5 segundos si hay algo nuevo y se actualiza sola, sin recargar. La corrida periódica (`/api/cron/sync`, README, «Corrida periódica») sincroniza aunque nadie lo abra.
 
 Un canal de Discord se vincula con un solo canal de HackAI. Lo vinculan los docentes de la comisión del canal, o los de la materia si el canal es de toda la materia.
 
-**Cuentas de Discord de los docentes.** El autor de un mensaje de Discord se reconoce por su id de usuario de Discord, vinculado en Personas (`people_accounts`, sistema `discord`). El seed vincula a los docentes y alumnos sintéticos con ids inventados. Sin vínculo, el mensaje aparece con tu nombre de Discord y «desde Discord».
+**Cuentas de Discord de los docentes.** El autor de un mensaje de Discord se reconoce por su id de usuario de Discord, vinculado en Personas (`people_accounts`, sistema `discord`). **Conectar con Discord** vincula la cuenta del docente que autoriza. El seed vincula a los docentes y alumnos sintéticos con ids inventados. Sin vínculo, el mensaje aparece con tu nombre de Discord y «desde Discord».
 
-Para la prueba con el servidor del equipo, cargá el id real de tu cuenta (clic derecho sobre tu nombre → **Copiar ID de usuario**) en la persona de demo que vas a usar, por ejemplo con `update people_accounts set external_id = '<tu id>' where person_id = 'p-mledesma' and system = 'discord';`. Eso necesita `HACKAI_STORE=supabase`: en memoria, los vínculos salen del set sintético y no se pueden cambiar.
+Sin **Conectar con Discord**, para la prueba con el servidor del equipo cargá el id real de tu cuenta (clic derecho sobre tu nombre → **Copiar ID de usuario**) en la persona de demo que vas a usar, por ejemplo con `update people_accounts set external_id = '<tu id>' where person_id = 'p-mledesma' and system = 'discord';`. Eso necesita `HACKAI_STORE=supabase`: en memoria, los vínculos salen del set sintético y no se pueden cambiar.
 
-**Quién publica desde Discord.** HackAI trae todo lo que se publica en el canal vinculado, escriba quien escriba. En el canal de material entran los adjuntos, no el texto. Quién puede escribir en cada canal lo decide el servidor de Discord: si la cátedra no quiere que los alumnos publiquen avisos o material, tiene que dejar esos canales de Discord solo para docentes. Está abierto en la pregunta 18 de [preguntas-abiertas.md](../../docs/product/preguntas-abiertas.md).
+**Quién publica desde Discord.** HackAI trae todo lo que se publica en el canal vinculado, escriba quien escriba. En el canal de material entran los adjuntos, no el texto. Quién puede escribir en cada canal lo decide el servidor de Discord. Los canales que crea **Crear canales en Discord** ya vienen con avisos y material solo para docentes; uno vinculado a mano queda como lo dejó la cátedra, que tiene que cerrarlo ella si no quiere que los alumnos publiquen ahí. Está abierto en la pregunta 18 de [preguntas-abiertas.md](../../docs/product/preguntas-abiertas.md).
 
-**Dónde queda guardado.** Con `HACKAI_STORE` y `HACKAI_FILES` vacías, espacios, mensajes, vínculos con Discord y archivos viven en la memoria del proceso: al reiniciar la app o recrear el contenedor se pierden, y hay que volver a vincular los canales. Para guardarlos van `HACKAI_STORE=supabase` y `HACKAI_FILES=supabase`, con `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y las migraciones `0001` a `0004` aplicadas (README). Los archivos van al bucket privado `hackai-files` y su registro a `space_material` o a los adjuntos de `space_messages`.
+**Dónde queda guardado.** Con `HACKAI_STORE` y `HACKAI_FILES` vacías, espacios, mensajes, vínculos con Discord y archivos viven en la memoria del proceso: al reiniciar la app o recrear el contenedor se pierden, y hay que volver a vincular los canales. Para guardarlos van `HACKAI_STORE=supabase` y `HACKAI_FILES=supabase`, con `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y las migraciones `0001` a `0005` aplicadas (README). Los archivos van al bucket privado `hackai-files` y su registro a `space_material` o a los adjuntos de `space_messages`.
 
-## 8. Prueba manual de ida y vuelta
+## 9. Prueba manual de ida y vuelta
 
 Con `HACKAI_EXTERNAL_CHANNEL=discord`, un canal de prueba vinculado a `#consultas` de AM1 A y `CRON_SECRET` cargado:
 

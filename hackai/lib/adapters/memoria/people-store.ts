@@ -3,7 +3,7 @@
    Discord. */
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 import type { PeopleStore, PersonAccounts } from '@/lib/core/people'
-import { ok } from '@/lib/result'
+import { fail, ok } from '@/lib/result'
 
 export function createMemoryPeopleStore(data: SyntheticData): PeopleStore {
   const links = new Map<string, PersonAccounts>(
@@ -24,6 +24,14 @@ export function createMemoryPeopleStore(data: SyntheticData): PeopleStore {
       for (const [personId, accounts] of links) {
         if (accounts[system] === externalId) return ok(personId)
       }
+      return ok(null)
+    },
+
+    async setAccount(personId, system, externalId) {
+      for (const [other, accounts] of links) {
+        if (other !== personId && accounts[system] === externalId) return fail('duplicado')
+      }
+      links.set(personId, { ...links.get(personId), [system]: externalId })
       return ok(null)
     }
   }

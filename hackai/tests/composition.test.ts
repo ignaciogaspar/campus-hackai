@@ -138,7 +138,7 @@ test('HACKAI_CLASSROOM=simulado sin las variables de Supabase corta el arranque'
 test('el canal externo de Discord se arma con el token del entorno y sin token no arranca', () => {
   const system = compose({ HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: 'token-de-prueba' })
   assert.equal(system.adapters.externalChannel, 'discord')
-  assert.deepEqual(system.ports.externalChannel.capabilities, { delivery: 'cursor', threads: true })
+  assert.deepEqual(system.ports.externalChannel.capabilities, { delivery: 'cursor', threads: true, servers: true })
 
   assert.throws(() => compose({ HACKAI_EXTERNAL_CHANNEL: 'discord' }), /DISCORD_BOT_TOKEN/)
   assert.throws(() => compose({ HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: '  ' }), /DISCORD_BOT_TOKEN/)
@@ -149,7 +149,7 @@ test('los adaptadores en memoria declaran sus capacidades', () => {
   assert.deepEqual(ports.identity.capabilities, { demoList: true })
   assert.deepEqual(ports.siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
   assert.deepEqual(ports.classroom.capabilities, { canEnrol: true, hasAssignments: true })
-  assert.deepEqual(ports.externalChannel.capabilities, { delivery: 'cursor', threads: true })
+  assert.deepEqual(ports.externalChannel.capabilities, { delivery: 'cursor', threads: true, servers: true })
   assert.equal(ports.files.capabilities.maxBytes > 0, true)
   assert.deepEqual(ports.clock.capabilities, { fixed: true })
 })
@@ -239,4 +239,17 @@ test('con HACKAI_CAIDAS=si, tirar Moodle deja las materias sin el aula y el SIU 
   assert.ok(result.ok)
   assert.equal(result.value.stale, false)
   assert.equal(result.value.data.classroomUnavailable, true)
+})
+
+test('Conectar con Discord se arma solo con el canal externo de Discord y la aplicación configurada', () => {
+  const bot = { HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: 'token-de-prueba' }
+  const app = { DISCORD_CLIENT_ID: '1569889274470334484', DISCORD_CLIENT_SECRET: 'secreto-de-prueba' }
+  assert.notEqual(compose({ ...bot, ...app }).discordOAuth, null)
+  assert.equal(compose(bot).discordOAuth, null)
+  assert.equal(compose(app).discordOAuth, null, 'con el canal externo en memoria no hay a qué conectar')
+  assert.equal(compose({ ...bot, ...app }).discordRedirectUri, null)
+  assert.equal(
+    compose({ ...bot, ...app, DISCORD_REDIRECT_URI: 'https://hackai.test/discord/vuelta' }).discordRedirectUri,
+    'https://hackai.test/discord/vuelta'
+  )
 })

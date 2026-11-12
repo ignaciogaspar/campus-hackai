@@ -36,7 +36,9 @@ import { ChannelTabs } from '@/components/spaces/channel-tabs'
 import { ChannelUpdates } from '@/components/spaces/channel-updates'
 import { ContextPanel, shownSections } from '@/components/spaces/context-panel'
 import { DirectPanel, DirectsPanel } from '@/components/spaces/direct-panels'
-import { DiscordLink } from '@/components/spaces/discord-link'
+import { type DiscordNotice, isDiscordNotice } from '@/components/spaces/discord-format'
+import { DiscordLink, type ServerChoices } from '@/components/spaces/discord-link'
+import { DiscordServer, type DiscordServerProps } from '@/components/spaces/discord-server'
 import {
   channelLabel,
   hasSeveralSections,
@@ -75,6 +77,27 @@ const OPEN_ERRORS: Record<AccessError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
   'falla-externa': 'No pudimos abrir el espacio porque el SIU no responde. Probá de nuevo en un rato.'
 }
+
+type ServerChannelsError = Extract<Awaited<ReturnType<Spaces['serverChannels']>>, Fail<string>>['error']
+
+/** Por qué no se listan los canales del servidor conectado: queda pegar el enlace. */
+const SERVER_CHANNELS_ERRORS: Record<ServerChannelsError, string> = {
+  'no-es-miembro':
+    'Para elegir de la lista, conectá la materia con una cuenta de Discord que sea miembro del servidor. Mientras, pegá el enlace del canal.',
+  'sin-servidor': 'Conectá la materia con Discord para elegir el canal de una lista.',
+  'servidor-inexistente': 'El bot de HackAI ya no está en el servidor conectado. Volvé a conectar con Discord.',
+  'sin-permisos': 'El bot de HackAI no puede ver los canales del servidor. Volvé a conectar con Discord.',
+  'solo-docentes': 'Solo los docentes de la materia eligen canales del servidor.',
+  'espacio-desconocido': 'Este espacio ya no existe. Recargá la página.',
+  'sin-acceso': 'No sos parte de esta materia.',
+  'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
+  'falla-externa': 'Discord no respondió y no pudimos traer los canales del servidor. Pegá el enlace del canal.'
+}
+
+/** Lo de Discord que ve quien gestiona el espacio: la tarjeta del servidor y la lista de sus canales. */
+type DiscordContext = { server: DiscordServerProps | null; choices: ServerChoices | null }
+
+const NO_DISCORD: DiscordContext = { server: null, choices: null }
 
 const CHANNEL_ERRORS: Record<ChannelError, string> = {
   'canal-desconocido': 'Ese canal no existe o ya no está.',
@@ -150,13 +173,15 @@ function ChannelArea({
   view,
   opened,
   query,
-  search
+  search,
+  discord
 }: {
   subjectId: string
   view: SpaceView
   opened: ChannelResult
   query: SpaceQuery
   search: MaterialSearchResult | null
+  discord: DiscordContext
 }) {
   if (!opened.ok) {
     return (
@@ -186,7 +211,8 @@ function ChannelArea({
   return (
     <>
       {updates}
-      <DiscordLink subjectId={subjectId} channel={channel} />
+      {discord.server && <DiscordServer {...discord.server} />}
+      <DiscordLink subjectId={subjectId} channel={channel} choices={discord.choices} />
       <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} search={search} />
     </>
   )
@@ -277,18 +303,47 @@ function paneLabel(pane: Pane, selected: Channel | null, channels: Channel[]): s
   return selected ? channelLabel(selected, hasSeveralSections(channels)) : 'Canal'
 }
 
+/** Para el docente que gestiona el espacio: la tarjeta del Discord de la cátedra y, si el canal abierto se
+    puede vincular y la materia está conectada, los canales del servidor para elegir uno. */
+async function discordFor(
+  personId: string,
+  subjectId: string,
+  view: SpaceView,
+  pane: Pane,
+  notice: DiscordNotice | null
+): Promise<DiscordContext> {
+  if (!view.viewer.canManage) return NO_DISCORD
+  const server: DiscordServerProps = {
+    subjectId,
+    spaceId: view.space.id,
+    canConnect: system().discordOAuth !== null,
+    server: view.externalServer,
+    unlinked: view.channels.filter((c) => c.canLink && !c.externalLink).length,
+    notice
+  }
+  const channel = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
+  if (!view.externalServer || !channel?.canLink) return { server, choices: null }
+  const listed = await system().spaces.serverChannels(personId, view.space.id)
+  const choices: ServerChoices = listed.ok
+    ? { ok: true, channels: listed.value }
+    : { ok: false, message: SERVER_CHANNELS_ERRORS[listed.error] }
+  return { server, choices }
+}
+
 function CenterPane({
   subjectId,
   view,
   channels,
   pane,
-  query
+  query,
+  discord
 }: {
   subjectId: string
   view: SpaceView
   channels: Channel[]
   pane: Pane
   query: SpaceQuery
+  discord: DiscordContext
 }) {
   if (pane.kind === 'nuevo') {
     return (
@@ -311,18 +366,30 @@ function CenterPane({
     )
   }
   if (!pane.opened) return <ErrorNotice>Este espacio todavía no tiene canales.</ErrorNotice>
-  return <ChannelArea subjectId={subjectId} view={view} opened={pane.opened} query={query} search={pane.search} />
+  return (
+    <ChannelArea
+      subjectId={subjectId}
+      view={view}
+      opened={pane.opened}
+      query={query}
+      search={pane.search}
+      discord={discord}
+    />
+  )
 }
 
 export default async function SpacePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const session = await requireSession()
   const { subjectId } = await params
-  const query = readQuery(await searchParams)
+  const raw = await searchParams
+  const query = readQuery(raw)
+  const notice = singleParam(raw.discord)
 
   const opened = await openSpace(session.personId, subjectId)
   if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} />
   const view = opened.value
   const pane = await paneFor(session.personId, view, query)
+  const discord = await discordFor(session.personId, subjectId, view, pane, isDiscordNotice(notice) ? notice : null)
 
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
   const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
@@ -371,7 +438,14 @@ export default async function SpacePage({ params, searchParams }: { params: Para
             aria-label={paneLabel(pane, selected, channels)}
             className='flex min-w-0 flex-col gap-4 lg:min-h-[calc(100dvh-11rem)]'
           >
-            <CenterPane subjectId={subjectId} view={view} channels={channels} pane={pane} query={query} />
+            <CenterPane
+              subjectId={subjectId}
+              view={view}
+              channels={channels}
+              pane={pane}
+              query={query}
+              discord={discord}
+            />
           </section>
 
           <ContextPanel
