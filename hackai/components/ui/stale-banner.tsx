@@ -3,9 +3,10 @@ import { StaleNotice } from '@/components/ui/states'
 
 /* Aviso de «desactualizado»: un sistema de origen no respondió y se muestra lo
    último que se leyó, con cuánto hace y a qué hora. Lo usan las pantallas que
-   leen de Cursada. `now` es la hora con que se armó la pantalla; sin ella, la
-   del servidor. */
-export function StaleBanner({ since, now = new Date().toISOString() }: { since: string; now?: string }) {
+   leen de Cursada. `now` es la hora del reloj de la app (`system().now()` o la
+   de Hoy), el mismo que marcó la lectura: con el reloj fijo de la demo, la del
+   servidor diría «hace 2 días». */
+export function StaleBanner({ since, now }: { since: string; now: string }) {
   return (
     <StaleNotice>
       <p>

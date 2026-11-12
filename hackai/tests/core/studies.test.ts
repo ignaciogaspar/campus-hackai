@@ -452,6 +452,39 @@ test('con todo andando, las materias no marcan que falte el aula', async () => {
   assert.equal(result.value.data.classroomUnavailable, false)
 })
 
+test('una lectura sin el aula no pisa la completa: si después se cae el SIU, vuelven los enlaces al aula y las tareas', async () => {
+  const { studies, siuState, classroomState, advance } = build()
+  const complete = await studies.subjectsOf('p-taguirre')
+  assert.ok(complete.ok)
+
+  advance(10)
+  classroomState.down = true
+  const partial = await studies.subjectsOf('p-taguirre')
+  assert.ok(partial.ok)
+  assert.equal(partial.value.data.classroomUnavailable, true)
+
+  advance(10)
+  classroomState.down = false
+  siuState.down = true
+  const stale = await studies.subjectsOf('p-taguirre')
+
+  assert.deepEqual(stale, { ok: true, value: { data: complete.value.data, readAt: NOW, stale: true } })
+})
+
+test('sin una lectura completa antes, la lectura sin el aula queda como lo último leído, marcando qué falta', async () => {
+  const { studies, siuState, classroomState } = build()
+  classroomState.down = true
+  const partial = await studies.subjectsOf('p-taguirre')
+  assert.ok(partial.ok)
+
+  siuState.down = true
+  const stale = await studies.subjectsOf('p-taguirre')
+
+  assert.ok(stale.ok)
+  assert.equal(stale.value.stale, true)
+  assert.equal(stale.value.data.classroomUnavailable, true)
+})
+
 test('con Moodle y el SIU caídos devuelve lo último que leyó completo, marcado como desactualizado', async () => {
   const { studies, siuState, classroomState, advance } = build()
   const first = await studies.subjectsOf('p-taguirre')

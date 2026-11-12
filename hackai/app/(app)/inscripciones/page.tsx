@@ -410,7 +410,7 @@ export default async function InscripcionesPage({
           <ErrorNotice>{readErrorText(open.error, 'las inscripciones')}</ErrorNotice>
         ) : (
           <>
-            {stale && <StaleBanner since={stale} />}
+            {stale && <StaleBanner since={stale} now={system().now()} />}
             <EnrollmentBoard
               tab={tab}
               {...lists}

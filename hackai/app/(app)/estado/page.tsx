@@ -129,7 +129,7 @@ export default async function EstadoPage() {
           </ErrorNotice>
         ) : (
           <>
-            {result.value.stale && <StaleBanner since={result.value.readAt} />}
+            {result.value.stale && <StaleBanner since={result.value.readAt} now={system().now()} />}
             <Overview career={career} />
             <section aria-labelledby='plan' className='flex flex-col gap-3'>
               <div className='flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-1'>

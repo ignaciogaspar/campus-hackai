@@ -102,6 +102,9 @@ export type System = {
   adapters: AdapterChoice
   /** Los puertos armados. Las pantallas no los usan: son para tests y scripts. */
   ports: Ports
+  /** La hora del reloj de la app, en ISO. Las pantallas la usan para decir «actualizado hace…» con el mismo reloj
+      que marcó la hora de cada lectura. */
+  now(): string
   /** El interruptor de caídas de la demo, o `null` si `HACKAI_CAIDAS` no lo pide. */
   outages: OutageSwitch | null
   people: People
@@ -196,7 +199,8 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   })
   const today = createToday({ studies, spaces, clock })
 
-  return { adapters, ports, outages, people, studies, spaces, today }
+  const now = () => clock.now().toISOString()
+  return { adapters, ports, now, outages, people, studies, spaces, today }
 }
 
 /** Guardado en `globalThis` porque Next.js empaqueta las páginas, las server

@@ -118,7 +118,7 @@ export default async function TramitesPage() {
             title='Constancias'
             hint='Se piden en la Autogestión del SIU: te la abrimos en otra pestaña.'
           >
-            {stale && <StaleBanner since={stale} />}
+            {stale && <StaleBanner since={stale} now={system().now()} />}
             {certificates.map((result, i) =>
               result.ok ? (
                 <CertificateCard key={CERTIFICATES[i]} status={result.value.data} />

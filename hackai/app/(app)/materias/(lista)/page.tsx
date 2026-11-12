@@ -234,7 +234,7 @@ function SubjectsView({
 
   return (
     <>
-      {stale && <StaleBanner since={stale} />}
+      {stale && <StaleBanner since={stale} now={system().now()} />}
       {subjects.classroomUnavailable && (
         <StaleNotice>
           El Campus Virtual no responde: tus materias están, pero faltan los enlaces al aula y las tareas de Moodle.

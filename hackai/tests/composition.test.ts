@@ -19,6 +19,8 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
     store: 'memoria'
   })
   assert.equal(system.ports.clock.now().toISOString(), NOW.toISOString())
+  // La hora de las pantallas es la del mismo reloj.
+  assert.equal(system.now(), NOW.toISOString())
 
   const alumno = syntheticData.people.find((p) => p.id === 'p-taguirre')!
   assert.equal((await system.today.today(alumno.id)).ok, true)

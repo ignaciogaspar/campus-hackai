@@ -53,7 +53,7 @@ export default async function NotasPage({
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus notas.'}</ErrorNotice>
         ) : (
           <>
-            {result.value.stale && <StaleBanner since={result.value.readAt} />}
+            {result.value.stale && <StaleBanner since={result.value.readAt} now={system().now()} />}
             {taken.length === 0 ? (
               <EmptyState icon={BookOpenCheck} title='Todavía no cursaste materias'>
                 Cuando te inscribas a una materia, aparece acá con sus parciales y sus notas.

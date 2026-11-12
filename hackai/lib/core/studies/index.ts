@@ -654,14 +654,18 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
 
+  /** Lee y guarda la lectura como lo último leído. Una lectura incompleta (`complete` da `false`, como las materias
+      sin el aula de Moodle) se devuelve igual, pero no pisa una completa: si después se cae el SIU, vuelve la
+      completa. */
   async function fresh<T>(
     key: string,
-    read: () => Promise<Result<T, ReadError>>
+    read: () => Promise<Result<T, ReadError>>,
+    complete: (value: T) => boolean = () => true
   ): Promise<Result<Fresh<T>, ReadError>> {
     const result = await read()
     if (result.ok) {
       const value: Fresh<T> = { data: result.value, readAt: clock.now().toISOString(), stale: false }
-      lastRead.set(key, value)
+      if (complete(result.value) || !lastRead.has(key)) lastRead.set(key, value)
       return ok(value)
     }
     const last = lastRead.get(key) as Fresh<T> | undefined
@@ -1703,7 +1707,12 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   }
 
   return {
-    subjectsOf: (personId) => fresh(`subjectsOf:${personId}`, () => subjectsOf(personId)),
+    subjectsOf: (personId) =>
+      fresh(
+        `subjectsOf:${personId}`,
+        () => subjectsOf(personId),
+        (s) => !s.classroomUnavailable
+      ),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     offer: offerNow,
     enroll,
