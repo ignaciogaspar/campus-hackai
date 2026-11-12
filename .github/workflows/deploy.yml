@@ -1,0 +1,82 @@
+# Despliega hackai en Vercel con la CLI y el token del dueño del proyecto: un
+# push a main va a producción y cada PR tiene su preview.
+#
+# Por qué no lo hace la integración de Git de Vercel: en el plan Hobby, Vercel
+# solo despliega commits cuyo autor tiene acceso al proyecto, y el resto del
+# equipo no lo tiene («Git author … must have access to the project»). Acá se
+# borra .git antes de desplegar, así la CLI no manda autor ni historial y el
+# deploy queda a nombre del dueño de VERCEL_TOKEN. La integración de Git queda
+# apagada con git.deploymentEnabled en hackai/vercel.json.
+#
+# Secretos (Settings → Secrets and variables → Actions): VERCEL_TOKEN,
+# VERCEL_ORG_ID y VERCEL_PROJECT_ID. Sin ellos, el job avisa y termina en verde.
+# Cómo sacarlos: hackai/README.md, «Deploy en Vercel».
+name: Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'hackai/**'
+      - '.github/workflows/deploy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'hackai/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+# Un push nuevo al mismo PR, o a main, cancela el deploy anterior.
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  vercel:
+    name: deploy en Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Preview' }}
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Chequear los secretos
+        id: secretos
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo '::notice::Faltan VERCEL_TOKEN, VERCEL_ORG_ID o VERCEL_PROJECT_ID (o el PR viene de un fork): no se despliega.'
+            echo 'listo=no' >> "$GITHUB_OUTPUT"
+          else
+            echo 'listo=si' >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.secretos.outputs.listo == 'si'
+        with:
+          persist-credentials: false
+
+      # Sin .git, la CLI no encuentra commit, autor ni historial que mandar.
+      - name: Sacar el historial de git
+        if: steps.secretos.outputs.listo == 'si'
+        run: rm -rf .git
+
+      # Se despliega desde la raíz del repo: el proyecto de Vercel tiene Root
+      # Directory `hackai` y la CLI lo aplica. Vercel compila como siempre, con
+      # las variables del proyecto.
+      - name: Desplegar
+        id: deploy
+        if: steps.secretos.outputs.listo == 'si'
+        env:
+          PROD: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
+        run: |
+          url=$(npx --yes vercel@65.9.0 deploy --yes --archive=tgz $PROD --token "$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Desplegado en $url" >> "$GITHUB_STEP_SUMMARY"

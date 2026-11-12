@@ -36,6 +36,7 @@ Cada PR a `main` corre en GitHub Actions (`.github/workflows/`):
 | --- | --- | --- |
 | `ci.yml` | Si cambia código de `hackai/` | `npm ci`, Biome (con anotaciones en el diff), typecheck, tests, build y una prueba de humo: levanta el servidor standalone y pide `/api/health` y `/`. Sin secretos: usa los adaptadores en memoria. |
 | `reglas.yml` | En todos los PRs, también los de docs | `scripts/checks/reglas.sh`: las reglas duras de `AGENTS.md` que se ven en git. Un commit que toca `campus/` no toca nada más, no hay tablas `siu_*` ni `moodle_*` en `supabase/migrations/`, cada tabla activa RLS sin políticas, el núcleo (`lib/core/`) no importa adaptadores, `composition`, pantallas ni el cliente de la base, solo `lib/composition.ts` importa adaptadores (los tests y los scripts también pueden), un paquete nuevo viene con su ADR y no hay `.env` ni claves en el diff. Antes corre `reglas.test.sh`, que prueba cada regla. |
+| `deploy.yml` | Si cambia `hackai/`, en cada PR (preview) y en cada push a `main` (producción) | Despliega en Vercel con la CLI, sin `.git`, a nombre del dueño de `VERCEL_TOKEN`. Ver «Deploy en Vercel». |
 | `claude-review.yml` | Al abrir o reabrir un PR, al pasarlo de draft a listo, y en un push si el PR todavía no tiene la label `revisado-por-claude` | Review de Claude según [`docs/agents/review.md`](../docs/agents/review.md): contra la issue que cierra el PR, las reglas de `AGENTS.md` y los bugs, con un comentario en línea por hallazgo y un resumen. Corre una vez por PR. |
 | `claude.yml` | Cuando alguien comenta `@claude` en un PR o una issue | Claude responde: «@claude revisá de nuevo» pide otra review con la misma guía. |
 
@@ -255,10 +256,15 @@ La demo corre en Vercel con el plan Hobby. Vercel compila Next.js por su cuenta;
    | `HACKAI_CAIDAS` | `si` solo si se muestra la caída (ver abajo) |
 
    `DATABASE_URL`, `HACKAI_DEMO_SUPABASE_REF` y las `HACKAI_TEST_*` no van: son de los scripts y de los tests, que corren en tu máquina.
-3. **Preparar la base** desde tu máquina con `npm run demo:preparar` («Base de la demo»), desplegar y probar con `npm run demo:probar -- https://<dominio>`.
-4. **Región.** Las funciones corren por defecto en Washington (`iad1`). Si la base de Supabase está en otra región, conviene elegir la más cercana en Settings → Functions → Function Region (por ejemplo `gru1`, São Paulo, para `sa-east-1`): cada pantalla hace varias consultas y la distancia se suma en cada una.
+3. **Desplegar desde GitHub Actions** (`.github/workflows/deploy.yml`). En el plan Hobby, la integración de Git de Vercel solo despliega commits de autores con acceso al proyecto, y el resto del equipo no lo tiene («Git author … must have access to the project»). Por eso la apaga `git.deploymentEnabled: false` en `vercel.json`, y el workflow despliega con la CLI: borra `.git` antes, así Vercel no recibe autor ni historial, y el deploy queda a nombre del dueño del token. Un push a `main` va a producción y cada PR tiene su preview, con el link en «View deployment». Lo configura una vez el dueño del proyecto de Vercel:
+   - En Vercel, Account Settings → Tokens: crear un token con acceso al scope del proyecto.
+   - En el proyecto de Vercel, Settings → General: copiar el **Project ID**; en Account Settings (o Team Settings) → General, el **Vercel ID** de la cuenta o el Team ID.
+   - En GitHub, Settings → Secrets and variables → Actions: cargarlos como `VERCEL_TOKEN`, `VERCEL_PROJECT_ID` y `VERCEL_ORG_ID`. Sin ellos el workflow avisa y termina en verde.
+   - Si el check «Vercel» de la integración sigue apareciendo en los PRs, desconectar el repo en el proyecto, Settings → Git → Disconnect.
+4. **Preparar la base** desde tu máquina con `npm run demo:preparar` («Base de la demo»), desplegar y probar con `npm run demo:probar -- https://<dominio>`.
+5. **Región.** Las funciones corren por defecto en Washington (`iad1`). Si la base de Supabase está en otra región, conviene elegir la más cercana en Settings → Functions → Function Region (por ejemplo `gru1`, São Paulo, para `sa-east-1`): cada pantalla hace varias consultas y la distancia se suma en cada una.
 
-`vercel.json` trae el cron diario de la sincronización («Corrida periódica»).
+`vercel.json` trae el cron diario de la sincronización («Corrida periódica») y apaga los deploys de la integración de Git.
 
 **Lo que cambia en Vercel.** Cada pedido puede caer en una instancia distinta del servidor, y ninguna guarda nada entre pedidos:
 
@@ -379,7 +385,7 @@ No las imprimas en logs ni en reportes.
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, vincularlos con Discord, subir y organizar el material y escribirle en privado a un docente de la comisión. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 | `app/manifest.ts`, `public/sw.js`, `app/sin-conexion/`, `components/shell/service-worker.tsx` | La app instalable y su pantalla sin conexión. Ver «App instalable». |
-| `vercel.json` | El cron diario del deploy en Vercel. Ver «Deploy en Vercel». |
+| `vercel.json` | El cron diario del deploy en Vercel y la integración de Git apagada. Ver «Deploy en Vercel». |
 | `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |
 | `lib/demo-base/`, `scripts/demo-*.ts` | Preparar, verificar y probar la base de la demo. Ver «Base de la demo». |
 | `lib/adapters/caida/`, `app/caidas/`, `app/actions/outages.ts` | Las caídas de la demo: el interruptor que tira el SIU o Moodle y la página para usarlo. Ver «Mostrar una caída en la demo». |
