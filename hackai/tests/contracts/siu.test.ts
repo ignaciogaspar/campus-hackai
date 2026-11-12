@@ -208,36 +208,25 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     })
   })
 
-  it('devuelve las inasistencias por comisión y el máximo solo de las comisiones que lo tienen', async (siu) => {
-    // Por fecha, de todas sus comisiones.
+  it('devuelve las inasistencias por fecha y el máximo de las comisiones que cursa', async (siu) => {
     const tomas = await siu.absences(siuId('p-taguirre'))
     assert.ok(tomas.ok)
     assert.deepEqual(
       tomas.value.absences.map((a) => [a.sectionId, a.date.slice(0, 10), a.justified]),
       [
-        ['sec-pr1-fi-a', '2026-08-21', false],
-        ['sec-am1-fi-a', '2026-08-24', false],
-        ['sec-pr1-fi-a', '2026-09-04', false],
         ['sec-pr1-fi-a', '2026-09-18', true],
-        ['sec-am1-fi-a', '2026-09-23', true],
-        ['sec-pr1-fi-a', '2026-10-16', false],
-        ['sec-am1-fi-a', '2026-10-19', false],
-        ['sec-pr1-fi-a', '2026-11-06', false]
+        ['sec-am1-fi-a', '2026-09-23', false],
+        ['sec-pr1-fi-a', '2026-10-16', false]
       ]
     )
     assert.deepEqual(
       [...tomas.value.limits].sort((a, b) => a.sectionId.localeCompare(b.sectionId)),
       [
-        { sectionId: 'sec-am1-fi-a', max: 8 },
-        { sectionId: 'sec-pr1-fi-a', max: 6 }
+        { sectionId: 'sec-aga-fi-a', max: 3 },
+        { sectionId: 'sec-am1-fi-a', max: 3 },
+        { sectionId: 'sec-pr1-fi-a', max: 3 }
       ]
     )
-
-    // En Ciencias Empresariales las comisiones no tienen máximo.
-    const ana = await siu.absences(siuId('p-agimenez'))
-    assert.ok(ana.ok)
-    assert.equal(ana.value.absences.length, 2)
-    assert.deepEqual(ana.value.limits, [])
 
     assert.deepEqual(await siu.absences('99999'), { ok: false, error: 'no-encontrado' })
   })

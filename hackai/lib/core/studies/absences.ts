@@ -8,9 +8,9 @@
 import type { SiuAbsences } from '@/lib/ports/siu'
 
 /** A partir de cuántas faltas restantes se avisa que se acerca al máximo. */
-export const NEAR_LIMIT = 2
+export const NEAR_LIMIT = 1
 
-/** `cerca`: le quedan `NEAR_LIMIT` o menos; `limite`: no le queda ninguna. */
+/** `cerca`: le queda `NEAR_LIMIT` o menos (con el máximo de 3, una); `limite`: no le queda ninguna. */
 export type AbsenceWarning = 'cerca' | 'limite'
 
 export type MyAbsences = {

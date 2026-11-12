@@ -102,32 +102,32 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     assignments: [
       { id: 't-3', name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }
     ],
-    absences: { count: 3, justified: 1, max: 8, left: 5, warning: null }
+    absences: { count: 1, justified: 0, max: 3, left: 2, warning: null }
   })
 })
 
-test('cada materia actual del alumno trae sus inasistencias y avisa cuando se acerca al máximo', async () => {
+test('cada materia actual del alumno trae sus inasistencias y avisa cuando le queda una o ninguna', async () => {
   const { studies } = build()
 
   const tomas = await studies.subjectsOf('p-taguirre')
   assert.ok(tomas.ok)
   const [am1, pr1] = tomas.value.data.current
-  assert.deepEqual(am1.absences, { count: 3, justified: 1, max: 8, left: 5, warning: null })
-  // Programación I tiene un máximo de 6 y lleva 5: le queda una.
-  assert.deepEqual(pr1.absences, { count: 5, justified: 1, max: 6, left: 1, warning: 'cerca' })
+  assert.deepEqual(am1.absences, { count: 1, justified: 0, max: 3, left: 2, warning: null })
+  // En Programación I lleva 2 de 3: le queda una.
+  assert.deepEqual(pr1.absences, { count: 2, justified: 1, max: 3, left: 1, warning: 'cerca' })
   // Las archivadas no las muestran.
   assert.equal(tomas.value.data.archived[0].absences, null)
 
-  // Sin máximo en el SIU, solo la cuenta.
-  const ana = await studies.subjectsOf('p-agimenez')
-  assert.ok(ana.ok)
-  assert.deepEqual(
-    ana.value.data.current.map((s) => [s.sectionId, s.absences]),
-    [
-      ['sec-am1-fce-a', { count: 2, justified: 1, max: null, left: null, warning: null }],
-      ['sec-co1-fce-a', { count: 0, justified: 0, max: null, left: null, warning: null }]
-    ]
-  )
+  // Joaquín llegó al máximo en Análisis I.
+  const joaquin = await studies.subjectsOf('p-jescobar')
+  assert.ok(joaquin.ok)
+  assert.deepEqual(joaquin.value.data.current[0].absences, {
+    count: 3,
+    justified: 1,
+    max: 3,
+    left: 0,
+    warning: 'limite'
+  })
 
   // El docente no tiene inasistencias.
   const docente = await studies.subjectsOf('p-mledesma')
@@ -135,28 +135,33 @@ test('cada materia actual del alumno trae sus inasistencias y avisa cuando se ac
   assert.ok(docente.value.data.current.every((s) => s.absences === null))
 })
 
-test('llegar al máximo avisa «límite» y lo que pasa del máximo no da faltas negativas', async () => {
+test('sin máximo en el SIU sale solo la cuenta, y pasarse del máximo no da faltas negativas', async () => {
   const data = structuredClone(syntheticData)
-  for (const date of ['2026-10-30', '2026-11-04'])
-    data.siu.absences.push({
-      id: `in-extra-${date}`,
+  data.siu.absenceLimits = data.siu.absenceLimits.filter((l) => l.sectionId !== 'sec-am1-fi-a')
+  data.siu.absences.push(
+    {
+      id: 'in-extra',
       personId: '30101',
       sectionId: 'sec-pr1-fi-a',
-      date: `${date}T11:00:00.000Z`,
+      date: '2026-11-06T11:00:00.000Z',
       justified: false
-    })
+    },
+    {
+      id: 'in-extra-2',
+      personId: '30101',
+      sectionId: 'sec-pr1-fi-a',
+      date: '2026-11-04T11:00:00.000Z',
+      justified: false
+    }
+  )
   const { studies } = build(data)
 
   const result = await studies.subjectsOf('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.data.current[1].absences, {
-    count: 7,
-    justified: 1,
-    max: 6,
-    left: 0,
-    warning: 'limite'
-  })
+  const [am1, pr1] = result.value.data.current
+  assert.deepEqual(am1.absences, { count: 1, justified: 0, max: null, left: null, warning: null })
+  assert.deepEqual(pr1.absences, { count: 4, justified: 1, max: 3, left: 0, warning: 'limite' })
 })
 
 test('si el SIU no da las inasistencias, las materias salen igual, sin faltas', async () => {

@@ -305,30 +305,37 @@ insert into siu_provisional_results (id, person_id, section_id, assessment_id, g
 on conflict (id) do update set person_id = excluded.person_id, section_id = excluded.section_id, assessment_id = excluded.assessment_id, grade = excluded.grade, date = excluded.date;
 
 insert into siu_absences (id, person_id, section_id, date, justified) values
-  ('in-1', '30101', 'sec-am1-fi-a', '2026-08-24T11:00:00.000Z', false),
-  ('in-2', '30101', 'sec-am1-fi-a', '2026-09-23T11:00:00.000Z', true),
-  ('in-3', '30101', 'sec-am1-fi-a', '2026-10-19T11:00:00.000Z', false),
-  ('in-4', '30101', 'sec-pr1-fi-a', '2026-08-21T11:00:00.000Z', false),
-  ('in-5', '30101', 'sec-pr1-fi-a', '2026-09-04T11:00:00.000Z', false),
-  ('in-6', '30101', 'sec-pr1-fi-a', '2026-09-18T11:00:00.000Z', true),
-  ('in-7', '30101', 'sec-pr1-fi-a', '2026-10-16T11:00:00.000Z', false),
-  ('in-8', '30101', 'sec-pr1-fi-a', '2026-11-06T11:00:00.000Z', false),
-  ('in-9', '30102', 'sec-am1-fi-a', '2026-09-14T11:00:00.000Z', false),
-  ('in-10', '30105', 'sec-am1-fi-a', '2026-08-10T11:00:00.000Z', false),
-  ('in-11', '30105', 'sec-am1-fi-a', '2026-08-12T11:00:00.000Z', false),
-  ('in-12', '30105', 'sec-am1-fi-a', '2026-09-02T11:00:00.000Z', false),
-  ('in-13', '30105', 'sec-am1-fi-a', '2026-10-05T11:00:00.000Z', false),
-  ('in-14', '30105', 'sec-am1-fi-a', '2026-10-14T11:00:00.000Z', true),
-  ('in-15', '30103', 'sec-am1-fi-b', '2026-09-15T11:00:00.000Z', false),
-  ('in-16', '30103', 'sec-am1-fi-b', '2026-10-20T11:00:00.000Z', false),
-  ('in-17', '30107', 'sec-am1-fce-a', '2026-09-08T11:00:00.000Z', false),
-  ('in-18', '30107', 'sec-am1-fce-a', '2026-10-13T11:00:00.000Z', true)
+  ('in-1', '30101', 'sec-am1-fi-a', '2026-09-23T11:00:00.000Z', false),
+  ('in-2', '30101', 'sec-pr1-fi-a', '2026-09-18T11:00:00.000Z', true),
+  ('in-3', '30101', 'sec-pr1-fi-a', '2026-10-16T11:00:00.000Z', false),
+  ('in-4', '30102', 'sec-am1-fi-a', '2026-09-14T11:00:00.000Z', false),
+  ('in-5', '30105', 'sec-am1-fi-a', '2026-08-12T11:00:00.000Z', false),
+  ('in-6', '30105', 'sec-am1-fi-a', '2026-10-05T11:00:00.000Z', false),
+  ('in-7', '30105', 'sec-am1-fi-a', '2026-10-14T11:00:00.000Z', true),
+  ('in-8', '30103', 'sec-am1-fi-b', '2026-09-15T11:00:00.000Z', false),
+  ('in-9', '30107', 'sec-am1-fce-a', '2026-09-08T11:00:00.000Z', false),
+  ('in-10', '30107', 'sec-am1-fce-a', '2026-10-13T11:00:00.000Z', true)
 on conflict (id) do update set person_id = excluded.person_id, section_id = excluded.section_id, date = excluded.date, justified = excluded.justified;
 
 insert into siu_absence_limits (section_id, max) values
-  ('sec-am1-fi-a', 8),
-  ('sec-am1-fi-b', 8),
-  ('sec-pr1-fi-a', 6)
+  ('sec-am1-fi-a', 3),
+  ('sec-am1-fi-b', 3),
+  ('sec-am1-fce-a', 3),
+  ('sec-pr1-fi-a', 3),
+  ('sec-co1-fce-a', 3),
+  ('sec-aga-fi-a', 3),
+  ('sec-iec-fce-a', 3),
+  ('sec-fi1-fi-v', 3),
+  ('sec-fi1-fi-vt', 3),
+  ('sec-pr1-fi-v', 3),
+  ('sec-tor-fi-a', 3),
+  ('sec-lid-fi-v', 3),
+  ('sec-am1-fce-v', 3),
+  ('sec-pye-fi-va', 3),
+  ('sec-pye-fi-vb', 3),
+  ('sec-pye-fi-vc', 3),
+  ('sec-cda-fi-v', 3),
+  ('sec-vol-fi-v', 3)
 on conflict (section_id) do update set max = excluded.max;
 
 insert into siu_certificates (person_id, type, meets_conditions) values
