@@ -14,7 +14,10 @@
    - Si el SIU no deja inscribir por API, devuelve `requiere-autogestion` con el
      enlace: es un paso más, no un error.
    - Las lecturas toleran caídas: devuelven lo último leído, marcado como
-     desactualizado (`Fresh`).
+     desactualizado (`Fresh`). La oferta y las constancias también; la ventana
+     de inscripción de la oferta se mira con el reloj de ahora.
+   - Con Moodle caído y el SIU arriba, las materias salen al día del SIU, sin
+     enlaces al aula ni tareas, y con `classroomUnavailable`.
 
    - Materias y comisiones: un alumno ve las de sus inscripciones aceptadas o
      pendientes, y nunca las de otra facultad; un docente, las que dicta. Son
@@ -166,7 +169,12 @@ export type MySubject = {
   assignments: MyAssignment[]
 }
 
-export type MySubjects = { current: MySubject[]; archived: MySubject[] }
+export type MySubjects = {
+  current: MySubject[]
+  archived: MySubject[]
+  /** Moodle no respondió: las materias salen del SIU, sin enlaces al aula ni tareas. */
+  classroomUnavailable: boolean
+}
 
 export type MySection = {
   sectionId: string
@@ -384,7 +392,7 @@ export type Studies = {
   /** Sus comisiones, como alumno o como docente. */
   sectionsOf(personId: PersonId): Promise<Result<Fresh<MySection[]>, ReadError>>
   /** Comisiones o mesas de examen con cupo, horario y docentes. */
-  offer(personId: PersonId, query: OfferQuery): Promise<Result<OfferItem[], ReadError>>
+  offer(personId: PersonId, query: OfferQuery): Promise<Result<Fresh<OfferItem[]>, ReadError>>
   /** Inscribe en el SIU y matricula en Moodle, todo o nada. */
   enroll(
     personId: PersonId,
@@ -404,7 +412,7 @@ export type Studies = {
   /** Notas de parciales unificadas e historia académica. */
   record(personId: PersonId): Promise<Result<Fresh<AcademicRecord>, ReadError>>
   /** Si cumple las condiciones de la constancia y el enlace a la Autogestión del SIU. */
-  certificate(personId: PersonId, type: CertificateType): Promise<Result<CertificateStatus, ReadError>>
+  certificate(personId: PersonId, type: CertificateType): Promise<Result<Fresh<CertificateStatus>, ReadError>>
   /** Su plan de estudios con el estado y las notas de cada materia, y el avance de la carrera. */
   career(personId: PersonId): Promise<Result<Fresh<Career>, ReadError>>
 }
@@ -646,14 +654,18 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
 
+  /** Lee y guarda la lectura como lo último leído. Una lectura incompleta (`complete` da `false`, como las materias
+      sin el aula de Moodle) se devuelve igual, pero no pisa una completa: si después se cae el SIU, vuelve la
+      completa. */
   async function fresh<T>(
     key: string,
-    read: () => Promise<Result<T, ReadError>>
+    read: () => Promise<Result<T, ReadError>>,
+    complete: (value: T) => boolean = () => true
   ): Promise<Result<Fresh<T>, ReadError>> {
     const result = await read()
     if (result.ok) {
       const value: Fresh<T> = { data: result.value, readAt: clock.now().toISOString(), stale: false }
-      lastRead.set(key, value)
+      if (complete(result.value) || !lastRead.has(key)) lastRead.set(key, value)
       return ok(value)
     }
     const last = lastRead.get(key) as Fresh<T> | undefined
@@ -732,23 +744,33 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     )
   }
 
+  /** Los cursos de Moodle de cada comisión y, de las actuales, sus tareas con
+      fecha. Si Moodle no responde, todas van vacías y `unavailable`: las
+      materias salen igual, porque son del SIU. */
+  async function classroomsOf(
+    sections: SectionInTerm[]
+  ): Promise<{ courses: ClassroomCourse[][]; assignments: MyAssignment[][]; unavailable: boolean }> {
+    const down = { courses: sections.map(() => []), assignments: sections.map(() => []), unavailable: true }
+    const courses = all(await Promise.all(sections.map((p) => classroom.coursesForSection(p.section.id))))
+    if (!courses.ok) return down
+    const at = clock.now().toISOString()
+    const assignments = all(
+      await Promise.all(
+        sections.map((p, i) =>
+          p.current ? assignmentsOf(courses.value[i], at) : Promise.resolve(ok<MyAssignment[]>([]))
+        )
+      )
+    )
+    if (!assignments.ok) return down
+    return { courses: courses.value, assignments: assignments.value, unavailable: false }
+  }
+
   async function subjectsOf(personId: PersonId): Promise<Result<MySubjects, ReadError>> {
     const who = await siuPersonOf(personId)
     if (!who.ok) return who
     const mine = await sectionsInTermsOf(who.value)
     if (!mine.ok) return mine
-    const courses = all(await Promise.all(mine.value.sections.map((p) => classroom.coursesForSection(p.section.id))))
-    if (!courses.ok) return courses
-    const at = clock.now().toISOString()
-    const assignments = all(
-      await Promise.all(
-        mine.value.sections.map((p, i) =>
-          p.current ? assignmentsOf(courses.value[i], at) : Promise.resolve(ok<MyAssignment[]>([]))
-        )
-      )
-    )
-    if (!assignments.ok) return assignments
-
+    const classrooms = await classroomsOf(mine.value.sections)
     const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
       const item: MySubject = {
         subjectId: subject.id,
@@ -765,14 +787,19 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
         location: section.location,
         modality: section.modality,
         role: mine.value.role,
-        classrooms: courses.value[i].map((c) => ({ courseId: c.id, name: c.fullName, url: classroom.courseUrl(c.id) })),
-        assignments: assignments.value[i]
+        classrooms: classrooms.courses[i].map((c) => ({
+          courseId: c.id,
+          name: c.fullName,
+          url: classroom.courseUrl(c.id)
+        })),
+        assignments: classrooms.assignments[i]
       }
       return { item, current }
     })
     return ok({
       current: subjects.filter((s) => s.current).map((s) => s.item),
-      archived: subjects.filter((s) => !s.current).map((s) => s.item)
+      archived: subjects.filter((s) => !s.current).map((s) => s.item),
+      classroomUnavailable: classrooms.unavailable
     })
   }
 
@@ -1667,17 +1694,34 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
+  /** La oferta, con la ventana de inscripción mirada con el reloj de ahora: lo último que se leyó puede ser de antes
+      de que abriera o cerrara. */
+  async function offerNow(personId: PersonId, query: OfferQuery): Promise<Result<Fresh<OfferItem[]>, ReadError>> {
+    const read = await fresh(`offer:${personId}:${query.kind}:${query.subjectId}`, () => offer(personId, query))
+    if (!read.ok) return read
+    const at = clock.now().toISOString()
+    return ok({
+      ...read.value,
+      data: read.value.data.map((o) => ({ ...o, enrollmentWindow: windowAt(at, o.enrollmentStart, o.enrollmentEnd) }))
+    })
+  }
+
   return {
-    subjectsOf: (personId) => fresh(`subjectsOf:${personId}`, () => subjectsOf(personId)),
+    subjectsOf: (personId) =>
+      fresh(
+        `subjectsOf:${personId}`,
+        () => subjectsOf(personId),
+        (s) => !s.classroomUnavailable
+      ),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
-    offer,
+    offer: offerNow,
     enroll,
     drop,
     upcoming: (personId) => fresh(`upcoming:${personId}`, () => upcoming(personId)),
     openEnrollments: openEnrollmentsNow,
     pendingFinals: (personId) => fresh(`pendingFinals:${personId}`, () => pendingFinals(personId)),
     record: (personId) => fresh(`record:${personId}`, () => record(personId)),
-    certificate,
+    certificate: (personId, type) => fresh(`certificate:${personId}:${type}`, () => certificate(personId, type)),
     career: (personId) => fresh(`career:${personId}`, () => career(personId))
   }
 }

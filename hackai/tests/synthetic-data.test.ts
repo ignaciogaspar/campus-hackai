@@ -198,7 +198,7 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
         .filter((o) => o.kind === 'cursada')
         .map((o) => studies.offer(DEMO_STUDENT, { kind: 'cursada', subjectId: o.subjectId }))
     )
-    const sections = offers.flatMap((o) => (o.ok ? o.value : [])).filter((s) => s.enrollmentWindow === 'abierta')
+    const sections = offers.flatMap((o) => (o.ok ? o.value.data : [])).filter((s) => s.enrollmentWindow === 'abierta')
     const available = sections.filter((s) => !s.alreadyEnrolled && !s.enrolledElsewhere && s.spotsLeft !== 0)
     assert.ok(available.length >= 1, 'falta una comisión abierta con lugar a la que se pueda inscribir')
     assert.ok(
@@ -232,7 +232,7 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
         .filter((o) => o.kind === 'examen')
         .map((o) => studies.offer(DEMO_STUDENT, { kind: 'examen', subjectId: o.subjectId }))
     )
-    const boards = offers.flatMap((o) => (o.ok ? o.value : []))
+    const boards = offers.flatMap((o) => (o.ok ? o.value.data : []))
     assert.ok(
       boards.some((b) => b.enrollmentWindow === 'abierta' && !b.alreadyEnrolled && b.spotsLeft === 1),
       'falta una mesa abierta con un solo lugar'

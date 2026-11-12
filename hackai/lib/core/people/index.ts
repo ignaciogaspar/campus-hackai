@@ -1,7 +1,10 @@
 /* Personas (people): quién es quién. Interfaz en hackai/docs/ARQUITECTURA.md.
    Usa el puerto de identidad para el ingreso, el del SIU para los datos de la
    persona y su almacén para los vínculos con cada sistema. Los adaptadores
-   nunca adivinan a quién corresponde un id: se lo preguntan a Personas. */
+   nunca adivinan a quién corresponde un id: se lo preguntan a Personas.
+   Si el SIU no responde, `get` devuelve la persona como la leyó la última vez:
+   nombre, rol, facultad y propuestas casi no cambian, y así una caída del SIU
+   no se lleva el nombre de cada pantalla. */
 import type { IdentityCredential, IdentityPort } from '@/lib/ports/identity'
 import type { SiuPort } from '@/lib/ports/siu'
 import { all, type ExternalFailure, fail, ok, type Result } from '@/lib/result'
@@ -43,6 +46,8 @@ export type People = {
       no puede entrar. Con una identidad sin lista de demo devuelve
       `no-soportado`. */
   demoPeople(): Promise<Result<Person[], 'no-soportado' | ExternalFailure>>
+  /** Rol, facultad y propuestas, del SIU. Si el SIU no responde, la última que se leyó de esa persona; si nunca
+      se leyó, `falla-externa`. */
   get(personId: PersonId): Promise<Result<Person, PeopleError>>
   /** Su id en un sistema de origen o canal externo. */
   accountIn(personId: PersonId, system: ExternalSystem): Promise<Result<string, 'sin-cuenta' | PeopleError>>
@@ -69,6 +74,9 @@ export type PeopleDeps = {
 }
 
 export function createPeople({ identity, siu, store }: PeopleDeps): People {
+  /** La última versión leída de cada persona, para cuando el SIU no responde. */
+  const lastRead = new Map<PersonId, Person>()
+
   async function accountIn(
     personId: PersonId,
     system: ExternalSystem
@@ -84,9 +92,15 @@ export function createPeople({ identity, siu, store }: PeopleDeps): People {
     const siuId = await accountIn(personId, 'siu')
     if (!siuId.ok) return fail(siuId.error === 'sin-cuenta' ? 'persona-desconocida' : siuId.error)
     const found = await siu.person(siuId.value)
-    if (!found.ok) return found.error === 'no-encontrado' ? fail('persona-desconocida') : fail(found.error)
+    if (!found.ok) {
+      if (found.error === 'no-encontrado') return fail('persona-desconocida')
+      const last = lastRead.get(personId)
+      return last ? ok(last) : fail(found.error)
+    }
     const { names, surname, role, school, programs } = found.value
-    return ok({ id: personId, name: `${names} ${surname}`, role, school, programs })
+    const person: Person = { id: personId, name: `${names} ${surname}`, role, school, programs }
+    lastRead.set(personId, person)
+    return ok(person)
   }
 
   /** La persona vinculada a un sujeto de la identidad, o `null` si no hay. */

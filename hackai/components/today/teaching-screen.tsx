@@ -213,7 +213,7 @@ function allClear(view: TeachingView): boolean {
 export function TeachingScreen({ view }: { view: TeachingView }) {
   return (
     <div className='flex flex-col gap-6'>
-      {view.staleSince && <StaleBanner since={view.staleSince} />}
+      {view.staleSince && <StaleBanner since={view.staleSince} now={view.now} />}
 
       <div className='grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(18.75rem,1fr)] lg:items-start'>
         <div className='flex min-w-0 flex-col gap-6'>

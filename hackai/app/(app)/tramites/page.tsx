@@ -9,10 +9,12 @@ import { CertificateCard, certificateTitle } from '@/components/academic/certifi
 import { DOCUMENTS, type DocumentKind } from '@/components/procedures/documents'
 import { Requests } from '@/components/procedures/requests'
 import { PageHeader } from '@/components/shell/page-header'
+import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { CertificateType } from '@/lib/core/studies'
+import { staleSince } from '@/lib/fresh'
 
 export const metadata: Metadata = { title: 'Reportes y trámites · Campus HackAI' }
 
@@ -82,6 +84,7 @@ export default async function TramitesPage() {
   const certificates = await Promise.all(
     CERTIFICATES.map((type) => system().studies.certificate(session.personId, type))
   )
+  const stale = staleSince(certificates)
 
   return (
     <>
@@ -115,9 +118,10 @@ export default async function TramitesPage() {
             title='Constancias'
             hint='Se piden en la Autogestión del SIU: te la abrimos en otra pestaña.'
           >
+            {stale && <StaleBanner since={stale} now={system().now()} />}
             {certificates.map((result, i) =>
               result.ok ? (
-                <CertificateCard key={CERTIFICATES[i]} status={result.value} />
+                <CertificateCard key={CERTIFICATES[i]} status={result.value.data} />
               ) : (
                 <ErrorNotice key={CERTIFICATES[i]}>
                   No pudimos saber si podés pedir la {certificateTitle(CERTIFICATES[i]).toLowerCase()}. Probá de nuevo

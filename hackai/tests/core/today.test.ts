@@ -198,15 +198,22 @@ test('si varias lecturas están desactualizadas, la hora es la de la más vieja'
   assert.deepEqual(result.value.unavailable, ['openEnrollments', 'unread'])
 })
 
-test('con Moodle caído y nada leído antes faltan las materias y sus entregas, pero los parciales, finales e inscripciones se ven igual', async () => {
+test('con Moodle caído faltan las entregas y los enlaces al aula, pero las materias, los parciales, finales e inscripciones se ven igual', async () => {
   const { today, classroomState } = build()
   classroomState.down = true
 
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.unavailable, ['subjects'])
-  assert.deepEqual(result.value.subjects, { current: [], archived: [] })
+  assert.deepEqual(result.value.unavailable, ['assignments'])
+  assert.equal(result.value.subjects.classroomUnavailable, true)
+  assert.deepEqual(
+    result.value.subjects.current.map((s) => [s.code, s.classrooms, s.assignments]),
+    [
+      ['AM1', [], []],
+      ['PR1', [], []]
+    ]
+  )
   assert.deepEqual(
     result.value.upcoming.map((i) => [i.subjectCode, i.name, i.source]),
     [

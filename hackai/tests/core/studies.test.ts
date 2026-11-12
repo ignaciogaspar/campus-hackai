@@ -422,25 +422,80 @@ test('si el aula no tiene tareas con fecha, las materias salen con el enlace y s
   )
 })
 
-test('con Moodle caído devuelve lo último que leyó, marcado como desactualizado', async () => {
-  const { studies, classroomState, advance } = build()
+test('con Moodle caído y el SIU arriba, las materias salen al día del SIU, sin enlaces al aula ni tareas, marcando que faltan', async () => {
+  const { studies, classroomState } = build()
+  classroomState.down = true
+
+  const result = await studies.subjectsOf('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.equal(result.value.data.classroomUnavailable, true)
+  assert.deepEqual(
+    result.value.data.current.map((s) => [s.code, s.sectionName, s.classrooms, s.assignments]),
+    [
+      ['AM1', 'A', [], []],
+      ['PR1', 'A', [], []]
+    ]
+  )
+  assert.ok(result.value.data.archived.length > 0)
+  // Las comisiones no dependen de Moodle.
+  assert.equal((await studies.sectionsOf('p-taguirre')).ok, true)
+})
+
+test('con todo andando, las materias no marcan que falte el aula', async () => {
+  const { studies } = build()
+
+  const result = await studies.subjectsOf('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.data.classroomUnavailable, false)
+})
+
+test('una lectura sin el aula no pisa la completa: si después se cae el SIU, vuelven los enlaces al aula y las tareas', async () => {
+  const { studies, siuState, classroomState, advance } = build()
+  const complete = await studies.subjectsOf('p-taguirre')
+  assert.ok(complete.ok)
+
+  advance(10)
+  classroomState.down = true
+  const partial = await studies.subjectsOf('p-taguirre')
+  assert.ok(partial.ok)
+  assert.equal(partial.value.data.classroomUnavailable, true)
+
+  advance(10)
+  classroomState.down = false
+  siuState.down = true
+  const stale = await studies.subjectsOf('p-taguirre')
+
+  assert.deepEqual(stale, { ok: true, value: { data: complete.value.data, readAt: NOW, stale: true } })
+})
+
+test('sin una lectura completa antes, la lectura sin el aula queda como lo último leído, marcando qué falta', async () => {
+  const { studies, siuState, classroomState } = build()
+  classroomState.down = true
+  const partial = await studies.subjectsOf('p-taguirre')
+  assert.ok(partial.ok)
+
+  siuState.down = true
+  const stale = await studies.subjectsOf('p-taguirre')
+
+  assert.ok(stale.ok)
+  assert.equal(stale.value.stale, true)
+  assert.equal(stale.value.data.classroomUnavailable, true)
+})
+
+test('con Moodle y el SIU caídos devuelve lo último que leyó completo, marcado como desactualizado', async () => {
+  const { studies, siuState, classroomState, advance } = build()
   const first = await studies.subjectsOf('p-taguirre')
   assert.ok(first.ok)
 
   advance(20)
+  siuState.down = true
   classroomState.down = true
   const second = await studies.subjectsOf('p-taguirre')
 
   assert.deepEqual(second, { ok: true, value: { data: first.value.data, readAt: NOW, stale: true } })
-})
-
-test('con Moodle caído y sin nada leído antes devuelve «falla externa»', async () => {
-  const { studies, classroomState } = build()
-  classroomState.down = true
-
-  assert.deepEqual(await studies.subjectsOf('p-taguirre'), { ok: false, error: 'falla-externa' })
-  // Las comisiones no dependen de Moodle.
-  assert.equal((await studies.sectionsOf('p-taguirre')).ok, true)
 })
 
 // Próximos: parciales y finales de todas sus materias, solo del SIU (las entregas de Moodle las suma Hoy).
@@ -830,7 +885,7 @@ test('una materia sin lugar en sus comisiones igual aparece: cuántos lugares qu
     true
   )
   assert.deepEqual(
-    offer.value.map((o) => o.spotsLeft),
+    offer.value.data.map((o) => o.spotsLeft),
     [0]
   )
 })
@@ -1140,12 +1195,32 @@ test('si cumple las condiciones de la constancia de alumno regular, trae el enla
   assert.deepEqual(await studies.certificate('p-taguirre', 'alumno-regular'), {
     ok: true,
     value: {
-      type: 'alumno-regular',
-      meetsConditions: true,
-      reasons: [],
-      url: '/simulado/siu/constancias/solicitar?tipo=alumno-regular'
+      data: {
+        type: 'alumno-regular',
+        meetsConditions: true,
+        reasons: [],
+        url: '/simulado/siu/constancias/solicitar?tipo=alumno-regular'
+      },
+      readAt: NOW,
+      stale: false
     }
   })
+})
+
+test('la constancia con el SIU caído devuelve lo último que leyó, con su hora y marcada como desactualizada', async () => {
+  const { studies, siuState, advance } = build()
+  const first = await studies.certificate('p-taguirre', 'alumno-regular')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+
+  assert.deepEqual(await studies.certificate('p-taguirre', 'alumno-regular'), {
+    ok: true,
+    value: { data: first.value.data, readAt: NOW, stale: true }
+  })
+  // Lo último leído es de cada constancia: la de examen final nunca se leyó.
+  assert.deepEqual(await studies.certificate('p-taguirre', 'examen-final'), { ok: false, error: 'falla-externa' })
 })
 
 /** Copia del set sintético donde el SIU dice que la persona no cumple las condiciones de la constancia. */
@@ -1162,9 +1237,9 @@ test('si no cumple la de alumno regular porque su propuesta está pasiva, lo dic
   const result = await studies.certificate('p-fjuarez', 'alumno-regular')
 
   assert.ok(result.ok)
-  assert.equal(result.value.meetsConditions, false)
-  assert.deepEqual(result.value.reasons, ['sin-propuesta-activa'])
-  assert.equal(result.value.url, '/simulado/siu/constancias/solicitar?tipo=alumno-regular')
+  assert.equal(result.value.data.meetsConditions, false)
+  assert.deepEqual(result.value.data.reasons, ['sin-propuesta-activa'])
+  assert.equal(result.value.data.url, '/simulado/siu/constancias/solicitar?tipo=alumno-regular')
 })
 
 test('si no cumple la de alumno regular porque no tiene inscripciones a cursada vigentes, lo dice', async () => {
@@ -1176,7 +1251,7 @@ test('si no cumple la de alumno regular porque no tiene inscripciones a cursada 
   const result = await studies.certificate('p-lbenitez', 'alumno-regular')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.reasons, ['sin-inscripcion-vigente'])
+  assert.deepEqual(result.value.data.reasons, ['sin-inscripcion-vigente'])
 })
 
 test('si el SIU dice que no cumple y Cursada no encuentra el motivo, no inventa uno', async () => {
@@ -1185,8 +1260,8 @@ test('si el SIU dice que no cumple y Cursada no encuentra el motivo, no inventa 
   const result = await studies.certificate('p-taguirre', 'alumno-regular')
 
   assert.ok(result.ok)
-  assert.equal(result.value.meetsConditions, false)
-  assert.deepEqual(result.value.reasons, [])
+  assert.equal(result.value.data.meetsConditions, false)
+  assert.deepEqual(result.value.data.reasons, [])
 })
 
 test('si no cumple la de examen final porque no rindió ningún final, lo dice', async () => {
@@ -1195,9 +1270,9 @@ test('si no cumple la de examen final porque no rindió ningún final, lo dice',
   const result = await studies.certificate('p-lbenitez', 'examen-final')
 
   assert.ok(result.ok)
-  assert.equal(result.value.meetsConditions, false)
-  assert.deepEqual(result.value.reasons, ['sin-examenes-rendidos'])
-  assert.equal(result.value.url, '/simulado/siu/constancias/solicitar?tipo=examen-final')
+  assert.equal(result.value.data.meetsConditions, false)
+  assert.deepEqual(result.value.data.reasons, ['sin-examenes-rendidos'])
+  assert.equal(result.value.data.url, '/simulado/siu/constancias/solicitar?tipo=examen-final')
 })
 
 test('la constancia de examen final la cumple quien ya rindió un final', async () => {
@@ -1206,8 +1281,8 @@ test('la constancia de examen final la cumple quien ya rindió un final', async 
   const result = await studies.certificate('p-taguirre', 'examen-final')
 
   assert.ok(result.ok)
-  assert.equal(result.value.meetsConditions, true)
-  assert.deepEqual(result.value.reasons, [])
+  assert.equal(result.value.data.meetsConditions, true)
+  assert.deepEqual(result.value.data.reasons, [])
 })
 
 test('la constancia de una persona que no existe devuelve «persona desconocida», y con el SIU caído, «falla externa»', async () => {
@@ -1224,8 +1299,8 @@ test('a un docente no le inventa motivos de alumno para la constancia de alumno 
   const result = await studies.certificate('p-mledesma', 'alumno-regular')
 
   assert.ok(result.ok)
-  assert.equal(result.value.meetsConditions, false)
-  assert.deepEqual(result.value.reasons, [])
+  assert.equal(result.value.data.meetsConditions, false)
+  assert.deepEqual(result.value.data.reasons, [])
 })
 
 test('una inscripción pendiente cuenta como vigente para el motivo de la constancia', async () => {
@@ -1237,7 +1312,7 @@ test('una inscripción pendiente cuenta como vigente para el motivo de la consta
   const result = await studies.certificate('p-lbenitez', 'alumno-regular')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.reasons, [])
+  assert.deepEqual(result.value.data.reasons, [])
 })
 
 test('una materia con dos renglones aprobados sale una vez, con el más reciente, y cuenta una vez en el promedio', async () => {
@@ -1270,13 +1345,13 @@ test('la oferta de una materia muestra las comisiones de su facultad que no term
 
   assert.ok(result.ok)
   assert.deepEqual(
-    result.value.map((o) => [o.target, o.alreadyEnrolled, o.enrollmentWindow]),
+    result.value.data.map((o) => [o.target, o.alreadyEnrolled, o.enrollmentWindow]),
     [
       [{ kind: 'comision', sectionId: 'sec-pr1-fi-a' }, true, 'cerrada'],
       [{ kind: 'comision', sectionId: 'sec-pr1-fi-v' }, false, 'abierta']
     ]
   )
-  assert.deepEqual(result.value[1], {
+  assert.deepEqual(result.value.data[1], {
     target: { kind: 'comision', sectionId: 'sec-pr1-fi-v' },
     subjectId: 'pr1',
     subjectName: 'Programación I',
@@ -1312,7 +1387,7 @@ test('la oferta distingue una inscripción que todavía no abrió de una que ya 
   const windows = async () => {
     const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'pr1' })
     assert.ok(offer.ok)
-    return offer.value.map((o) => [o.name, o.enrollmentWindow])
+    return offer.value.data.map((o) => [o.name, o.enrollmentWindow])
   }
 
   assert.deepEqual(await windows(), [
@@ -1336,20 +1411,46 @@ test('la oferta nunca trae comisiones de otra facultad ni de períodos que ya te
 
   assert.ok(fi.ok && fce.ok && aga.ok)
   assert.deepEqual(
-    fi.value.map((o) => [o.target, o.otherProgram]),
+    fi.value.data.map((o) => [o.target, o.otherProgram]),
     [
       [{ kind: 'comision', sectionId: 'sec-am1-fi-a' }, false],
       [{ kind: 'comision', sectionId: 'sec-am1-fi-b' }, true]
     ]
   )
   assert.deepEqual(
-    fce.value.map((o) => o.target),
+    fce.value.data.map((o) => o.target),
     [
       { kind: 'comision', sectionId: 'sec-am1-fce-a' },
       { kind: 'comision', sectionId: 'sec-am1-fce-v' }
     ]
   )
-  assert.deepEqual(aga.value, [])
+  assert.deepEqual(aga.value.data, [])
+})
+
+test('la oferta con el SIU caído devuelve lo último que leyó, con la ventana de inscripción mirada con el reloj de ahora', async () => {
+  // La inscripción al verano abre el 20/11 en vez del 2/11.
+  const data = structuredClone(syntheticData)
+  data.siu.terms.find((t) => t.id === 'verano-2027')!.enrollmentStart = '2026-11-20T03:00:00.000Z'
+  const { studies, siuState, advance } = build(data)
+  const query = { kind: 'cursada', subjectId: 'pr1' } as const
+  const first = await studies.offer('p-vfunes', query)
+  assert.ok(first.ok)
+
+  advance(10 * 24 * 60) // 20/11 al mediodía.
+  siuState.down = true
+  const second = await studies.offer('p-vfunes', query)
+
+  assert.ok(second.ok)
+  assert.deepEqual([second.value.readAt, second.value.stale], [NOW, true])
+  assert.deepEqual(
+    second.value.data.map((o) => [o.name, o.spotsLeft, o.enrollmentWindow]),
+    first.value.data.map((o) => [o.name, o.spotsLeft, o.name === 'Verano' ? 'abierta' : o.enrollmentWindow])
+  )
+  // Lo último leído es de cada materia y tipo de oferta: las mesas nunca se leyeron.
+  assert.deepEqual(await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'pr1' }), {
+    ok: false,
+    error: 'falla-externa'
+  })
 })
 
 const PR1_VERANO = { kind: 'comision', sectionId: 'sec-pr1-fi-v' } as const
@@ -1409,7 +1510,7 @@ test('después de inscribirse, la materia aparece en sus materias y en sus comis
     true
   )
   assert.deepEqual(
-    offer.value.map((o) => o.alreadyEnrolled),
+    offer.value.data.map((o) => o.alreadyEnrolled),
     [false, true]
   )
 })
@@ -1432,7 +1533,7 @@ test('si Moodle falla al matricular, se deshace la inscripción del SIU y vuelve
   const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'pr1' })
   assert.ok(offer.ok)
   assert.deepEqual(
-    offer.value.map((o) => o.alreadyEnrolled),
+    offer.value.data.map((o) => o.alreadyEnrolled),
     [false, false]
   )
 })
@@ -1465,12 +1566,14 @@ test('si la comisión tiene dos aulas y falla la segunda, se desmatricula de la 
   assert.deepEqual(await studentCourses(memory, VALENTINA.moodle), VALENTINA_COURSES)
 })
 
-test('con el SIU caído no se inscribe en nada y vuelve «falla externa»', async () => {
-  const { studies, siuState, classroom } = build()
+test('con el SIU caído no se inscribe en nada y vuelve «falla externa», sin dejar nada a medias', async () => {
+  const { studies, siuState, siu, classroom } = build()
   siuState.down = true
 
   assert.deepEqual(await studies.enroll('p-vfunes', PR1_VERANO), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), VALENTINA_COURSES)
+  siuState.down = false
+  assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b'])
 })
 
 test('sin cupo, fuera de período y ya inscripto vuelven como errores sin tocar Moodle', async () => {
@@ -1497,7 +1600,7 @@ test('con una comisión vigente de la materia no se puede inscribir en otra, aun
   const offer = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'pr1' })
   assert.ok(offer.ok)
   assert.deepEqual(
-    offer.value.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
+    offer.value.data.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
     [
       ['A', true, null],
       ['Verano', false, 'A']
@@ -1796,21 +1899,21 @@ test('la oferta dice cuántos lugares quedan: ninguno si se llenó, y sin tope s
 
   assert.ok(fi1.ok && am1.ok && pr1.ok)
   assert.deepEqual(
-    fi1.value.map((o) => [o.name, o.capacity, o.spotsLeft]),
+    fi1.value.data.map((o) => [o.name, o.capacity, o.spotsLeft]),
     [
       ['Verano', 2, 0],
       ['Verano tarde', 25, 25]
     ]
   )
   assert.deepEqual(
-    am1.value.map((o) => [o.name, o.capacity, o.enrolled, o.spotsLeft]),
+    am1.value.data.map((o) => [o.name, o.capacity, o.enrolled, o.spotsLeft]),
     [
       ['A', 40, 3, 37],
       ['B', 40, 3, 37]
     ]
   )
   assert.deepEqual(
-    pr1.value.map((o) => o.spotsLeft),
+    pr1.value.data.map((o) => o.spotsLeft),
     [27, null]
   )
 })
@@ -1834,7 +1937,7 @@ test('la oferta marca la comisión vigente de la materia aunque sea de otra facu
 
   assert.ok(offer.ok)
   assert.deepEqual(
-    offer.value.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
+    offer.value.data.map((o) => [o.name, o.alreadyEnrolled, o.enrolledElsewhere]),
     [
       ['A', false, 'A'],
       ['B', false, 'A']
@@ -1859,7 +1962,7 @@ test('la oferta de mesas trae las de su facultad que no se tomaron, por fecha, c
 
   assert.ok(result.ok)
   assert.deepEqual(
-    result.value.map((o) => [o.target, o.period, o.date, o.spotsLeft, o.alreadyEnrolled, o.enrolledElsewhere]),
+    result.value.data.map((o) => [o.target, o.period, o.date, o.spotsLeft, o.alreadyEnrolled, o.enrolledElsewhere]),
     [
       [{ kind: 'mesa', examBoardId: 'mesa-aga-fi-dic' }, 'Turno Diciembre 2026', december.date, 1, true, null],
       [
@@ -1873,7 +1976,7 @@ test('la oferta de mesas trae las de su facultad que no se tomaron, por fecha, c
     ]
   )
   assert.deepEqual(
-    result.value[0].teachers.map((t) => t.name),
+    result.value.data[0].teachers.map((t) => t.name),
     ['Mariana Ledesma', 'Gustavo Ferreyra']
   )
 })
@@ -1888,15 +1991,15 @@ test('la oferta de mesas avisa si para rendir le falta regularizar la cursada; l
 
   assert.ok(aga.ok && am1.ok && sections.ok)
   assert.deepEqual(
-    aga.value.map((o) => o.needsRegularity),
+    aga.value.data.map((o) => o.needsRegularity),
     [false]
   )
   assert.deepEqual(
-    am1.value.map((o) => o.needsRegularity),
+    am1.value.data.map((o) => o.needsRegularity),
     [true]
   )
   assert.deepEqual(
-    sections.value.map((o) => o.needsRegularity),
+    sections.value.data.map((o) => o.needsRegularity),
     [false, false]
   )
 })
@@ -1907,10 +2010,10 @@ test('si la historia no se puede leer, la oferta de mesas sale igual, sin el avi
   const am1 = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'am1' })
 
   assert.ok(am1.ok)
-  assert.ok(am1.value.length > 0)
+  assert.ok(am1.value.data.length > 0)
   assert.deepEqual(
-    am1.value.map((o) => o.needsRegularity),
-    am1.value.map(() => false)
+    am1.value.data.map((o) => o.needsRegularity),
+    am1.value.data.map(() => false)
   )
 })
 
@@ -2033,7 +2136,7 @@ test('las comisiones de otra carrera salen marcadas en la oferta y no dejan insc
 
   assert.ok(offer.ok)
   assert.deepEqual(
-    offer.value.map((o) => [o.name, o.otherProgram]),
+    offer.value.data.map((o) => [o.name, o.otherProgram]),
     [
       ['Verano A', false],
       ['Verano B', false],
@@ -2147,7 +2250,7 @@ test('inscribirse a una mesa la deja inscripta en el SIU, con el comprobante, y 
   const offer = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'aga' })
   assert.ok(offer.ok)
   assert.deepEqual(
-    offer.value.map((o) => [o.target, o.alreadyEnrolled, o.enrolled, o.spotsLeft]),
+    offer.value.data.map((o) => [o.target, o.alreadyEnrolled, o.enrolled, o.spotsLeft]),
     [[MESA_AGA, true, 2, 0]]
   )
 })
@@ -2163,7 +2266,7 @@ test('con la mesa llena, el siguiente vuelve «sin cupo», no queda inscripto y 
   const offer = await studies.offer('p-lbenitez', { kind: 'examen', subjectId: 'aga' })
   assert.ok(offer.ok)
   assert.deepEqual(
-    offer.value.map((o) => [o.target, o.alreadyEnrolled, o.capacity, o.spotsLeft]),
+    offer.value.data.map((o) => [o.target, o.alreadyEnrolled, o.capacity, o.spotsLeft]),
     [[MESA_AGA, false, 2, 0]]
   )
 })

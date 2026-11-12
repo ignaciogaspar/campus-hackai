@@ -259,9 +259,34 @@ Según la [documentación de Vercel](https://vercel.com/docs/cron-jobs/usage-and
 
 ## Si el SIU o Moodle no responden
 
-Las lecturas de Cursada (`subjectsOf`, `sectionsOf`, `upcoming`, `openEnrollments`) toleran caídas. El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy y Mis materias lo muestran con el aviso de `components/ui/stale-banner.tsx`. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló. Los parciales y finales (`upcoming`) salen solo del SIU: si se cae Moodle, Hoy los muestra igual y avisa que faltan las entregas. Lo que pasó y las inscripciones que cerraron se miran contra el reloj al armar Hoy, aunque la lectura sea vieja.
+Todas las lecturas de Cursada toleran caídas, también la oferta (`offer`) y las constancias (`certificate`). El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy, Calendario, Mis materias, Inscripciones, Notas, Estado de la carrera y Trámites lo muestran con el aviso de `components/ui/stale-banner.tsx`: «actualizado hace 20 min» y la hora. El «hace…» se cuenta con el reloj de la app (`system().now()`), el mismo que marcó la lectura, así que también tiene sentido con el reloj fijo. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló. Lo que pasó, las inscripciones que cerraron y si una comisión ya abrió su inscripción se miran contra el reloj al armar la pantalla, aunque la lectura sea vieja.
+
+Lo mismo pasa con los datos de la persona (`get` de Personas): con el SIU caído, el saludo y la tarjeta de Hoy, el perfil y la facultad del encabezado salen de la última vez que se leyeron.
+
+Si se cae solo Moodle, las materias no usan lo último leído: salen al día del SIU, sin enlaces al aula ni tareas, y Mis materias avisa qué falta (`classroomUnavailable`). Esa lectura incompleta no pisa la última completa: si después se cae el SIU, vuelven los enlaces al aula y las tareas. Los parciales y finales (`upcoming`) salen solo del SIU, así que Hoy y el Calendario los muestran igual y avisan que faltan las entregas.
+
+Inscribirse o darse de baja con el SIU caído no toca nada: Cursada lee el SIU antes de matricular en Moodle, y la pantalla lo dice: en una comisión, «El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada»; en una mesa, «El SIU no respondió, así que no te inscribimos».
 
 Lo último leído vive en la memoria del proceso. Si el hosting levanta un proceso nuevo, por ejemplo una función serverless fría, la copia se pierde y la primera lectura con el sistema caído devuelve el error.
+
+## Mostrar una caída en la demo
+
+En la encuesta aparecen créditos perdidos porque el SIU se cayó. Para mostrar que HackAI sigue andando, quien presenta tira el SIU o Moodle desde `/caidas` y recorre las pantallas.
+
+**Activarlo.** Con `HACKAI_CAIDAS=si` en `.env.local` (o en las variables del hosting), `lib/composition.ts` envuelve al SIU y al aula, sean los de memoria o los simulados, con los adaptadores de `lib/adapters/caida/`: mientras un sistema está «caído», cada consulta devuelve `falla-externa`, como un sistema real que no responde. El núcleo no se entera de que es una simulación. Reiniciá `npm run dev` después de cambiar la variable. Sin la variable, o con `no`, el interruptor no existe y `/caidas` responde 404: es lo de producción, y lo que trae `.env.example`.
+
+**La página `/caidas`** pide sesión y tiene un botón por sistema, «Tirar» y «Levantar», con lo que pasa en cada caso y accesos a las pantallas para mostrar. Abrila en otra pestaña antes de empezar. El estado vive en la memoria del proceso: vale para todos los que usen esa instancia y se levanta solo al reiniciar.
+
+**Guion**, con Tomás Aguirre («Datos y fecha de la demo»):
+
+1. **Antes de tirar nada, recorré las pantallas con todo andando:** Hoy, Mis materias, Inscripciones (abrí Física I de verano), Notas y Trámites. HackAI guarda lo que lee de cada una; una pantalla que no se abrió antes no tiene qué mostrar y, con el SIU caído, muestra el error en su parte.
+2. **En `/caidas`, «Tirar SIU Guaraní».** Volvé a Hoy: el aviso amarillo dice que el SIU no responde y desde cuándo es lo que se ve («actualizado hace 3 min»), y el próximo parcial (Análisis Matemático I, el lunes 16/11) sigue ahí. Lo mismo en Mis materias, Notas y Trámites.
+3. **En Inscripciones, la oferta de Física I sigue visible.** Intentá inscribirte en la comisión de la tarde: HackAI dice «El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada». No queda nada a medias, ni en el SIU ni en el aula. En el SIU de hoy, ese es el momento en que se pierde el lugar o los créditos.
+4. **«Levantar SIU Guaraní»** y recargá: el aviso desaparece y todo está al día.
+5. **«Tirar Campus Virtual (Moodle)».** Mis materias muestra las materias igual, porque vienen del SIU, sin «Ir al aula» ni tareas y con un aviso de qué falta. Hoy avisa que faltan las entregas, pero los parciales y finales están todos.
+6. **Levantá Moodle** antes de seguir con el resto de la demo.
+
+Si algo se ve raro, reiniciar el proceso deja los dos sistemas levantados. La espera de 5 segundos de un sistema lento no se simula: la caída responde enseguida, para no frenar la demo.
 
 ## Variables de entorno
 
@@ -279,6 +304,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
 | `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
+| `HACKAI_CAIDAS` | `si` deja tirar el SIU o Moodle desde `/caidas` para mostrarlo en la demo. Vacía o `no` (por defecto): no existe, como en producción. Ver «Mostrar una caída en la demo». |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |
 
 No las imprimas en logs ni en reportes.
@@ -318,5 +344,6 @@ No las imprimas en logs ni en reportes.
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 | `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |
 | `lib/demo-base/`, `scripts/demo-*.ts` | Preparar, verificar y probar la base de la demo. Ver «Base de la demo». |
+| `lib/adapters/caida/`, `app/caidas/`, `app/actions/outages.ts` | Las caídas de la demo: el interruptor que tira el SIU o Moodle y la página para usarlo. Ver «Mostrar una caída en la demo». |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).

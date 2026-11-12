@@ -204,12 +204,12 @@ function EnrollmentsCard({ view }: { view: TodayView }) {
 
 export function TodayScreen({ view, person }: { view: TodayView; person: Person | null }) {
   const siuDown = view.unavailable.includes('upcoming')
-  const moodleDown = !siuDown && view.unavailable.includes('subjects')
+  const moodleDown = !siuDown && (view.unavailable.includes('subjects') || view.unavailable.includes('assignments'))
   const events = eventsOf(view.upcoming, view.openEnrollments, view.next?.id ?? null, view.now)
 
   return (
     <div className='flex flex-col gap-4'>
-      {view.staleSince && <StaleBanner since={view.staleSince} />}
+      {view.staleSince && <StaleBanner since={view.staleSince} now={view.now} />}
       {siuDown && <ErrorNotice>{UPCOMING_DOWN}</ErrorNotice>}
       <TodayCalendar
         events={events}
