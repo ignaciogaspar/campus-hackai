@@ -490,7 +490,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     openDirect,
     link: notImplemented,
     syncAll: notImplemented,
-    unreadFor: (personId) => unreadFor(studies, store, personId),
+    unreadFor: (personId) => unreadFor({ studies, people, store }, personId),
     file
   }
 }

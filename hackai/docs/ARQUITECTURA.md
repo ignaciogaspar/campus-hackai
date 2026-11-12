@@ -33,11 +33,11 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | --- | --- |
 | `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
-| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
-| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
-| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
+| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró. En una mesa, si para rendir le falta regularizar la cursada |
+| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
+| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
-| `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
+| `openEnrollments(persona)` | Inscripciones abiertas que le sirven, con los días que faltan para que cierren (contados con el reloj de cada llamada, aunque sea lo último que se leyó) y los lugares que quedan entre todas las comisiones o mesas abiertas de la materia |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
 | `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |
 
@@ -45,6 +45,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Invariantes de `enroll`:**
 
+- **Solo alumnos.** Un docente no se inscribe ni se da de baja: devuelve `solo-alumnos` sin tocar el SIU ni el aula.
 - **Todo o nada.** Si el SIU inscribe y Moodle falla, deshace la inscripción del SIU antes de devolver `falla-externa`. Si deshacerla también falla, devuelve `a-medias`: el SIU y el aula quedaron distintos y no se le puede decir al alumno que no pasó nada. Sin usuario de Moodle no se inscribe y devuelve `sin-cuenta-del-aula`, porque reintentar no lo arregla.
 - **Una comisión vigente por materia.** Con una inscripción aceptada o pendiente a una comisión de un período que no terminó, inscribirse a otra comisión de la misma materia devuelve `ya-inscripto`, aunque sea de otro período. La oferta lo marca y las inscripciones abiertas no ofrecen esa materia.
 - **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
@@ -73,7 +74,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
-| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
+| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Novedades, Hoy y la navegación: por canal, cuántas y la más nueva, con quién la publicó (y su texto o, si solo trae un adjunto, el nombre del archivo); en un directo, de quién es; y si todo es de un mismo hilo, cuál. No crea espacios |
 | `file(persona, archivo)` | Los bytes de un archivo guardado, si la persona ve el espacio de su material o el canal de su adjunto |
 
 **Reglas que hace cumplir:**
