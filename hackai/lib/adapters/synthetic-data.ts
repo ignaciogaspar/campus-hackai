@@ -40,6 +40,7 @@
      Matemático I y Programación I, y canales de Discord del servidor del equipo.
    - Los enlaces a Moodle y a la Autogestión del SIU llevan a la página de lo
      simulado (app/simulado/), no a un dominio inventado. */
+import { syntheticPdf } from '@/lib/adapters/synthetic-files'
 import type {
   ClassroomAnnouncement,
   ClassroomAssignment,
@@ -891,10 +892,14 @@ const discordChannels: SyntheticData['discord']['channels'] = [
   }
 ]
 
+/** Un PDF que el visor abre de verdad (#47); cualquier otro tipo, un texto. */
+const syntheticFile = (a: { filename: string; contentType: string }) =>
+  a.contentType === 'application/pdf'
+    ? syntheticPdf(a.filename.replace(/\.pdf$/i, ''))
+    : `Contenido sintético de ${a.filename}`
+
 const discordFiles: Record<string, string> = Object.fromEntries(
-  discordChannels.flatMap((c) =>
-    c.messages.flatMap((m) => m.attachments.map((a) => [a.url, `Contenido sintético de ${a.filename}`]))
-  )
+  discordChannels.flatMap((c) => c.messages.flatMap((m) => m.attachments.map((a) => [a.url, syntheticFile(a)])))
 )
 
 export const syntheticData: SyntheticData = {

@@ -12,6 +12,7 @@ import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { ExternalFailure } from '@/lib/result'
+import { safeReturnTo } from '@/lib/return-to'
 
 export const metadata: Metadata = { title: 'Ingresar · Campus HackAI' }
 
@@ -40,11 +41,15 @@ function signInErrorMessage(error: string | string[]): string {
     : UNKNOWN_PERSON
 }
 
-export default async function IngresoPage({ searchParams }: { searchParams: Promise<{ error?: string | string[] }> }) {
-  const session = await getSession()
-  if (session) redirect(homeFor(session.role))
+type SignInParams = { error?: string | string[]; next?: string | string[] }
 
-  const [{ error }, listed] = await Promise.all([searchParams, system().people.demoPeople()])
+export default async function IngresoPage({ searchParams }: { searchParams: Promise<SignInParams> }) {
+  const [session, { error, next }] = await Promise.all([getSession(), searchParams])
+  // `next`: la ruta a la que se quiso entrar sin sesión, como el enlace a un archivo.
+  const returnTo = safeReturnTo(next)
+  if (session) redirect(returnTo ?? homeFor(session.role))
+
+  const listed = await system().people.demoPeople()
 
   return (
     <>
@@ -61,7 +66,7 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         {!listed.ok ? (
           <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
         ) : listed.value.length ? (
-          <PersonPicker people={listed.value} />
+          <PersonPicker people={listed.value} returnTo={returnTo} />
         ) : (
           <EmptyState icon={UsersRound} title='No hay personas cargadas para la demo'>
             La lista sale de las personas sintéticas. Si usás la base, cargá el seed de vínculos (hackai/README.md).
