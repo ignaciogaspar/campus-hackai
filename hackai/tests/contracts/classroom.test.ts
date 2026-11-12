@@ -39,7 +39,9 @@ function classroomContract(name: string, make: () => ClassroomPort, skip: string
     assert.deepEqual(tomas.value.map((c) => [c.id, c.role]).sort(), [
       ['c-aga-fi-a', 'student'],
       ['c-am1-fi-a', 'student'],
-      ['c-pr1-fi-a', 'student']
+      ['c-fi1-fi-1c', 'student'],
+      ['c-pr1-fi-a', 'student'],
+      ['c-sre-fi-a', 'student']
     ])
 
     const mariana = await classroom.coursesOf(moodleId('p-mledesma'))

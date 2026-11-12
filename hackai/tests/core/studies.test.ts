@@ -73,7 +73,7 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
   assert.equal(result.value.stale, false)
   assert.equal(result.value.readAt, NOW)
   assert.deepEqual(names(result.value.data.current), ['AM1 A', 'PR1 A'])
-  assert.deepEqual(names(result.value.data.archived), ['AGA A'])
+  assert.deepEqual(names(result.value.data.archived), ['AGA A', 'FI1 A', 'SRE A'])
   assert.deepEqual(result.value.data.current[0], {
     subjectId: 'am1',
     code: 'AM1',
@@ -202,7 +202,7 @@ test('sectionsOf devuelve las comisiones del alumno con sus docentes como person
   assert.equal(result.value.stale, false)
   assert.deepEqual(
     result.value.data.map((s) => s.sectionId),
-    ['sec-am1-fi-a', 'sec-pr1-fi-a', 'sec-aga-fi-a']
+    ['sec-am1-fi-a', 'sec-pr1-fi-a', 'sec-aga-fi-a', 'sec-fi1-fi-1c', 'sec-sre-fi-a']
   )
   assert.deepEqual(result.value.data[0], {
     sectionId: 'sec-am1-fi-a',
@@ -229,7 +229,8 @@ test('sectionsOf de un docente devuelve las comisiones que dicta, y de un alumno
     [
       ['sec-am1-fi-b', 'profesor'],
       ['sec-fi1-fi-v', 'profesor'],
-      ['sec-fi1-fi-vt', 'profesor']
+      ['sec-fi1-fi-vt', 'profesor'],
+      ['sec-fi1-fi-1c', 'profesor']
     ]
   )
 
@@ -272,12 +273,18 @@ test('cada materia lleva el enlace al aula de su comisión, actual o archivada',
     [
       ['sec-am1-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`]],
       ['sec-pr1-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-pr1-fi-a`]],
-      ['sec-aga-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-aga-fi-a`]]
+      ['sec-aga-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-aga-fi-a`]],
+      ['sec-fi1-fi-1c', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-fi1-fi-1c`]],
+      ['sec-sre-fi-a', [`${syntheticData.moodle.baseUrl}/course/view.php?id=c-sre-fi-a`]]
     ]
   )
   assert.deepEqual(
     archived.map((s) => s.classrooms[0].name),
-    ['Álgebra y Geometría Analítica - Comisión A (FI) - Grado 1er Cuatrimestre 2026']
+    [
+      'Álgebra y Geometría Analítica - Comisión A (FI) - Grado 1er Cuatrimestre 2026',
+      'Física I - Comisión A (FI) - Grado 1er Cuatrimestre 2026',
+      'Sistemas de Representación - Comisión A (FI) - Grado 2do Cuatrimestre 2025'
+    ]
   )
 })
 
@@ -367,7 +374,11 @@ test('las materias archivadas llevan el enlace al aula pero no las tareas', asyn
   assert.ok(result.ok)
   assert.deepEqual(
     result.value.data.archived.map((s) => [s.sectionId, classroomOf(s), s.assignments]),
-    [['sec-aga-fi-a', ['c-aga-fi-a'], []]]
+    [
+      ['sec-aga-fi-a', ['c-aga-fi-a'], []],
+      ['sec-fi1-fi-1c', ['c-fi1-fi-1c'], []],
+      ['sec-sre-fi-a', ['c-sre-fi-a'], []]
+    ]
   )
 })
 
@@ -898,6 +909,33 @@ test('un docente no tiene finales pendientes; con el SIU caído vuelve lo últim
   assert.deepEqual(await studies.pendingFinals('p-vfunes'), { ok: false, error: 'falla-externa' })
 })
 
+// Mis materias en tres vistas: Cursando, Falta final y Aprobadas
+
+test('cada materia del alumno va en una sola vista, y lo libre de un período anterior en ninguna', async () => {
+  const { studies } = build()
+
+  const [subjects, finals, record] = await Promise.all([
+    studies.subjectsOf('p-taguirre'),
+    studies.pendingFinals('p-taguirre'),
+    studies.record('p-taguirre')
+  ])
+
+  assert.ok(subjects.ok && finals.ok && record.ok)
+  const cursando = subjects.value.data.current.map((s) => s.subjectId)
+  const faltaFinal = finals.value.data.map((f) => f.subjectId)
+  const aprobadas = record.value.data.history.map((h) => h.subjectId)
+  assert.deepEqual(cursando, ['am1', 'pr1'])
+  // Regulares sin final: Sistemas de Representación (final desaprobado) y Álgebra.
+  assert.deepEqual(faltaFinal, ['sre', 'aga'])
+  // Por final, por promoción y por promoción.
+  assert.deepEqual(aprobadas, ['an1', 'qui', 'iin'])
+  const all = [...cursando, ...faltaFinal, ...aprobadas]
+  assert.equal(new Set(all).size, all.length, 'una materia aparece en dos vistas')
+  // Quedó libre en Física I del 1er cuatrimestre: está archivada, pero no va en ninguna vista.
+  assert.ok(subjects.value.data.archived.some((s) => s.subjectId === 'fi1'))
+  assert.equal(all.includes('fi1'), false)
+})
+
 // Notas, historia y constancias
 
 test('las notas de parciales salen juntas, vengan de la historia o de actuación provisoria, la más reciente primero', async () => {
@@ -1386,7 +1424,13 @@ test('con una comisión vigente de la materia no se puede inscribir en otra, aun
   // Tomás cursa Programación I en la comisión A del segundo cuatrimestre.
   assert.deepEqual(await studies.enroll('p-taguirre', PR1_VERANO), { ok: false, error: 'ya-inscripto' })
   assert.deepEqual(await siuSections(siu, TOMAS.siu), ['sec-am1-fi-a', 'sec-pr1-fi-a'])
-  assert.deepEqual(await studentCourses(classroom, TOMAS.moodle), ['c-aga-fi-a', 'c-am1-fi-a', 'c-pr1-fi-a'])
+  assert.deepEqual(await studentCourses(classroom, TOMAS.moodle), [
+    'c-aga-fi-a',
+    'c-am1-fi-a',
+    'c-fi1-fi-1c',
+    'c-pr1-fi-a',
+    'c-sre-fi-a'
+  ])
 
   const offer = await studies.offer('p-taguirre', { kind: 'cursada', subjectId: 'pr1' })
   assert.ok(offer.ok)

@@ -34,8 +34,11 @@
      con sus parciales en la historia; Nicolás Herrera, Introducción a la
      Economía. Tomás aprobó tres materias en 2025, una de ellas con final, y
      Nicolás tiene una equivalencia.
-   - Tomás y Joaquín Escobar tienen regular Sistemas de Representación. Tomás
-     desaprobó el final en febrero; Joaquín ya se anotó a la mesa de diciembre.
+   - Tomás y Joaquín Escobar tienen regular Sistemas de Representación, que
+     cursaron en el 2do cuatrimestre de 2025. Tomás desaprobó el final en
+     febrero; Joaquín ya se anotó a la mesa de diciembre.
+   - Tomás quedó libre en Física I del 1er cuatrimestre: la tiene que volver a
+     cursar, y Física I de verano le sigue apareciendo.
    - Federico Juárez tiene la propuesta pasiva: no cumple las condiciones de la
      constancia de alumno regular.
    - Cursos de Moodle por comisión (Sofía Domínguez todavía no está matriculada
@@ -189,6 +192,14 @@ function discord(personId: string): string {
 
 const terms: SiuTerm[] = [
   {
+    id: '2c-2025',
+    name: 'Grado 2do Cuatrimestre 2025',
+    start: at('2025-08-11'),
+    end: at('2025-11-28', '23:59'),
+    enrollmentStart: at('2025-07-28'),
+    enrollmentEnd: at('2025-08-15', '23:59')
+  },
+  {
     id: '1c-2026',
     name: 'Grado 1er Cuatrimestre 2026',
     start: at('2026-03-09'),
@@ -229,12 +240,12 @@ const subjects: SiuSubject[] = [
   { id: 'fi1', code: 'FI1', name: 'Física I', credits: null },
   { id: 'iec', code: 'IEC', name: 'Introducción a la Economía', credits: null },
   { id: 'co1', code: 'CO1', name: 'Contabilidad I', credits: null },
+  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación', credits: null },
   // Solo en la historia académica: se cursaron antes de los períodos del set.
   { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería', credits: null },
   { id: 'qui', code: 'QUI', name: 'Química General', credits: null },
   { id: 'an1', code: 'AN1', name: 'Antropología I', credits: null },
   { id: 'iad', code: 'IAD', name: 'Introducción a la Administración', credits: null },
-  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación', credits: null },
   // Actividades de vida universitaria: dan créditos.
   { id: 'tor', code: 'TOR', name: 'Taller de Oratoria', credits: 2 },
   { id: 'lid', code: 'LID', name: 'Taller de Liderazgo', credits: 3 }
@@ -389,6 +400,32 @@ const sections: SiuSection[] = [
     capacity: null
   },
   {
+    id: 'sec-sre-fi-a',
+    name: 'A',
+    subjectId: 'sre',
+    schoolId: 'fi',
+    termId: '2c-2025',
+    teacherIds: [siu('p-darrieta')],
+    schedule: [{ day: 'lunes', start: '14:00', end: '17:00' }],
+    location: 'Campus Pilar, aula 8',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 40
+  },
+  {
+    id: 'sec-fi1-fi-1c',
+    name: 'A',
+    subjectId: 'fi1',
+    schoolId: 'fi',
+    termId: '1c-2026',
+    teacherIds: [siu('p-gferreyra')],
+    schedule: [{ day: 'miercoles', start: '09:00', end: '12:00' }],
+    location: 'Campus Pilar, aula 20',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 40
+  },
+  {
     id: 'sec-tor-fi-a',
     name: 'Única',
     subjectId: 'tor',
@@ -432,6 +469,9 @@ const sections: SiuSection[] = [
 // Inscripciones a cursada: [persona, comisión, fecha]
 
 const enrollmentRows: [string, string, string][] = [
+  ['p-taguirre', 'sec-sre-fi-a', '2025-08-04'],
+  ['p-jescobar', 'sec-sre-fi-a', '2025-08-05'],
+  ['p-taguirre', 'sec-fi1-fi-1c', '2026-03-02'],
   ['p-taguirre', 'sec-aga-fi-a', '2026-03-02'],
   ['p-vfunes', 'sec-aga-fi-a', '2026-03-02'],
   ['p-nherrera', 'sec-iec-fce-a', '2026-03-03'],
@@ -588,7 +628,8 @@ const subjectRows: HistoryRow[] = [
   ['p-nherrera', 'iad', 'equivalencia', '2026-03-20', 8, 'aprobado', 'R-2026-0014'],
   ['p-taguirre', 'sre', 'cursada', '2025-11-27', 6, 'regular', 'C-2025-0577'],
   ['p-jescobar', 'sre', 'cursada', '2025-11-27', 7, 'regular', 'C-2025-0577'],
-  ['p-taguirre', 'sre', 'examen', '2026-02-23', 2, 'desaprobado', 'E-2026-0045']
+  ['p-taguirre', 'sre', 'examen', '2026-02-23', 2, 'desaprobado', 'E-2026-0045'],
+  ['p-taguirre', 'fi1', 'cursada', '2026-07-08', null, 'libre', 'C-2026-0415']
 ]
 
 // Notas de evaluaciones cargadas en la historia: [persona, comisión, evaluación, nota, resultado, registro]

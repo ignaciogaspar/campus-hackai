@@ -50,7 +50,7 @@ test('arma la pantalla del alumno en una sola llamada: materias, próximos por f
   )
   assert.deepEqual(
     view.subjects.archived.map((s) => s.code),
-    ['AGA']
+    ['AGA', 'FI1', 'SRE']
   )
   assert.deepEqual(
     view.upcoming.map((i) => [i.subjectCode, i.name, i.source, i.past]),

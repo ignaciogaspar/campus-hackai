@@ -50,7 +50,13 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       current,
       syntheticData.siu.terms.find((t) => t.id === '2c-2026')
     )
-    assert.deepEqual(sorted(terms.value.map((t) => t.id)), ['1c-2026', '2c-2026', 'act-2c-2026', 'verano-2027'])
+    assert.deepEqual(sorted(terms.value.map((t) => t.id)), [
+      '1c-2026',
+      '2c-2025',
+      '2c-2026',
+      'act-2c-2026',
+      'verano-2027'
+    ])
   })
 
   it('devuelve una materia y una comisión, o «no encontrado»', async (siu) => {
@@ -102,7 +108,13 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     const all = await siu.courseEnrollments(tomas, { historic: true })
     assert.ok(current.ok && all.ok)
     assert.deepEqual(sorted(current.value.map((e) => e.sectionId)), ['sec-am1-fi-a', 'sec-pr1-fi-a'])
-    assert.deepEqual(sorted(all.value.map((e) => e.sectionId)), ['sec-aga-fi-a', 'sec-am1-fi-a', 'sec-pr1-fi-a'])
+    assert.deepEqual(sorted(all.value.map((e) => e.sectionId)), [
+      'sec-aga-fi-a',
+      'sec-am1-fi-a',
+      'sec-fi1-fi-1c',
+      'sec-pr1-fi-a',
+      'sec-sre-fi-a'
+    ])
     const am1 = all.value.find((e) => e.sectionId === 'sec-am1-fi-a')!
     assert.deepEqual(
       am1,

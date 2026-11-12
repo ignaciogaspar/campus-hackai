@@ -41,7 +41,9 @@ test('el SIU en memoria separa las inscripciones vigentes de las históricas', a
   assert.deepEqual(todas.ok && todas.value.map((e) => e.sectionId).sort(), [
     'sec-aga-fi-a',
     'sec-am1-fi-a',
-    'sec-pr1-fi-a'
+    'sec-fi1-fi-1c',
+    'sec-pr1-fi-a',
+    'sec-sre-fi-a'
   ])
 })
 

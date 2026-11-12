@@ -207,6 +207,31 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
     )
   })
 
+  test(`el ${day} el alumno de la demo tiene materias en Cursando, Falta final y Aprobadas, y una libre de un período anterior`, async () => {
+    const { studies } = systemAt(now)
+
+    const [subjects, finals, record] = await Promise.all([
+      studies.subjectsOf(DEMO_STUDENT),
+      studies.pendingFinals(DEMO_STUDENT),
+      studies.record(DEMO_STUDENT)
+    ])
+
+    assert.ok(subjects.ok && finals.ok && record.ok)
+    assert.ok(subjects.value.data.current.length >= 1, 'falta una materia en Cursando')
+    assert.ok(finals.value.data.length >= 1, 'falta una materia en Falta final')
+    assert.ok(record.value.data.history.length >= 1, 'falta una materia en Aprobadas')
+    const shown = new Set([
+      ...subjects.value.data.current.map((s) => s.subjectId),
+      ...finals.value.data.map((f) => f.subjectId),
+      ...record.value.data.history.map((h) => h.subjectId)
+    ])
+    const libre = siu.history.find(
+      (h) => h.personId === '30101' && h.type === 'cursada' && h.result === 'libre' && !shown.has(h.subjectId)
+    )
+    assert.ok(libre, 'falta una materia libre de un período anterior')
+    assert.ok(subjects.value.data.archived.some((s) => s.subjectId === libre.subjectId))
+  })
+
   test(`el ${day} el alumno de la demo tiene dos actividades con créditos abiertas, una que cierra en pocos días`, async () => {
     const { studies } = systemAt(now)
 
