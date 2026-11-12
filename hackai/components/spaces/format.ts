@@ -106,7 +106,15 @@ export type RailTab = {
 }
 
 /** `?vista=directos` es la lista de mensajes directos; un canal, directo o no, va en `?canal=` con su id. */
-export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal'; vista?: 'directos' }
+export type SpaceQuery = {
+  canal?: string
+  hilo?: string
+  filtro?: string
+  nuevo?: 'canal'
+  vista?: 'directos'
+  /** Lo buscado en el material. */
+  buscar?: string
+}
 
 /** Donde viven los espacios: `/materias/<id de la materia>`. */
 const SPACES_PATH = '/materias'

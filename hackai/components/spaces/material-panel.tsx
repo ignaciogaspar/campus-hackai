@@ -3,69 +3,24 @@
    Junta lo que se sube en HackAI, en Moodle y en el canal externo, cada archivo
    con su origen. El docente de la materia ve además el selector para
    organizarlo y el formulario para subir; quién es docente lo dice
-   `viewer.canManage`. Las secciones son <details>: se pliegan sin JavaScript. */
+   `viewer.canManage`. Las secciones son <details>: se pliegan sin JavaScript.
+   Arriba, el campo para buscar; con algo buscado, los resultados reemplazan a
+   las secciones (material-search). */
 
 import { ChevronRight, FileText, Upload } from 'lucide-react'
 import { addMaterial, organizeMaterial } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
-import { fileKind, fileSize, shortDate } from '@/components/spaces/format'
+import { MaterialRow } from '@/components/spaces/material-row'
+import {
+  MaterialSearchForm,
+  type MaterialSearchResult,
+  MaterialSearchResults
+} from '@/components/spaces/material-search'
 import { buttonVariants } from '@/components/ui/button'
-import { OriginBadge } from '@/components/ui/origin-badge'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
-import type { MaterialItem, MaterialLayout, MaterialView } from '@/lib/core/spaces'
+import type { MaterialLayout, MaterialView } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
-
-/** La sigla del tipo de archivo en un cuadradito: rojo para PDF, azul para lo demás. */
-export function FileKindBox({ item }: { item: MaterialItem }) {
-  const kind = fileKind(item.name, item.contentType)
-  return (
-    <span
-      aria-hidden='true'
-      className={cn(
-        'grid h-10 w-9 flex-none place-items-center rounded-lg text-[0.625rem] font-extrabold',
-        kind === 'PDF' ? 'bg-error-background text-destructive' : 'bg-ice text-blue'
-      )}
-    >
-      {kind}
-    </span>
-  )
-}
-
-/** Un archivo: abre en otra pestaña. `compact` para el panel de contexto. */
-export function MaterialRow({ item, compact }: { item: MaterialItem; compact?: boolean }) {
-  return (
-    <li>
-      <a
-        href={item.url}
-        target='_blank'
-        rel='noopener noreferrer'
-        className={cn(
-          'flex items-center gap-3 px-4 text-foreground hover:bg-blue/[0.04] focus-ring-inset',
-          compact ? 'py-2.5' : 'py-3'
-        )}
-      >
-        <FileKindBox item={item} />
-        <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
-          <span className={cn('truncate font-semibold', compact && 'text-[0.875rem]')}>{item.name}</span>
-          <span className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
-            <OriginBadge origin={item.origin} />
-            <span>
-              {compact || item.size === 0 ? '' : `${fileSize(item.size)} · `}
-              <time dateTime={item.addedAt}>{shortDate(item.addedAt)}</time>
-            </span>
-          </span>
-        </span>
-        {item.unread && (
-          <span className='flex-none rounded-full bg-warning-background px-2 py-0.5 text-[0.6875rem] font-bold text-warning-foreground'>
-            Nuevo
-          </span>
-        )}
-        <span className='sr-only'>(se abre en otra pestaña)</span>
-      </a>
-    </li>
-  )
-}
 
 const LAYOUTS: [MaterialLayout, string][] = [
   ['unidad', 'Unidad'],
@@ -157,11 +112,57 @@ function UploadForm({
 type Props = {
   subjectId: string
   spaceId: string
+  channelId: string
   material: MaterialView
   canManage: boolean
+  /** Lo que devolvió la búsqueda de `?buscar=`, o `null` si no se buscó nada. */
+  search: MaterialSearchResult | null
 }
 
-export function MaterialPanel({ subjectId, spaceId, material, canManage }: Props) {
+function MaterialSections({ material }: { material: MaterialView }) {
+  if (material.sections.length === 0) {
+    return (
+      <EmptyState icon={FileText} title='Todavía no hay material'>
+        Cuando la cátedra suba algo acá, en Moodle o en Discord, aparece en esta lista con su origen.
+      </EmptyState>
+    )
+  }
+  return (
+    <>
+      <div className='flex flex-col gap-3'>
+        {material.sections.map((section, i) => (
+          <details
+            key={section.title}
+            open={i === 0}
+            className='group overflow-hidden rounded-[22px] bg-card shadow-card'
+          >
+            <summary className='flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 font-bold focus-ring-inset [&::-webkit-details-marker]:hidden'>
+              <ChevronRight
+                aria-hidden='true'
+                className='size-4 flex-none text-muted-foreground transition-transform group-open:rotate-90 motion-reduce:transition-none'
+              />
+              <span className='min-w-0 flex-1'>{section.title}</span>
+              <span className='flex-none text-xs font-semibold text-muted-foreground'>
+                {section.items.length === 1 ? '1 archivo' : `${section.items.length} archivos`}
+              </span>
+            </summary>
+            <ul className='divide-y divide-border border-t border-border'>
+              {section.items.map((item) => (
+                <MaterialRow key={item.id} item={item} />
+              ))}
+            </ul>
+          </details>
+        ))}
+      </div>
+      <p className='px-1 text-[0.8125rem] text-muted-foreground'>
+        Junta lo que se sube en HackAI, en el aula de Moodle y en el Discord de la cátedra.
+      </p>
+    </>
+  )
+}
+
+export function MaterialPanel({ subjectId, spaceId, channelId, material, canManage, search }: Props) {
+  const query = search?.query ?? ''
   return (
     <>
       {canManage && (
@@ -170,41 +171,11 @@ export function MaterialPanel({ subjectId, spaceId, material, canManage }: Props
           <UploadForm subjectId={subjectId} spaceId={spaceId} sectionNames={material.sectionNames} />
         </div>
       )}
-      {material.sections.length ? (
-        <>
-          <div className='flex flex-col gap-3'>
-            {material.sections.map((section, i) => (
-              <details
-                key={section.title}
-                open={i === 0}
-                className='group overflow-hidden rounded-[22px] bg-card shadow-card'
-              >
-                <summary className='flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 font-bold focus-ring-inset [&::-webkit-details-marker]:hidden'>
-                  <ChevronRight
-                    aria-hidden='true'
-                    className='size-4 flex-none text-muted-foreground transition-transform group-open:rotate-90 motion-reduce:transition-none'
-                  />
-                  <span className='min-w-0 flex-1'>{section.title}</span>
-                  <span className='flex-none text-xs font-semibold text-muted-foreground'>
-                    {section.items.length === 1 ? '1 archivo' : `${section.items.length} archivos`}
-                  </span>
-                </summary>
-                <ul className='divide-y divide-border border-t border-border'>
-                  {section.items.map((item) => (
-                    <MaterialRow key={item.id} item={item} />
-                  ))}
-                </ul>
-              </details>
-            ))}
-          </div>
-          <p className='px-1 text-[0.8125rem] text-muted-foreground'>
-            Junta lo que se sube en HackAI, en el aula de Moodle y en el Discord de la cátedra.
-          </p>
-        </>
+      <MaterialSearchForm subjectId={subjectId} channelId={channelId} query={query} />
+      {search ? (
+        <MaterialSearchResults subjectId={subjectId} channelId={channelId} search={search} />
       ) : (
-        <EmptyState icon={FileText} title='Todavía no hay material'>
-          Cuando la cátedra suba algo acá, en Moodle o en Discord, aparece en esta lista con su origen.
-        </EmptyState>
+        <MaterialSections material={material} />
       )}
     </>
   )

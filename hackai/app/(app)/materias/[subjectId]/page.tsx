@@ -2,7 +2,8 @@
    Material, los que crea un docente y Directos), cada una con sus no leídos, y
    lo de la pestaña elegida. El canal va en `?canal=` (también uno directo,
    con su id), la lista de mensajes directos en `?vista=directos`, el hilo de
-   una consulta en `?hilo=`, el filtro de Consultas en `?filtro=` y el
+   una consulta en `?hilo=`, el filtro de Consultas en `?filtro=`, lo buscado
+   en el material en `?buscar=` y el
    formulario de canal nuevo en `?nuevo=canal`: todo se navega con enlaces, sin
    JavaScript. Escribirle a un docente por primera vez es un formulario.
 
@@ -45,6 +46,7 @@ import {
   spaceHref
 } from '@/components/spaces/format'
 import { MaterialPanel } from '@/components/spaces/material-panel'
+import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
@@ -91,7 +93,8 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
     hilo: singleParam(raw.hilo),
     filtro: singleParam(raw.filtro),
     nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined,
-    vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined
+    vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined,
+    buscar: singleParam(raw.buscar)?.trim() || undefined
   }
 }
 
@@ -146,12 +149,14 @@ function ChannelArea({
   subjectId,
   view,
   opened,
-  query
+  query,
+  search
 }: {
   subjectId: string
   view: SpaceView
   opened: ChannelResult
   query: SpaceQuery
+  search: MaterialSearchResult | null
 }) {
   if (!opened.ok) {
     return (
@@ -182,7 +187,7 @@ function ChannelArea({
     <>
       {updates}
       <DiscordLink subjectId={subjectId} channel={channel} />
-      <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} />
+      <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} search={search} />
     </>
   )
 }
@@ -192,12 +197,14 @@ function ChannelPanel({
   subjectId,
   view,
   opened,
-  query
+  query,
+  search
 }: {
   subjectId: string
   view: SpaceView
   opened: ChannelView
   query: SpaceQuery
+  search: MaterialSearchResult | null
 }) {
   const { channel, threads, material } = opened
   const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
@@ -207,8 +214,10 @@ function ChannelPanel({
         <MaterialPanel
           subjectId={subjectId}
           spaceId={view.space.id}
+          channelId={channel.id}
           material={material ?? view.material}
           canManage={view.viewer.canManage}
+          search={search}
         />
       )
     case 'avisos':
@@ -237,14 +246,29 @@ async function openChannel(
 
 /** Lo que va en la columna del medio: el formulario de canal nuevo, la lista de directos o un canal
     (`null` si el espacio no tiene ninguno). */
-type Pane = { kind: 'nuevo' } | { kind: 'directos' } | { kind: 'canal'; opened: ChannelResult | null }
+type Pane =
+  | { kind: 'nuevo' }
+  | { kind: 'directos' }
+  | { kind: 'canal'; opened: ChannelResult | null; search: MaterialSearchResult | null }
+
+/** Si el canal abierto es el de material y hay algo en `?buscar=`, lo que encontró Espacios. */
+async function searchIn(
+  personId: string,
+  view: SpaceView,
+  opened: ChannelResult | null,
+  buscar: string | undefined
+): Promise<MaterialSearchResult | null> {
+  if (!buscar || !opened?.ok || opened.value.channel.kind !== 'material') return null
+  return { query: buscar, result: await system().spaces.search(personId, view.space.id, buscar) }
+}
 
 /** Con el formulario de canal nuevo o la lista de directos a la vista no se abre ningún canal, así no se
     marca leído lo que no se vio. */
 async function paneFor(personId: string, view: SpaceView, query: SpaceQuery): Promise<Pane> {
   if (query.nuevo === 'canal' && view.viewer.canManage) return { kind: 'nuevo' }
   if (query.vista === 'directos') return { kind: 'directos' }
-  return { kind: 'canal', opened: await openChannel(personId, view, query.canal) }
+  const opened = await openChannel(personId, view, query.canal)
+  return { kind: 'canal', opened, search: await searchIn(personId, view, opened, query.buscar) }
 }
 
 function paneLabel(pane: Pane, selected: Channel | null, channels: Channel[]): string {
@@ -287,7 +311,7 @@ function CenterPane({
     )
   }
   if (!pane.opened) return <ErrorNotice>Este espacio todavía no tiene canales.</ErrorNotice>
-  return <ChannelArea subjectId={subjectId} view={view} opened={pane.opened} query={query} />
+  return <ChannelArea subjectId={subjectId} view={view} opened={pane.opened} query={query} search={pane.search} />
 }
 
 export default async function SpacePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
