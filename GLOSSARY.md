@@ -103,7 +103,7 @@ El hecho de cursar una materia en una comisión, con su resultado: promocionada,
 _Avoid_: usarla como sinónimo de comisión.
 
 **Regularidad (Regular standing)**:
-Resultado de una cursada aprobada que habilita a rendir el examen final. Se pierde, entre otras causas, por inasistencias; el límite de faltas no figura en el SIU. Vigencia, a confirmar.
+Resultado de una cursada aprobada que habilita a rendir el examen final. Se pierde, entre otras causas, por inasistencias. Según el equipo, el límite suele ser 3 faltas por materia; que el SIU lo dé por comisión es una hipótesis (`docs/product/preguntas-abiertas.md`, pregunta 22). Vigencia, a confirmar.
 _Avoid_: confundirla con «alumno regular», que es la condición general que acredita la constancia.
 
 **Promoción (Promotion)**:
@@ -127,7 +127,7 @@ Parcial o trabajo práctico de una comisión, con fecha y horario. El SIU las li
 _Avoid_: usarla para el examen final.
 
 **Inasistencia (Absence)**:
-Falta de un alumno a una clase, registrada por materia con fecha y si está justificada.
+Falta de un alumno a una clase, registrada por materia con fecha y si está justificada. El máximo de inasistencias de una comisión (`AbsenceLimit`) es una hipótesis: ver Regularidad.
 
 **Acta (GradeRecord)**:
 Documento oficial que asienta las notas de una cursada, una promoción o una mesa. Mientras no se cierra, las notas son provisorias; cerrada, no se modifica. Quién la cierra y cómo, a confirmar.

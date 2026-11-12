@@ -17,7 +17,8 @@
      desactualizado (`Fresh`). La oferta y las constancias también; la ventana
      de inscripción de la oferta se mira con el reloj de ahora.
    - Las materias actuales de un alumno llevan sus inasistencias. Si el SIU no
-     da las inasistencias, salen igual, con `absences` en `null`.
+     da las inasistencias, salen igual, sin faltas y con `absencesUnavailable`;
+     como con Moodle caído, esa respuesta no pisa la última lectura completa.
    - Con Moodle caído y el SIU arriba, las materias salen al día del SIU, sin
      enlaces al aula ni tareas, y con `classroomUnavailable`.
 
@@ -181,6 +182,8 @@ export type MySubjects = {
   archived: MySubject[]
   /** Moodle no respondió: las materias salen del SIU, sin enlaces al aula ni tareas. */
   classroomUnavailable: boolean
+  /** El SIU no dio las inasistencias: las materias salen sin faltas. */
+  absencesUnavailable: boolean
 }
 
 export type MySection = {
@@ -782,8 +785,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       classroomsOf(mine.value.sections),
       student ? siu.absences(who.value.siuId) : Promise.resolve(null)
     ])
-    // Sin las inasistencias, las materias salen igual, sin faltas: no son lo
-    // principal de la pantalla.
+    // Sin las inasistencias, las materias salen igual, sin faltas y marcadas
+    // con `absencesUnavailable`: no son lo principal de la pantalla.
     const report = absences?.ok ? absences.value : null
     const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
       const item: MySubject = {
@@ -814,7 +817,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok({
       current: subjects.filter((s) => s.current).map((s) => s.item),
       archived: subjects.filter((s) => !s.current).map((s) => s.item),
-      classroomUnavailable: classrooms.unavailable
+      classroomUnavailable: classrooms.unavailable,
+      absencesUnavailable: absences !== null && !absences.ok
     })
   }
 
@@ -1726,7 +1730,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       fresh(
         `subjectsOf:${personId}`,
         () => subjectsOf(personId),
-        (s) => !s.classroomUnavailable
+        (s) => !s.classroomUnavailable && !s.absencesUnavailable
       ),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     offer: offerNow,

@@ -15,7 +15,14 @@ import { spaceHref } from '@/components/spaces/format'
 import { absencesLine } from '@/components/subjects/absences'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { buttonVariants } from '@/components/ui/button'
-import type { MyAbsences, MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
+import type {
+  AbsenceWarning,
+  MyAbsences,
+  MySubject,
+  PendingFinal,
+  SubjectStanding,
+  SubjectStatus
+} from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 function Row({ icon: Icon, children }: { icon: typeof MapPin; children: ReactNode }) {
@@ -68,25 +75,22 @@ function UnreadPill({ count }: { count: number }) {
   )
 }
 
+/** Cómo se ve cada aviso de faltas: el fondo, el ícono y lo que lee un lector de pantalla. */
+const ABSENCE_WARNING: Record<AbsenceWarning, { box: string; icon: string; label: string }> = {
+  cerca: { box: 'bg-warning-background text-warning-foreground', icon: 'text-warning-icon', label: 'Cuidado: ' },
+  limite: { box: 'bg-error-background text-error-foreground', icon: 'text-destructive', label: 'Aviso: ' }
+}
+
 /** Las faltas de la materia. Cerca del máximo o en el máximo, resaltadas como aviso. */
 function AbsencesRow({ absences }: { absences: MyAbsences }) {
   const line = absencesLine(absences)
   if (!absences.warning) return <Row icon={CalendarX}>{line}</Row>
-  const limit = absences.warning === 'limite'
+  const look = ABSENCE_WARNING[absences.warning]
   return (
-    <p
-      className={cn(
-        'flex w-fit items-start gap-2 rounded-xl px-2.5 py-1.5 text-[0.8125rem] font-semibold',
-        limit ? 'bg-error-background text-error-foreground' : 'bg-warning-background text-warning-foreground'
-      )}
-    >
-      <TriangleAlert
-        aria-hidden='true'
-        className={cn('mt-0.5 size-4 flex-none', limit ? 'text-destructive' : 'text-warning-icon')}
-        strokeWidth={2}
-      />
+    <p className={cn('flex w-fit items-start gap-2 rounded-xl px-2.5 py-1.5 text-[0.8125rem] font-semibold', look.box)}>
+      <TriangleAlert aria-hidden='true' className={cn('mt-0.5 size-4 flex-none', look.icon)} strokeWidth={2} />
       <span className='min-w-0'>
-        <span className='sr-only'>{limit ? 'Aviso: ' : 'Cuidado: '}</span>
+        <span className='sr-only'>{look.label}</span>
         {line}
       </span>
     </p>

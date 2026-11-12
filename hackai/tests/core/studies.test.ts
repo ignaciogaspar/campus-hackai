@@ -164,15 +164,32 @@ test('sin máximo en el SIU sale solo la cuenta, y pasarse del máximo no da fal
   assert.deepEqual(pr1.absences, { count: 4, justified: 1, max: 3, left: 0, warning: 'limite' })
 })
 
-test('si el SIU no da las inasistencias, las materias salen igual, sin faltas', async () => {
-  const { studies } = build(syntheticData, {}, { siuOverrides: { absences: async () => fail('falla-externa') } })
+test('si el SIU no da las inasistencias, las materias salen sin faltas y no pisan la última lectura completa', async () => {
+  let down = false
+  const memory = createMemorySiu(syntheticData, movableClock(NOW).clock)
+  const { studies, siuState } = build(
+    syntheticData,
+    {},
+    {
+      siuOverrides: { absences: async (personId) => (down ? fail('falla-externa') : memory.absences(personId)) }
+    }
+  )
+  const first = await studies.subjectsOf('p-taguirre')
+  assert.ok(first.ok)
 
-  const result = await studies.subjectsOf('p-taguirre')
+  down = true
+  const partial = await studies.subjectsOf('p-taguirre')
+  assert.ok(partial.ok)
+  assert.equal(partial.value.stale, false)
+  assert.equal(partial.value.data.absencesUnavailable, true)
+  assert.deepEqual(names(partial.value.data.current), ['AM1 A', 'PR1 A'])
+  assert.ok(partial.value.data.current.every((s) => s.absences === null))
 
-  assert.ok(result.ok)
-  assert.equal(result.value.stale, false)
-  assert.deepEqual(names(result.value.data.current), ['AM1 A', 'PR1 A'])
-  assert.ok(result.value.data.current.every((s) => s.absences === null))
+  // Si después se cae todo el SIU, vuelve la primera lectura, la completa, con faltas.
+  siuState.down = true
+  const stale = await studies.subjectsOf('p-taguirre')
+
+  assert.deepEqual(stale, { ok: true, value: { data: first.value.data, readAt: NOW, stale: true } })
 })
 
 test('un alumno no ve materias de otra facultad, aunque el SIU lo tenga inscripto', async () => {
