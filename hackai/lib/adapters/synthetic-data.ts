@@ -1,7 +1,18 @@
 /* Set único de datos sintéticos. Alimenta los adaptadores en memoria y el seed
    de los simulados del SIU y de Moodle. Todo es inventado:
-   nombres, mails, notas e ids. Las fechas giran alrededor de `now`, el «hoy»
-   del reloj fijo, en el 2do cuatrimestre de 2026.
+   nombres, mails, notas e ids.
+
+   Las fechas son absolutas, en el 2do cuatrimestre de 2026: nada se calcula
+   desde `now`. `now` (martes 10/11 a las 12) es solo el «hoy» del reloj fijo,
+   el de los tests y el que se usa sin configurar. La demo corre con el reloj
+   del sistema (`HACKAI_CLOCK=sistema`), así que las fechas están elegidas para
+   que la historia se cuente igual el jueves 12/11 (ensayo) y el viernes 13/11
+   (demo): tests/synthetic-data.test.ts lo verifica para esos dos días.
+
+   El alumno de la demo es Tomás Aguirre, con Discord vinculado. Esos días
+   tiene el segundo parcial de Análisis Matemático I el lunes 16/11, la
+   inscripción a Física I de verano abierta (una comisión sin cupo y otra con
+   lugar) y la mesa de Sistemas de Representación con un solo lugar.
 
    Lo que hay:
    - Dos facultades (Ingeniería y Ciencias Empresariales) y Análisis
@@ -9,8 +20,10 @@
    - En Ingeniería, comisiones A y B de Análisis Matemático I con docentes distintos.
    - Diez alumnos de cuatro propuestas y cinco docentes.
    - Inscripciones a cursada del cuatrimestre actual, del anterior y de verano
-     (con la inscripción abierta; Física I de verano está sin cupo).
-   - Mesas de examen con cupo en el turno de diciembre, con la inscripción abierta.
+     (con la inscripción abierta; la comisión de la mañana de Física I de
+     verano está sin cupo y la de la tarde tiene lugar).
+   - Mesas de examen con cupo en el turno de diciembre, con la inscripción
+     abierta. A las de Álgebra y Sistemas de Representación les queda un lugar.
    - Cronograma de parciales. Las notas de parciales están repartidas como en
      el SIU: Arrieta (Programación I) las carga en la historia académica y los
      demás docentes en actuación provisoria (acta abierta).
@@ -18,10 +31,16 @@
      con sus parciales en la historia; Nicolás Herrera, Introducción a la
      Economía. Tomás aprobó tres materias en 2025, una de ellas con final, y
      Nicolás tiene una equivalencia.
+   - Tomás y Joaquín Escobar tienen regular Sistemas de Representación. Tomás
+     desaprobó el final en febrero; Joaquín ya se anotó a la mesa de diciembre.
    - Federico Juárez tiene la propuesta pasiva: no cumple las condiciones de la
      constancia de alumno regular.
    - Cursos de Moodle por comisión (Sofía Domínguez todavía no está matriculada
-     en Programación I) y canales de Discord del servidor del equipo. */
+     en Programación I), con avisos, material y tareas con fecha en Análisis
+     Matemático I y Programación I, y canales de Discord del servidor del equipo.
+   - Los enlaces a Moodle y a la Autogestión del SIU llevan a la página de lo
+     simulado (app/simulado/), no a un dominio inventado. */
+import { syntheticPdf } from '@/lib/adapters/synthetic-files'
 import type {
   ClassroomAnnouncement,
   ClassroomAssignment,
@@ -199,11 +218,12 @@ const subjects: SiuSubject[] = [
   { id: 'fi1', code: 'FI1', name: 'Física I' },
   { id: 'iec', code: 'IEC', name: 'Introducción a la Economía' },
   { id: 'co1', code: 'CO1', name: 'Contabilidad I' },
-  // Solo en la historia académica: se aprobaron antes de los períodos del set.
+  // Solo en la historia académica: se cursaron antes de los períodos del set.
   { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería' },
   { id: 'qui', code: 'QUI', name: 'Química General' },
   { id: 'an1', code: 'AN1', name: 'Antropología I' },
-  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' }
+  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' },
+  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación' }
 ]
 
 // Comisiones
@@ -326,6 +346,22 @@ const sections: SiuSection[] = [
     capacity: 2
   },
   {
+    id: 'sec-fi1-fi-vt',
+    name: 'Verano tarde',
+    subjectId: 'fi1',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-gferreyra')],
+    schedule: [
+      { day: 'martes', start: '14:00', end: '18:00' },
+      { day: 'viernes', start: '14:00', end: '18:00' }
+    ],
+    location: 'Campus Pilar, aula 20',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 25
+  },
+  {
     id: 'sec-pr1-fi-v',
     name: 'Verano',
     subjectId: 'pr1',
@@ -407,6 +443,16 @@ const examBoards: SiuExamBoard[] = [
     ...decemberBoard
   },
   {
+    id: 'mesa-sre-fi-dic',
+    subjectId: 'sre',
+    schoolId: 'fi',
+    date: at('2026-12-07', '14:00'),
+    location: 'Campus Pilar, aula 8',
+    teacherIds: [siu('p-darrieta'), siu('p-gferreyra')],
+    capacity: 2,
+    ...decemberBoard
+  },
+  {
     id: 'mesa-am1-fi-dic',
     subjectId: 'am1',
     schoolId: 'fi',
@@ -445,6 +491,14 @@ const examEnrollments: SiuExamEnrollment[] = [
     personId: siu('p-taguirre'),
     examBoardId: 'mesa-aga-fi-dic',
     date: at('2026-11-09', '11:30'),
+    status: 'aceptada'
+  },
+  {
+    id: 'ie-2',
+    transactionNumber: 'T-200002',
+    personId: siu('p-jescobar'),
+    examBoardId: 'mesa-sre-fi-dic',
+    date: at('2026-11-10', '09:15'),
     status: 'aceptada'
   }
 ]
@@ -491,7 +545,10 @@ const subjectRows: HistoryRow[] = [
   ['p-taguirre', 'iin', 'promocion', '2025-07-04', 8, 'promocionado', 'P-2025-0101'],
   ['p-taguirre', 'qui', 'promocion', '2025-12-05', 7, 'promocionado', 'P-2025-0230'],
   ['p-taguirre', 'an1', 'examen', '2025-12-15', 9, 'aprobado', 'E-2025-0318'],
-  ['p-nherrera', 'iad', 'equivalencia', '2026-03-20', 8, 'aprobado', 'R-2026-0014']
+  ['p-nherrera', 'iad', 'equivalencia', '2026-03-20', 8, 'aprobado', 'R-2026-0014'],
+  ['p-taguirre', 'sre', 'cursada', '2025-11-27', 6, 'regular', 'C-2025-0577'],
+  ['p-jescobar', 'sre', 'cursada', '2025-11-27', 7, 'regular', 'C-2025-0577'],
+  ['p-taguirre', 'sre', 'examen', '2026-02-23', 2, 'desaprobado', 'E-2026-0045']
 ]
 
 // Notas de evaluaciones cargadas en la historia: [persona, comisión, evaluación, nota, resultado, registro]
@@ -585,6 +642,15 @@ const certificates = persons
 
 // Moodle: un curso por comisión
 
+/* Ni Moodle ni la Autogestión del SIU existen en la demo, así que sus enlaces
+   llevan a una página de la app (app/simulado/) que lo dice y explica qué
+   abrirían en producción. Debajo del prefijo va la ruta del sistema real. */
+const moodleBaseUrl = '/simulado/moodle'
+const selfServiceBaseUrl = '/simulado/siu'
+
+/** Un archivo subido a un curso de Moodle, con la forma de `pluginfile.php`. */
+const moodleFile = (course: string, filename: string) => `${moodleBaseUrl}/pluginfile.php/${course}/${filename}`
+
 const courses: ClassroomCourse[] = sections.map((s) => {
   const subject = subjects.find((x) => x.id === s.subjectId)!
   const term = s.termId.toUpperCase()
@@ -637,11 +703,21 @@ const announcements: ClassroomAnnouncement[] = [
     attachments: [
       {
         name: 'temas-segundo-parcial.pdf',
-        url: 'https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf',
+        url: moodleFile('co1', 'temas-segundo-parcial.pdf'),
         contentType: 'application/pdf',
         size: 48213
       }
     ]
+  },
+  {
+    id: 'av-3',
+    courseId: courseOf('sec-pr1-fi-a'),
+    authorId: moodle('p-darrieta'),
+    subject: 'Consulta antes del parcial',
+    message:
+      'El jueves 19 a las 18 hay consulta por Meet para el parcial del viernes 20. Entra todo hasta recursión. El enlace está en el aula.',
+    createdAt: at('2026-11-09', '19:30'),
+    attachments: []
   }
 ]
 
@@ -652,7 +728,7 @@ const contents: ClassroomContent[] = [
     topic: 'Unidad 1: Límites',
     name: 'Guía de ejercicios 1',
     type: 'file',
-    url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf',
+    url: moodleFile('am1-fi-a', 'guia-1.pdf'),
     modifiedAt: at('2026-08-11', '09:00')
   },
   {
@@ -661,7 +737,7 @@ const contents: ClassroomContent[] = [
     topic: 'Unidad 2: Derivadas',
     name: 'Guía de ejercicios 2',
     type: 'file',
-    url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf',
+    url: moodleFile('am1-fi-a', 'guia-2.pdf'),
     modifiedAt: at('2026-09-29', '09:00')
   },
   {
@@ -670,7 +746,7 @@ const contents: ClassroomContent[] = [
     topic: 'Bibliografía',
     name: 'Apunte de la cátedra',
     type: 'url',
-    url: 'https://example.edu.ar/apuntes/am1',
+    url: `${moodleBaseUrl}/mod/url/view.php?id=r-3`,
     modifiedAt: at('2026-08-12', '15:00')
   },
   {
@@ -679,7 +755,7 @@ const contents: ClassroomContent[] = [
     topic: 'Trabajos prácticos',
     name: 'Enunciado del TP integrador',
     type: 'file',
-    url: 'https://moodle.example.edu.ar/pluginfile.php/pr1-fi-a/tp-integrador.pdf',
+    url: moodleFile('pr1-fi-a', 'tp-integrador.pdf'),
     modifiedAt: at('2026-09-04', '10:00')
   },
   {
@@ -688,8 +764,17 @@ const contents: ClassroomContent[] = [
     topic: 'Unidad 1',
     name: 'Apunte de funciones',
     type: 'file',
-    url: 'https://moodle.example.edu.ar/pluginfile.php/am1-fce-a/funciones.pdf',
+    url: moodleFile('am1-fce-a', 'funciones.pdf'),
     modifiedAt: at('2026-08-14', '19:00')
+  },
+  {
+    id: 'r-6',
+    courseId: courseOf('sec-pr1-fi-a'),
+    topic: 'Unidad 4: Recursión',
+    name: 'Guía de ejercicios de recursión',
+    type: 'file',
+    url: moodleFile('pr1-fi-a', 'guia-recursion.pdf'),
+    modifiedAt: at('2026-11-06', '11:00')
   }
 ]
 
@@ -807,17 +892,21 @@ const discordChannels: SyntheticData['discord']['channels'] = [
   }
 ]
 
+/** Un PDF que el visor abre de verdad (#47); cualquier otro tipo, un texto. */
+const syntheticFile = (a: { filename: string; contentType: string }) =>
+  a.contentType === 'application/pdf'
+    ? syntheticPdf(a.filename.replace(/\.pdf$/i, ''))
+    : `Contenido sintético de ${a.filename}`
+
 const discordFiles: Record<string, string> = Object.fromEntries(
-  discordChannels.flatMap((c) =>
-    c.messages.flatMap((m) => m.attachments.map((a) => [a.url, `Contenido sintético de ${a.filename}`]))
-  )
+  discordChannels.flatMap((c) => c.messages.flatMap((m) => m.attachments.map((a) => [a.url, syntheticFile(a)])))
 )
 
 export const syntheticData: SyntheticData = {
   now: at('2026-11-10', '12:00'),
   people,
   siu: {
-    selfServiceBaseUrl: 'https://autogestion.example.edu.ar',
+    selfServiceBaseUrl,
     persons,
     terms,
     subjects,
@@ -831,7 +920,7 @@ export const syntheticData: SyntheticData = {
     certificates
   },
   moodle: {
-    baseUrl: 'https://moodle.example.edu.ar',
+    baseUrl: moodleBaseUrl,
     courses,
     enrolments: [...teacherEnrolments, ...studentEnrolments],
     announcements,

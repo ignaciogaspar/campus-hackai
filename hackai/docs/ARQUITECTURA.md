@@ -33,11 +33,11 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | --- | --- |
 | `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
-| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
-| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
-| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
+| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró. En una mesa, si para rendir le falta regularizar la cursada |
+| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
+| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
-| `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
+| `openEnrollments(persona)` | Inscripciones abiertas que le sirven, con los días que faltan para que cierren (contados con el reloj de cada llamada, aunque sea lo último que se leyó) y los lugares que quedan entre todas las comisiones o mesas abiertas de la materia |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
 | `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |
 
@@ -45,6 +45,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Invariantes de `enroll`:**
 
+- **Solo alumnos.** Un docente no se inscribe ni se da de baja: devuelve `solo-alumnos` sin tocar el SIU ni el aula.
 - **Todo o nada.** Si el SIU inscribe y Moodle falla, deshace la inscripción del SIU antes de devolver `falla-externa`. Si deshacerla también falla, devuelve `a-medias`: el SIU y el aula quedaron distintos y no se le puede decir al alumno que no pasó nada. Sin usuario de Moodle no se inscribe y devuelve `sin-cuenta-del-aula`, porque reintentar no lo arregla.
 - **Una comisión vigente por materia.** Con una inscripción aceptada o pendiente a una comisión de un período que no terminó, inscribirse a otra comisión de la misma materia devuelve `ya-inscripto`, aunque sea de otro período. La oferta lo marca y las inscripciones abiertas no ofrecen esa materia.
 - **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
@@ -74,7 +75,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Devuelve `canal-externo-inexistente` si no lo encuentra y `canal-externo-en-uso` si ya está vinculado con otro canal |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
-| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
+| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Novedades, Hoy y la navegación: por canal, cuántas y la más nueva, con quién la publicó (y su texto o, si solo trae un adjunto, el nombre del archivo); en un directo, de quién es; y si todo es de un mismo hilo, cuál. No crea espacios |
 | `file(persona, archivo)` | Los bytes de un archivo guardado, si la persona ve el espacio de su material o el canal de su adjunto |
 
 **Reglas que hace cumplir:**
@@ -84,7 +85,7 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 - **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión. Con los archivos guardados pasa lo mismo: el material lo baja cualquiera del espacio, y un adjunto, quien ve su canal.
 - **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión, contando las comisiones vigentes del alumno, o todas si la materia está archivada para él; entre alumnos no hay. Vinculan un canal con el canal externo los docentes que lo gestionan: los de la materia si es de la materia, los de la comisión si es de una comisión; los directos no se vinculan. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`, `canLink`), y el espacio, a quiénes les puede escribir en privado (`viewer.directContacts`), así la pantalla no repite estas reglas.
 - **Canales por defecto:** el espacio y su canal de material se crean la primera vez que alguien abre el espacio; `#avisos` y `#consultas` de una comisión, la primera vez que lo abre alguien de esa comisión. Los nombres no se repiten entre canales que ven las mismas personas.
-- **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que en la demo está fija.
+- **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que con el reloj fijo de los tests no avanza.
 - **Sincronización:**
   - Cada mensaje guarda su origen (HackAI, Discord, Moodle) y su id externo, y un mensaje no entra dos veces.
   - De ida: lo publicado en un canal vinculado se guarda pendiente y se envía enseguida: primero el texto y al final, en letra chica, quién lo escribió, porque Discord nombra el hilo de una consulta con la primera línea. Una respuesta va al hilo de su mensaje y una consulta abre su hilo. Las menciones (`@everyone`, `@usuario`) no notifican (pregunta abierta 12). Lo que se sube al material se avisa en el canal de material vinculado con el nombre del archivo, sin el archivo; ese aviso no se reintenta (pregunta abierta 19).
@@ -150,7 +151,8 @@ hackai/
 │   ├── core/            people/, studies/, spaces/, today/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/
-│   └── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   └── demo-base/       preparar, verificar y probar la base de la demo (npm run demo:*); no lo usa la app
 ├── app/                 pantallas y server actions
 ├── components/
 ├── supabase/migrations/ tablas propias de HackAI
@@ -165,7 +167,8 @@ hackai/
 - `core/` importa `ports/` y las interfaces de otros módulos de `core/`. Nunca `adapters/`, `app/` ni `lib/db`.
 - `adapters/` importa `ports/` y los tipos de `core/` que necesita.
 - `app/` importa `composition` y los tipos de `core/`. Las pantallas no tienen reglas de negocio.
-- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria.
+- `components/` no importa `composition`, salvo la campana de sesión (`components/shell/notifications-bell.tsx`): lee los no leídos como una página, porque Next.js no vuelve a ejecutar el layout al navegar y el número quedaría viejo. No lleva reglas de negocio.
+- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria. Fuera de `lib/`, también los usan los scripts de `scripts/` (seeds y base de la demo), que arman lo suyo con `lib/adapters/supabase/demo-base.ts` y se lo pasan a `lib/demo-base/`.
 
 ## De la demo a producción
 

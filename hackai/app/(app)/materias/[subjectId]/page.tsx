@@ -9,6 +9,10 @@
    En el celular es una columna y el campo para escribir queda pegado abajo.
    En compu, tres columnas: canales, conversación y un panel de contexto.
 
+   Mientras un canal está abierto se actualiza solo (ChannelUpdates): lo nuevo
+   del canal externo o de otros aparece sin recargar. Al leer un canal, la
+   barra lateral baja sus no leídos (UnreadRefresh, en el layout).
+
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
 
@@ -147,7 +151,7 @@ function ChannelArea({
     )
   }
   const { channel, threads, version } = opened.value
-  const props = { subjectId, channel, threads }
+  const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
   // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
   const updates = <ChannelUpdates channelId={channel.id} version={version} />
   if (query.hilo && channel.kind !== 'directo') {
@@ -181,7 +185,7 @@ function ChannelPanel({
   query: SpaceQuery
 }) {
   const { channel, threads, material } = opened
-  const props = { subjectId, channel, threads }
+  const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
   switch (channel.kind) {
     case 'material':
       return (
@@ -284,6 +288,9 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
   const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
   const channels = view.channels.map((c) => (c.id === selected?.id ? selected : c))
+  // Si tenía no leídos, los de la barra lateral quedaron viejos: con `data-just-read` en <main>,
+  // UnreadRefresh la vuelve a leer.
+  const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
 
   return (
     <>
@@ -296,7 +303,10 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         <SectionChips view={view} />
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-6 lg:pt-8 lg:pb-8'>
+      <main
+        data-just-read={hadUnread ? '' : undefined}
+        className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-6 lg:pt-8 lg:pb-8'
+      >
         {view.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(view.staleSince)}: puede estar

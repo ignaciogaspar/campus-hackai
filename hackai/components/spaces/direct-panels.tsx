@@ -5,15 +5,17 @@
 import { AtSign } from 'lucide-react'
 import Link from 'next/link'
 import { BackLink } from '@/components/spaces/back-link'
+import type { PanelProps } from '@/components/spaces/channel-panels'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
-import { type SpaceRef, spaceHref } from '@/components/spaces/format'
+import { latestOf, type SpaceRef, spaceHref } from '@/components/spaces/format'
+import { LatestMark } from '@/components/spaces/latest-mark'
 import { AuthorAvatar, MessageCard } from '@/components/spaces/messages'
 import { StartDirect } from '@/components/spaces/start-direct'
 import { EmptyState } from '@/components/ui/states'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Role } from '@/lib/core/people'
-import type { Author, Channel, DirectContact, Thread } from '@/lib/core/spaces'
+import type { Author, Channel, DirectContact } from '@/lib/core/spaces'
 
 const ROLE_NAMES: Record<Role, string> = { alumno: 'Alumno', profesor: 'Docente' }
 
@@ -110,36 +112,31 @@ export function DirectsPanel({
   )
 }
 
-/* Una conversación privada: los mensajes en orden, el más nuevo abajo, y el
-   campo para escribirle a la otra persona. La flecha vuelve a Directos. */
-export function DirectPanel({
-  subjectId,
-  channel,
-  threads
-}: {
-  subjectId: string
-  channel: Channel
-  threads: Thread[]
-}) {
+/* Una conversación privada: los mensajes en orden, el más nuevo abajo y a la
+   vista, y el campo para escribirle a la otra persona. La flecha vuelve a
+   Directos. */
+export function DirectPanel({ subjectId, channel, threads, viewerId }: PanelProps) {
   const other = otherPersonIn(channel)
   const firstName = other.name.split(/\s+/)[0]
   const messages = threads.flatMap((t) => [t.message, ...t.replies])
   return (
     <>
       <BackLink href={spaceHref(subjectId, { vista: 'directos' })}>Volver a Directos</BackLink>
-      {messages.length ? (
-        <ol className='flex flex-col gap-3'>
-          {messages.map((m) => (
-            <li key={m.id}>
-              <MessageCard message={m} />
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <EmptyState icon={AtSign} title={`Escribile a ${other.name}`}>
-          {`Lo que escribas acá lo ven solo vos y ${other.name}.`}
-        </EmptyState>
-      )}
+      <LatestMark scope={channel.id} latest={latestOf(threads, viewerId)} at='bottom'>
+        {messages.length ? (
+          <ol className='flex flex-col gap-3'>
+            {messages.map((m) => (
+              <li key={m.id}>
+                <MessageCard message={m} />
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyState icon={AtSign} title={`Escribile a ${other.name}`}>
+            {`Lo que escribas acá lo ven solo vos y ${other.name}.`}
+          </EmptyState>
+        )}
+      </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
           <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Escribile a ${firstName}`} />

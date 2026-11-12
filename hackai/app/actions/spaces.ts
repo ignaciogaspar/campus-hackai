@@ -12,7 +12,7 @@ import { spaceHref } from '@/components/spaces/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
-import type { Fail } from '@/lib/result'
+import type { ErrorOf } from '@/lib/result'
 
 /** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. */
 export type SpaceActionState =
@@ -20,16 +20,14 @@ export type SpaceActionState =
   | { status: 'ok'; message: string | null; at: number }
   | { status: 'error'; message: string; at: number }
 
-type ErrorOf<T extends (...args: never[]) => unknown> = Extract<Awaited<ReturnType<T>>, Fail<string>>['error']
-
 type SpaceError =
-  | ErrorOf<Spaces['post']>
-  | ErrorOf<Spaces['resolve']>
-  | ErrorOf<Spaces['createChannel']>
-  | ErrorOf<Spaces['addMaterial']>
-  | ErrorOf<Spaces['organizeMaterial']>
-  | ErrorOf<Spaces['link']>
-  | ErrorOf<Spaces['openDirect']>
+  | ErrorOf<ReturnType<Spaces['post']>>
+  | ErrorOf<ReturnType<Spaces['resolve']>>
+  | ErrorOf<ReturnType<Spaces['createChannel']>>
+  | ErrorOf<ReturnType<Spaces['addMaterial']>>
+  | ErrorOf<ReturnType<Spaces['organizeMaterial']>>
+  | ErrorOf<ReturnType<Spaces['link']>>
+  | ErrorOf<ReturnType<Spaces['openDirect']>>
 
 const ERRORS: Record<SpaceError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
@@ -44,7 +42,7 @@ const ERRORS: Record<SpaceError, string> = {
   'no-es-consulta': 'Solo se marcan resueltas las consultas de los alumnos.',
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano o compartí un enlace.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
-  'nombre-invalido': 'Usá letras, números y guiones, sin espacios: por ejemplo «parciales-viejos».',
+  'nombre-invalido': 'Poné un nombre con al menos una letra o un número.',
   'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.',
   'canal-externo-inexistente':
     'No encontramos ese canal en Discord. Revisá el ID y que el bot de HackAI esté invitado al servidor.',
@@ -103,9 +101,10 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
   const attachments = file
     ? [{ name: file.name, contentType: file.type || 'application/octet-stream', bytes: await bytesOf(file) }]
     : undefined
+  const replyTo = text(form, 'replyTo') || undefined
   const result = await system().spaces.post(session.personId, channelId, {
     text: text(form, 'text') ?? '',
-    replyTo: text(form, 'replyTo') || undefined,
+    replyTo,
     attachments
   })
   if (!result.ok) {
@@ -116,7 +115,7 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
     )
   }
   refresh(subjectId)
-  return done()
+  return done(replyTo ? 'Respuesta enviada.' : 'Mensaje enviado.')
 }
 
 /** Marca una consulta como resuelta. */

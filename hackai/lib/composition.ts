@@ -12,6 +12,9 @@
    | Reloj          | `HACKAI_CLOCK`            | memoria, sistema   |
    | Almacén        | `HACKAI_STORE`            | memoria, supabase  |
 
+   El reloj `memoria` está fijo en el «hoy» del set sintético (martes 10/11);
+   la demo va con `sistema`, para que Hoy muestre la fecha del día.
+
    `simulado` es el SIU simulado sobre las tablas siu_* de Supabase, o el Moodle
    simulado sobre las moodle_*: necesita NEXT_PUBLIC_SUPABASE_URL y
    SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas (hackai/README.md).

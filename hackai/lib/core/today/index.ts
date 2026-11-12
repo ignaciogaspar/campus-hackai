@@ -30,6 +30,7 @@ import {
   type UpcomingItem
 } from '@/lib/core/studies'
 import { daysBetween } from '@/lib/dates'
+import { staleSince } from '@/lib/fresh'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
 
@@ -107,7 +108,6 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         (part): boolean => !studiesReads[part].ok
       )
       const unreadPart: TodayPart[] = unread.ok ? [] : ['unread']
-      const stale = Object.values(studiesReads).flatMap((r) => (r.ok && r.value.stale ? [r.value.readAt] : []))
       const now = clock.now().toISOString()
       const mySubjects = subjects.ok ? subjects.value.data : EMPTY_SUBJECTS
       const coming = [...(upcoming.ok ? upcoming.value.data : []), ...mySubjects.current.flatMap(assignmentsAsUpcoming)]
@@ -121,7 +121,7 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         next: nextExam(coming, now),
         unread: unread.ok ? unread.value : [],
         openEnrollments: openEnrollments.ok ? openEnrollments.value.data.filter((o) => o.closesAt >= now) : [],
-        staleSince: stale.sort()[0] ?? null,
+        staleSince: staleSince(Object.values(studiesReads)),
         unavailable: [...unavailable, ...unreadPart]
       })
     }
