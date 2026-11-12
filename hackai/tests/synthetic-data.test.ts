@@ -139,6 +139,24 @@ test('las notas de la historia y de actuación provisoria apuntan a materias, co
   }
 })
 
+test('cada inasistencia es de una comisión que la persona cursa, dentro del período y antes de hoy', () => {
+  for (const a of siu.absences) {
+    const section = siu.sections.find((s) => s.id === a.sectionId)
+    const term = siu.terms.find((t) => t.id === section?.termId)
+    assert.ok(
+      siu.courseEnrollments.some((e) => e.personId === a.personId && e.sectionId === a.sectionId),
+      a.id
+    )
+    assert.ok(term && a.date >= term.start && a.date <= term.end, a.id)
+    assert.ok(a.date < '2026-11-12', a.id)
+  }
+  for (const l of siu.absenceLimits)
+    assert.ok(
+      siu.sections.some((s) => s.id === l.sectionId),
+      l.sectionId
+    )
+})
+
 // La historia de la demo: con el reloj del sistema, el set tiene que contarla el
 // jueves 12/11 (ensayo) y el viernes 13/11 (demo y pitch), al mediodía.
 

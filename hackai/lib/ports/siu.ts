@@ -171,6 +171,24 @@ export type SiuProvisionalResult = {
   date: string
 }
 
+/** Falta a una clase, como la lista Reportes > Inasistencias: por comisión, con fecha y si está justificada. */
+export type SiuAbsence = {
+  id: string
+  personId: string
+  sectionId: string
+  date: string
+  justified: boolean
+}
+
+/** Máximo de inasistencias de una comisión. Que el SIU de la Austral lo dé es
+    una hipótesis (docs/product/preguntas-abiertas.md): una comisión sin máximo
+    no figura. */
+export type SiuAbsenceLimit = { sectionId: string; max: number }
+
+/** Las inasistencias del alumno y el máximo de las comisiones que lo tienen,
+    entre las que cursa o cursó. */
+export type SiuAbsences = { absences: SiuAbsence[]; limits: SiuAbsenceLimit[] }
+
 export type SiuCertificateType = 'alumno-regular' | 'examen-final'
 
 export type SiuTarget = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
@@ -224,6 +242,8 @@ export type SiuPort = {
   /** Plan de estudios vigente de una propuesta. */
   studyPlan(programId: string): Promise<Result<SiuStudyPlan, SiuReadError>>
   provisionalResults(personId: string): Promise<Result<SiuProvisionalResult[], SiuReadError>>
+  /** Inasistencias del alumno (Reportes > Inasistencias) y el máximo de cada comisión, si lo hay. */
+  absences(personId: string): Promise<Result<SiuAbsences, SiuReadError>>
   meetsCertificateConditions(personId: string, type: SiuCertificateType): Promise<Result<boolean, SiuReadError>>
 
   /** Sin `canEnroll` devuelven `no-soportado`. */

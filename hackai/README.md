@@ -141,7 +141,7 @@ Las baterías de contrato del almacén (`tests/contracts/spaces-store.test.ts`) 
 
 ## SIU simulado
 
-Con `HACKAI_SIU=simulado`, el puerto del SIU lee y escribe las tablas `siu_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de la API REST v2 de Guaraní y son solo de la demo: en producción el SIU es la API real.
+Con `HACKAI_SIU=simulado`, el puerto del SIU lee y escribe las tablas `siu_*` de Supabase en vez de la copia en memoria. Esas tablas copian la forma de la API REST v2 de Guaraní y son solo de la demo: en producción el SIU es la API real. Las inasistencias (`siu_absences`) y el máximo de faltas por comisión (`siu_absence_limits`, una hipótesis: pregunta 22 de `docs/product/preguntas-abiertas.md`) se suman con `npm run demo:preparar`; mientras la base no las tenga, Mis materias sale sin faltas.
 
 Por eso sus migraciones y su seed van **aparte** de las propias, en `supabase/simulados/`, y no en `supabase/migrations/`: en producción no se aplican y se pueden tirar sin tocar nada de HackAI.
 

@@ -4,7 +4,7 @@
    (con su próxima mesa y el acceso a inscribirse) y las archivadas. Solo muestra lo
    que le dan Cursada: qué es actual, qué está regular y qué está aprobado lo
    decide Cursada. */
-import { CalendarClock, ChevronRight, ExternalLink, MapPin } from 'lucide-react'
+import { CalendarClock, CalendarX, ChevronRight, ExternalLink, MapPin, TriangleAlert } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { dueTime, longDay, shortDate, timeOf } from '@/components/dates'
@@ -12,9 +12,10 @@ import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
 import { StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
+import { absencesLine } from '@/components/subjects/absences'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { buttonVariants } from '@/components/ui/button'
-import type { MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
+import type { MyAbsences, MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 function Row({ icon: Icon, children }: { icon: typeof MapPin; children: ReactNode }) {
@@ -67,6 +68,31 @@ function UnreadPill({ count }: { count: number }) {
   )
 }
 
+/** Las faltas de la materia. Cerca del máximo o en el máximo, resaltadas como aviso. */
+function AbsencesRow({ absences }: { absences: MyAbsences }) {
+  const line = absencesLine(absences)
+  if (!absences.warning) return <Row icon={CalendarX}>{line}</Row>
+  const limit = absences.warning === 'limite'
+  return (
+    <p
+      className={cn(
+        'flex w-fit items-start gap-2 rounded-xl px-2.5 py-1.5 text-[0.8125rem] font-semibold',
+        limit ? 'bg-error-background text-error-foreground' : 'bg-warning-background text-warning-foreground'
+      )}
+    >
+      <TriangleAlert
+        aria-hidden='true'
+        className={cn('mt-0.5 size-4 flex-none', limit ? 'text-destructive' : 'text-warning-icon')}
+        strokeWidth={2}
+      />
+      <span className='min-w-0'>
+        <span className='sr-only'>{limit ? 'Aviso: ' : 'Cuidado: '}</span>
+        {line}
+      </span>
+    </p>
+  )
+}
+
 /* Una materia que cursa o dicta: horarios, aula, lo que no leyó y lo próximo de Moodle, con el espacio y el aula. */
 export function CourseCard({
   subject,
@@ -90,6 +116,7 @@ export function CourseCard({
       <div className='flex flex-col gap-1.5'>
         <Row icon={CalendarClock}>{subject.schedule.map(scheduleLine).join(' · ') || 'Horario a confirmar'}</Row>
         <Row icon={MapPin}>{place}</Row>
+        {subject.absences && <AbsencesRow absences={subject.absences} />}
         <UnreadPill count={unread} />
         {subject.role === 'profesor' && (
           <p className='w-fit rounded-full bg-accent px-2 py-0.5 text-[0.75rem] font-semibold text-blue'>

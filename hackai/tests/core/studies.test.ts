@@ -101,8 +101,73 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     ],
     assignments: [
       { id: 't-3', name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }
-    ]
+    ],
+    absences: { count: 3, justified: 1, max: 8, left: 5, warning: null }
   })
+})
+
+test('cada materia actual del alumno trae sus inasistencias y avisa cuando se acerca al máximo', async () => {
+  const { studies } = build()
+
+  const tomas = await studies.subjectsOf('p-taguirre')
+  assert.ok(tomas.ok)
+  const [am1, pr1] = tomas.value.data.current
+  assert.deepEqual(am1.absences, { count: 3, justified: 1, max: 8, left: 5, warning: null })
+  // Programación I tiene un máximo de 6 y lleva 5: le queda una.
+  assert.deepEqual(pr1.absences, { count: 5, justified: 1, max: 6, left: 1, warning: 'cerca' })
+  // Las archivadas no las muestran.
+  assert.equal(tomas.value.data.archived[0].absences, null)
+
+  // Sin máximo en el SIU, solo la cuenta.
+  const ana = await studies.subjectsOf('p-agimenez')
+  assert.ok(ana.ok)
+  assert.deepEqual(
+    ana.value.data.current.map((s) => [s.sectionId, s.absences]),
+    [
+      ['sec-am1-fce-a', { count: 2, justified: 1, max: null, left: null, warning: null }],
+      ['sec-co1-fce-a', { count: 0, justified: 0, max: null, left: null, warning: null }]
+    ]
+  )
+
+  // El docente no tiene inasistencias.
+  const docente = await studies.subjectsOf('p-mledesma')
+  assert.ok(docente.ok)
+  assert.ok(docente.value.data.current.every((s) => s.absences === null))
+})
+
+test('llegar al máximo avisa «límite» y lo que pasa del máximo no da faltas negativas', async () => {
+  const data = structuredClone(syntheticData)
+  for (const date of ['2026-10-30', '2026-11-04'])
+    data.siu.absences.push({
+      id: `in-extra-${date}`,
+      personId: '30101',
+      sectionId: 'sec-pr1-fi-a',
+      date: `${date}T11:00:00.000Z`,
+      justified: false
+    })
+  const { studies } = build(data)
+
+  const result = await studies.subjectsOf('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.data.current[1].absences, {
+    count: 7,
+    justified: 1,
+    max: 6,
+    left: 0,
+    warning: 'limite'
+  })
+})
+
+test('si el SIU no da las inasistencias, las materias salen igual, sin faltas', async () => {
+  const { studies } = build(syntheticData, {}, { siuOverrides: { absences: async () => fail('falla-externa') } })
+
+  const result = await studies.subjectsOf('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.deepEqual(names(result.value.data.current), ['AM1 A', 'PR1 A'])
+  assert.ok(result.value.data.current.every((s) => s.absences === null))
 })
 
 test('un alumno no ve materias de otra facultad, aunque el SIU lo tenga inscripto', async () => {

@@ -200,6 +200,22 @@ export function siuSeedSql(data: SyntheticData): string {
       }))
     ),
     upsert(
+      'siu_absences',
+      ['id'],
+      siu.absences.map((a) => ({
+        id: text(a.id),
+        person_id: text(a.personId),
+        section_id: text(a.sectionId),
+        date: text(a.date),
+        justified: bool(a.justified)
+      }))
+    ),
+    upsert(
+      'siu_absence_limits',
+      ['section_id'],
+      siu.absenceLimits.map((l) => ({ section_id: text(l.sectionId), max: num(l.max) }))
+    ),
+    upsert(
       'siu_certificates',
       ['person_id', 'type'],
       siu.certificates.map((c) => ({

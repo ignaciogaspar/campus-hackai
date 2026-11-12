@@ -150,6 +150,17 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return ok(copy(db.provisionalResults.filter((r) => r.personId === personId)))
     },
 
+    async absences(personId) {
+      if (!hasPerson(personId)) return fail('no-encontrado')
+      const sections = new Set(db.courseEnrollments.filter((e) => e.personId === personId).map((e) => e.sectionId))
+      return ok(
+        copy({
+          absences: db.absences.filter((a) => a.personId === personId).sort((a, b) => a.date.localeCompare(b.date)),
+          limits: db.absenceLimits.filter((l) => sections.has(l.sectionId))
+        })
+      )
+    },
+
     async meetsCertificateConditions(personId, type) {
       if (!hasPerson(personId)) return fail('no-encontrado')
       const entry = db.certificates.find((c) => c.personId === personId && c.type === type)

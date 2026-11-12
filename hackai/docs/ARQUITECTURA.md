@@ -31,7 +31,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 | Operación | Qué hace |
 | --- | --- |
-| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
+| `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha y, si es alumno, sus inasistencias: cuántas, el máximo si el SIU lo da y cuántas le quedan, con un aviso cerca del máximo |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró (mirado con el reloj de cada llamada, aunque sea lo último que se leyó). En una mesa, si para rendir le falta regularizar la cursada |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
