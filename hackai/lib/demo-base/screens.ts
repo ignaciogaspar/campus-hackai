@@ -19,13 +19,18 @@ export type DemoScreens = {
     navegación. Al docente no se le piden Inscripciones, que son del alumno y
     lo redirigen, ni Académico.
 
-    Abrir un espacio lo crea y marca leído el canal que se abre, así que se
-    prueba con una alumna y un docente de la comisión B de Análisis I, que no
-    son los del guion de la demo (Tomás Aguirre y Mariana Ledesma, de la A):
-    correr la prueba después de `demo:preparar` no les cambia los no leídos. */
+    Abrir un espacio lo crea, trae lo de Moodle a los canales de la comisión de
+    quien lo abre y marca leído el canal que se abre. Por eso la alumna es Lucía
+    Benítez, de las mismas comisiones que Tomás Aguirre (Análisis I y
+    Programación I, comisión A) pero fuera del guion: correr la prueba después
+    de `demo:preparar` le deja a Tomás los espacios armados, con los avisos y
+    el material de Moodle sin leer, y no le marca nada leído. Sin eso, su
+    campana y Novedades arrancan vacías hasta que alguien de su comisión abre
+    la materia. El docente es Gabriel Ferreyra, de la comisión B, y no Mariana
+    Ledesma, la docente del guion. */
 export const DEMO_SCREENS: DemoScreens[] = [
   {
-    personId: 'p-sdominguez',
+    personId: 'p-lbenitez',
     role: 'alumno',
     paths: [
       '/hoy',
@@ -33,6 +38,7 @@ export const DEMO_SCREENS: DemoScreens[] = [
       '/materias',
       '/materias/am1',
       '/materias/am1?vista=directos',
+      '/materias/pr1',
       '/academico',
       '/inscripciones',
       '/inscripciones/fi1',
