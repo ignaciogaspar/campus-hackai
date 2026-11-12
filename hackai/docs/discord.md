@@ -128,7 +128,7 @@ Con `HACKAI_EXTERNAL_CHANNEL=discord`, un canal de prueba vinculado a `#consulta
 3. Subí un archivo a un mensaje de Discord en el canal vinculado al material: aparece en **Material** con el origen Discord, y se sigue abriendo después de que vence su enlace.
 4. Para probar los pendientes, cargá un token inválido, publicá, volvé a poner el bueno y pedí la corrida: el mensaje llega a Discord y deja de decir «Enviando a Discord».
 
-Para medir la tarea T3 («enterarme», [alcance.md](../../docs/product/alcance.md#cómo-se-mide)), cronometrá desde que el docente publica el aviso en Discord hasta que el alumno lo ve en HackAI.
+Para medir la tarea T3 («enterarme», [alcance.md](../../docs/product/alcance.md#cómo-se-mide)), cronometrá desde que el docente publica el aviso en Discord hasta que el alumno lo ve en HackAI. Los resultados van a [validaciones.md](../../docs/product/validaciones.md).
 
 ## Cómo se comporta el adaptador
 
