@@ -36,7 +36,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
-| `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados. Cada final lleva su turno de examen y, si el SIU lo da, dónde se rinde. Al docente, los parciales de sus comisiones y las mesas que integra |
+| `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados. Cada final lleva su turno de examen y, si el SIU lo da, dónde se rinde. Cada próximo dice si la persona tiene (o tuvo) comisión de la materia (`hasSection`): un final que rinde libre no tiene espacio al que llevar. Al docente, los parciales de sus comisiones y las mesas que integra |
 | `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
 | `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |

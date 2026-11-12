@@ -6,13 +6,13 @@
 import { CalendarCheck, ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { dayParts, longDay, shortDate, shortDay, timeOf } from '@/components/dates'
-import { spaceHref } from '@/components/spaces/format'
-import type { Agenda, Calendar } from '@/components/today/agenda'
+import { type Agenda, type Calendar, dateHref } from '@/components/today/agenda'
 import { CalendarDay } from '@/components/ui/calendar-day'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
+import type { Role } from '@/lib/core/people'
 import type { UpcomingItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
@@ -59,12 +59,12 @@ function whatAndWhen(item: UpcomingItem): string {
   return [KIND[item.kind], time, item.location].filter(Boolean).join(' · ')
 }
 
-/** Una fecha: día, qué es, de qué materia, a qué hora, dónde y de dónde viene. Lleva al espacio de la materia.
-    Las pasadas, atenuadas y con «ya pasó». */
-export function UpcomingRow({ item }: { item: UpcomingItem }) {
+/** Una fecha: día, qué es, de qué materia, a qué hora, dónde y de dónde viene. Lleva a donde dice
+    `dateHref`. Las pasadas, atenuadas y con «ya pasó». */
+export function UpcomingRow({ item, viewer = 'alumno' }: { item: UpcomingItem; viewer?: Role }) {
   return (
     <ListItem
-      href={spaceHref(item.subjectId)}
+      href={dateHref(item, viewer)}
       className={cn('items-center', item.past && 'text-muted-foreground')}
       start={<DateBlock item={item} />}
       title={

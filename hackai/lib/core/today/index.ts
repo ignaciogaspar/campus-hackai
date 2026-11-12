@@ -129,7 +129,8 @@ function assignmentsAsUpcoming(subject: MySubject): UpcomingItem[] {
     date: a.dueDate,
     past: a.past,
     examPeriod: null,
-    location: null
+    location: null,
+    hasSection: true
   }))
 }
 
@@ -204,15 +205,10 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         studies.openEnrollments(personId),
         spaces.unreadFor(personId)
       ])
-      const studiesReads = { subjects, upcoming, openEnrollments }
-      const withUnread = [subjects, upcoming, openEnrollments, unread]
-      if (withUnread.some((r) => !r.ok && r.error === 'persona-desconocida')) return fail('persona-desconocida')
-
-      const unavailable = (Object.keys(studiesReads) as (keyof typeof studiesReads)[]).filter(
-        (part): boolean => !studiesReads[part].ok
-      )
-      const unreadPart: TodayPart[] = unread.ok ? [] : ['unread']
-      const stale = Object.values(studiesReads).flatMap((r) => (r.ok && r.value.stale ? [r.value.readAt] : []))
+      const reads = { subjects, upcoming, openEnrollments, unread }
+      if (Object.values(reads).some((r) => !r.ok && r.error === 'persona-desconocida')) {
+        return fail('persona-desconocida')
+      }
       const now = clock.now().toISOString()
       const mySubjects = subjects.ok ? subjects.value.data : EMPTY_SUBJECTS
       const coming = [...(upcoming.ok ? upcoming.value.data : []), ...mySubjects.current.flatMap(assignmentsAsUpcoming)]
@@ -224,10 +220,10 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         subjects: mySubjects,
         upcoming: coming,
         next: nextExam(coming, now),
-        unread: unread.ok ? unread.value : [],
+        unread: valueOr(unread, []),
         openEnrollments: openEnrollments.ok ? openEnrollments.value.data.filter((o) => o.closesAt >= now) : [],
-        staleSince: stale.sort()[0] ?? null,
-        unavailable: [...unavailable, ...unreadPart]
+        staleSince: oldestStale([subjects, upcoming, openEnrollments]),
+        unavailable: failed<TodayPart>(reads)
       })
     }
   }

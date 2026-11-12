@@ -197,7 +197,7 @@ function Dates({ view }: { view: TeachingView }) {
     <Card>
       <List>
         {view.dates.map((d) => (
-          <UpcomingRow key={d.id} item={d} />
+          <UpcomingRow key={d.id} item={d} viewer='profesor' />
         ))}
       </List>
     </Card>

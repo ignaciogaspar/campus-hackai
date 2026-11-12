@@ -2,7 +2,7 @@
    2 semanas del celular y el calendario de esta semana y la próxima de compu. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { agendaOf, calendarOf } from '@/components/today/agenda'
+import { agendaOf, calendarOf, dateHref } from '@/components/today/agenda'
 import type { UpcomingItem } from '@/lib/core/studies'
 
 // Domingo 15 de noviembre a las 23:00 en Buenos Aires: en UTC ya es lunes 16.
@@ -19,7 +19,8 @@ const item = (id: string, date: string, past = false): UpcomingItem => ({
   date,
   past,
   examPeriod: null,
-  location: null
+  location: null,
+  hasSection: true
 })
 
 const ids = (items: { id?: string }[]) => items.map((i) => i.id)
@@ -72,4 +73,14 @@ test('las próximas 2 semanas son 14 días contando hoy: el último día entra y
   assert.equal(agenda.nextIsSoon, true)
   assert.deepEqual(ids(agenda.later), ['dia-siguiente'])
   assert.deepEqual(ids(agenda.past), ['pasado'])
+})
+
+test('una fecha lleva al espacio de su materia; un final sin comisión, a la mesa para el alumno y a ningún lado para el docente', () => {
+  const parcial = item('p', SUNDAY_NIGHT)
+  const libre = { ...item('f', SUNDAY_NIGHT), kind: 'final' as const, subjectId: 'fi1', hasSection: false }
+
+  assert.equal(dateHref(parcial, 'alumno'), '/materias/am1')
+  assert.equal(dateHref(parcial, 'profesor'), '/materias/am1')
+  assert.equal(dateHref(libre, 'alumno'), '/inscripciones/fi1/final')
+  assert.equal(dateHref(libre, 'profesor'), undefined)
 })

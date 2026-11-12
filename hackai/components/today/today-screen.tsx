@@ -11,9 +11,8 @@
    mesas; un parcial, un final o una entrega, al espacio de su materia. */
 import type { ReactNode } from 'react'
 import { longDay, timeOf } from '@/components/dates'
-import { spaceHref } from '@/components/spaces/format'
 import { SubjectsShortcut } from '@/components/subjects/subjects-shortcut'
-import { agendaOf, calendarOf } from '@/components/today/agenda'
+import { agendaOf, calendarOf, dateHref } from '@/components/today/agenda'
 import { OpenEnrollmentList } from '@/components/today/open-enrollments'
 import { TwoWeekCalendar, UpcomingAgenda } from '@/components/today/upcoming'
 import { CalendarLegend } from '@/components/ui/calendar-day'
@@ -83,7 +82,7 @@ function NextExamBlock({ next }: { next: NextExam }) {
       detail={next.examPeriod ?? undefined}
       when={[longDay(next.date), timeOf(next.date), next.location].filter(Boolean).join(' · ')}
       daysLeft={next.daysLeft}
-      href={spaceHref(next.subjectId)}
+      href={dateHref(next, 'alumno')}
     />
   )
 }
@@ -91,6 +90,8 @@ function NextExamBlock({ next }: { next: NextExam }) {
 export function TodayScreen({ view }: { view: TodayView }) {
   const agenda = agendaOf(view.upcoming, view.now, view.next)
   const calendar = calendarOf(view.upcoming, view.now, view.next)
+  // El color del próximo va en la leyenda solo si el próximo cae en el calendario.
+  const inCalendar = calendar.days.some((d) => d.events.some((e) => e.next))
 
   return (
     <div className='flex flex-col gap-6'>
@@ -100,7 +101,7 @@ export function TodayScreen({ view }: { view: TodayView }) {
         <Section
           id='calendario'
           title='Esta semana y la próxima'
-          aside={<CalendarLegend next={view.next ? nextLabel(view.next) : undefined} />}
+          aside={<CalendarLegend next={view.next && inCalendar ? nextLabel(view.next) : undefined} />}
           className='hidden lg:col-start-1 lg:row-span-4 lg:row-start-1 lg:flex'
         >
           <Dates view={view}>

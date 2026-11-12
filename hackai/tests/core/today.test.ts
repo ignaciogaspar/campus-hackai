@@ -96,6 +96,7 @@ test('el próximo parcial o final es el primero que no pasó, con los días que 
     past: false,
     examPeriod: null,
     location: null,
+    hasSection: true,
     daysLeft: 6
   })
 })

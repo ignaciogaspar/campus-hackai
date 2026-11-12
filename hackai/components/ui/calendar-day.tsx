@@ -9,6 +9,8 @@ export type CalendarEvent = {
   origin: Extract<Origin, 'siu' | 'moodle'>
   /** A dónde lleva: el espacio de la materia. Sin enlace, se muestra como texto. */
   href?: string
+  /** El turno de examen de un final. */
+  examPeriod?: string | null
   /** Dónde se rinde, si el SIU lo da. */
   location?: string | null
   next?: boolean
@@ -29,7 +31,7 @@ function Event({ event: e }: { event: CalendarEvent }) {
     eventStyle(e),
     e.href && 'focus-ring hover:brightness-95'
   )
-  const where = e.location ? ` · ${e.location}` : ''
+  const detail = [e.examPeriod, e.location].filter(Boolean).join(', ')
   const content = (
     <>
       <b className='block font-extrabold'>{e.code}</b>
@@ -37,12 +39,12 @@ function Event({ event: e }: { event: CalendarEvent }) {
       <span className='sr-only'>
         , {e.past ? 'ya pasó, ' : ''}
         {e.next ? 'próximo, ' : ''}
-        {e.location ? `${e.location}, ` : ''}
+        {detail ? `${detail}, ` : ''}
         {ORIGINS[e.origin].label}
       </span>
     </>
   )
-  const title = `${e.code} · ${e.title}${where}${e.past ? ' · ya pasó' : ''} · ${ORIGINS[e.origin].label}`
+  const title = [e.code, e.title, detail, e.past ? 'ya pasó' : '', ORIGINS[e.origin].label].filter(Boolean).join(' · ')
   return e.href ? (
     <Link href={e.href} title={title} className={className}>
       {content}

@@ -204,6 +204,9 @@ export type UpcomingItem = {
   examPeriod: string | null
   /** Dónde se rinde, si el SIU lo da (hoy, solo en las mesas). Si no, `null`. */
   location: string | null
+  /** Si la persona tiene (o tuvo) una comisión de la materia, y por eso su espacio. Un final de una
+      materia que rinde libre o que nunca cursó en HackAI, no. */
+  hasSection: boolean
 }
 
 /** El orden de los próximos: por fecha; el mismo día, por materia y por nombre. Lo usa también Hoy al sumarles las entregas. */
@@ -1146,7 +1149,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           date: a.date,
           past: a.date < at,
           examPeriod: null,
-          location: null
+          location: null,
+          hasSection: true
         })
       }
     }
@@ -1182,7 +1186,12 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   }
 
   /** Finales: las mesas que le tocan, desde `since` (el inicio de su período actual), con su turno y su lugar. */
-  async function finalsOf(who: SiuPersonRef, since: string, at: string): Promise<Result<UpcomingItem[], ReadError>> {
+  async function finalsOf(
+    who: SiuPersonRef,
+    since: string,
+    at: string,
+    withSection: Set<string>
+  ): Promise<Result<UpcomingItem[], ReadError>> {
     const boards = await boardsFor(who)
     if (!boards.ok) return boards
     const mine = boards.value.filter((b) => b.date >= since)
@@ -1202,7 +1211,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
             date: board.date,
             past: board.date < at,
             examPeriod: board.examPeriod,
-            location: board.location.trim() || null
+            location: board.location.trim() || null,
+            hasSection: withSection.has(board.subjectId)
           }
         ]
       })
@@ -1219,7 +1229,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     // Lo que ya pasó cuenta desde que empezó su período actual. Un período que todavía
     // no empezó (el de verano) o no tener materias actuales no esconde nada de lo que viene.
     const since = [at, ...current.map((s) => s.term.start)].sort()[0]
-    const [assessments, finals] = await Promise.all([assessmentsOf(current, at), finalsOf(who.value, since, at)])
+    const [assessments, finals] = await Promise.all([
+      assessmentsOf(current, at),
+      finalsOf(who.value, since, at, new Set(mine.value.sections.map((s) => s.subject.id)))
+    ])
     if (!assessments.ok) return assessments
     if (!finals.ok) return finals
     return ok([...assessments.value, ...finals.value].sort(compareUpcoming))

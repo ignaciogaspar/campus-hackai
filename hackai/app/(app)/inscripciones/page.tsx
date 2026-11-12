@@ -60,6 +60,21 @@ function EnrollmentLink({ item }: { item: OpenEnrollment }) {
   )
 }
 
+/** Un final al que ya se inscribió: la materia, cuándo y, si los hay, su turno y su lugar. Lleva a su mesa. */
+function FinalLink({ final: f }: { final: UpcomingItem }) {
+  const detail = examDetail(f)
+  return (
+    <li>
+      <OfferLink href={offerHref(f.subjectId, 'examen')} title={f.subjectName}>
+        <span className='block text-[0.8125rem] text-muted-foreground'>
+          Final · <time dateTime={f.date}>{`${longDay(f.date)} · ${timeOf(f.date)}`}</time>
+        </span>
+        {detail && <span className='block text-[0.8125rem] text-muted-foreground'>{detail}</span>}
+      </OfferLink>
+    </li>
+  )
+}
+
 /** Los finales a los que ya se inscribió, cada uno con su mesa: ahí ve el comprobante y se da de baja. */
 function MyFinals({ finals }: { finals: UpcomingItem[] }) {
   if (finals.length === 0) return null
@@ -71,14 +86,7 @@ function MyFinals({ finals }: { finals: UpcomingItem[] }) {
       <Card>
         <ul className='divide-y divide-border'>
           {finals.map((f) => (
-            <li key={f.id}>
-              <OfferLink href={offerHref(f.subjectId, 'examen')} title={f.subjectName}>
-                <span className='block text-[0.8125rem] text-muted-foreground'>
-                  Final · <time dateTime={f.date}>{`${longDay(f.date)} · ${timeOf(f.date)}`}</time>
-                </span>
-                {examDetail(f) && <span className='block text-[0.8125rem] text-muted-foreground'>{examDetail(f)}</span>}
-              </OfferLink>
-            </li>
+            <FinalLink key={f.id} final={f} />
           ))}
         </ul>
       </Card>
