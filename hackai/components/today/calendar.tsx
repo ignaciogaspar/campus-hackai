@@ -7,7 +7,7 @@
    saltar de semana. Las entregas de Moodle y los cierres de inscripción no
    ocupan una hora: van en la fila de todo el día. Con `filters`, arriba de la
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
-   y de qué materia. Lo de arriba (`top`) y lo de debajo del mes chico
+   y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import { Fragment, type ReactNode, useState } from 'react'
@@ -458,6 +458,7 @@ export function TodayCalendar({
   initialDay,
   filters = false,
   top,
+  below,
   aside
 }: {
   events: CalendarEvent[]
@@ -469,6 +470,8 @@ export function TodayCalendar({
   /** Muestra los filtros por tipo y por materia. */
   filters?: boolean
   top?: ReactNode
+  /** Debajo de la semana, en su misma columna. */
+  below?: ReactNode
   aside?: ReactNode
 }) {
   const today = dayKey(now)
@@ -523,6 +526,7 @@ export function TodayCalendar({
             <Agenda days={week} events={shown} today={today} />
           </div>
         </section>
+        {below}
       </div>
       <aside
         className={cn('flex flex-col gap-5', filters && 'lg:grid lg:grid-cols-2 lg:items-start 2xl:flex 2xl:flex-col')}
