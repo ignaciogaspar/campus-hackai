@@ -64,7 +64,7 @@ Es la versión vigente. Se ajusta con lo que salga de cada validación.
 No queda nada afuera. Este es el orden en que se construye, para que siempre haya algo que mostrar:
 
 1. **Espacio de la materia** sincronizado con Discord: material, avisos, consultas y mensajes con el docente.
-2. **Hoy:** materias actuales, próximo parcial o final y novedades de todos los espacios.
+2. **Mis materias como inicio:** el alumno entra a sus materias actuales, cada una con su espacio, lo próximo de Moodle y sus no leídos; la semana con parciales, finales y entregas está en Calendario y las novedades de todos los espacios, en la campana. Hoy queda para el docente, con sus comisiones y las consultas sin resolver (decisión del equipo del 12/11/2026, PR #88: Hoy le mostraba al alumno demasiado en la primera pantalla).
 3. **Inscripción en un paso:** te inscribís y quedás en el aula y en el espacio.
 4. Notas e historia académica, constancias e inscripción a finales con cupo.
 

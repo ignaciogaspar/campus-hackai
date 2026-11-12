@@ -6,6 +6,7 @@ import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import type { Role } from '@/lib/core/people'
+import { homeFor } from '@/lib/home'
 import {
   createSessionToken,
   SESSION_COOKIE,
@@ -14,11 +15,7 @@ import {
   verifySessionToken
 } from '@/lib/session-token'
 
-/** La pantalla de inicio de cada rol: el alumno entra a sus materias (lo de la
-    semana está en Calendario); el docente, a Hoy, con sus consultas sin resolver. */
-export function homeFor(role: Role): string {
-  return role === 'alumno' ? '/materias' : '/hoy'
-}
+export { homeFor }
 
 export const getSession = cache(async (): Promise<Session | null> => {
   const jar = await cookies()

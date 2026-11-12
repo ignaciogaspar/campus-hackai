@@ -160,3 +160,12 @@ test('los vínculos de cada persona se leen una vez cada cinco minutos', async (
   await store.accountsOf('p-1')
   assert.equal(reads, 3)
 })
+
+test('con la caché en 0 segundos no se guarda nada: cada lectura va a la base', async () => {
+  const { spy, calls } = counted()
+  const siu = withSiuCache(spy, { ...clock(), staticTtlMs: 0 })
+
+  await siu.subject('am1')
+  await siu.subject('am1')
+  assert.equal(calls.get('subject'), 2)
+})

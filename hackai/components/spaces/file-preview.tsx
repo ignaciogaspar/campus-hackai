@@ -50,7 +50,7 @@ export function FilePreview({
               <a
                 href={url}
                 download={fileName}
-                className={cn(buttonVariants({ size: 'lg' }), 'min-h-10 font-semibold')}
+                className={cn(buttonVariants({ size: 'lg' }), 'min-h-11 font-semibold')}
               >
                 <Download aria-hidden='true' data-icon='inline-start' />
                 Descargar
@@ -59,14 +59,14 @@ export function FilePreview({
                 href={url}
                 target='_blank'
                 rel='noopener noreferrer'
-                className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-10 max-sm:hidden')}
+                className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 max-sm:hidden')}
               >
                 <ExternalLink aria-hidden='true' data-icon='inline-start' />
                 Abrir en otra pestaña
               </a>
               <Dialog.Close
                 aria-label='Cerrar la vista previa'
-                className='grid size-10 cursor-pointer place-items-center rounded-full text-ink hover:bg-muted focus-ring'
+                className='grid size-11 cursor-pointer place-items-center rounded-full text-ink hover:bg-muted focus-ring'
               >
                 <X aria-hidden='true' className='size-5' />
               </Dialog.Close>

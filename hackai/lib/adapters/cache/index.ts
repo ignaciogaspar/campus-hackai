@@ -35,6 +35,9 @@ export const MAX_ENTRIES = 2_000
 export type CacheOptions = {
   /** La hora en milisegundos; en los tests, una que se adelanta a mano. */
   now?: () => number
+  /** Cuánto se guarda lo que no cambia con lo que hace el alumno, si no es `STATIC_TTL_MS`. Con 0 no se
+      guarda nada: solo se comparte la consulta en vuelo. Lo del aula se guarda lo mismo, hasta un minuto. */
+  staticTtlMs?: number
 }
 
 type Entry = { at: number; value: Promise<unknown> }
@@ -86,17 +89,20 @@ function createStore(now: () => number) {
 }
 
 /** El SIU con las lecturas guardadas. */
-export function withSiuCache(siu: SiuPort, { now = Date.now }: CacheOptions = {}): SiuPort {
+export function withSiuCache(
+  siu: SiuPort,
+  { now = Date.now, staticTtlMs = STATIC_TTL_MS }: CacheOptions = {}
+): SiuPort {
   const { read } = createStore(now)
   return {
     capabilities: siu.capabilities,
-    person: read('person', STATIC_TTL_MS, siu.person),
-    terms: read('terms', STATIC_TTL_MS, siu.terms),
-    subject: read('subject', STATIC_TTL_MS, siu.subject),
-    section: read('section', STATIC_TTL_MS, siu.section),
-    teacherSections: read('teacherSections', STATIC_TTL_MS, siu.teacherSections),
-    assessments: read('assessments', STATIC_TTL_MS, siu.assessments),
-    studyPlan: read('studyPlan', STATIC_TTL_MS, siu.studyPlan),
+    person: read('person', staticTtlMs, siu.person),
+    terms: read('terms', staticTtlMs, siu.terms),
+    subject: read('subject', staticTtlMs, siu.subject),
+    section: read('section', staticTtlMs, siu.section),
+    teacherSections: read('teacherSections', staticTtlMs, siu.teacherSections),
+    assessments: read('assessments', staticTtlMs, siu.assessments),
+    studyPlan: read('studyPlan', staticTtlMs, siu.studyPlan),
     sections: read('sections', 0, siu.sections),
     courseEnrollments: read('courseEnrollments', 0, siu.courseEnrollments),
     examBoards: read('examBoards', 0, siu.examBoards),
@@ -112,23 +118,30 @@ export function withSiuCache(siu: SiuPort, { now = Date.now }: CacheOptions = {}
 }
 
 /** El aula virtual con las lecturas guardadas. */
-export function withClassroomCache(classroom: ClassroomPort, { now = Date.now }: CacheOptions = {}): ClassroomPort {
+export function withClassroomCache(
+  classroom: ClassroomPort,
+  { now = Date.now, staticTtlMs = STATIC_TTL_MS }: CacheOptions = {}
+): ClassroomPort {
   const { read } = createStore(now)
+  const posted = Math.min(CLASSROOM_TTL_MS, staticTtlMs)
   return {
     ...classroom,
     coursesOf: read('coursesOf', 0, classroom.coursesOf),
-    coursesForSection: read('coursesForSection', STATIC_TTL_MS, classroom.coursesForSection),
-    announcements: read('announcements', CLASSROOM_TTL_MS, classroom.announcements),
-    contents: read('contents', CLASSROOM_TTL_MS, classroom.contents),
-    assignments: read('assignments', CLASSROOM_TTL_MS, classroom.assignments)
+    coursesForSection: read('coursesForSection', staticTtlMs, classroom.coursesForSection),
+    announcements: read('announcements', posted, classroom.announcements),
+    contents: read('contents', posted, classroom.contents),
+    assignments: read('assignments', posted, classroom.assignments)
   }
 }
 
 /** El almacén de Personas con sus lecturas guardadas: los vínculos no cambian mientras la app corre. */
-export function withPeopleStoreCache(store: PeopleStore, { now = Date.now }: CacheOptions = {}): PeopleStore {
+export function withPeopleStoreCache(
+  store: PeopleStore,
+  { now = Date.now, staticTtlMs = STATIC_TTL_MS }: CacheOptions = {}
+): PeopleStore {
   const { read } = createStore(now)
   return {
-    accountsOf: read('accountsOf', STATIC_TTL_MS, store.accountsOf),
-    ownerOf: read('ownerOf', STATIC_TTL_MS, store.ownerOf)
+    accountsOf: read('accountsOf', staticTtlMs, store.accountsOf),
+    ownerOf: read('ownerOf', staticTtlMs, store.ownerOf)
   }
 }

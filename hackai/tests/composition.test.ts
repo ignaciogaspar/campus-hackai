@@ -194,6 +194,12 @@ test('con el reloj fijo de la demo, lo nuevo del canal externo entra al volver a
   assert.equal(seen.value.threads.at(-1)?.message.text, '¿Hay clase?')
 })
 
+test('HACKAI_CACHE_SEGUNDOS tiene que ser una cantidad de segundos', () => {
+  assert.doesNotThrow(() => compose({ HACKAI_CACHE_SEGUNDOS: '0' }))
+  assert.doesNotThrow(() => compose({ HACKAI_CACHE_SEGUNDOS: '300' }))
+  assert.throws(() => compose({ HACKAI_CACHE_SEGUNDOS: 'mucho' }), /HACKAI_CACHE_SEGUNDOS/)
+})
+
 test('sin HACKAI_CAIDAS no hay interruptor de caídas, como en producción, y un valor desconocido corta el arranque', () => {
   assert.equal(compose({}).outages, null)
   assert.equal(compose({ HACKAI_CAIDAS: 'no' }).outages, null)
