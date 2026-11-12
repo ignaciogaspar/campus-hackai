@@ -4,10 +4,13 @@
    comprobante, el paso que falta en la Autogestión del SIU o el error. Las dos
    van por el mismo flujo; cambian las palabras y adónde lleva el éxito: la
    comisión, al espacio de la materia; la mesa, a Hoy, donde sale el final.
-   Solo muestra lo que devuelve la server action. */
-import { CheckCircle2, ExternalLink, Info } from 'lucide-react'
+   Sin lugares, el botón dice «Sin cupo» y no se puede tocar. Si a un final le
+   falta la regularidad, lo avisa antes de inscribirse y lo repite en el
+   resultado. Solo muestra lo que dicen la oferta y la server action. */
+import { CheckCircle2, CircleAlert, ExternalLink, Info } from 'lucide-react'
 import Link from 'next/link'
 import { type ReactNode, useActionState, useEffect, useRef, useState } from 'react'
+import { INITIAL_ENROLLMENT_STATE, visibleOutcome } from '@/components/enrollment/outcome'
 import type { EnrollmentAction, EnrollmentState, EnrollmentStep } from '@/components/enrollment/state'
 import { targetFields } from '@/components/enrollment/target'
 import { spaceHref } from '@/components/spaces/format'
@@ -15,8 +18,6 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { ErrorNotice } from '@/components/ui/states'
 import type { OfferItem, Target } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
-
-const INITIAL: EnrollmentState = { kind: 'inicial' }
 
 const STEP_TEXT: Record<EnrollmentStep, string> = { inscripcion: 'inscribirte', baja: 'darte de baja' }
 
@@ -34,6 +35,8 @@ const TARGET_TEXT: Record<Target['kind'], { what: string; dropped: string; dropW
   }
 }
 
+const REGULARITY_TEXT = 'Para rendir este final, antes tenés que regularizar la cursada.'
+
 const linkButton = cn(buttonVariants({ size: 'lg' }), 'min-h-11')
 const outlineLinkButton = cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11')
 
@@ -41,7 +44,12 @@ function Receipt({ transactionNumber }: { transactionNumber: string }) {
   return <p className='text-xs text-muted-foreground'>Comprobante del SIU n.º {transactionNumber}</p>
 }
 
-type EnrolledProps = { inClassroom: boolean; subjectId: string; transactionNumber: string }
+type EnrolledProps = {
+  inClassroom: boolean
+  subjectId: string
+  transactionNumber: string
+  needsRegularity: boolean
+}
 
 /** La comisión: quedó en el SIU, en el aula (si se pudo) y en el espacio, adonde lleva. */
 function SectionEnrolled({ inClassroom, subjectId, transactionNumber }: EnrolledProps) {
@@ -67,13 +75,18 @@ function SectionEnrolled({ inClassroom, subjectId, transactionNumber }: Enrolled
   )
 }
 
-/** La mesa: quedó en el SIU y el final sale en Hoy, adonde lleva. */
-function BoardEnrolled({ transactionNumber }: EnrolledProps) {
+/** La mesa: quedó en el SIU y el final sale en Hoy, adonde lleva. Si le falta la regularidad, se lo recuerda. */
+function BoardEnrolled({ transactionNumber, needsRegularity }: EnrolledProps) {
   return (
     <>
       <p>
         <b>Listo, quedaste inscripto al final.</b> Ya estás en el SIU y lo vas a ver en Hoy, entre tus próximos.
       </p>
+      {needsRegularity && (
+        <p className='font-semibold text-warning-foreground'>
+          Acordate: para rendirlo, antes tenés que regularizar la cursada.
+        </p>
+      )}
       <Receipt transactionNumber={transactionNumber} />
       <div className='flex flex-wrap gap-2'>
         <Link href='/hoy' className={linkButton}>
@@ -89,35 +102,39 @@ const ENROLLED: Record<Target['kind'], (props: EnrolledProps) => ReactNode> = {
   mesa: BoardEnrolled
 }
 
+type OutcomeProps = { target: Target; subjectId: string; needsRegularity: boolean }
+
 function Enrolled({
   state,
   target,
-  subjectId
-}: {
-  state: Extract<EnrollmentState, { kind: 'inscripto' }>
-  target: Target
-  subjectId: string
-}) {
+  subjectId,
+  needsRegularity
+}: OutcomeProps & { state: Extract<EnrollmentState, { kind: 'inscripto' }> }) {
   const Done = ENROLLED[target.kind]
   return (
     <div role='status' className='flex gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm'>
       <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
       <div className='flex flex-col gap-2'>
-        <Done inClassroom={state.inClassroom} subjectId={subjectId} transactionNumber={state.transactionNumber} />
+        <Done
+          inClassroom={state.inClassroom}
+          subjectId={subjectId}
+          transactionNumber={state.transactionNumber}
+          needsRegularity={needsRegularity}
+        />
       </div>
     </div>
   )
 }
 
-function Outcome({ state, target, subjectId }: { state: EnrollmentState; target: Target; subjectId: string }) {
-  if (state.kind === 'inscripto') return <Enrolled state={state} target={target} subjectId={subjectId} />
+function Outcome({ state, ...props }: OutcomeProps & { state: EnrollmentState }) {
+  if (state.kind === 'inscripto') return <Enrolled state={state} {...props} />
   if (state.kind === 'baja') {
     return (
       <div role='status' className='flex gap-3 rounded-lg border border-border bg-muted p-3 text-sm'>
         <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-muted-foreground' />
         <div className='flex flex-col gap-1'>
           <p>
-            <b>Te diste de baja.</b> {TARGET_TEXT[target.kind].dropped}
+            <b>Te diste de baja.</b> {TARGET_TEXT[props.target.kind].dropped}
           </p>
           <Receipt transactionNumber={state.transactionNumber} />
         </div>
@@ -131,7 +148,7 @@ function Outcome({ state, target, subjectId }: { state: EnrollmentState; target:
         <div className='flex flex-col gap-2'>
           <p>
             <b>Te falta un paso.</b> Para {STEP_TEXT[state.step]} hay que confirmarlo en la Autogestión del SIU. Te
-            llevamos directo a {TARGET_TEXT[target.kind].what}.
+            llevamos directo a {TARGET_TEXT[props.target.kind].what}.
           </p>
           <a href={state.url} target='_blank' rel='noopener noreferrer' className={cn(linkButton, 'self-start')}>
             Seguir en la Autogestión
@@ -149,7 +166,10 @@ function Outcome({ state, target, subjectId }: { state: EnrollmentState; target:
 }
 
 /** Lo que la oferta dice de la comisión o la mesa para esta persona. */
-type EnrollmentStatus = Pick<OfferItem, 'alreadyEnrolled' | 'enrollmentOpen' | 'enrolledElsewhere'>
+type EnrollmentStatus = Pick<
+  OfferItem,
+  'alreadyEnrolled' | 'enrollmentWindow' | 'enrolledElsewhere' | 'spotsLeft' | 'needsRegularity'
+>
 
 type Props = {
   target: Target
@@ -173,14 +193,55 @@ function TargetInputs({ target }: { target: Target }) {
   )
 }
 
-/** Los dos estados viven acá porque, al inscribirse, la página se vuelve a
-    cargar con `alreadyEnrolled` y el comprobante no se tiene que perder. */
-export function EnrollmentActions({ target, subjectId, label, status, enrollAction, dropAction }: Props) {
-  const { alreadyEnrolled: enrolled, enrollmentOpen: open, enrolledElsewhere } = status
-  const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL)
-  const [dropState, drop, dropping] = useActionState(dropAction, INITIAL)
+/** Inscribirse: el aviso de la regularidad, si falta, y el botón, que sin lugares dice «Sin cupo» y no se puede tocar. */
+function EnrollForm({
+  target,
+  label,
+  status,
+  enrolling,
+  action,
+  onSubmit
+}: {
+  target: Target
+  label: string
+  status: EnrollmentStatus
+  enrolling: boolean
+  action: (formData: FormData) => void
+  onSubmit: () => void
+}) {
+  const full = status.spotsLeft === 0
+  return (
+    <form action={action} onSubmit={onSubmit} className='flex flex-col gap-3'>
+      <TargetInputs target={target} />
+      {status.needsRegularity && (
+        <p className='flex gap-2 text-sm text-warning-foreground'>
+          <CircleAlert aria-hidden className='mt-0.5 size-4 shrink-0 text-warning-icon' />
+          {REGULARITY_TEXT}
+        </p>
+      )}
+      <Button type='submit' size='lg' disabled={enrolling || full} className='min-h-11 w-full sm:w-auto sm:self-start'>
+        {full ? 'Sin cupo' : enrolling ? 'Inscribiéndote…' : 'Inscribirme'}
+        <span className='sr-only'> en {label}</span>
+      </Button>
+    </form>
+  )
+}
+
+/** Darse de baja: el botón y, al tocarlo, la confirmación. */
+function DropControls({
+  target,
+  label,
+  dropping,
+  action,
+  onSubmit
+}: {
+  target: Target
+  label: string
+  dropping: boolean
+  action: (formData: FormData) => void
+  onSubmit: () => void
+}) {
   const [confirming, setConfirming] = useState(false)
-  const [lastAction, setLastAction] = useState<EnrollmentStep | null>(null)
   // El foco sigue a la confirmación: al abrirla va a «Cancelar», la opción que
   // no borra nada; al cerrarla vuelve a «Darme de baja». Así no se pierde con
   // teclado ni con lector de pantalla cuando los botones se reemplazan.
@@ -199,74 +260,102 @@ export function EnrollmentActions({ target, subjectId, label, status, enrollActi
     returnFocus.current = true
     setConfirming(false)
   }
-  if (!open) return null
 
-  const visibleOutcome = lastAction === 'baja' ? dropState : lastAction === 'inscripcion' ? enrollState : INITIAL
+  if (!confirming) {
+    return (
+      <Button
+        ref={dropButton}
+        type='button'
+        variant='outline'
+        size='lg'
+        disabled={dropping}
+        className='min-h-11 self-start'
+        onClick={() => setConfirming(true)}
+      >
+        {dropping ? 'Dándote de baja…' : 'Darme de baja'}
+        <span className='sr-only'> de {label}</span>
+      </Button>
+    )
+  }
+  return (
+    <form
+      action={action}
+      onSubmit={() => {
+        onSubmit()
+        closeConfirmation()
+      }}
+      className='flex flex-col gap-2 rounded-lg border border-border p-3'
+    >
+      <TargetInputs target={target} />
+      <p className='text-sm'>
+        ¿Te das de baja de {label}? {TARGET_TEXT[target.kind].dropWarning}
+      </p>
+      <div className='flex flex-wrap gap-2'>
+        <Button type='submit' variant='destructive' size='lg' className='min-h-11'>
+          Sí, darme de baja
+        </Button>
+        <Button
+          ref={cancelButton}
+          type='button'
+          variant='ghost'
+          size='lg'
+          className='min-h-11'
+          onClick={closeConfirmation}
+        >
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+/** Los dos estados viven acá porque, al inscribirse, la página se vuelve a
+    cargar con `alreadyEnrolled` y el comprobante no se tiene que perder. El de
+    una acción anterior, en cambio, no se muestra mientras va la siguiente. */
+export function EnrollmentActions({ target, subjectId, label, status, enrollAction, dropAction }: Props) {
+  const { alreadyEnrolled: enrolled, enrolledElsewhere } = status
+  const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL_ENROLLMENT_STATE)
+  const [dropState, drop, dropping] = useActionState(dropAction, INITIAL_ENROLLMENT_STATE)
+  const [lastAction, setLastAction] = useState<EnrollmentStep | null>(null)
+  const [superseded, setSuperseded] = useState<EnrollmentState | null>(null)
+  if (status.enrollmentWindow !== 'abierta') return null
+
+  const shown = visibleOutcome({ lastAction, enrollState, dropState, superseded, pending: enrolling || dropping })
+  const startAction = (step: EnrollmentStep) => {
+    setLastAction(step)
+    setSuperseded(step === 'baja' ? dropState : enrollState)
+  }
 
   return (
     <div className='flex flex-col gap-3'>
-      {!enrolled && enrolledElsewhere && visibleOutcome.kind !== 'baja' && (
+      {!enrolled && enrolledElsewhere && shown.kind !== 'baja' && (
         <p className='text-sm text-muted-foreground'>
           Ya estás inscripto en la comisión {enrolledElsewhere}. Para cambiarte, primero date de baja de esa.
         </p>
       )}
 
       {!enrolled && !enrolledElsewhere && (
-        <form action={enroll} onSubmit={() => setLastAction('inscripcion')}>
-          <TargetInputs target={target} />
-          <Button type='submit' size='lg' disabled={enrolling} className='min-h-11 w-full sm:w-auto'>
-            {enrolling ? 'Inscribiéndote…' : 'Inscribirme'}
-            <span className='sr-only'> en {label}</span>
-          </Button>
-        </form>
+        <EnrollForm
+          target={target}
+          label={label}
+          status={status}
+          enrolling={enrolling}
+          action={enroll}
+          onSubmit={() => startAction('inscripcion')}
+        />
       )}
 
-      <Outcome state={visibleOutcome} target={target} subjectId={subjectId} />
+      <Outcome state={shown} target={target} subjectId={subjectId} needsRegularity={status.needsRegularity} />
 
-      {enrolled &&
-        (confirming ? (
-          <form
-            action={drop}
-            onSubmit={() => {
-              setLastAction('baja')
-              closeConfirmation()
-            }}
-            className='flex flex-col gap-2 rounded-lg border border-border p-3'
-          >
-            <TargetInputs target={target} />
-            <p className='text-sm'>
-              ¿Te das de baja de {label}? {TARGET_TEXT[target.kind].dropWarning}
-            </p>
-            <div className='flex flex-wrap gap-2'>
-              <Button type='submit' variant='destructive' size='lg' className='min-h-11'>
-                Sí, darme de baja
-              </Button>
-              <Button
-                ref={cancelButton}
-                type='button'
-                variant='ghost'
-                size='lg'
-                className='min-h-11'
-                onClick={closeConfirmation}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <Button
-            ref={dropButton}
-            type='button'
-            variant='outline'
-            size='lg'
-            disabled={dropping}
-            className='min-h-11 self-start'
-            onClick={() => setConfirming(true)}
-          >
-            {dropping ? 'Dándote de baja…' : 'Darme de baja'}
-            <span className='sr-only'> de {label}</span>
-          </Button>
-        ))}
+      {enrolled && (
+        <DropControls
+          target={target}
+          label={label}
+          dropping={dropping}
+          action={drop}
+          onSubmit={() => startAction('baja')}
+        />
+      )}
     </div>
   )
 }
