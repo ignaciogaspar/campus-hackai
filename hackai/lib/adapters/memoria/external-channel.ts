@@ -45,6 +45,8 @@ export type MemoryExternalChannel = ExternalChannelPort & {
   receive(channelId: string, message: IncomingMessage): ExternalMessage | null
   /** Cómo quedó un servidor, o `null` si no existe. */
   serverState(serverId: string): MemoryServerState | null
+  /** Simula que una cuenta entra al servidor. */
+  join(serverId: string, userId: string): void
 }
 
 type MemoryServer = {
@@ -173,6 +175,10 @@ export function createMemoryExternalChannel(data: SyntheticData, clock: ClockPor
         roles: server.roles.map((r) => ({ id: r.id, name: r.name, members: [...r.members] })),
         channels: server.channels.map((c) => ({ ...toServerChannel(server, c), writers: c.writers }))
       })
+    },
+
+    join(serverId, userId) {
+      servers.get(serverId)?.members.add(userId)
     },
 
     async serverChannels(serverId) {

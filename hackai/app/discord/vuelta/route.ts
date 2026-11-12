@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   const code = params.get('code')
   if (!code) redirect(backToSpace(subjectId, params.get('error') === 'access_denied' ? 'cancelado' : 'falla-externa'))
 
-  const authorized = await discordOAuth.exchange(code, redirectUriFor(request), params.get('guild_id'))
+  const authorized = await discordOAuth.exchange(code, redirectUriFor(request))
   if (!authorized.ok) redirect(backToSpace(subjectId, authorized.error))
   const { userId, serverId } = authorized.value
   const connected = await spaces.connect(session.personId, spaceId, { system: 'discord', serverId }, userId)

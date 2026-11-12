@@ -53,7 +53,7 @@ test('el canje devuelve la cuenta que autorizó y el servidor donde quedó el bo
   const { fetch, calls } = fakeDiscord()
   const oauth = createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch })
 
-  assert.deepEqual(await oauth.exchange('codigo', REDIRECT, null), {
+  assert.deepEqual(await oauth.exchange('codigo', REDIRECT), {
     ok: true,
     value: { userId: USER, serverId: GUILD }
   })
@@ -69,14 +69,10 @@ test('el canje devuelve la cuenta que autorizó y el servidor donde quedó el bo
   assert.equal(calls[1].auth, 'Bearer acceso')
 })
 
-test('un código que Discord no acepta, una vuelta sin servidor o Discord caído vuelven como valores', async () => {
+test('un código que Discord no acepta, una respuesta sin servidor o Discord caído vuelven como valores', async () => {
   const rejected = fakeDiscord({ token: () => Response.json({ error: 'invalid_grant' }, { status: 400 }) })
   assert.deepEqual(
-    await createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch: rejected.fetch }).exchange(
-      'x',
-      REDIRECT,
-      null
-    ),
+    await createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch: rejected.fetch }).exchange('x', REDIRECT),
     {
       ok: false,
       error: 'codigo-invalido'
@@ -85,17 +81,27 @@ test('un código que Discord no acepta, una vuelta sin servidor o Discord caído
 
   const noGuild = fakeDiscord({ token: () => Response.json({ access_token: 'acceso' }) })
   const oauth = createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch: noGuild.fetch })
-  assert.deepEqual(await oauth.exchange('x', REDIRECT, null), { ok: false, error: 'sin-servidor' })
-  assert.deepEqual(await oauth.exchange('x', REDIRECT, GUILD), { ok: true, value: { userId: USER, serverId: GUILD } })
+  assert.deepEqual(await oauth.exchange('x', REDIRECT), { ok: false, error: 'sin-servidor' })
 
   const down: typeof globalThis.fetch = async () => {
     throw new TypeError('fetch failed')
   }
   assert.deepEqual(
-    await createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch: down }).exchange('x', REDIRECT, null),
+    await createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch: down }).exchange('x', REDIRECT),
     {
       ok: false,
       error: 'falla-externa'
     }
   )
+})
+
+test('el servidor sale de la respuesta de Discord, nunca del guild_id de la URL de vuelta', async () => {
+  const { fetch, calls } = fakeDiscord()
+  const oauth = createDiscordOAuth({ clientId: CLIENT, clientSecret: SECRET, fetch })
+
+  // La vuelta trae un guild_id ajeno armado a mano; vale el que dice Discord en el canje.
+  const authorized = await oauth.exchange('codigo', REDIRECT)
+
+  assert.deepEqual(authorized, { ok: true, value: { userId: USER, serverId: GUILD } })
+  assert.ok(calls.every((c) => !c.url.includes('guild_id')))
 })

@@ -36,6 +36,8 @@ export const DISCORD_NOTICES = {
   'sin-permisos':
     'No se conectó: al bot de HackAI le faltan permisos en ese servidor. Probá de nuevo sin desmarcarlos.',
   'cuenta-en-uso': 'No se conectó: esa cuenta de Discord ya está vinculada con otra persona de HackAI.',
+  'no-es-miembro':
+    'No se conectó: tu cuenta de Discord no es miembro de ese servidor. Elegí el servidor de tu cátedra.',
   'otro-servidor':
     'No se conectó: la materia ya está conectada con otro servidor de Discord. Al autorizar, elegí ese mismo servidor.',
   'solo-docentes': 'No se conectó: solo los docentes de la materia conectan su Discord.',

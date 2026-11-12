@@ -2356,9 +2356,10 @@ function buildWithServer() {
 }
 
 test('el docente conecta el espacio con su servidor y su cuenta de Discord queda vinculada con su persona', async () => {
-  const { spaces, people } = buildWithServer()
+  const { spaces, people, discord } = buildWithServer()
   const ids = await am1(spaces)
   const cuenta = '1290000000000000777'
+  discord.join(MEMORY_SERVER, cuenta)
 
   assert.deepEqual(await spaces.connect('p-mledesma', ids.spaceId, SERVER, cuenta), { ok: true, value: SERVER })
 
@@ -2501,9 +2502,11 @@ test('los canales del servidor se listan para elegir uno, solo si el docente es 
     ]
   )
   assert.deepEqual(await spaces.serverChannels('p-taguirre', ids.spaceId), { ok: false, error: 'solo-docentes' })
-  // La cuenta con que Ferreyra conectó no es miembro del servidor.
-  assert.ok((await spaces.connect('p-gferreyra', ids.spaceId, SERVER, '1290000000000000888')).ok)
-  assert.deepEqual(await spaces.serverChannels('p-gferreyra', ids.spaceId), { ok: false, error: 'no-es-miembro' })
+  // Con una cuenta que no es miembro del servidor no se conecta, ni se listan sus canales.
+  assert.deepEqual(await spaces.connect('p-gferreyra', ids.spaceId, SERVER, '1290000000000000888'), {
+    ok: false,
+    error: 'no-es-miembro'
+  })
 })
 
 test('si un canal se creó en Discord pero no llegó a vincularse, reintentar lo vincula en vez de crear otro', async () => {
@@ -2550,9 +2553,10 @@ test('crear canales no lleva al servidor las comisiones de un cuatrimestre que t
 })
 
 test('un espacio conectado no cambia de servidor, pero otro docente puede vincular su cuenta con el mismo', async () => {
-  const { spaces, people } = buildWithServer()
+  const { spaces, people, discord } = buildWithServer()
   const ids = await am1(spaces)
   assert.ok((await spaces.connect('p-mledesma', ids.spaceId, SERVER, discordOf('p-mledesma'))).ok)
+  discord.join(MEMORY_SERVER, '1290000000000000888')
 
   const other = { system: 'discord', serverId: '1300000000000000999' } as const
   assert.deepEqual(await spaces.connect('p-gferreyra', ids.spaceId, other, '1290000000000000888'), {
@@ -2576,4 +2580,18 @@ test('con un canal externo sin servidores, conectar, listar y crear canales no e
   assert.deepEqual(await spaces.connect('p-mledesma', ids.spaceId, SERVER, discordOf('p-mledesma')), refused)
   assert.deepEqual(await spaces.serverChannels('p-mledesma', ids.spaceId), refused)
   assert.deepEqual(await spaces.createExternalChannels('p-mledesma', ids.spaceId), refused)
+})
+
+test('conectar no acepta un servidor del que el docente no es miembro, aunque el bot esté ahí', async () => {
+  const { spaces } = buildWithServer()
+  const ids = await am1(spaces)
+  const ajena = '1290000000000000999'
+
+  assert.deepEqual(await spaces.connect('p-mledesma', ids.spaceId, SERVER, ajena), {
+    ok: false,
+    error: 'no-es-miembro'
+  })
+  const opened = await spaces.open('p-mledesma', 'am1')
+  assert.ok(opened.ok)
+  assert.equal(opened.value.externalServer, null)
 })

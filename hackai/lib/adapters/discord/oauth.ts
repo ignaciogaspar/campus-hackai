@@ -24,11 +24,11 @@ export type DiscordOAuth = {
       en el Developer Portal, igual. */
   authorizeUrl(state: string, redirectUri: string): string
   /** Canjea el código de la vuelta. `codigo-invalido` si Discord no lo acepta (vencido, usado o de otra
-      aplicación); `sin-servidor` si no eligió un servidor. */
+      aplicación); `sin-servidor` si la respuesta no trae el servidor donde quedó el bot. El servidor sale solo de
+      la respuesta de Discord, nunca del `guild_id` de la URL de vuelta, que lo puede armar quien navega. */
   exchange(
     code: string,
-    redirectUri: string,
-    serverIdFromQuery: string | null
+    redirectUri: string
   ): Promise<Result<DiscordAuthorization, 'codigo-invalido' | 'sin-servidor' | ExternalFailure>>
 }
 
@@ -80,11 +80,11 @@ export function createDiscordOAuth(options: DiscordOAuthOptions): DiscordOAuth {
       return `${AUTHORIZE}?${params}`
     },
 
-    async exchange(code, redirectUri, serverIdFromQuery) {
+    async exchange(code, redirectUri) {
       const granted = await grant(code, redirectUri)
       if (!granted.ok) return granted
-      // Con el scope `bot`, la respuesta trae el servidor donde quedó el bot; si no, el de la vuelta.
-      const serverId = granted.value.serverId ?? serverIdFromQuery
+      // Con el scope `bot`, la respuesta trae el servidor donde quedó el bot.
+      const { serverId } = granted.value
       if (!serverId || !SNOWFLAKE.test(serverId)) return fail('sin-servidor')
       const userId = await accountOf(granted.value.accessToken)
       return userId ? ok({ userId, serverId }) : fail('falla-externa')

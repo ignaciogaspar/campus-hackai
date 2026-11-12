@@ -212,7 +212,6 @@ function ChannelArea({
   return (
     <>
       {updates}
-      {discord.server && <DiscordServer {...discord.server} />}
       <DiscordLink subjectId={subjectId} channel={channel} choices={discord.choices} />
       <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} search={search} />
     </>
@@ -340,7 +339,7 @@ async function discordFor(
   return { server, choices }
 }
 
-function CenterPane({
+function CenterContent({
   subjectId,
   view,
   channels,
@@ -385,6 +384,18 @@ function CenterPane({
       search={pane.search}
       discord={discord}
     />
+  )
+}
+
+/** La columna del medio con la tarjeta del Discord de la cátedra arriba, en cualquier estado del espacio: así el
+    aviso de la vuelta de Discord se ve aunque no haya un canal abierto. */
+function CenterPane(props: Parameters<typeof CenterContent>[0]) {
+  const { server } = props.discord
+  return (
+    <>
+      {server && <DiscordServer {...server} />}
+      <CenterContent {...props} />
+    </>
   )
 }
 

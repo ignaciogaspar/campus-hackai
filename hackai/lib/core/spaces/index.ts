@@ -372,7 +372,7 @@ export type Spaces = {
   >
   /** Conecta el espacio con el servidor de la cátedra en el canal externo, y vincula con la persona la cuenta
       externa con que lo autorizó. Solo docentes de la materia. Si la cuenta ya es de otra persona
-      (`cuenta-en-uso`) o el bot no está en el servidor, no conecta nada. Un espacio conectado no cambia de
+      (`cuenta-en-uso`), no es miembro del servidor (`no-es-miembro`) o el bot no está, no conecta nada. Un espacio conectado no cambia de
       servidor (`otro-servidor`); volver a conectar el mismo vincula la cuenta de otro docente. */
   connect(
     personId: PersonId,
@@ -382,7 +382,13 @@ export type Spaces = {
   ): Promise<
     Result<
       ExternalServer,
-      'espacio-desconocido' | 'solo-docentes' | 'otro-servidor' | 'cuenta-en-uso' | ServerError | AccessError
+      | 'espacio-desconocido'
+      | 'solo-docentes'
+      | 'otro-servidor'
+      | 'no-es-miembro'
+      | 'cuenta-en-uso'
+      | ServerError
+      | AccessError
     >
   >
   /** Los canales de texto del servidor conectado, para elegir uno al vincular. Solo docentes de la materia, y

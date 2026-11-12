@@ -5,7 +5,8 @@
 
    - Conectar vincula también la cuenta externa del docente con su persona, en Personas: así lo que publica en el
      servidor entra a HackAI con su nombre. Primero se comprueba que el bot esté en el servidor, y la cuenta se
-     vincula antes de guardar el servidor: si algo falla, el espacio no queda conectado. Un espacio conectado no
+     vincula antes de guardar el servidor: si algo falla, el espacio no queda conectado. La cuenta tiene que ser
+     miembro del servidor (`no-es-miembro`). Un espacio conectado no
      cambia de servidor (`otro-servidor`), así los canales ya vinculados no quedan apuntando a otro; otro docente
      sí puede volver a conectar el mismo servidor, para vincular su cuenta.
    - Crear canales hace un canal por cada canal del espacio que la persona gestiona hoy (el material, y los de
@@ -91,6 +92,19 @@ export function createServerLink({ people, externalChannel, store }: ServerDeps)
     return accounts.flatMap((a) => (a.ok ? [a.value] : []))
   }
 
+  /** Que el bot esté en el servidor y pueda verlo (listar sus canales lo comprueba), y que quien autorizó sea
+      miembro: así nadie conecta su espacio con un servidor ajeno donde está el bot. */
+  async function checkServer(
+    server: ExternalServer,
+    accountId: string
+  ): Promise<Result<null, 'no-es-miembro' | ExternalServerError>> {
+    const reachable = await externalChannel.serverChannels(server.serverId)
+    if (!reachable.ok) return reachable
+    const member = await externalChannel.isMember(server.serverId, accountId)
+    if (!member.ok) return member
+    return member.value ? ok(null) : fail('no-es-miembro')
+  }
+
   async function connect(
     { space }: Managed,
     personId: PersonId,
@@ -101,6 +115,7 @@ export function createServerLink({ people, externalChannel, store }: ServerDeps)
       ExternalServer,
       | 'no-soportado'
       | 'otro-servidor'
+      | 'no-es-miembro'
       | 'cuenta-en-uso'
       | 'persona-desconocida'
       | ExternalServerError
@@ -111,9 +126,8 @@ export function createServerLink({ people, externalChannel, store }: ServerDeps)
     const current = space.externalServer
     if (current && (current.system !== server.system || current.serverId !== server.serverId))
       return fail('otro-servidor')
-    // Listar sus canales comprueba que el bot está en el servidor y puede verlo.
-    const reachable = await externalChannel.serverChannels(server.serverId)
-    if (!reachable.ok) return reachable
+    const checked = await checkServer(server, accountId)
+    if (!checked.ok) return checked
     const linked = await people.linkAccount(personId, server.system, accountId)
     if (!linked.ok) return fail(linked.error === 'solo-canales-externos' ? 'falla-externa' : linked.error)
     const saved = await store.setExternalServer(space.id, server)
