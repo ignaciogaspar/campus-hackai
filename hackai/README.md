@@ -122,6 +122,7 @@ El espacio y sus canales se crean la primera vez que alguien los abre. Sin confi
 | --- | --- |
 | `supabase/migrations/0002_spaces.sql` | Crea `spaces`, `space_channels`, `space_messages`, `space_material` y `space_reads`, y la función `space_mark_read`, que marca leído sin retroceder. Tablas propias de HackAI: van también en producción. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
 | `supabase/migrations/0003_files.sql` | Crea el bucket privado `hackai-files`, de hasta 10 MB por archivo. Sin políticas: solo lo toca el servidor con el service role. |
+| `supabase/migrations/0004_spaces_sync.sql` | Suma a `space_channels` el cursor de lectura del canal externo vinculado (`external_cursor`). Idempotente. |
 
 Se aplican con `npm run demo:preparar`, que además vacía lo que dejaron los ensayos («Base de la demo»).
 
@@ -229,9 +230,9 @@ Los espacios se sincronizan con sus canales externos aunque nadie los abra: un c
 
 | Responde | Cuándo |
 | --- | --- |
-| 200 con el resumen: `channels`, `imported`, `sent`, `pending` | Sincronizó |
+| 200 con el resumen: `channels`, `imported`, `sent`, `pending` | Sincronizó. Un canal externo caído no corta la corrida: sus mensajes quedan pendientes (`pending`) y se reintentan en la siguiente |
 | 401 `no-autorizado` | El pedido no trae el secreto o trae otro |
-| 501 `no-implementado` | Espacios todavía no sincroniza: llega con #15, y entonces la ruta responde 200 sin cambios |
+| 502 `falla-externa` | El almacén de Espacios no respondió |
 | 503 `sin-configurar` | Falta `CRON_SECRET` en el entorno: la ruta queda cerrada para todos |
 
 Para probarla a mano, con el servidor andando y `CRON_SECRET` en `.env.local`:
@@ -311,7 +312,7 @@ No las imprimas en logs ni en reportes.
 | `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con su espacio, lo que no leíste en él, el enlace a su aula de Moodle y sus tareas con fecha. Si el SIU o Moodle no responden, muestra lo último leído con el aviso de desactualizado. En `[subjectId]/`, el espacio de la materia. |
 | `app/(app)/inscripciones/`, `components/enrollment/` | Inscripciones del alumno: las cursadas y los finales abiertos que le sirven y, por materia, la oferta de comisiones (`[materia]/`) o de mesas de examen (`[materia]/final/`) con horario o fecha, cupo y docentes. Inscribirse y darse de baja van por el mismo flujo en los dos casos; si el SIU no deja hacerlo por API, llevan a la Autogestión. El final inscripto sale en Hoy. |
 | `app/simulado/`, `components/simulated/` | La página a la que llevan los enlaces al SIU y a Moodle simulados: dice que es una demo y qué abriría el enlace en producción. |
-| `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, subir y organizar el material y escribirle en privado a un docente de la comisión. |
+| `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, vincularlos con Discord, subir y organizar el material y escribirle en privado a un docente de la comisión. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 | `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |
 | `lib/demo-base/`, `scripts/demo-*.ts` | Preparar, verificar y probar la base de la demo. Ver «Base de la demo». |

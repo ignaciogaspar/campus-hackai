@@ -10,8 +10,10 @@
      escriben solo los docentes de la comisión; el material lo suben los
      docentes de la materia. Canales directos solo entre alumno y docente de la
      misma comisión.
-   - Cada mensaje guarda su origen y su id externo y no entra dos veces. Si el
-     envío al canal externo falla, queda pendiente y se reintenta.
+   - Los canales vinculados se sincronizan con el canal externo de los dos
+     lados (sync.ts). Cada mensaje guarda su origen y su id externo y no entra
+     dos veces. Si el envío al canal externo falla, queda pendiente y se
+     reintenta.
    - Un archivo guardado (material o adjunto) se entrega solo a quien ve su
      espacio o su canal.
 
@@ -24,7 +26,7 @@ import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { ExternalChannelPort } from '@/lib/ports/external-channel'
 import type { FileContent, FilesError, FilesPort } from '@/lib/ports/files'
-import type { ExternalFailure, NotImplemented, Result } from '@/lib/result'
+import type { ExternalFailure, Result } from '@/lib/result'
 
 export type SpaceId = string
 export type ChannelId = string
@@ -59,6 +61,8 @@ export type Channel = {
   canPost: boolean
   /** Si la persona puede marcar resueltas las consultas del canal. */
   canResolve: boolean
+  /** Si la persona puede vincular el canal con uno del canal externo de la cátedra. */
+  canLink: boolean
   externalLink: ExternalLink | null
   /** En un canal directo, la otra persona, con su nombre y su rol: el canal se muestra con su nombre. En el resto, `null`. */
   counterpart: Author | null
@@ -173,6 +177,8 @@ export type SpaceView = {
 export type ChannelView = {
   space: Space
   channel: Channel
+  /** Cambia cuando el canal cambia: la misma que devuelve `version`. */
+  version: string
   /** Mensajes de primer nivel con sus respuestas, del más viejo al más nuevo. Vacío en el canal de material. */
   threads: Thread[]
   /** Solo en el canal de material: el material del espacio. */
@@ -227,6 +233,12 @@ export type Spaces = {
   open(personId: PersonId, subjectId: string): Promise<Result<SpaceView, AccessError>>
   /** Mensajes del canal, con las consultas y sus respuestas; marca leído. */
   channel(personId: PersonId, channelId: ChannelId): Promise<Result<ChannelView, 'canal-desconocido' | AccessError>>
+  /** Si hay algo nuevo en un canal, sin volver a leerlo: trae lo nuevo del canal externo
+      (no más de una vez cada pocos segundos por espacio) y devuelve una versión que
+      cambia cuando entra un mensaje o un archivo, cuando uno pendiente se envía o cuando
+      se resuelve una consulta. No chequea la membresía, para no preguntarle a Cursada en
+      cada chequeo: dice si el canal cambió, nunca qué tiene. */
+  version(channelId: ChannelId): Promise<Result<string, 'canal-desconocido' | SpacesStoreError>>
   /** Publica y lo envía al canal externo vinculado. Si el envío falla, queda pendiente. El canal de
       material no lleva mensajes (`sin-mensajes`): el material se sube con `addMaterial`. */
   post(
@@ -278,14 +290,21 @@ export type Spaces = {
     spaceId: SpaceId,
     otherPersonId: PersonId
   ): Promise<Result<Channel, 'espacio-desconocido' | 'solo-alumno-docente' | 'sin-comision-en-comun' | AccessError>>
-  /** Vincula un canal con uno del canal externo de la cátedra. Solo docentes. */
+  /** Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Solo
+      docentes: de la materia, o de la comisión del canal. Los canales directos no se vinculan.
+      Un canal externo se vincula con un solo canal (`canal-externo-en-uso`). */
   link(
     personId: PersonId,
     channelId: ChannelId,
     external: ExternalLink
-  ): Promise<Result<Channel, 'canal-desconocido' | 'solo-docentes' | AccessError | NotImplemented>>
+  ): Promise<
+    Result<
+      Channel,
+      'canal-desconocido' | 'solo-docentes' | 'canal-externo-inexistente' | 'canal-externo-en-uso' | AccessError
+    >
+  >
   /** Sincroniza todos los canales vinculados: la corrida periódica. */
-  syncAll(): Promise<Result<SyncReport, NotImplemented>>
+  syncAll(): Promise<Result<SyncReport, ExternalFailure>>
   /** Novedades sin leer de todos sus espacios, por canal, para Novedades, Hoy y la navegación. No crea espacios. */
   unreadFor(personId: PersonId): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>>
   /** Los bytes de un archivo guardado, con el id que lleva su URL. Del material,
@@ -379,6 +398,14 @@ export type SpacesStore = {
   channel(channelId: ChannelId): Promise<Result<StoredChannel | null, SpacesStoreError>>
   /** Crea el canal; `duplicado` si ya hay uno con ese nombre en ese espacio y alcance. */
   createChannel(channel: Omit<StoredChannel, 'id'>): Promise<Result<StoredChannel, 'duplicado' | SpacesStoreError>>
+  /** Los canales vinculados con un canal externo, de todos los espacios, en el orden en que se crearon. */
+  linkedChannels(): Promise<Result<StoredChannel[], SpacesStoreError>>
+  /** Vincula el canal con uno externo, o lo desvincula con `null`. Borra el cursor de
+      lectura: el canal externo nuevo se lee desde el principio. */
+  linkChannel(channelId: ChannelId, link: ExternalLink | null): Promise<Result<StoredChannel | null, SpacesStoreError>>
+  /** Hasta dónde se leyó el canal externo vinculado: el cursor que devolvió su última lectura, o `null`. */
+  syncCursor(channelId: ChannelId): Promise<Result<string | null, SpacesStoreError>>
+  setSyncCursor(channelId: ChannelId, cursor: string | null): Promise<Result<null, SpacesStoreError>>
 
   /** Los mensajes de esos canales, por `seq`. */
   messages(channelIds: ChannelId[]): Promise<Result<StoredMessage[], SpacesStoreError>>
@@ -386,6 +413,12 @@ export type SpacesStore = {
   /** Guarda un mensaje y le asigna id y `seq`. `duplicado` si ya hay uno con ese id externo en el canal. */
   addMessage(message: Omit<StoredMessage, 'id' | 'seq'>): Promise<Result<StoredMessage, 'duplicado' | SpacesStoreError>>
   setResolved(messageId: MessageId, resolved: boolean): Promise<Result<StoredMessage | null, SpacesStoreError>>
+  /** Un mensaje pendiente que llegó al canal externo: queda `publicado` con su id externo.
+      `duplicado` si ese id externo ya es de otro mensaje del canal. */
+  markSent(
+    messageId: MessageId,
+    externalId: string
+  ): Promise<Result<StoredMessage | null, 'duplicado' | SpacesStoreError>>
 
   /** El material de esos espacios, por `seq`. */
   material(spaceIds: SpaceId[]): Promise<Result<StoredMaterial[], SpacesStoreError>>
@@ -408,6 +441,10 @@ export type SpacesDeps = {
   files: FilesPort
   clock: ClockPort
   store: SpacesStore
+  /** Milisegundos que avanzan siempre, para espaciar las sincronizaciones al abrir un
+      espacio. No es el reloj: el de la demo está fijo, y con él un espacio se
+      sincronizaría una sola vez por proceso. */
+  timer: () => number
 }
 
 export function createSpaces(deps: SpacesDeps): Spaces {

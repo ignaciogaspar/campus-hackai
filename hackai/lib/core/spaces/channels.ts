@@ -10,7 +10,7 @@ import type {
   StoredChannel,
   StoredSpace
 } from '@/lib/core/spaces'
-import { canResolve, type Membership, postRefusal, sees } from '@/lib/core/spaces/access'
+import { canLink, canResolve, type Membership, postRefusal, sees } from '@/lib/core/spaces/access'
 import { fail, type Result } from '@/lib/result'
 
 type NewStoredChannel = Omit<StoredChannel, 'id'>
@@ -133,6 +133,7 @@ export function toChannel(
     unread,
     canPost: postRefusal(member, channel) === null,
     canResolve: canResolve(member, channel),
+    canLink: canLink(member, channel),
     externalLink: channel.externalLink,
     counterpart
   }

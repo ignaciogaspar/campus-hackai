@@ -5,14 +5,14 @@
    propio error.
    Next.js no vuelve a ejecutar este layout al navegar entre pantallas hermanas:
    cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta.
-   Sí lo vuelve a ejecutar `router.refresh()`, que es como LiveRefresh mantiene
-   al día el espacio abierto y estos no leídos. */
+   Sí lo vuelve a ejecutar `router.refresh()`, que es como UnreadRefresh baja
+   estos no leídos al leer un canal. */
 import { type ReactNode, Suspense } from 'react'
 import { unreadBySubject } from '@/components/news/format'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { spaceHref } from '@/components/spaces/format'
-import { LiveRefresh } from '@/components/spaces/live-refresh'
+import { UnreadRefresh } from '@/components/spaces/unread-refresh'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 
@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {children}
       {/* Lee la URL con useSearchParams: sin Suspense, Next.js no podría armar las pantallas estáticas. */}
       <Suspense fallback={null}>
-        <LiveRefresh />
+        <UnreadRefresh />
       </Suspense>
     </AppShell>
   )

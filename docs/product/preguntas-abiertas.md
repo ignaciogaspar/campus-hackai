@@ -98,6 +98,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** si un docente escribe un aviso con `@everyone` o `@alumno` en HackAI y se reenvía a Discord, la mención notifica o no según esto. Afecta la sincronización de avisos y consultas, y es justo el problema que queremos resolver: que los avisos lleguen.
 - **Opciones:** no notificar ninguna mención; notificar solo menciones a personas; notificar también `@everyone` y `@here`, solo si escribe un docente en `#avisos`.
 - **Hipótesis:** hoy el adaptador de Discord manda todo sin menciones (`allowed_mentions` vacío), como opción segura: un texto de HackAI no puede mandar un `@everyone` a todo el servidor por accidente. Falta confirmarlo con el equipo.
+- **Lo que vimos probándolo (11/11/2026, #15):** un `@everyone` escrito en HackAI llega a Discord como texto. Si el servidor tiene las notificaciones en «Solo @menciones», que es lo común en servidores grandes, un aviso publicado desde HackAI no le suena a nadie. Para la tercera opción el núcleo ya sabe quién escribe y en qué canal: es un cambio chico en Espacios y en el adaptador.
 - **Estado:** abierta
 - **Decisión:**
 
@@ -141,6 +142,22 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** quien ya terminó de cursar puede necesitar escribirle al docente, por ejemplo antes de rendir el final, pero los espacios y sus mensajes directos se archivan al cerrar el cuatrimestre (#7).
 - **Hipótesis:** desde el issue #19, `openDirect` acepta cualquier comisión en común del espacio, actual o archivada, como el resto del espacio: quien dictó una comisión archivada sigue escribiendo en sus `#avisos`. Como las novedades cuentan solo las comisiones actuales, un mensaje directo en una materia archivada no llega a la campana.
 - **Opciones:** como está; solo con una comisión actual en común; dejar leer pero no escribir en un espacio archivado.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 18. ¿Quién puede publicar en HackAI desde Discord?
+
+- **Por qué importa:** en Discord escribe cualquiera que tenga acceso al canal. Si todo lo que llega entrara a HackAI, un alumno podría subir material o publicar un aviso que en HackAI solo publican los docentes.
+- **Hipótesis:** como lo implementa Espacios desde #15, entra todo lo que se publica en el canal vinculado, escriba quien escriba, y un autor sin cuenta vinculada aparece con su nombre y «desde Discord», como pide #15. Quién puede escribir en cada canal lo decide el servidor de Discord: la cátedra deja Material y `#avisos` solo para docentes.
+- **Lo que vimos (11/11/2026, #15):** se probó un filtro que solo dejaba entrar a Material lo de docentes de la materia y a `#avisos` lo de docentes de la comisión, con su cuenta de Discord vinculada. Se sacó hasta que el equipo decida: descartaba sin avisar lo de cuentas sin vincular, y como el cursor avanza, eso no volvía aunque después se vinculara la cuenta.
+- **Opciones:** como está, sin filtro; filtrar en Material y `#avisos` como se probó; filtrar y avisar en Discord (una reacción o una respuesta del bot) cuando algo no entra; filtrar pero dejar entrar a los ayudantes sin cuenta vinculada.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 19. ¿El material que se sube en HackAI se sube también a Discord?
+
+- **Por qué importa:** hoy, al subir material en HackAI, al canal de material vinculado llega un aviso con el nombre del archivo, pero no el archivo: quien está en Discord tiene que ir a HackAI a abrirlo. Al revés, lo que se sube en Discord sí se copia a HackAI.
+- **Opciones:** como está, solo el aviso, y el archivo queda en HackAI detrás de la sesión; subir también el archivo a Discord, lo que exige sumar al puerto del canal externo «publicar con adjunto» (en Discord, un envío multipart) y deja una copia del material en un tercero; mandar un enlace a HackAI.
 - **Estado:** abierta
 - **Decisión:** pendiente
 

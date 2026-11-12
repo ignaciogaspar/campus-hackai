@@ -30,7 +30,8 @@ function build(data: SyntheticData = syntheticData) {
     classroom,
     files: createMemoryFiles(),
     clock,
-    store: createMemorySpacesStore()
+    store: createMemorySpacesStore(),
+    timer: () => 0
   })
   const today = createToday({ studies, spaces, clock })
   return { today, studies, spaces, siuState, classroomState, advance }

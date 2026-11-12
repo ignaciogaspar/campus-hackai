@@ -122,6 +122,14 @@ export function canResolve(member: Membership, channel: StoredChannel): boolean 
   return false
 }
 
+/** Vinculan un canal con el canal externo los docentes que lo gestionan: los de la
+    materia si es de la materia, los de la comisión si es de una comisión. Los directos no se vinculan. */
+export function canLink(member: Membership, channel: StoredChannel): boolean {
+  if (channel.scope.kind === 'materia') return canManage(member)
+  if (channel.scope.kind === 'comision') return teachesSection(member, channel.scope.sectionId)
+  return false
+}
+
 /** Las comisiones del alumno que cuentan para los directos: las vigentes, o todas si en el espacio no
     tiene ninguna vigente, como en una materia archivada (pregunta abierta 17). Así quien recursa no le
     escribe al docente de la comisión que cursó antes. */

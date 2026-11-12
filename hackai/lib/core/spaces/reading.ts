@@ -41,6 +41,20 @@ export async function loadSnapshot(
   return ok({ personId, marks: marks.value, messages: messages.value, material: material.value })
 }
 
+/** La versión de los mensajes de un canal: cambia cuando entra uno, cuando uno
+    pendiente se envía o cuando se resuelve una consulta. */
+export function messagesVersion(messages: StoredMessage[]): string {
+  const last = messages.reduce((max, m) => Math.max(max, m.seq), 0)
+  const pending = messages.filter((m) => m.status === 'pendiente').length
+  const resolved = messages.filter((m) => m.resolved === true).length
+  return `m${last}.${pending}.${resolved}`
+}
+
+/** La versión del material de un espacio: cambia cuando entra un archivo. */
+export function materialVersion(lastSeq: number): string {
+  return `a${lastSeq}`
+}
+
 export function markOf(snapshot: Snapshot, channelId: ChannelId): number {
   return snapshot.marks[channelId] ?? 0
 }

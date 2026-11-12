@@ -1,6 +1,6 @@
 /* Lo que se hace en el espacio de la materia: publicar, responder, marcar una
-   consulta resuelta, crear un canal, subir y organizar el material y abrir un
-   canal directo con un docente. Quién
+   consulta resuelta, crear un canal, vincularlo con Discord, subir y organizar
+   el material y abrir un canal directo con un docente. Quién
    puede hacer qué lo decide Espacios; estas acciones validan lo que llega del
    navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
    Se usan con useActionState: devuelven el estado que muestra el formulario. */
@@ -26,6 +26,7 @@ type SpaceError =
   | ErrorOf<ReturnType<Spaces['createChannel']>>
   | ErrorOf<ReturnType<Spaces['addMaterial']>>
   | ErrorOf<ReturnType<Spaces['organizeMaterial']>>
+  | ErrorOf<ReturnType<Spaces['link']>>
   | ErrorOf<ReturnType<Spaces['openDirect']>>
 
 const ERRORS: Record<SpaceError, string> = {
@@ -43,9 +44,15 @@ const ERRORS: Record<SpaceError, string> = {
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
   'nombre-invalido': 'Poné un nombre con al menos una letra o un número.',
   'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.',
+  'canal-externo-inexistente':
+    'No encontramos ese canal en Discord. Revisá el ID y que el bot de HackAI esté invitado al servidor.',
+  'canal-externo-en-uso': 'Ese canal de Discord ya está vinculado con otro canal de HackAI.',
   'solo-alumno-docente': 'Los mensajes directos son solo entre un alumno y un docente.',
   'sin-comision-en-comun': 'Solo podés escribirle en privado a los docentes de tu comisión.'
 }
+
+/** El ID de un canal de Discord: un número de 17 a 20 dígitos. */
+const DISCORD_ID = /^\d{17,20}$/
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
 const LAYOUTS: readonly MaterialLayout[] = ['unidad', 'semana', 'todo']
@@ -183,6 +190,27 @@ export async function addMaterial(_prev: SpaceActionState, form: FormData): Prom
   }
   refresh(subjectId)
   return done(`Listo: subiste ${result.value.name}.`)
+}
+
+/** Vincula un canal del espacio con un canal de Discord y trae lo que ya tenía. */
+export async function linkChannel(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const channelId = text(form, 'channelId')
+  if (!subjectId || !channelId) return failed(UNEXPECTED)
+  const externalId = text(form, 'discordChannelId')?.trim() ?? ''
+  if (!DISCORD_ID.test(externalId)) return failed('Pegá el ID del canal de Discord: un número de 18 o 19 dígitos.')
+
+  const result = await system().spaces.link(session.personId, channelId, { system: 'discord', channelId: externalId })
+  if (!result.ok) {
+    return failed(
+      result.error === 'solo-docentes'
+        ? 'Solo los docentes de la materia o de la comisión vinculan este canal.'
+        : ERRORS[result.error]
+    )
+  }
+  refresh(subjectId)
+  return done('Listo: este canal queda sincronizado con Discord.')
 }
 
 /** Cambia cómo se agrupa el material: por unidad, por semana o sin secciones. */

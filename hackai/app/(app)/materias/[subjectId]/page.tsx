@@ -9,11 +9,16 @@
    En el celular es una columna y el campo para escribir queda pegado abajo.
    En compu, tres columnas: canales, conversación y un panel de contexto.
 
-   Mientras está abierto se actualiza solo (LiveRefresh, en el layout): lo
-   nuevo del canal externo, de Moodle o de otros aparece sin recargar.
+   Mientras un canal está abierto se actualiza solo (ChannelUpdates): lo nuevo
+   del canal externo o de otros aparece sin recargar. Al leer un canal, la
+   barra lateral baja sus no leídos (UnreadRefresh, en el layout).
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
-   leyó lo decide Espacios. Abrir el canal lo marca leído. */
+   leyó lo decide Espacios. Abrir el canal lo marca leído.
+
+   Esta ruta no lleva loading.tsx: con él, en la build de producción, cambiar
+   de canal (misma ruta, otro `?canal=`) a veces no se aplicaba. El router
+   recibía la página y no la mostraba hasta el clic siguiente. */
 import { ChevronRight } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -27,8 +32,10 @@ import {
   ThreadPanel
 } from '@/components/spaces/channel-panels'
 import { ChannelTabs } from '@/components/spaces/channel-tabs'
+import { ChannelUpdates } from '@/components/spaces/channel-updates'
 import { ContextPanel, shownSections } from '@/components/spaces/context-panel'
 import { DirectPanel, DirectsPanel } from '@/components/spaces/direct-panels'
+import { DiscordLink } from '@/components/spaces/discord-link'
 import {
   channelLabel,
   hasSeveralSections,
@@ -143,12 +150,42 @@ function ChannelArea({
       </ErrorNotice>
     )
   }
-  const { channel, threads, material } = opened.value
+  const { channel, threads, version } = opened.value
   const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
+  // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
+  const updates = <ChannelUpdates channelId={channel.id} version={version} />
   if (query.hilo && channel.kind !== 'directo') {
     const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
-    return <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
+    return (
+      <>
+        {updates}
+        <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
+      </>
+    )
   }
+  return (
+    <>
+      {updates}
+      <DiscordLink subjectId={subjectId} channel={channel} />
+      <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} />
+    </>
+  )
+}
+
+/** El panel según el tipo de canal. */
+function ChannelPanel({
+  subjectId,
+  view,
+  opened,
+  query
+}: {
+  subjectId: string
+  view: SpaceView
+  opened: ChannelView
+  query: SpaceQuery
+}) {
+  const { channel, threads, material } = opened
+  const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
   switch (channel.kind) {
     case 'material':
       return (
@@ -252,7 +289,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
   const channels = view.channels.map((c) => (c.id === selected?.id ? selected : c))
   // Si tenía no leídos, los de la barra lateral quedaron viejos: con `data-just-read` en <main>,
-  // LiveRefresh la vuelve a leer.
+  // UnreadRefresh la vuelve a leer.
   const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
 
   return (

@@ -10,6 +10,10 @@
    preguntarle a la base (que lo rechazaría con un error). Las fechas vuelven
    en ISO con milisegundos y `Z`, la forma en que las escribe el reloj.
 
+   El cursor de lectura del canal externo vinculado se guarda en
+   `space_channels.external_cursor` (supabase/migrations/0004_spaces_sync.sql)
+   y no viaja con el canal: solo lo usa la sincronización.
+
    El dueño de un archivo se busca por `space_material.file_id` y, en los
    mensajes, con un `contains` sobre el jsonb de los adjuntos (`cs` en
    PostgREST, `@>` en Postgres), que usa el índice gin de la migración. */
@@ -342,6 +346,56 @@ export function createSupabaseSpacesStore({
       return ok(toChannel(row.value))
     },
 
+    async linkedChannels() {
+      const rows = await run<ChannelRow[]>('canales vinculados', (s) =>
+        client
+          .from('space_channels')
+          .select(CHANNEL_COLUMNS)
+          .eq('external_system', 'discord')
+          .order('seq')
+          .abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      return ok((rows.value ?? []).map(toChannel))
+    },
+
+    async linkChannel(channelId, link) {
+      if (!isUuid(channelId)) return ok(null)
+      const row = await run<ChannelRow>('vincular canal', (s) =>
+        client
+          .from('space_channels')
+          .update({
+            external_system: link?.system ?? null,
+            external_channel_id: link?.channelId ?? null,
+            external_cursor: null
+          })
+          .eq('id', channelId)
+          .select(CHANNEL_COLUMNS)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!row.ok) return fail('falla-externa')
+      return ok(row.value ? toChannel(row.value) : null)
+    },
+
+    async syncCursor(channelId) {
+      if (!isUuid(channelId)) return ok(null)
+      const row = await run<{ external_cursor: string | null }>('cursor del canal externo', (s) =>
+        client.from('space_channels').select('external_cursor').eq('id', channelId).abortSignal(s).maybeSingle()
+      )
+      if (!row.ok) return fail('falla-externa')
+      return ok(row.value?.external_cursor ?? null)
+    },
+
+    async setSyncCursor(channelId, cursor) {
+      if (!isUuid(channelId)) return ok(null)
+      const done = await run<unknown>('guardar cursor del canal externo', (s) =>
+        client.from('space_channels').update({ external_cursor: cursor }).eq('id', channelId).abortSignal(s)
+      )
+      if (!done.ok) return fail('falla-externa')
+      return ok(null)
+    },
+
     async messages(channelIds) {
       const ids = uuids(channelIds)
       if (!ids.length) return ok([])
@@ -382,6 +436,21 @@ export function createSupabaseSpacesStore({
           .maybeSingle()
       )
       if (!row.ok) return fail('falla-externa')
+      return ok(row.value ? toMessage(row.value) : null)
+    },
+
+    async markSent(messageId, externalId) {
+      if (!isUuid(messageId)) return ok(null)
+      const row = await run<MessageRow>('marcar enviado', (s) =>
+        client
+          .from('space_messages')
+          .update({ status: 'publicado', external_id: externalId })
+          .eq('id', messageId)
+          .select(MESSAGE_COLUMNS)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!row.ok) return fail(row.error)
       return ok(row.value ? toMessage(row.value) : null)
     },
 

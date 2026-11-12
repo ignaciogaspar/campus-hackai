@@ -168,6 +168,7 @@ function systemAt(now: string) {
     classroom,
     files: createMemoryFiles(),
     clock,
+    timer: () => 0,
     store: createMemorySpacesStore()
   })
   return { studies, classroom, today: createToday({ studies, spaces, clock }) }
