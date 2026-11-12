@@ -69,6 +69,7 @@ test('arma la pantalla del alumno en una sola llamada: materias, próximos por f
     view.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
       ['examen', 'am1'],
+      ['examen', 'sre'],
       ['cursada', 'fi1']
     ]
   )
@@ -213,6 +214,7 @@ test('con Moodle caído y nada leído antes faltan las materias y sus entregas, 
     result.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
       ['examen', 'am1'],
+      ['examen', 'sre'],
       ['cursada', 'fi1']
     ]
   )
@@ -238,6 +240,7 @@ test('lo desactualizado se mira contra el reloj: lo que ya pasó sale pasado y l
     monday.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
       ['examen', 'am1'],
+      ['examen', 'sre'],
       ['cursada', 'fi1']
     ]
   )

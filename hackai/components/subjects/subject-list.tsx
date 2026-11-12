@@ -2,7 +2,8 @@
    archivadas plegadas aparte. En el celular, una columna; en compu, un mosaico
    de hasta 3 columnas, para que las tareas se lean sin cortarse. Cada una
    lleva a su espacio, con el enlace a su aula de Moodle y, las actuales, sus
-   tareas con fecha. Solo muestra lo que le da Cursada. */
+   tareas con fecha y lo que no leíste en su espacio. Solo muestra lo que le
+   dan Cursada y Espacios. */
 import { ChevronRight, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { dueTime } from '@/components/dates'
@@ -70,10 +71,32 @@ function Assignments({ assignments }: { assignments: MyAssignment[] }) {
   )
 }
 
-function SubjectCard({ subject, archived = false }: { subject: MySubject; archived?: boolean }) {
+/** Lo que no leyó en el espacio de la materia. En compu también está en la barra lateral. */
+function UnreadPill({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className='inline-flex flex-none items-center gap-1.5 rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-blue motion-safe:animate-in motion-safe:zoom-in-50'>
+      <span aria-hidden='true' className='size-1.5 rounded-full bg-blue-light' />
+      {count} sin leer
+    </span>
+  )
+}
+
+function SubjectCard({
+  subject,
+  archived = false,
+  unread = 0
+}: {
+  subject: MySubject
+  archived?: boolean
+  unread?: number
+}) {
   return (
     <li className={cn('rounded-[22px] bg-card p-4 shadow-card', archived && 'bg-muted/60 shadow-none')}>
-      <p className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>{subject.code}</p>
+      <div className='flex items-start justify-between gap-3'>
+        <p className='text-xs font-semibold tracking-wide text-muted-foreground uppercase'>{subject.code}</p>
+        <UnreadPill count={unread} />
+      </div>
       <h3
         className={cn(
           'mt-0.5 text-base leading-snug font-semibold',
@@ -98,11 +121,12 @@ function SubjectCard({ subject, archived = false }: { subject: MySubject; archiv
 
 const MOSAIC = 'grid gap-3 lg:grid-cols-2 lg:items-start xl:grid-cols-3'
 
-export function CurrentSubjects({ subjects }: { subjects: MySubject[] }) {
+/** `unread`: lo sin leer en el espacio de cada materia, por id de materia. */
+export function CurrentSubjects({ subjects, unread }: { subjects: MySubject[]; unread: Map<string, number> }) {
   return (
     <ul className={MOSAIC}>
       {subjects.map((s) => (
-        <SubjectCard key={s.sectionId} subject={s} />
+        <SubjectCard key={s.sectionId} subject={s} unread={unread.get(s.subjectId)} />
       ))}
     </ul>
   )

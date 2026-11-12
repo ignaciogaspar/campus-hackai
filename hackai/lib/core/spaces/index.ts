@@ -191,6 +191,17 @@ export type NewMaterial = { name: string; contentType: string; bytes: Uint8Array
 
 export type SyncReport = { channels: number; imported: number; sent: number; pending: number }
 
+/** Lo más nuevo que no leyó en un canal, como lo muestran Novedades y Hoy. */
+export type UnreadLatest = {
+  /** El texto del mensaje; si solo trae adjuntos, el nombre del primero. En el canal de material, el nombre del archivo. */
+  text: string
+  origin: Origin
+  createdAt: string
+  /** Quién lo publicó o lo subió; `null` si es material que vino de Moodle o de un canal externo sin autor. */
+  author: Author | null
+}
+
+/** Lo que una persona no leyó en un canal: cuánto y lo más nuevo. */
 export type UnreadItem = {
   spaceId: SpaceId
   subjectId: string
@@ -199,7 +210,12 @@ export type UnreadItem = {
   channelName: string
   kind: ChannelKind
   count: number
-  latest: { text: string; origin: Origin; createdAt: string }
+  latest: UnreadLatest
+  /** En un canal directo, la otra persona: de quién es el mensaje. En el resto, `null`. */
+  counterpart: Author | null
+  /** Si todo lo sin leer del canal es de un mismo hilo y hay alguna respuesta, el id del mensaje que lo
+      abre: la novedad lleva a ese hilo. Si no, `null` y lleva al canal. */
+  thread: MessageId | null
 }
 
 /** Por qué una persona no puede entrar: no existe, no es de la materia o Cursada no respondió. */
@@ -270,7 +286,7 @@ export type Spaces = {
   ): Promise<Result<Channel, 'canal-desconocido' | 'solo-docentes' | AccessError | NotImplemented>>
   /** Sincroniza todos los canales vinculados: la corrida periódica. */
   syncAll(): Promise<Result<SyncReport, NotImplemented>>
-  /** Novedades sin leer de todos sus espacios, para Hoy y la navegación. No crea espacios. */
+  /** Novedades sin leer de todos sus espacios, por canal, para Novedades, Hoy y la navegación. No crea espacios. */
   unreadFor(personId: PersonId): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>>
   /** Los bytes de un archivo guardado, con el id que lleva su URL. Del material,
       para quien es del espacio; de un adjunto, para quien ve su canal. Un id que

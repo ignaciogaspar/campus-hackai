@@ -883,7 +883,13 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
 
   assert.ok(unread.ok)
   assert.deepEqual(
-    unread.value.map((u) => [u.subjectName, u.channelName, u.kind, u.count, u.latest]),
+    unread.value.map((u) => [
+      u.subjectName,
+      u.channelName,
+      u.kind,
+      u.count,
+      { text: u.latest.text, origin: u.latest.origin, createdAt: u.latest.createdAt }
+    ]),
     [
       [
         'Análisis Matemático I',
@@ -925,7 +931,9 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
       channelName: 'avisos',
       kind: 'avisos',
       count: 2,
-      latest: undefined
+      latest: undefined,
+      counterpart: null,
+      thread: null
     }
   )
 
@@ -941,6 +949,32 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
   assert.deepEqual(await spaces.unreadFor('p-nadie'), { ok: false, error: 'persona-desconocida' })
   siuState.down = true
   assert.deepEqual(await spaces.unreadFor('p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('cada novedad dice quién la publicó, y un mensaje con solo un adjunto se muestra con el nombre del archivo', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+  setNow('2026-11-09T13:00:00.000Z')
+  await spaces.post('p-lbenitez', ids.consultasA, {
+    text: '  ',
+    attachments: [{ name: 'ejercicio 3.png', contentType: 'image/png', bytes: new Uint8Array([1]) }]
+  })
+  setNow('2026-11-09T14:00:00.000Z')
+  await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf'))
+
+  const unread = await spaces.unreadFor('p-taguirre')
+
+  assert.ok(unread.ok)
+  assert.deepEqual(
+    unread.value.map((u) => [u.kind, u.latest.text, u.latest.author]),
+    [
+      ['material', 'Guía 4.pdf', { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }],
+      ['consultas', 'ejercicio 3.png', { personId: 'p-lbenitez', name: 'Lucía Benítez', role: 'alumno' }],
+      ['avisos', 'Parcial el 16.', { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }]
+    ]
+  )
 })
 
 test('un mensaje de un canal externo sin persona lleva el nombre con que llegó, y uno de alguien sin datos se muestra igual', async () => {
@@ -1133,7 +1167,7 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
         [
           'Apunte de la cátedra',
           'moodle',
-          'https://example.edu.ar/apuntes/am1',
+          '/simulado/moodle/mod/url/view.php?id=r-3',
           'text/uri-list',
           0,
           null,
@@ -1148,7 +1182,7 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
         [
           'Guía de ejercicios 1',
           'moodle',
-          'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf',
+          '/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf',
           'application/pdf',
           0,
           null,
@@ -1163,7 +1197,7 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
         [
           'Guía de ejercicios 2',
           'moodle',
-          'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf',
+          '/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf',
           'application/pdf',
           0,
           null,
@@ -1236,7 +1270,7 @@ test('los adjuntos de un aviso de Moodle quedan como enlace al archivo en Moodle
       name: 'temas-segundo-parcial.pdf',
       contentType: 'application/pdf',
       size: 48213,
-      url: 'https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf'
+      url: '/simulado/moodle/pluginfile.php/co1/temas-segundo-parcial.pdf'
     }
   ])
 })
@@ -1644,6 +1678,58 @@ test('los mensajes directos sin leer aparecen como novedad solo para quien los r
   assert.equal(
     after.value.some((u) => u.channelId === directId),
     false
+  )
+})
+
+test('si todo lo sin leer de un canal es respuesta de una misma consulta, la novedad lleva a ese hilo', async () => {
+  const { spaces } = build()
+  const { consultasA } = await am1(spaces)
+  const threadOf = async () => {
+    const unread = await spaces.unreadFor('p-taguirre')
+    assert.ok(unread.ok)
+    return unread.value.find((u) => u.channelId === consultasA)?.thread
+  }
+  const question = await spaces.post('p-taguirre', consultasA, { text: '¿Entra límites?' })
+  assert.ok(question.ok)
+  await spaces.post('p-mledesma', consultasA, { text: 'Sí.', replyTo: question.value.id })
+  await spaces.post('p-lbenitez', consultasA, { text: '¿Y derivadas?', replyTo: question.value.id })
+
+  assert.equal(await threadOf(), question.value.id)
+
+  // Una consulta nueva va al canal, igual que lo sin leer de más de un hilo.
+  await spaces.channel('p-taguirre', consultasA)
+  await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
+  assert.equal(await threadOf(), null)
+  await spaces.post('p-mledesma', consultasA, { text: 'Derivadas no.', replyTo: question.value.id })
+  assert.equal(await threadOf(), null)
+})
+
+test('un mensaje directo sin leer dice de quién es; en el resto de los canales no hay otra persona', async () => {
+  const { spaces, setNow } = build()
+  const { spaceId, avisosA } = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', avisosA, { text: 'Parcial el 16.' })
+  setNow('2026-11-09T13:00:00.000Z')
+  const fromStudent = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  const fromTeacher = await spaces.openDirect('p-mledesma', spaceId, 'p-lbenitez')
+  assert.ok(fromStudent.ok && fromTeacher.ok)
+  await spaces.post('p-taguirre', fromStudent.value.id, { text: '¿Puedo rendir el recuperatorio otro día?' })
+  await spaces.post('p-mledesma', fromTeacher.value.id, { text: 'Te falta entregar el TP.' })
+
+  const forStudent = await spaces.unreadFor('p-lbenitez')
+  const forTeacher = await spaces.unreadFor('p-mledesma')
+
+  assert.ok(forStudent.ok && forTeacher.ok)
+  assert.deepEqual(
+    forStudent.value.map((u) => [u.kind, u.counterpart]),
+    [
+      ['directo', { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }],
+      ['avisos', null]
+    ]
+  )
+  assert.deepEqual(
+    forTeacher.value.map((u) => [u.kind, u.counterpart]),
+    [['directo', { personId: 'p-taguirre', name: 'Tomás Aguirre', role: 'alumno' }]]
   )
 })
 
