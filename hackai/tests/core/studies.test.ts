@@ -612,8 +612,8 @@ test('cada inscripción abierta dice en cuántos días cierra y cuántos lugares
   const { studies } = build()
 
   // Al 10/11: las mesas cierran el 4/12 y el verano el 18/12. En la mesa de
-  // Álgebra queda 1 de 2, la de Análisis I está vacía, Física I de verano está
-  // llena y Programación I de verano no tiene tope.
+  // Álgebra queda 1 de 2, la de Análisis I está vacía, en Física I de verano
+  // la mañana está llena y la tarde tiene 25, y Programación I de verano no tiene tope.
   const result = await studies.openEnrollments('p-vfunes')
 
   assert.ok(result.ok)
@@ -622,7 +622,7 @@ test('cada inscripción abierta dice en cuántos días cierra y cuántos lugares
     [
       ['examen', 'aga', 24, 1],
       ['examen', 'am1', 24, 40],
-      ['cursada', 'fi1', 38, 0],
+      ['cursada', 'fi1', 38, 25],
       ['cursada', 'pr1', 38, null]
     ]
   )
@@ -638,13 +638,14 @@ test('los lugares de una materia con varias comisiones abiertas son los de todas
   )
   const { studies } = build(data)
 
+  // Física I: la mañana llena, 25 en la tarde y 10 en la nueva.
   const result = await studies.openEnrollments('p-vfunes')
 
   assert.ok(result.ok)
   assert.deepEqual(
     result.value.data.filter((i) => i.kind === 'cursada').map((i) => [i.subjectId, i.spotsLeft]),
     [
-      ['fi1', 10],
+      ['fi1', 35],
       ['pr1', null]
     ]
   )
@@ -1499,7 +1500,7 @@ test('las inscripciones abiertas a cursada son las materias de su facultad con u
       opensAt: '2026-11-02T03:00:00.000Z',
       closesAt: '2026-12-19T02:59:00.000Z',
       closesInDays: 38,
-      spotsLeft: 0,
+      spotsLeft: 25,
       needsRegularity: false
     }
   ])
