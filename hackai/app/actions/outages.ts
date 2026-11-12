@@ -5,16 +5,14 @@
 
 import { redirect } from 'next/navigation'
 import { requireSession } from '@/lib/auth'
-import { type OutageSystem, system } from '@/lib/composition'
-
-const SYSTEMS: readonly OutageSystem[] = ['siu', 'moodle']
+import { isOutageSystem, type OutageSystem, system } from '@/lib/composition'
 
 /** Deja `target` caído (`down`) o respondiendo, y vuelve a la página de caídas. */
 export async function setOutage(target: OutageSystem, down: boolean): Promise<void> {
   await requireSession()
   const outages = system().outages
   // Lo que llega a una server action viene del navegador: el tipo no lo garantiza.
-  if (outages && SYSTEMS.includes(target) && typeof down === 'boolean') {
+  if (outages && isOutageSystem(target) && typeof down === 'boolean') {
     outages.set(target, down)
     console.info('demo: caída', { system: target, down })
   }

@@ -11,24 +11,23 @@ import { PageHeader } from '@/components/shell/page-header'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { requireSession } from '@/lib/auth'
-import { type OutageSystem, system } from '@/lib/composition'
+import { OUTAGE_SYSTEMS, type OutageSystem, system } from '@/lib/composition'
 
 export const metadata: Metadata = { title: 'Caídas de la demo · Campus HackAI' }
 
-const SYSTEMS: { system: OutageSystem; name: string; down: string; up: string }[] = [
-  {
-    system: 'siu',
+/** Qué se ve de cada sistema; los sistemas y su orden son los del interruptor (`OUTAGE_SYSTEMS`). */
+const TEXTS: Record<OutageSystem, { name: string; down: string; up: string }> = {
+  siu: {
     name: 'SIU Guaraní',
     down: 'Hoy, Mis materias, Inscripciones, Notas y Trámites muestran lo último leído con «actualizado hace…». Inscribirse avisa que el SIU no responde y no deja nada a medias.',
     up: 'Responde normal.'
   },
-  {
-    system: 'moodle',
+  moodle: {
     name: 'Campus Virtual (Moodle)',
     down: 'Mis materias sale igual, desde el SIU, sin enlaces al aula ni tareas y avisando qué falta. Hoy avisa que faltan las entregas.',
     up: 'Responde normal.'
   }
-]
+}
 
 const SCREENS = [
   { href: '/hoy', label: 'Hoy' },
@@ -52,7 +51,8 @@ export default async function CaidasPage() {
           Recorré primero las pantallas con todo andando, así HackAI tiene algo leído. Después tirá un sistema y volvé a
           abrirlas. Vale para todos los que estén usando esta instancia.
         </p>
-        {SYSTEMS.map(({ system: target, name, down, up }) => {
+        {OUTAGE_SYSTEMS.map((target) => {
+          const { name, down, up } = TEXTS[target]
           const isDown = state[target]
           const Icon = isDown ? CircleOff : CircleCheck
           return (

@@ -265,7 +265,7 @@ Lo mismo pasa con los datos de la persona (`get` de Personas): con el SIU caído
 
 Si se cae solo Moodle, las materias no usan lo último leído: salen al día del SIU, sin enlaces al aula ni tareas, y Mis materias avisa qué falta (`classroomUnavailable`). Esa lectura incompleta no pisa la última completa: si después se cae el SIU, vuelven los enlaces al aula y las tareas. Los parciales y finales (`upcoming`) salen solo del SIU, así que Hoy y el Calendario los muestran igual y avisan que faltan las entregas.
 
-Inscribirse o darse de baja con el SIU caído no toca nada: Cursada lee el SIU antes de matricular en Moodle, y la pantalla dice «El SIU no respondió, así que no te inscribimos».
+Inscribirse o darse de baja con el SIU caído no toca nada: Cursada lee el SIU antes de matricular en Moodle, y la pantalla lo dice: en una comisión, «El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada»; en una mesa, «El SIU no respondió, así que no te inscribimos».
 
 Lo último leído vive en la memoria del proceso. Si el hosting levanta un proceso nuevo, por ejemplo una función serverless fría, la copia se pierde y la primera lectura con el sistema caído devuelve el error.
 
@@ -281,7 +281,7 @@ En la encuesta aparecen créditos perdidos porque el SIU se cayó. Para mostrar 
 
 1. **Antes de tirar nada, recorré las pantallas con todo andando:** Hoy, Mis materias, Inscripciones (abrí Física I de verano), Notas y Trámites. HackAI guarda lo que lee de cada una; una pantalla que no se abrió antes no tiene qué mostrar y, con el SIU caído, muestra el error en su parte.
 2. **En `/caidas`, «Tirar SIU Guaraní».** Volvé a Hoy: el aviso amarillo dice que el SIU no responde y desde cuándo es lo que se ve («actualizado hace 3 min»), y el próximo parcial (Análisis Matemático I, el lunes 16/11) sigue ahí. Lo mismo en Mis materias, Notas y Trámites.
-3. **En Inscripciones, la oferta de Física I sigue visible.** Intentá inscribirte en la comisión de la tarde: HackAI dice que el SIU no respondió y que no te inscribió. No queda nada a medias, ni en el SIU ni en el aula. En el SIU de hoy, ese es el momento en que se pierde el lugar o los créditos.
+3. **En Inscripciones, la oferta de Física I sigue visible.** Intentá inscribirte en la comisión de la tarde: HackAI dice «El SIU o el Campus Virtual no respondieron, así que no te inscribimos en nada». No queda nada a medias, ni en el SIU ni en el aula. En el SIU de hoy, ese es el momento en que se pierde el lugar o los créditos.
 4. **«Levantar SIU Guaraní»** y recargá: el aviso desaparece y todo está al día.
 5. **«Tirar Campus Virtual (Moodle)».** Mis materias muestra las materias igual, porque vienen del SIU, sin «Ir al aula» ni tareas y con un aviso de qué falta. Hoy avisa que faltan las entregas, pero los parciales y finales están todos.
 6. **Levantá Moodle** antes de seguir con el resto de la demo.

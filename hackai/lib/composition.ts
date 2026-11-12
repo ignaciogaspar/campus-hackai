@@ -71,7 +71,13 @@ import type { SiuPort } from '@/lib/ports/siu'
 
 export type Env = Record<string, string | undefined>
 
-export type { OutageState, OutageSwitch, OutageSystem } from '@/lib/adapters/caida'
+export {
+  isOutageSystem,
+  OUTAGE_SYSTEMS,
+  type OutageState,
+  type OutageSwitch,
+  type OutageSystem
+} from '@/lib/adapters/caida'
 
 const ADAPTERS = {
   identity: { variable: 'HACKAI_IDENTITY', values: ['memoria'] },

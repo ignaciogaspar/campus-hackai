@@ -13,8 +13,15 @@ import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
 import { type Fail, fail } from '@/lib/result'
 
-/** Los sistemas de origen que se pueden «caer». */
-export type OutageSystem = 'siu' | 'moodle'
+/** Los sistemas de origen que se pueden «caer», en el orden en que se muestran. */
+export const OUTAGE_SYSTEMS = ['siu', 'moodle'] as const
+
+export type OutageSystem = (typeof OUTAGE_SYSTEMS)[number]
+
+/** Si un valor que vino de afuera, por ejemplo de un formulario, es un sistema que se puede caer. */
+export function isOutageSystem(value: unknown): value is OutageSystem {
+  return OUTAGE_SYSTEMS.some((system) => system === value)
+}
 
 export type OutageState = Record<OutageSystem, boolean>
 
@@ -26,7 +33,7 @@ export type OutageSwitch = {
 }
 
 export function createOutageSwitch(initial: Partial<OutageState> = {}): OutageSwitch {
-  const current: OutageState = { siu: false, moodle: false, ...initial }
+  const current = Object.fromEntries(OUTAGE_SYSTEMS.map((system) => [system, initial[system] ?? false])) as OutageState
   return {
     state: () => ({ ...current }),
     set(system, down) {

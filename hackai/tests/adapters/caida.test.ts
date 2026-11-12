@@ -4,7 +4,13 @@
    igual lo prueban las baterías de contrato (tests/contracts/). */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createOutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
+import {
+  createOutageSwitch,
+  isOutageSystem,
+  OUTAGE_SYSTEMS,
+  withClassroomOutage,
+  withSiuOutage
+} from '@/lib/adapters/caida'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
@@ -90,4 +96,12 @@ test('con Moodle caído el aula devuelve «falla externa», pero el SIU sigue re
   assert.deepEqual(await classroom.enrol('401', 'c-am1-fi-a', 'student'), { ok: false, error: 'falla-externa' })
   assert.equal(classroom.courseUrl('c-am1-fi-a'), `${syntheticData.moodle.baseUrl}/course/view.php?id=c-am1-fi-a`)
   assert.equal((await siu.person(TOMAS_SIU)).ok, true)
+})
+
+test('solo el SIU y Moodle se pueden caer, y lo que llega de un formulario se chequea contra esa lista', () => {
+  assert.deepEqual([...OUTAGE_SYSTEMS], ['siu', 'moodle'])
+  assert.equal(isOutageSystem('siu'), true)
+  assert.equal(isOutageSystem('moodle'), true)
+  assert.equal(isOutageSystem('discord'), false)
+  assert.equal(isOutageSystem(undefined), false)
 })
