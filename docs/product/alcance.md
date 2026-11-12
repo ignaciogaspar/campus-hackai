@@ -35,6 +35,8 @@ Es la versión vigente. Se ajusta con lo que salga de cada validación.
 | Inscripción a finales con cupo | SIU, por el mismo flujo de inscripción | La queja número uno del SIU (54%) |
 | Constancias y certificados | SIU, con enlace directo a su Autogestión | Lo burocrático se queda donde está |
 | Notas e historia académica | SIU, mostradas desde el núcleo | Una sola fuente de verdad; la API del SIU las expone |
+| Finales pendientes: qué finales debés y su próxima mesa | Núcleo, con la historia y las mesas del SIU | El SIU no lo responde: hay que cruzar la historia con las mesas a mano |
+| Agregar parciales, finales y entregas al calendario del celular | Núcleo: un archivo .ics con lo que viene | Hoy hay dos calendarios desconectados y ninguno llega al teléfono |
 
 **Lo que el research cambia** ([SIU](../research/2026-11-10-siu-guarani-integracion.md), [Moodle](../research/2026-11-10-moodle-web-services.md), [normativa](../research/2026-11-10-burocracia-academica-y-normativa.md)):
 

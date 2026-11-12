@@ -4,20 +4,28 @@
    tus materias y las inscripciones que cierran pronto. Todo sale de Hoy en una
    sola llamada. Si una parte no se pudo leer, un aviso dice por qué y el resto
    se ve igual; si algo es lo último que se leyó, un aviso dice desde cuándo.
-   Las novedades sin leer van a la campana del encabezado, no acá. */
+   Las novedades sin leer van a la campana del encabezado, no acá.
+
+   Todo lleva a algún lado: una inscripción, a su oferta de comisiones o de
+   mesas; el próximo parcial o final, al espacio de su materia (o a su mesa, si
+   rinde libre). */
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, shortDate, timeOf } from '@/components/dates'
+import { creditsText } from '@/components/enrollment/format'
+import { offerHref } from '@/components/enrollment/offer-href'
 import { activeProgram } from '@/components/session/person-text'
 import { Avatar } from '@/components/shell/avatar'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
+import { dateHref } from '@/components/today/agenda'
 import { TodayCalendar } from '@/components/today/calendar'
 import { classSlotsOf, eventsOf, mondayOf, weekOf } from '@/components/today/calendar-layout'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
 import type { Person } from '@/lib/core/people'
-import type { TodayView } from '@/lib/core/today'
+import type { OpenEnrollment } from '@/lib/core/studies'
+import type { NextExam, TodayView } from '@/lib/core/today'
 import { dayKey } from '@/lib/dates'
 
 const UPCOMING_DOWN = 'No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.'
@@ -70,6 +78,18 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
+/* El próximo parcial o final, con su turno si es un final. Lleva al espacio de su materia, o a su mesa si rinde libre. */
+function NextName({ next }: { next: NextExam }) {
+  const text = [next.name, next.subjectName, next.examPeriod].filter(Boolean).join(' · ')
+  const href = dateHref(next, 'alumno')
+  if (!href) return text
+  return (
+    <Link href={href} className='text-blue underline-offset-2 hover:underline focus-ring'>
+      {text}
+    </Link>
+  )
+}
+
 /* Lo próximo, como los datos de una ficha: el parcial o final y la entrega. */
 function NextUp({ view }: { view: TodayView }) {
   const next = view.next
@@ -78,9 +98,11 @@ function NextUp({ view }: { view: TodayView }) {
     <section aria-label='Lo próximo' className='rounded-2xl border border-border bg-card p-5'>
       <dl className='grid gap-x-6 gap-y-4 sm:grid-cols-3'>
         <Field label={next?.kind === 'final' ? 'Próximo final' : 'Próximo parcial'}>
-          {next ? `${next.name} · ${next.subjectName}` : 'No tenés'}
+          {next ? <NextName next={next} /> : 'No tenés'}
         </Field>
-        <Field label='Cuándo'>{next ? `${longDay(next.date)} · ${timeOf(next.date)}` : '—'}</Field>
+        <Field label='Cuándo'>
+          {next ? [longDay(next.date), timeOf(next.date), next.location].filter(Boolean).join(' · ') : '—'}
+        </Field>
         <Field label='Faltan'>{next ? days(next.daysLeft) : '—'}</Field>
         <Field label='Próxima entrega'>{delivery ? `${delivery.name} · ${delivery.subjectName}` : 'No tenés'}</Field>
         <Field label='Vence'>{delivery ? `${shortDate(delivery.date)} · ${timeOf(delivery.date)}` : '—'}</Field>
@@ -122,6 +144,18 @@ function SubjectsCard({ view }: { view: TodayView }) {
   )
 }
 
+const ENROLLMENT: Record<OpenEnrollment['kind'], string> = {
+  cursada: 'Cursada de',
+  actividad: 'Actividad:',
+  examen: 'Final de'
+}
+
+/** Debajo del nombre: cuándo cierra y, si hace falta, los créditos o que falta regularizar. */
+function enrollmentNote(e: OpenEnrollment): string | null {
+  if (e.credits !== null) return creditsText(e.credits)
+  return e.needsRegularity ? 'antes regularizá la cursada' : null
+}
+
 function EnrollmentItems({ view }: { view: TodayView }) {
   const items = view.openEnrollments.slice(0, 3)
   if (view.unavailable.includes('openEnrollments'))
@@ -132,15 +166,15 @@ function EnrollmentItems({ view }: { view: TodayView }) {
       {items.map((e) => (
         <li key={`${e.kind}-${e.subjectId}`}>
           <Link
-            href={`/inscripciones?${e.kind === 'examen' ? 'tab=examenes&' : ''}materia=${encodeURIComponent(e.subjectId)}`}
+            href={offerHref(e.subjectId, e.kind)}
             className='-mx-2 block rounded-lg px-2 py-1 text-[0.8125rem] text-ink transition-colors hover:bg-white/60 focus-ring'
           >
             <span className='font-semibold'>
-              {e.kind === 'examen' ? 'Final de' : 'Cursada de'} {e.subjectName}
+              {ENROLLMENT[e.kind]} {e.subjectName}
             </span>
             <span className='block text-[0.75rem] text-ink/60'>
               Cierra el <time dateTime={e.closesAt}>{shortDate(e.closesAt)}</time>
-              {e.needsRegularity && ' · antes regularizá la cursada'}
+              {enrollmentNote(e) && ` · ${enrollmentNote(e)}`}
             </span>
           </Link>
         </li>
@@ -194,7 +228,16 @@ export function TodayScreen({ view, person }: { view: TodayView; person: Person 
           </>
         }
       />
-      <p className='text-[0.8125rem] text-muted-foreground'>{moodleDown ? ASSIGNMENTS_DOWN : MOODLE_NOTE}</p>
+      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-1'>
+        <p className='text-[0.8125rem] text-muted-foreground'>{moodleDown ? ASSIGNMENTS_DOWN : MOODLE_NOTE}</p>
+        <a
+          href='/calendario/exportar'
+          download
+          className='inline-flex min-h-11 items-center text-[0.8125rem] font-bold text-blue underline focus-ring'
+        >
+          Agregar a mi calendario
+        </a>
+      </div>
     </div>
   )
 }

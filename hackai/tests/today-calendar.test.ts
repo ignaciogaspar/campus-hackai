@@ -27,7 +27,10 @@ const item = (id: string, date: string, kind: UpcomingItem['kind'] = 'parcial'):
   subjectName: 'Análisis Matemático I',
   name: id,
   date,
-  past: false
+  past: false,
+  examPeriod: null,
+  location: null,
+  hasSection: true
 })
 
 test('la semana empieza el lunes y el mes se completa con semanas enteras', () => {
@@ -53,6 +56,35 @@ test('cada fecha cae en su día y su hora de Buenos Aires; las entregas van en l
   assert.equal(entrega.minutes, null)
   assert.equal(entrega.time, '23:59')
   assert.equal(minutesOf('2026-11-17T17:00:00.000Z'), 14 * 60)
+})
+
+test('un final dice su turno y su lugar, y el cierre de una actividad dice que es una actividad', () => {
+  const final = {
+    ...item('final', '2026-12-10T12:00:00.000Z', 'final'),
+    examPeriod: 'Turno Diciembre 2026',
+    location: 'Campus Pilar, aula 12'
+  }
+  const [event, closing] = eventsOf(
+    [final],
+    [
+      {
+        kind: 'actividad',
+        subjectId: 'tor',
+        subjectName: 'Taller de Oratoria',
+        opensAt: '2026-11-09T03:00:00.000Z',
+        closesAt: '2026-11-17T02:59:00.000Z',
+        closesInDays: 6,
+        spotsLeft: 30,
+        needsRegularity: false,
+        credits: 2
+      }
+    ],
+    null,
+    '2026-11-10T12:00:00.000Z'
+  )
+  assert.equal(event.subject, 'Análisis Matemático I · Turno Diciembre 2026')
+  assert.equal(event.place, 'Campus Pilar, aula 12')
+  assert.equal(closing.title, 'Cierra la inscripción a la actividad')
 })
 
 // Análisis I, comisión B: martes y jueves de 14 a 16, del 10/8 al 28/11.

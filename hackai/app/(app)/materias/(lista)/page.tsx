@@ -6,7 +6,8 @@
 
    Cada tarjeta lleva lo que no leíste en su espacio. Sin reglas de negocio:
    qué es actual, qué se archiva, qué está regular y qué aprobado lo deciden
-   Cursada (`subjectsOf` y `career`); qué no leíste, Espacios. Si el SIU o Moodle no
+   Cursada (`subjectsOf`, `career` y `pendingFinals`, que da la próxima mesa
+   de cada final pendiente); qué no leíste, Espacios. Si el SIU o Moodle no
    responden, muestra lo último leído con el aviso de desactualizado. */
 import { Archive, BookOpen, Hourglass, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -20,7 +21,7 @@ import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { MySubjects, StudiesReadError, SubjectStanding } from '@/lib/core/studies'
+import type { MySubjects, PendingFinal, StudiesReadError, SubjectStanding } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
@@ -102,13 +103,16 @@ function cardsFor(
   view: View,
   subjects: MySubjects,
   standings: SubjectStanding[],
-  unread: Map<string, number>
+  unread: Map<string, number>,
+  pending: PendingFinal[] | null
 ): ReactNode[] {
   const standingOf = (id: string) => standings.find((s) => s.subjectId === id)
   if (view === 'final-pendiente')
     return standings
       .filter((s) => s.status === 'regular')
-      .map((s) => <PendingFinalCard key={s.subjectId} standing={s} />)
+      .map((s) => (
+        <PendingFinalCard key={s.subjectId} standing={s} pending={pending?.find((p) => p.subjectId === s.subjectId)} />
+      ))
   if (view === 'archivadas')
     return subjects.archived.map((s) => (
       <ArchivedCard key={s.sectionId} subject={s} standing={standingOf(s.subjectId)} />
@@ -123,6 +127,20 @@ function cardsFor(
   ))
 }
 
+/** Lo que es solo del alumno: su estado en cada materia y la próxima mesa de cada final pendiente.
+    Si no se pudo leer, va vacío: las tarjetas salen sin estado y sin la próxima mesa. */
+async function standingsOf(personId: string, student: boolean) {
+  if (!student) return { standings: [], pending: null }
+  const [career, finals] = await Promise.all([
+    system().studies.career(personId),
+    system().studies.pendingFinals(personId)
+  ])
+  return {
+    standings: career.ok ? career.value.data.subjects : [],
+    pending: finals.ok ? finals.value.data : null
+  }
+}
+
 const asView = (value: string | undefined): View =>
   value === 'final-pendiente' || value === 'archivadas' ? value : 'en-curso'
 
@@ -133,17 +151,16 @@ export default async function MateriasPage({
 }) {
   const session = await requireSession()
   const student = session.role === 'alumno'
-  const [params, person, result, career, unread] = await Promise.all([
+  const [params, person, result, { standings, pending }, unread] = await Promise.all([
     searchParams,
     system().people.get(session.personId),
     system().studies.subjectsOf(session.personId),
-    student ? system().studies.career(session.personId) : null,
+    standingsOf(session.personId, student),
     system().spaces.unreadFor(session.personId)
   ])
   // Si Espacios no responde, las tarjetas van sin no leídos y la campana lo vuelve a pedir.
   const news = unread.ok ? unread.value : []
   const view = student ? asView(params.ver) : asView(params.ver === 'archivadas' ? params.ver : undefined)
-  const standings = career?.ok ? career.value.data.subjects : []
 
   return (
     <>
@@ -173,6 +190,7 @@ export default async function MateriasPage({
             page={Number(params.pagina) || 1}
             subjects={result.value.data}
             standings={standings}
+            pending={pending}
             unread={unreadBySubject(news)}
             student={student}
             stale={result.value.stale ? result.value.readAt : null}
@@ -188,6 +206,7 @@ function SubjectsView({
   page,
   subjects,
   standings,
+  pending,
   unread,
   student,
   stale
@@ -196,6 +215,7 @@ function SubjectsView({
   page: number
   subjects: MySubjects
   standings: SubjectStanding[]
+  pending: PendingFinal[] | null
   unread: Map<string, number>
   student: boolean
   stale: string | null
@@ -205,7 +225,7 @@ function SubjectsView({
     'final-pendiente': standings.filter((s) => s.status === 'regular').length,
     archivadas: subjects.archived.length
   }
-  const cards = cardsFor(view, subjects, standings, unread)
+  const cards = cardsFor(view, subjects, standings, unread, pending)
   const pages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE))
   const current = Math.min(Math.max(page, 1), pages)
   const empty = EMPTY[view]

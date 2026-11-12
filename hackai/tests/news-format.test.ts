@@ -18,6 +18,7 @@ function item(overrides: Partial<UnreadItem> & Pick<UnreadItem, 'channelId' | 'k
     subjectId: 'am1',
     subjectName: 'Análisis Matemático I',
     channelName: overrides.kind,
+    sectionId: null,
     count: 1,
     latest,
     counterpart: null,

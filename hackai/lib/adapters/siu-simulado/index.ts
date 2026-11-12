@@ -359,7 +359,7 @@ export function createSimulatedSiu({
 
     async subject(subjectId) {
       const row = await read<SiuSubject>('materia', (s) =>
-        client.from('siu_subjects').select('id, code, name').eq('id', subjectId).abortSignal(s).maybeSingle()
+        client.from('siu_subjects').select('id, code, name, credits').eq('id', subjectId).abortSignal(s).maybeSingle()
       )
       if (!row.ok) return row
       return row.value ? ok(row.value) : fail('no-encontrado')

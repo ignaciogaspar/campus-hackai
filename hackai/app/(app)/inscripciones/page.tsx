@@ -17,13 +17,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
 import { shortDate } from '@/components/dates'
-import { closingText, spotsLeftText } from '@/components/enrollment/format'
+import { closingText, creditsText, spotsLeftText } from '@/components/enrollment/format'
 import { BoardCard, SectionCard } from '@/components/enrollment/offer-detail'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { KIND, yearName } from '@/components/grades/status'
 import { activeProgram } from '@/components/session/person-text'
 import { PageHeader } from '@/components/shell/page-header'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
+import { examDetail } from '@/components/today/upcoming'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -184,7 +185,12 @@ function openItems(openings: OpenEnrollment[], standings: SubjectStanding[]): Li
     return {
       subjectId: o.subjectId,
       subjectName: o.subjectName,
-      detail: [plan, `${closingText(o.closesInDays)} (${shortDate(o.closesAt)})`, spots.full ? spots.text : null]
+      detail: [
+        plan,
+        o.credits !== null ? `Actividad · ${creditsText(o.credits)}` : null,
+        `${closingText(o.closesInDays)} (${shortDate(o.closesAt)})`,
+        spots.full ? spots.text : null
+      ]
         .filter(Boolean)
         .join(' · '),
       urgent: spots.full || (o.closesInDays >= 0 && o.closesInDays <= CLOSING_SOON_DAYS)
@@ -207,7 +213,7 @@ function mineItems(tab: Tab, sections: Read<MySection[]>, upcoming: Read<Upcomin
   return finals.map((f) => ({
     subjectId: f.subjectId,
     subjectName: f.subjectName,
-    detail: `Final del ${shortDate(f.date)}`,
+    detail: [`Final del ${shortDate(f.date)}`, examDetail(f)].filter(Boolean).join(' · '),
     urgent: false
   }))
 }
@@ -340,9 +346,10 @@ function listsFor(
   sections: Read<MySection[]>,
   upcoming: Read<UpcomingItem[]>
 ) {
-  const kind = tab === 'examenes' ? 'examen' : 'cursada'
+  // Las actividades con créditos se inscriben como una cursada: van con las materias.
+  const kinds: OpenEnrollment['kind'][] = tab === 'examenes' ? ['examen'] : ['cursada', 'actividad']
   const standings = career.ok ? career.value.data.subjects : []
-  const openings = open.ok ? open.value.data.filter((o) => o.kind === kind) : []
+  const openings = open.ok ? open.value.data.filter((o) => kinds.includes(o.kind)) : []
   const mineRead = tab === 'materias' ? sections : upcoming
   return {
     standings,

@@ -16,6 +16,7 @@ export type SignInError =
   | ErrorOf<ReturnType<People['accountIn']>>
   | ErrorOf<ReturnType<People['signIn']>>
   | 'sin-secreto'
+  | 'sesion-vencida'
 
 /** Vuelve al ingreso con el motivo y, si había, a dónde ir después de entrar. */
 function backToSignIn(error: SignInError, returnTo: string | null): never {

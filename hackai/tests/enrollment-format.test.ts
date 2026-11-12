@@ -1,7 +1,7 @@
 /* El cupo de una comisión o una mesa y el cierre de una inscripción, en palabras, con lo que calcula Cursada. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { capacityText, closingText, spotsLeftText } from '@/components/enrollment/format'
+import { capacityText, closingText, creditsText, spotsLeftText } from '@/components/enrollment/format'
 
 test('el cupo dice cuántos lugares quedan, con el verbo en singular si queda uno', () => {
   assert.deepEqual(capacityText({ capacity: 40, spotsLeft: 12 }), { text: 'Quedan 12 lugares de 40', full: false })
@@ -29,4 +29,9 @@ test('en la lista, cuántos lugares quedan entre las comisiones o mesas abiertas
   assert.deepEqual(spotsLeftText(1), { text: 'Queda 1 lugar', full: false })
   assert.deepEqual(spotsLeftText(0), { text: 'Sin cupo', full: true })
   assert.deepEqual(spotsLeftText(null), { text: 'Sin límite de cupo', full: false })
+})
+
+test('los créditos de una actividad van en singular o en plural', () => {
+  assert.equal(creditsText(1), '1 crédito')
+  assert.equal(creditsText(3), '3 créditos')
 })

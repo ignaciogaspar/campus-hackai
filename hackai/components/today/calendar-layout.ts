@@ -21,7 +21,7 @@ export type CalendarEvent = {
   code: string | null
   title: string
   subject: string
-  /** Dónde: el aula de una clase. */
+  /** Dónde: el aula de una clase o el lugar de un final, si el SIU lo da. */
   place: string | null
   tone: CalendarTone
   origin: 'siu' | 'moodle'
@@ -88,6 +88,12 @@ const toMinutes = (time: string) => {
   return h * 60 + m
 }
 
+const CLOSING: Record<OpenEnrollment['kind'], string> = {
+  cursada: 'a la cursada',
+  actividad: 'a la actividad',
+  examen: 'al final'
+}
+
 /** Las fechas de Hoy como eventos. Los parciales y finales van en su hora; las
     entregas de Moodle y los cierres de inscripción, en la fila de todo el día. */
 export function eventsOf(
@@ -106,8 +112,8 @@ export function eventsOf(
       time: hhmm(minutes),
       code: item.subjectCode,
       title: item.name,
-      subject: item.subjectName,
-      place: null,
+      subject: item.examPeriod ? `${item.subjectName} · ${item.examPeriod}` : item.subjectName,
+      place: item.location,
       tone: item.kind,
       origin: item.source,
       past: item.past,
@@ -122,7 +128,7 @@ export function eventsOf(
       end: null,
       time: null,
       code: null,
-      title: `Cierra la inscripción ${e.kind === 'examen' ? 'al final' : 'a la cursada'}`,
+      title: `Cierra la inscripción ${CLOSING[e.kind]}`,
       subject: e.subjectName,
       place: null,
       tone: 'inscripcion',

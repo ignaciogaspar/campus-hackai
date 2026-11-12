@@ -215,6 +215,8 @@ export type UnreadItem = {
   channelId: ChannelId
   channelName: string
   kind: ChannelKind
+  /** La comisión del canal, o `null` si es de la materia o directo. */
+  sectionId: string | null
   count: number
   latest: UnreadLatest
   /** En un canal directo, la otra persona: de quién es el mensaje. En el resto, `null`. */
@@ -222,6 +224,22 @@ export type UnreadItem = {
   /** Si todo lo sin leer del canal es de un mismo hilo y hay alguna respuesta, el id del mensaje que lo
       abre: la novedad lleva a ese hilo. Si no, `null` y lleva al canal. */
   thread: MessageId | null
+}
+
+/** Una consulta sin resolver que le toca responder a un docente, con cuántas respuestas tiene. */
+export type OpenQuestion = {
+  messageId: MessageId
+  channelId: ChannelId
+  spaceId: SpaceId
+  subjectId: string
+  subjectName: string
+  /** La comisión del canal, o `null` si el canal es de la materia. */
+  sectionName: string | null
+  text: string
+  author: Author
+  origin: Origin
+  createdAt: string
+  replies: number
 }
 
 /** Por qué una persona no puede entrar: no existe, no es de la materia o Cursada no respondió. */
@@ -307,6 +325,10 @@ export type Spaces = {
   syncAll(): Promise<Result<SyncReport, ExternalFailure>>
   /** Novedades sin leer de todos sus espacios, por canal, para Novedades, Hoy y la navegación. No crea espacios. */
   unreadFor(personId: PersonId): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>>
+  /** Las consultas sin resolver que le tocan responder: las de los canales de sus comisiones actuales
+      en los que puede marcarlas resueltas. La más vieja primero. A un alumno no le toca ninguna.
+      No crea espacios. */
+  openQuestions(personId: PersonId): Promise<Result<OpenQuestion[], 'persona-desconocida' | ExternalFailure>>
   /** Los bytes de un archivo guardado, con el id que lleva su URL. Del material,
       para quien es del espacio; de un adjunto, para quien ve su canal. Un id que
       no es de ningún material ni adjunto es `archivo-desconocido`. */

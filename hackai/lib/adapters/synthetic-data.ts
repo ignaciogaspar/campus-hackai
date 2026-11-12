@@ -23,6 +23,9 @@
    - Inscripciones a cursada del cuatrimestre actual, del anterior y de verano
      (con la inscripción abierta; la comisión de la mañana de Física I de
      verano está sin cupo y la de la tarde tiene lugar).
+   - Dos actividades de vida universitaria de Ingeniería que dan créditos, con
+     la inscripción abierta: el Taller de Oratoria cierra el lunes 16/11 y el
+     de Liderazgo, con el verano.
    - Mesas de examen con cupo en el turno de diciembre, con la inscripción
      abierta. A las de Álgebra y Sistemas de Representación les queda un lugar.
    - Cronograma de parciales. Las notas de parciales están repartidas como en
@@ -220,48 +223,57 @@ const terms: SiuTerm[] = [
     end: at('2027-02-26', '23:59'),
     enrollmentStart: at('2026-11-02'),
     enrollmentEnd: at('2026-12-18', '23:59')
+  },
+  {
+    id: 'act-2c-2026',
+    name: 'Actividades de Vida Universitaria 2do Cuatrimestre 2026',
+    start: at('2026-11-17'),
+    end: at('2026-11-28', '23:59'),
+    enrollmentStart: at('2026-11-09'),
+    enrollmentEnd: at('2026-11-16', '23:59')
   }
 ]
 
 const subjects: SiuSubject[] = [
-  { id: 'am1', code: 'AM1', name: 'Análisis Matemático I' },
-  { id: 'aga', code: 'AGA', name: 'Álgebra y Geometría Analítica' },
-  { id: 'pr1', code: 'PR1', name: 'Programación I' },
-  { id: 'fi1', code: 'FI1', name: 'Física I' },
-  { id: 'iec', code: 'IEC', name: 'Introducción a la Economía' },
-  { id: 'co1', code: 'CO1', name: 'Contabilidad I' },
+  { id: 'am1', code: 'AM1', name: 'Análisis Matemático I', credits: null },
+  { id: 'aga', code: 'AGA', name: 'Álgebra y Geometría Analítica', credits: null },
+  { id: 'pr1', code: 'PR1', name: 'Programación I', credits: null },
+  { id: 'fi1', code: 'FI1', name: 'Física I', credits: null },
+  { id: 'iec', code: 'IEC', name: 'Introducción a la Economía', credits: null },
+  { id: 'co1', code: 'CO1', name: 'Contabilidad I', credits: null },
   // Solo en la historia académica: se cursaron antes de los períodos del set.
-  { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería' },
-  { id: 'qui', code: 'QUI', name: 'Química General' },
-  { id: 'an1', code: 'AN1', name: 'Antropología I' },
-  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' },
+  { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería', credits: null },
+  { id: 'qui', code: 'QUI', name: 'Química General', credits: null },
+  { id: 'an1', code: 'AN1', name: 'Antropología I', credits: null },
+  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración', credits: null },
   // Del resto de los planes de estudio: todavía nadie las cursó.
-  { id: 'am2', code: 'AM2', name: 'Análisis Matemático II' },
-  { id: 'fi2', code: 'FI2', name: 'Física II' },
-  { id: 'pye', code: 'PYE', name: 'Probabilidad y Estadística' },
-  { id: 'pr2', code: 'PR2', name: 'Programación II' },
-  { id: 'edd', code: 'EDD', name: 'Estructuras de Datos' },
-  { id: 'bdd', code: 'BDD', name: 'Bases de Datos' },
-  { id: 'sop', code: 'SOP', name: 'Sistemas Operativos' },
-  { id: 'isw', code: 'ISW', name: 'Ingeniería de Software' },
-  { id: 'iop', code: 'IOP', name: 'Investigación Operativa' },
-  { id: 'ter', code: 'TER', name: 'Termodinámica' },
-  { id: 'gca', code: 'GCA', name: 'Gestión de la Calidad' },
-  { id: 'cst', code: 'CST', name: 'Costos Industriales' },
-  { id: 'etp', code: 'ETP', name: 'Ética Profesional' },
-  { id: 'pfi', code: 'PFI', name: 'Proyecto Final de Ingeniería' },
-  { id: 'cda', code: 'CDA', name: 'Ciencia de Datos' },
-  { id: 'log', code: 'LOG', name: 'Logística' },
-  { id: 'iar', code: 'IAR', name: 'Inteligencia Artificial' },
-  { id: 'mkt', code: 'MKT', name: 'Marketing' },
-  { id: 'fin', code: 'FIN', name: 'Finanzas' },
-  { id: 'co2', code: 'CO2', name: 'Contabilidad II' },
-  { id: 'ndg', code: 'NDG', name: 'Negocios Digitales' },
-  // Actividades de vida universitaria.
-  { id: 'tor', code: 'TOR', name: 'Taller de Oratoria' },
-  { id: 'vol', code: 'VOL', name: 'Voluntariado Universitario' },
-  { id: 'cor', code: 'COR', name: 'Coro Universitario' },
-  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación' }
+  { id: 'am2', code: 'AM2', name: 'Análisis Matemático II', credits: null },
+  { id: 'fi2', code: 'FI2', name: 'Física II', credits: null },
+  { id: 'pye', code: 'PYE', name: 'Probabilidad y Estadística', credits: null },
+  { id: 'pr2', code: 'PR2', name: 'Programación II', credits: null },
+  { id: 'edd', code: 'EDD', name: 'Estructuras de Datos', credits: null },
+  { id: 'bdd', code: 'BDD', name: 'Bases de Datos', credits: null },
+  { id: 'sop', code: 'SOP', name: 'Sistemas Operativos', credits: null },
+  { id: 'isw', code: 'ISW', name: 'Ingeniería de Software', credits: null },
+  { id: 'iop', code: 'IOP', name: 'Investigación Operativa', credits: null },
+  { id: 'ter', code: 'TER', name: 'Termodinámica', credits: null },
+  { id: 'gca', code: 'GCA', name: 'Gestión de la Calidad', credits: null },
+  { id: 'cst', code: 'CST', name: 'Costos Industriales', credits: null },
+  { id: 'etp', code: 'ETP', name: 'Ética Profesional', credits: null },
+  { id: 'pfi', code: 'PFI', name: 'Proyecto Final de Ingeniería', credits: null },
+  { id: 'cda', code: 'CDA', name: 'Ciencia de Datos', credits: null },
+  { id: 'log', code: 'LOG', name: 'Logística', credits: null },
+  { id: 'iar', code: 'IAR', name: 'Inteligencia Artificial', credits: null },
+  { id: 'mkt', code: 'MKT', name: 'Marketing', credits: null },
+  { id: 'fin', code: 'FIN', name: 'Finanzas', credits: null },
+  { id: 'co2', code: 'CO2', name: 'Contabilidad II', credits: null },
+  { id: 'ndg', code: 'NDG', name: 'Negocios Digitales', credits: null },
+  // Actividades de vida universitaria: dan créditos.
+  { id: 'tor', code: 'TOR', name: 'Taller de Oratoria', credits: 2 },
+  { id: 'vol', code: 'VOL', name: 'Voluntariado Universitario', credits: 2 },
+  { id: 'cor', code: 'COR', name: 'Coro Universitario', credits: 1 },
+  { id: 'lid', code: 'LID', name: 'Taller de Liderazgo', credits: 3 },
+  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación', credits: null }
 ]
 
 // Planes de estudio: [propuesta, nombre del plan, años, optativas, vida universitaria, materias por año]
@@ -283,7 +295,7 @@ const planRows: PlanRow[] = [
       5: ['pfi']
     },
     ['cda', 'log'],
-    ['tor', 'vol', 'cor']
+    ['tor', 'vol', 'cor', 'lid']
   ],
   [
     'iinf',
@@ -299,7 +311,7 @@ const planRows: PlanRow[] = [
       5: ['pfi']
     },
     ['cda', 'iar'],
-    ['tor', 'vol', 'cor']
+    ['tor', 'vol', 'cor', 'lid']
   ],
   [
     'ladm',
@@ -510,6 +522,36 @@ const sections: SiuSection[] = [
     capacity: null,
     programIds: [],
     notes: 'Las clases son por Zoom y quedan grabadas en el aula del Campus Virtual.'
+  },
+  {
+    id: 'sec-tor-fi-a',
+    name: 'Única',
+    subjectId: 'tor',
+    schoolId: 'fi',
+    termId: 'act-2c-2026',
+    teacherIds: [siu('p-darrieta')],
+    schedule: [{ day: 'jueves', start: '18:00', end: '20:00' }],
+    location: 'Campus Pilar, aula 3',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 30,
+    programIds: [],
+    notes: 'Se aprueba con la asistencia al 75% de los encuentros y una exposición final.'
+  },
+  {
+    id: 'sec-lid-fi-v',
+    name: 'Verano',
+    subjectId: 'lid',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-darrieta')],
+    schedule: [{ day: 'miercoles', start: '10:00', end: '12:00' }],
+    location: 'Virtual',
+    modality: 'virtual',
+    instance: 'promocion',
+    capacity: 40,
+    programIds: [],
+    notes: null
   },
   {
     id: 'sec-am1-fce-v',

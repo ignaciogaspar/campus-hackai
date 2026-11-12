@@ -1,19 +1,20 @@
 /* Las tarjetas de Mis materias, en grilla: una por materia, con su ícono, su
    comisión, sus horarios y lo que sigue. Hay tres vistas que arma la página:
    las que cursa (con el espacio y el aula), las que tienen el final pendiente
-   (con el acceso a inscribirse a la mesa) y las archivadas. Solo muestra lo
+   (con su próxima mesa y el acceso a inscribirse) y las archivadas. Solo muestra lo
    que le dan Cursada: qué es actual, qué está regular y qué está aprobado lo
    decide Cursada. */
 import { CalendarClock, ChevronRight, ExternalLink, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { dueTime, shortDate } from '@/components/dates'
+import { dueTime, longDay, shortDate, timeOf } from '@/components/dates'
 import { modalityName, scheduleLine } from '@/components/enrollment/format'
+import { offerHref } from '@/components/enrollment/offer-href'
 import { StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { buttonVariants } from '@/components/ui/button'
-import type { MySubject, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
+import type { MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 function Row({ icon: Icon, children }: { icon: typeof MapPin; children: ReactNode }) {
@@ -168,7 +169,38 @@ export function ArchivedCard({ subject, standing }: { subject: MySubject; standi
 }
 
 /* Una materia con la cursada regular y sin el final: la nota de cursada y el acceso a la mesa. */
-export function PendingFinalCard({ standing }: { standing: SubjectStanding }) {
+type NextBoard = NonNullable<PendingFinal['next']>
+
+/** Cómo está la inscripción a la próxima mesa; `warn` resalta lo que pide hacer algo. */
+function boardStatus(next: NextBoard): { text: string; warn: boolean } {
+  if (next.status === 'inscripto') return { text: 'Ya estás inscripto', warn: false }
+  if (next.status === 'no-abrio')
+    return { text: `La inscripción abre el ${shortDate(next.enrollmentStart)}`, warn: false }
+  if (next.status === 'sin-cupo') return { text: 'Sin cupo en esta mesa', warn: true }
+  return { text: `Inscripción abierta hasta el ${shortDate(next.enrollmentEnd)}`, warn: true }
+}
+
+/* La próxima mesa del final: turno, día, hora, lugar y cómo está la inscripción. */
+function NextBoardBox({ next }: { next: NextBoard | null }) {
+  if (!next) return <Row icon={CalendarClock}>Todavía no hay mesa a la que anotarte.</Row>
+  const status = boardStatus(next)
+  return (
+    <div className='flex flex-col gap-1 rounded-xl bg-kind-final-background px-3 py-2 text-[0.8125rem] text-ink'>
+      <span>
+        Próxima mesa: <b className='font-semibold'>{next.examPeriod}</b>
+      </span>
+      <span className='text-ink/80'>
+        <time dateTime={next.date}>{longDay(next.date)}</time> · {timeOf(next.date)} · {next.location}
+      </span>
+      <span className={cn('font-semibold', status.warn && 'text-warning-foreground')}>{status.text}</span>
+    </div>
+  )
+}
+
+/** Una materia regular sin el final aprobado. `pending` es lo que da Cursada de su próxima mesa; sin él
+    (si no se pudo leer), la tarjeta dice solo si ya está inscripto. */
+export function PendingFinalCard({ standing, pending }: { standing: SubjectStanding; pending?: PendingFinal }) {
+  const enrolled = pending ? pending.next?.status === 'inscripto' : Boolean(standing.examDate)
   return (
     <li className={CARD}>
       <CardHead
@@ -182,20 +214,26 @@ export function PendingFinalCard({ standing }: { standing: SubjectStanding }) {
         Nota de cursada:{' '}
         <b className='text-ink tabular-nums'>{standing.courseGrade?.toLocaleString('es-AR') ?? 'sin nota'}</b>
       </p>
-      {standing.examDate ? (
-        <p className='mt-auto rounded-xl bg-kind-final-background px-3 py-2 text-[0.8125rem] text-ink'>
-          Estás inscripto al final del <time dateTime={standing.examDate}>{shortDate(standing.examDate)}</time>.
-        </p>
+      {pending ? (
+        <NextBoardBox next={pending.next} />
       ) : (
-        <Link
-          href={`/inscripciones?tab=examenes&materia=${encodeURIComponent(standing.subjectId)}`}
-          className={cn(buttonVariants({ size: 'lg' }), 'mt-auto min-h-10 justify-center font-semibold')}
-        >
-          Inscribirme al final
-          <span className='sr-only'> de {standing.name}</span>
-          <ChevronRight aria-hidden data-icon='inline-end' />
-        </Link>
+        standing.examDate && (
+          <p className='rounded-xl bg-kind-final-background px-3 py-2 text-[0.8125rem] text-ink'>
+            Estás inscripto al final del <time dateTime={standing.examDate}>{shortDate(standing.examDate)}</time>.
+          </p>
+        )
       )}
+      <Link
+        href={offerHref(standing.subjectId, 'examen')}
+        className={cn(
+          buttonVariants({ size: 'lg', variant: enrolled ? 'outline' : 'default' }),
+          'mt-auto min-h-10 justify-center font-semibold'
+        )}
+      >
+        {enrolled ? 'Ver la mesa' : 'Inscribirme al final'}
+        <span className='sr-only'> de {standing.name}</span>
+        <ChevronRight aria-hidden data-icon='inline-end' />
+      </Link>
     </li>
   )
 }

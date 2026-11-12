@@ -69,12 +69,14 @@ test('arma la pantalla del alumno en una sola llamada: materias, próximos por f
   assert.deepEqual(
     view.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'tor'],
       ['examen', 'am1'],
       ['examen', 'sre'],
       ['cursada', 'cda'],
       ['cursada', 'fi1'],
       ['cursada', 'pye'],
-      ['cursada', 'vol']
+      ['actividad', 'lid'],
+      ['actividad', 'vol']
     ]
   )
   assert.equal(view.now, NOW)
@@ -98,6 +100,9 @@ test('el próximo parcial o final es el primero que no pasó, con los días que 
     name: 'Segundo parcial',
     date: '2026-11-16T11:00:00.000Z',
     past: false,
+    examPeriod: null,
+    location: null,
+    hasSection: true,
     daysLeft: 6
   })
 })
@@ -217,12 +222,14 @@ test('con Moodle caído y nada leído antes faltan las materias y sus entregas, 
   assert.deepEqual(
     result.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'tor'],
       ['examen', 'am1'],
       ['examen', 'sre'],
       ['cursada', 'cda'],
       ['cursada', 'fi1'],
       ['cursada', 'pye'],
-      ['cursada', 'vol']
+      ['actividad', 'lid'],
+      ['actividad', 'vol']
     ]
   )
   assert.equal(result.value.staleSince, null)
@@ -246,12 +253,14 @@ test('lo desactualizado se mira contra el reloj: lo que ya pasó sale pasado y l
   assert.deepEqual(
     monday.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'tor'],
       ['examen', 'am1'],
       ['examen', 'sre'],
       ['cursada', 'cda'],
       ['cursada', 'fi1'],
       ['cursada', 'pye'],
-      ['cursada', 'vol']
+      ['actividad', 'lid'],
+      ['actividad', 'vol']
     ]
   )
   assert.deepEqual(
@@ -260,9 +269,10 @@ test('lo desactualizado se mira contra el reloj: lo que ya pasó sale pasado y l
       ['cursada', 'cda'],
       ['cursada', 'fi1'],
       ['cursada', 'pye'],
-      ['cursada', 'vol']
+      ['actividad', 'lid'],
+      ['actividad', 'vol']
     ],
-    'la mesa cerró el 4/12; el verano sigue abierto'
+    'la mesa y el Taller de Oratoria cerraron; el verano sigue abierto'
   )
 })
 
@@ -320,4 +330,109 @@ test('el final al que se acaba de inscribir sale entre los próximos de Hoy y su
     false
   )
   assert.equal(after.value.staleSince, null)
+})
+
+// Hoy del docente.
+
+/** Abre AM1 con sus dos docentes y devuelve los canales de la comisión A. */
+async function am1A(spaces: ReturnType<typeof build>['spaces']) {
+  const a = await spaces.open('p-mledesma', 'am1')
+  const b = await spaces.open('p-gferreyra', 'am1')
+  assert.ok(a.ok && b.ok)
+  const channel = (name: string, sectionName: string | null) =>
+    a.value.channels.find((c) => c.name === name && c.sectionName === sectionName)?.id ?? ''
+  return {
+    spaceId: a.value.space.id,
+    avisos: channel('avisos', null) || channel('avisos', 'A'),
+    consultas: channel('consultas', null) || channel('consultas', 'A')
+  }
+}
+
+test('el Hoy del docente trae sus comisiones con sus no leídos, las consultas sin resolver y sus fechas', async () => {
+  const { today, spaces } = build()
+  const am1 = await am1A(spaces)
+  const question = await spaces.post('p-taguirre', am1.consultas, { text: '¿Entra límites?' })
+  assert.ok(question.ok)
+  await spaces.post('p-lbenitez', am1.consultas, { text: 'Yo también quiero saber', replyTo: question.value.id })
+  const direct = await spaces.openDirect('p-taguirre', am1.spaceId, 'p-mledesma')
+  assert.ok(direct.ok)
+  await spaces.post('p-taguirre', direct.value.id, { text: '¿Puedo pasar por la consulta?' })
+
+  const result = await today.teaching('p-mledesma')
+
+  assert.ok(result.ok)
+  const view = result.value
+  assert.equal(view.now, NOW)
+  // Las comisiones actuales: Álgebra es del cuatrimestre que terminó. Sus no leídos son
+  // todos los de AM1, porque es su única comisión: también lo que trajo de Moodle.
+  const total = view.unread.reduce((n, u) => n + u.count, 0)
+  assert.deepEqual(
+    view.sections.map((s) => [s.subjectCode, s.name, s.unread]),
+    [['AM1', 'A', total]]
+  )
+  assert.deepEqual(
+    view.questions.map((q) => [q.text, q.author.name, q.replies]),
+    [['¿Entra límites?', 'Tomás Aguirre', 1]]
+  )
+  assert.deepEqual(
+    view.unread.filter((u) => u.kind === 'consultas' || u.kind === 'directo').map((u) => [u.kind, u.count]),
+    [
+      ['consultas', 2],
+      ['directo', 1]
+    ]
+  )
+  // Sin lo que ya pasó, por fecha: los parciales de su comisión y las mesas que integra.
+  assert.deepEqual(
+    view.dates.map((d) => [d.subjectCode, d.name, d.location]),
+    [
+      ['AM1', 'Segundo parcial', null],
+      ['AM1', 'Recuperatorio', null],
+      ['AGA', 'Final', 'Campus Pilar, aula 12'],
+      ['AM1', 'Final', 'Campus Pilar, aula 14']
+    ]
+  )
+  assert.equal(view.staleSince, null)
+  assert.deepEqual(view.unavailable, [])
+})
+
+test('sin nada pendiente, el Hoy del docente sale con sus comisiones y sin consultas ni no leídos', async () => {
+  // Sin avisos ni recursos de Moodle, abrir un espacio no deja nada sin leer.
+  const data = structuredClone(syntheticData)
+  data.moodle.announcements = []
+  data.moodle.contents = []
+  const { today } = build(data)
+
+  const result = await today.teaching('p-gferreyra')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.sections.map((s) => [s.subjectCode, s.name, s.unread]),
+    [
+      ['AM1', 'B', 0],
+      ['FI1', 'Verano', 0],
+      ['FI1', 'Verano tarde', 0]
+    ]
+  )
+  assert.deepEqual(result.value.questions, [])
+  assert.deepEqual(result.value.unread, [])
+})
+
+test('con el SIU caído, el Hoy del docente muestra lo último que leyó; sin nada leído, todo no disponible', async () => {
+  const { today, siuState, advance } = build()
+  const first = await today.teaching('p-mledesma')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+  const stale = await today.teaching('p-mledesma')
+  const empty = await today.teaching('p-gferreyra')
+
+  assert.ok(stale.ok)
+  assert.deepEqual(stale.value.sections, first.value.sections)
+  assert.equal(stale.value.staleSince, NOW)
+  assert.deepEqual(stale.value.unavailable, [])
+  assert.ok(empty.ok)
+  assert.deepEqual(empty.value.sections, [])
+  assert.deepEqual(empty.value.unavailable, ['sections', 'dates', 'questions', 'unread'])
+  assert.deepEqual(await today.teaching('p-nadie'), { ok: false, error: 'persona-desconocida' })
 })

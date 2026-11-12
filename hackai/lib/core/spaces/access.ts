@@ -75,6 +75,22 @@ export function membershipFrom(personId: PersonId, sections: MySection[], staleS
   }
 }
 
+/** Una membresía por materia de sus comisiones actuales, con la facultad de la primera. Para lo que
+    junta todos sus espacios (no leídos, consultas sin resolver): las archivadas no cuentan. */
+export function currentMemberships(personId: PersonId, sections: MySection[]): Membership[] {
+  const current = sections.filter((s) => s.current)
+  const subjectIds = [...new Set(current.map((s) => s.subjectId))]
+  return subjectIds.map((subjectId) => {
+    const ofSubject = current.filter((s) => s.subjectId === subjectId)
+    const school = ofSubject[0].schoolId
+    return membershipFrom(
+      personId,
+      ofSubject.filter((s) => s.schoolId === school),
+      null
+    )
+  })
+}
+
 export function membershipInSpace(
   studies: Studies,
   personId: PersonId,

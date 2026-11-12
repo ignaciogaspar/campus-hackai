@@ -9,6 +9,7 @@
    Sí lo vuelve a ejecutar `router.refresh()`, que es como UnreadRefresh baja
    estos no leídos al leer un canal. */
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
 import { unreadBySubject } from '@/components/news/format'
 import { activeProgram } from '@/components/session/person-text'
@@ -35,6 +36,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     system().spaces.unreadFor(session.personId),
     cookies()
   ])
+  if (!person.ok && person.error === 'persona-desconocida') redirect('/salir')
 
   // Espacios da los no leídos por canal: la barra muestra la suma de cada materia.
   const bySubject = unreadBySubject(unread.ok ? unread.value : [])

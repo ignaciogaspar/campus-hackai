@@ -3,7 +3,7 @@
 begin;
 
 delete from moodle_enrolments e where not exists (
-  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('302', 'c-fi1-fi-vt'), ('304', 'c-pr1-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
+  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('302', 'c-fi1-fi-vt'), ('304', 'c-pr1-fi-v'), ('304', 'c-tor-fi-a'), ('304', 'c-lid-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
   where keep.user_id = e.user_id and keep.course_id = e.course_id
 );
 
@@ -38,6 +38,8 @@ insert into moodle_courses (id, short_name, full_name, siu_section_ids) values
   ('c-fi1-fi-v', 'VERANO-2027-FI1-FI-Verano', 'Física I - Comisión Verano (FI) - Curso de Verano 2027', array['sec-fi1-fi-v']::text[]),
   ('c-fi1-fi-vt', 'VERANO-2027-FI1-FI-Verano tarde', 'Física I - Comisión Verano tarde (FI) - Curso de Verano 2027', array['sec-fi1-fi-vt']::text[]),
   ('c-pr1-fi-v', 'VERANO-2027-PR1-FI-Verano', 'Programación I - Comisión Verano (FI) - Curso de Verano 2027', array['sec-pr1-fi-v']::text[]),
+  ('c-tor-fi-a', 'ACT-2C-2026-TOR-FI-Única', 'Taller de Oratoria - Comisión Única (FI) - Actividades de Vida Universitaria 2do Cuatrimestre 2026', array['sec-tor-fi-a']::text[]),
+  ('c-lid-fi-v', 'VERANO-2027-LID-FI-Verano', 'Taller de Liderazgo - Comisión Verano (FI) - Curso de Verano 2027', array['sec-lid-fi-v']::text[]),
   ('c-am1-fce-v', 'VERANO-2027-AM1-FCE-Verano', 'Análisis Matemático I - Comisión Verano (FCE) - Curso de Verano 2027', array['sec-am1-fce-v']::text[]),
   ('c-pye-fi-va', 'VERANO-2027-PYE-FI-Verano A', 'Probabilidad y Estadística - Comisión Verano A (FI) - Curso de Verano 2027', array['sec-pye-fi-va']::text[]),
   ('c-pye-fi-vb', 'VERANO-2027-PYE-FI-Verano B', 'Probabilidad y Estadística - Comisión Verano B (FI) - Curso de Verano 2027', array['sec-pye-fi-vb']::text[]),
@@ -57,6 +59,8 @@ insert into moodle_enrolments (user_id, course_id, role) values
   ('302', 'c-fi1-fi-v', 'editingteacher'),
   ('302', 'c-fi1-fi-vt', 'editingteacher'),
   ('304', 'c-pr1-fi-v', 'editingteacher'),
+  ('304', 'c-tor-fi-a', 'editingteacher'),
+  ('304', 'c-lid-fi-v', 'editingteacher'),
   ('303', 'c-am1-fce-v', 'editingteacher'),
   ('306', 'c-pye-fi-va', 'editingteacher'),
   ('307', 'c-pye-fi-vb', 'editingteacher'),

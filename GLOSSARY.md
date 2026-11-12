@@ -75,6 +75,10 @@ _Avoid_: «disponible» o «archivada» para el estado: esas palabras son de Mat
 Unidad del plan que se cursa y se aprueba. El SIU la llama «actividad» y usa la misma palabra para extracurriculares (ayudantías, viajes, Vida Universitaria).
 _Avoid_: «actividad» en nuestra UI; «curso» (es de Moodle y de Campus Austral).
 
+**Actividad con créditos (Credit activity)**:
+Actividad extracurricular del SIU (un taller, un curso de Vida Universitaria) que da créditos al aprobarla. Se inscribe igual que una cursada, a una comisión de un período lectivo. En la UI se llama «Actividad»; el valor de dominio es `'actividad'`.
+_Avoid_: «materia» para estas actividades; «actividad» para una materia del plan.
+
 **Correlativa (Prerequisite)**:
 Materia que hay que tener regularizada o aprobada para poder cursar o rendir otra. El plan las muestra de a una, con requisito y condición.
 _Avoid_: «requisito» a secas (se confunde con requisito de ingreso).
