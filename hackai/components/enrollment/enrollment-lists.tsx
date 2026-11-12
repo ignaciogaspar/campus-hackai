@@ -2,8 +2,8 @@
 
 import { ChevronLeft, ChevronRight, ClipboardList, MousePointerClick } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { type ReactNode, startTransition, useOptimistic } from 'react'
+import { useSearchParams } from 'next/navigation'
+import type { ReactNode } from 'react'
 import {
   asKind,
   href,
@@ -20,32 +20,15 @@ import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { cn } from '@/lib/utils'
 
-function SubjectRow({
-  tab,
-  kind,
-  item,
-  active,
-  select
-}: {
-  tab: Tab
-  kind: Kind
-  item: ListItem
-  active: boolean
-  select: (id: string) => void
-}) {
+function SubjectRow({ tab, kind, item, active }: { tab: Tab; kind: Kind; item: ListItem; active: boolean }) {
   return (
     <li>
-      <Link
+      <a
         href={href(tab, item.subjectId, kind)}
-        prefetch={false}
-        onNavigate={(event) => {
-          event.preventDefault()
-          select(item.subjectId)
-        }}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-ring',
-          active ? 'bg-accent' : 'hover:bg-ink/4'
+          active ? 'bg-accent' : 'hover:bg-ink/4 active:bg-accent'
         )}
       >
         <SubjectIcon name={item.subjectName} size='md' tone={active ? 'solid' : 'soft'} />
@@ -68,7 +51,7 @@ function SubjectRow({
           )}
           strokeWidth={2}
         />
-      </Link>
+      </a>
     </li>
   )
 }
@@ -78,15 +61,13 @@ function ListGroup({
   tab,
   kind,
   items,
-  selected,
-  select
+  selected
 }: {
   title: string
   tab: Tab
   kind: Kind
   items: ListItem[]
   selected: string | undefined
-  select: (id: string) => void
 }) {
   return (
     <div className='flex flex-col gap-1'>
@@ -96,14 +77,7 @@ function ListGroup({
       </h2>
       <ul className='flex flex-col gap-1'>
         {items.map((item) => (
-          <SubjectRow
-            select={select}
-            key={item.subjectId}
-            tab={tab}
-            kind={kind}
-            item={item}
-            active={item.subjectId === selected}
-          />
+          <SubjectRow key={item.subjectId} tab={tab} kind={kind} item={item} active={item.subjectId === selected} />
         ))}
       </ul>
     </div>
@@ -169,8 +143,7 @@ function SubjectList({
   open,
   mine,
   mineError,
-  selected,
-  select
+  selected
 }: {
   tab: Tab
   kind: Kind
@@ -178,7 +151,6 @@ function SubjectList({
   mine: ListItem[]
   mineError: string | null
   selected: string | undefined
-  select: (id: string) => void
 }) {
   const filter = matches(tab === 'materias' ? kind : 'todas')
   const shownOpen = open.filter(filter)
@@ -190,18 +162,10 @@ function SubjectList({
           {emptyText(tab, kind)}
         </EmptyState>
       ) : (
-        <ListGroup
-          select={select}
-          title='Con inscripción abierta'
-          tab={tab}
-          kind={kind}
-          items={shownOpen}
-          selected={selected}
-        />
+        <ListGroup title='Con inscripción abierta' tab={tab} kind={kind} items={shownOpen} selected={selected} />
       )}
       {shownMine.length > 0 && (
         <ListGroup
-          select={select}
           title={tab === 'materias' ? 'Tus cursadas' : 'Tus finales'}
           tab={tab}
           kind={kind}
@@ -234,19 +198,11 @@ export function EnrollmentLists({
   error: string | null
 }) {
   const params = useSearchParams()
-  const router = useRouter()
   const tab = params.get('tab') === 'examenes' ? 'examenes' : 'materias'
   const selected = params.get('materia') ?? undefined
   const kind = asKind(params.get('tipo') ?? undefined)
   const listKind = tab === 'materias' ? kind : 'todas'
-  const [pendingSubject, setPendingSubject] = useOptimistic(selected)
   const { open, mine, mineError } = lists[tab]
-  const select = (id: string) => {
-    startTransition(() => {
-      setPendingSubject(id)
-      router.push(href(tab, id, kind))
-    })
-  }
 
   return (
     <>
@@ -283,15 +239,7 @@ export function EnrollmentLists({
           >
             {tab === 'materias' && <KindFilter current={listKind} counts={kindCounts(open)} selected={selected} />}
             <div className='relative min-h-0 flex-1 lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]'>
-              <SubjectList
-                tab={tab}
-                kind={kind}
-                open={open}
-                mine={mine}
-                mineError={mineError}
-                selected={pendingSubject}
-                select={select}
-              />
+              <SubjectList tab={tab} kind={kind} open={open} mine={mine} mineError={mineError} selected={selected} />
             </div>
           </section>
 

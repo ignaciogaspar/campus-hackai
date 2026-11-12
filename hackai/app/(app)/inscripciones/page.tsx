@@ -208,6 +208,8 @@ export default async function InscripcionesPage({
   searchParams: Promise<{ tab?: string; materia?: string; tipo?: string }>
 }) {
   const session = await requireSession('alumno')
+  const params = await searchParams
+  const content = <EnrollmentContent personId={session.personId} params={params} />
   return (
     <>
       <PageHeader
@@ -217,15 +219,19 @@ export default async function InscripcionesPage({
       />
 
       <main className='mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8 lg:pb-6'>
-        <Suspense
-          fallback={
-            <div role='status' className='min-h-[30rem] text-sm text-muted-foreground'>
-              Cargando inscripciones…
-            </div>
-          }
-        >
-          <EnrollmentContent personId={session.personId} searchParams={searchParams} />
-        </Suspense>
+        {params.materia ? (
+          content
+        ) : (
+          <Suspense
+            fallback={
+              <div role='status' className='min-h-[30rem] text-sm text-muted-foreground'>
+                Cargando inscripciones…
+              </div>
+            }
+          >
+            {content}
+          </Suspense>
+        )}
       </main>
     </>
   )
@@ -233,12 +239,11 @@ export default async function InscripcionesPage({
 
 async function EnrollmentContent({
   personId,
-  searchParams
+  params
 }: {
   personId: string
-  searchParams: Promise<{ tab?: string; materia?: string }>
+  params: { tab?: string; materia?: string }
 }) {
-  const params = await searchParams
   const tab: Tab = params.tab === 'examenes' ? 'examenes' : 'materias'
   const selected = params.materia || undefined
   const studies = system().studies
