@@ -1,12 +1,14 @@
 /* Mis materias: las del período lectivo actual arriba y las archivadas aparte,
-   leídas del SIU y de Moodle por Cursada, con el enlace al aula y las tareas
-   con fecha. Sirve al alumno y al docente. Si el SIU o Moodle no responden,
-   muestra lo último que leyó Cursada con el aviso de desactualizado y su hora.
-   Sin reglas de negocio: qué es actual, qué se archiva, qué facultad ve cada
-   uno, qué tarea venció y cuándo algo está desactualizado lo decide Cursada. */
+   leídas del SIU y de Moodle por Cursada, con el enlace al aula, las tareas
+   con fecha y lo que no leíste en cada espacio. Sirve al alumno y al docente.
+   Si el SIU o Moodle no responden, muestra lo último que leyó Cursada con el
+   aviso de desactualizado y su hora. Sin reglas de negocio: qué es actual, qué
+   se archiva, qué facultad ve cada uno, qué tarea venció y cuándo algo está
+   desactualizado lo decide Cursada; qué no leíste, Espacios. */
 import { BookOpen, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { unreadBySubject, unreadTotal } from '@/components/novedades/format'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedSubjects, CurrentSubjects } from '@/components/subjects/subject-list'
 import { StaleBanner } from '@/components/ui/stale-banner'
@@ -24,14 +26,21 @@ const ERRORS: Partial<Record<StudiesReadError, string>> = {
 
 export default async function MateriasPage() {
   const session = await requireSession()
-  const [person, result] = await Promise.all([
+  const [person, result, unread] = await Promise.all([
     system().people.get(session.personId),
-    system().studies.subjectsOf(session.personId)
+    system().studies.subjectsOf(session.personId),
+    system().spaces.unreadFor(session.personId)
   ])
+  // Si Espacios no responde, las tarjetas van sin no leídos y la campana lo vuelve a pedir.
+  const news = unread.ok ? unread.value : []
 
   return (
     <>
-      <PageHeader title='Mis materias' school={person.ok ? person.value.school.name : undefined}>
+      <PageHeader
+        title='Mis materias'
+        school={person.ok ? person.value.school.name : undefined}
+        unread={unread.ok ? unreadTotal(news) : undefined}
+      >
         {session.role === 'alumno' && (
           <Link
             href='/inscripciones'
@@ -55,7 +64,7 @@ export default async function MateriasPage() {
                 Actuales
               </h2>
               {result.value.data.current.length ? (
-                <CurrentSubjects subjects={result.value.data.current} />
+                <CurrentSubjects subjects={result.value.data.current} unread={unreadBySubject(news)} />
               ) : (
                 <EmptyState icon={BookOpen} title='Sin materias en curso'>
                   No tenés materias en curso ni del próximo período.

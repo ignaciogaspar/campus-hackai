@@ -1,9 +1,9 @@
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { type ReactNode, Suspense } from 'react'
 import { Brand } from '@/components/shell/brand'
 import { InstallButton } from '@/components/shell/install-button'
-import { NotificationsBell } from '@/components/shell/notifications-bell'
+import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -16,7 +16,8 @@ type Props = {
   backHref?: string
   /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
   hideBackOnDesktop?: boolean
-  /** Lo sin leer de todas las materias, para la campana. */
+  /** Lo sin leer de todas las materias, para la campana, si la pantalla ya lo leyó de Espacios.
+      Si no viene, la campana se lo pide a Espacios con la sesión. */
   unread?: number
   /** Pantallas sin sesión, como el ingreso: no hay barra lateral ni novedades,
       así que la marca se ve también en compu y no va la campana. */
@@ -33,7 +34,7 @@ export function PageHeader({
   school,
   backHref,
   hideBackOnDesktop,
-  unread = 0,
+  unread,
   signedOut = false,
   actions,
   children
@@ -58,7 +59,14 @@ export function PageHeader({
         </div>
         <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
           <InstallButton />
-          {!signedOut && <NotificationsBell unread={unread} />}
+          {!signedOut &&
+            (unread === undefined ? (
+              <Suspense fallback={<NotificationsBell unread={0} />}>
+                <SessionBell />
+              </Suspense>
+            ) : (
+              <NotificationsBell unread={unread} />
+            ))}
           {actions}
         </div>
         <div className='col-start-1 mt-2 lg:mt-0'>
