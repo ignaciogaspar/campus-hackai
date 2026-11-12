@@ -5,16 +5,14 @@ import 'server-only'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
+import type { Role } from '@/lib/core/people'
 import {
   createSessionToken,
-  type Role,
   SESSION_COOKIE,
   SESSION_MAX_AGE,
   type Session,
   verifySessionToken
 } from '@/lib/session-token'
-
-export type { Role, Session }
 
 /** La pantalla de inicio de cada rol. Por ahora es Hoy para los dos. */
 export function homeFor(_role: Role): string {

@@ -139,6 +139,44 @@ if [ -n "$con_politicas" ]; then
     'sacá los create policy: todo acceso pasa por el servidor con el service role.'
 fi
 
+# --- Puertos y adaptadores: reglas de import ------------------------------
+# hackai/docs/ARQUITECTURA.md, «Reglas de import» (ADR 0004).
+
+# Los imports (from '…', import '…', import('…') o require('…')) hacia <destinos>,
+# sin contar las líneas comentadas: buscar_imports <destinos ERE> <pathspec>...
+buscar_imports() {
+  patron="(from|import|require)[[:space:]]*\\(?[[:space:]]*[\"'](${1})"
+  shift
+  if [ "$modo" = staged ]; then
+    git grep --cached -nIE "$patron" -- "$@"
+  else
+    git grep -nIE "$patron" HEAD -- "$@" | sed 's/^HEAD://'
+  fi | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|/?\*)' | sed 's/^/    /' | cut -c1-160
+}
+
+# El núcleo no importa adaptadores, composition, pantallas (app/, components/) ni
+# el cliente de la base: solo puertos, otros módulos del núcleo y piezas de lib/.
+nucleo=$(buscar_imports '@/lib/(adapters|composition)([/"'"'"'.]|$)|@/(app|components)/|@supabase/|(\.\./)+(adapters|composition|app|components)[/"'"'"'.]' \
+  'hackai/lib/core/' 2>/dev/null)
+if [ -n "$nucleo" ]; then
+  romper 'El núcleo no importa adaptadores, pantallas ni la base (AGENTS.md, «Reglas duras»; ADR 0004).' \
+    "  Estos imports de hackai/lib/core/ salen del núcleo:
+$nucleo" \
+    'importá el puerto (lib/ports/) o la interfaz del otro módulo del núcleo; el adaptador lo elige y lo pasa lib/composition.ts.'
+fi
+
+# Solo composition conoce los adaptadores. Los tests y los scripts de hackai/
+# arman los suyos, así que pueden importarlos.
+adaptadores=$(buscar_imports '@/lib/adapters/|(\.\.?/)+adapters/' \
+  'hackai/app/' 'hackai/components/' 'hackai/lib/' \
+  ':(exclude)hackai/lib/adapters/' ':(exclude)hackai/lib/composition.ts' ':(exclude)hackai/lib/core/' 2>/dev/null)
+if [ -n "$adaptadores" ]; then
+  romper 'Solo composition conoce los adaptadores (AGENTS.md, «Reglas duras»; ADR 0004).' \
+    "  Estos archivos importan lib/adapters/ fuera de lib/composition.ts:
+$adaptadores" \
+    'pedí los módulos armados a lib/composition.ts (system()) en vez de importar el adaptador.'
+fi
+
 # --- Sumar un paquete requiere una ADR ------------------------------------
 
 if [ -n "$(cambiados -- hackai/package.json)" ]; then

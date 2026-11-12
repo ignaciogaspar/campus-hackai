@@ -101,6 +101,62 @@ printf 'create table people (id int);\nalter table public.people enable row leve
 commit 'feat: people'
 espera falla 'RLS: una migración con create policy' "$inicio"
 
+# --- Reglas de import ---
+# nucleo <archivo> <línea>: un módulo del núcleo con esa línea, más un import permitido.
+nucleo() {
+  mkdir -p hackai/lib/core/people
+  printf "import type { SiuPort } from '@/lib/ports/siu'\n%s\n" "$1" > hackai/lib/core/people/index.ts
+}
+
+repo imports-ok
+nucleo "import { ok } from '@/lib/result'
+import type { Studies } from '@/lib/core/studies'
+// Nunca: import { x } from '@/lib/adapters/memoria'
+/* ni import '@/components/ui/button' */"
+mkdir -p hackai/lib/adapters/memoria hackai/app hackai/tests
+echo "import { memorySiu } from '@/lib/adapters/memoria/siu'" > hackai/lib/composition.ts
+echo "import type { SiuPort } from '@/lib/ports/siu'" > hackai/lib/adapters/memoria/siu.ts
+echo "import { system } from '@/lib/composition'" > hackai/app/page.tsx
+echo "import { memorySiu } from '@/lib/adapters/memoria/siu'" > hackai/tests/siu.test.ts
+commit 'feat: módulos'
+espera pasa 'imports: núcleo con puertos y módulos, adaptadores solo en composition y tests' "$inicio"
+
+repo nucleo-adaptador
+nucleo "import { memorySiu } from '@/lib/adapters/memoria/siu'"
+commit 'feat: people'
+espera falla 'imports: el núcleo importa un adaptador' "$inicio"
+
+repo nucleo-adaptador-relativo
+nucleo "import { memorySiu } from '../../adapters/memoria/siu'"
+commit 'feat: people'
+espera falla 'imports: el núcleo importa un adaptador con una ruta relativa' "$inicio"
+
+repo nucleo-pantalla
+nucleo "import { Button } from '@/components/ui/button'"
+commit 'feat: people'
+espera falla 'imports: el núcleo importa un componente' "$inicio"
+
+repo nucleo-app
+nucleo "const page = await import('@/app/hoy/page')"
+commit 'feat: people'
+espera falla 'imports: el núcleo importa una pantalla de app/' "$inicio"
+
+repo nucleo-base
+nucleo "import { createClient } from '@supabase/supabase-js'"
+commit 'feat: people'
+espera falla 'imports: el núcleo importa el cliente de la base' "$inicio"
+
+repo nucleo-staged
+nucleo "export { system } from '@/lib/composition'"
+g add -A
+espera falla 'imports: en stage, el núcleo importa composition' --staged
+
+repo adaptador-en-pantalla
+mkdir -p hackai/app
+echo "import { memorySiu } from '@/lib/adapters/memoria/siu'" > hackai/app/page.tsx
+commit 'feat: hoy'
+espera falla 'imports: una pantalla importa un adaptador sin pasar por composition' "$inicio"
+
 # --- Dependencias con ADR ---
 repo dependencia-sin-adr
 printf '{\n  "dependencies": { "next": "15" },\n  "devDependencies": { "husky": "9" }\n}\n' > hackai/package.json

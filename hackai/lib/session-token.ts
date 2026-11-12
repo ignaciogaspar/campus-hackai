@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { isRole, type Role } from '@/lib/core/people'
 
-export type Role = 'alumno' | 'profesor'
 export type Session = { personId: string; role: Role }
 
 export const SESSION_COOKIE = 'hackai_session'
@@ -34,7 +34,7 @@ export function verifySessionToken(token: string | undefined | null): Session | 
   try {
     const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'))
     if (typeof data.personId !== 'string') return null
-    if (data.role !== 'alumno' && data.role !== 'profesor') return null
+    if (!isRole(data.role)) return null
     if (typeof data.exp !== 'number' || data.exp < Math.floor(Date.now() / 1000)) return null
     return { personId: data.personId, role: data.role }
   } catch {

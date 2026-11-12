@@ -1,7 +1,7 @@
 /* Cliente de Supabase con service role para los adaptadores que arma
-   `composition`. Es el mismo cliente que `db()` de lib/db.ts, pero lee las
-   variables del `env` que recibe y no importa 'server-only', para que
-   `compose()` se pueda armar en los tests. Solo lo usa el servidor. */
+   `composition`. Lee las variables del `env` que recibe y no importa
+   'server-only', para que `compose()` se pueda armar en los tests. Solo lo usa
+   el servidor. */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 export function supabaseFromEnv(env: Record<string, string | undefined>): SupabaseClient {

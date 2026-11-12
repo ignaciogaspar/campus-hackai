@@ -71,6 +71,7 @@ import type {
   SiuPerson,
   SiuProgram,
   SiuProvisionalResult,
+  SiuRole,
   SiuSchool,
   SiuSection,
   SiuStudyPlan,
@@ -138,7 +139,7 @@ const aspirantes: SiuProgram = { id: 'asp-fi', name: 'Aspirantes - fi', status: 
 
 // Personas: [id HackAI, id SIU, id Moodle, id Discord, apellido, nombres, rol, facultad, propuestas]
 
-type Row = [string, string, string, string | null, string, string, 'alumno' | 'profesor', SiuSchool, SiuProgram[]]
+type Row = [string, string, string, string | null, string, string, SiuRole, SiuSchool, SiuProgram[]]
 
 const rows: Row[] = [
   ['p-mledesma', '20101', '301', '1290000000000000001', 'Ledesma', 'Mariana', 'profesor', fi, []],

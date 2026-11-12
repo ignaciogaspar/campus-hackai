@@ -6,8 +6,9 @@
    redirecciones: tiene que responder 200 y no mostrar ninguno de los errores
    que las pantallas le muestran a la persona. La lista de pantallas está acá
    y en ningún otro lado: una pantalla nueva se suma a `DEMO_SCREENS`. */
+
+import type { Role } from '@/lib/core/people'
 import { messageOf } from '@/lib/result'
-import type { Role } from '@/lib/session-token'
 
 export type DemoScreens = {
   personId: string

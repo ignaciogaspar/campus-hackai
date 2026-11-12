@@ -2,13 +2,13 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* No hay modo oscuro: los dark: de los componentes de shadcn/ui quedan atados a
+   una clase .dark que nada pone, en vez de seguir la preferencia del sistema. */
 @custom-variant dark (&:is(.dark *));
 
 /* Sistema visual: dirección B, «Profundo» (docs/design/direccion-de-diseno.md,
    ticket #8). Tailwind y shadcn/ui (ADR 0006): los tokens de shadcn (--primary,
-   --background…) toman los colores de la Austral. Las clases sueltas de abajo
-   (.page, .card, .btn…) son las de antes y se van reemplazando por utilidades y
-   componentes de components/ui/. */
+   --background…) toman los colores de la Austral. */
 :root {
   --azul: #1d21a9;
   --blue-light: #1f5cff;
@@ -74,27 +74,7 @@
   --border: var(--borde);
   --input: var(--borde);
   --ring: var(--blue-light);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
   --radius: 0.875rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  line-height: 1.5;
 }
 
 @layer base {
@@ -133,54 +113,8 @@ body {
   &:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; }
 }
 
-.page { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
-.page-head { margin-bottom: 24px; }
-.page-head h1 { margin: 4px 0 8px; font-size: 1.75rem; line-height: 1.2; }
-.seccion { margin-top: 32px; }
-.card { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
-.stack { display: flex; flex-direction: column; gap: 12px; }
-.fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.muted { color: var(--gris); }
-.chico { font-size: 0.875rem; }
-.vacio { padding: 24px; text-align: center; color: var(--gris); border: 1px dashed var(--borde); border-radius: 12px; }
-
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; color: var(--tinta); font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
-.btn-primario { background: var(--azul); border-color: var(--azul); color: #fff; }
-.btn-ghost { background: transparent; }
-.btn-sm { min-height: 32px; padding: 4px 10px; font-size: 0.875rem; }
-
-.form { display: flex; flex-direction: column; gap: 16px; }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.input, .select, .textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; font: inherit; color: inherit; }
-.ayuda { font-size: 0.8125rem; color: var(--gris); }
-
-.alerta { padding: 12px 16px; border-radius: 8px; border: 1px solid var(--borde); background: #fff; }
-.alerta-error { border-color: #d43c3c; background: #fdeeee; }
-.alerta-ok { border-color: #2f9e5b; background: #ecf8f0; }
-.alerta-aviso { border-color: var(--warning); background: var(--warning-background); }
-
-.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--hielo); border: 1px solid var(--borde); font-size: 0.75rem; font-weight: 600; }
-
-.tabla-scroll { overflow-x: auto; }
-.tabla { width: 100%; border-collapse: collapse; }
-.tabla th, .tabla td { padding: 8px 12px; border-bottom: 1px solid var(--borde); text-align: left; }
-
 @theme inline {
-  --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -252,40 +186,6 @@ body {
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {

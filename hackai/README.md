@@ -35,7 +35,7 @@ Cada PR a `main` corre en GitHub Actions (`.github/workflows/`):
 | Workflow | Cuándo | Qué hace |
 | --- | --- | --- |
 | `ci.yml` | Si cambia código de `hackai/` | `npm ci`, Biome (con anotaciones en el diff), typecheck, tests, build y una prueba de humo: levanta el servidor standalone y pide `/api/health` y `/`. Sin secretos: usa los adaptadores en memoria. |
-| `reglas.yml` | En todos los PRs, también los de docs | `scripts/checks/reglas.sh`: las reglas duras de `AGENTS.md` que se ven en git. Un commit que toca `campus/` no toca nada más, no hay tablas `siu_*` ni `moodle_*` en `supabase/migrations/`, cada tabla activa RLS sin políticas, un paquete nuevo viene con su ADR y no hay `.env` ni claves en el diff. Antes corre `reglas.test.sh`, que prueba cada regla. |
+| `reglas.yml` | En todos los PRs, también los de docs | `scripts/checks/reglas.sh`: las reglas duras de `AGENTS.md` que se ven en git. Un commit que toca `campus/` no toca nada más, no hay tablas `siu_*` ni `moodle_*` en `supabase/migrations/`, cada tabla activa RLS sin políticas, el núcleo (`lib/core/`) no importa adaptadores, `composition`, pantallas ni el cliente de la base, solo `lib/composition.ts` importa adaptadores (los tests y los scripts también pueden), un paquete nuevo viene con su ADR y no hay `.env` ni claves en el diff. Antes corre `reglas.test.sh`, que prueba cada regla. |
 | `claude-review.yml` | Al abrir o reabrir un PR, al pasarlo de draft a listo, y en un push si el PR todavía no tiene la label `revisado-por-claude` | Review de Claude según [`docs/agents/review.md`](../docs/agents/review.md): contra la issue que cierra el PR, las reglas de `AGENTS.md` y los bugs, con un comentario en línea por hallazgo y un resumen. Corre una vez por PR. |
 | `claude.yml` | Cuando alguien comenta `@claude` en un PR o una issue | Claude responde: «@claude revisá de nuevo» pide otra review con la misma guía. |
 
@@ -275,7 +275,6 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `HACKAI_DEMO_SUPABASE_REF` | El ref del proyecto de Supabase de la demo. Sin ella, o si las URLs apuntan a otro proyecto, `npm run demo:preparar` se niega. Ver «Base de la demo». |
 | `SESSION_SECRET` | Firma la cookie de sesión `hackai_session`. Sin ella no se puede entrar. |
 | `CRON_SECRET` | Secreto de la corrida periódica (`/api/cron/sync`). Sin ella la ruta queda cerrada. Ver «Corrida periódica». |
-| `ANTHROPIC_API_KEY` | API de Claude. |
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
@@ -288,8 +287,6 @@ No las imprimas en logs ni en reportes.
 
 | Archivo | Qué trae |
 | --- | --- |
-| `lib/db.ts` | `db()`, el cliente de Supabase con service role, y `must(res, what)`, que devuelve `data` o tira un error. |
-| `lib/claude.ts` | `claude()`, `MODEL_LIVE`, `MODEL_AUTHORING`. |
 | `lib/session-token.ts`, `lib/auth.ts` | Sesión firmada en una cookie: `createSessionToken`, `forgeSessionCookie` (tests y desarrollo), `getSession()`, `requireSession(role?)`, `startSession()`, `endSession()` y `homeFor(role)`. |
 | `app/globals.css` | Tailwind CSS 4 y los tokens de shadcn/ui con el sistema visual de la dirección «B, Profundo» (`docs/design/direccion-de-diseno.md`): los colores de la Austral, los avisos y la sombra de tarjeta. |
 | `components/ui/` | Componentes de shadcn/ui (ADR 0006). Se suman con `npx shadcn add <componente>` y se pasan a las convenciones del repo. Por ahora, `button`. |

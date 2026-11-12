@@ -9,8 +9,16 @@ import { all, type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 /** Id de una persona en HackAI. No es el id de ningún sistema de origen. */
 export type PersonId = string
 
-/** El valor del rol docente en código es 'profesor' (ver GLOSSARY.md). */
-export type Role = 'alumno' | 'profesor'
+/** Los roles de una persona, definidos solo acá. El valor del rol docente en
+    código es 'profesor' (ver GLOSSARY.md). */
+const ROLES = ['alumno', 'profesor'] as const
+
+export type Role = (typeof ROLES)[number]
+
+/** Si un valor que vino de afuera, por ejemplo de la cookie de sesión, es un rol. */
+export function isRole(value: unknown): value is Role {
+  return ROLES.some((role) => role === value)
+}
 
 /** Sistemas en los que una persona tiene una cuenta propia. */
 export type ExternalSystem = 'identity' | 'siu' | 'moodle' | 'discord'

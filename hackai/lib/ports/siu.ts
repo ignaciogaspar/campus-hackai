@@ -17,6 +17,8 @@ export type SiuCapabilities = {
   enrolsInClassroom: boolean
 }
 
+/** El rol como lo informa el SIU. El de una persona de HackAI es `Role`, de
+    Personas, que lo toma de acá al armar la persona. */
 export type SiuRole = 'alumno' | 'profesor'
 
 export type SiuSchool = { id: string; name: string }

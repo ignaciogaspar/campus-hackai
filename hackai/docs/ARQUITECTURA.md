@@ -170,9 +170,9 @@ hackai/
     └── contracts/       una batería por puerto
 ```
 
-**Reglas de import** (no hay linter: se respetan a mano y se revisan en `code-review`):
+**Reglas de import.** La primera y la última las chequea `scripts/checks/reglas.sh` en el pre-commit y en CI; el resto se revisa en `code-review`.
 
-- `core/` importa `ports/` y las interfaces de otros módulos de `core/`. Nunca `adapters/`, `app/` ni `lib/db`.
+- `core/` importa `ports/`, las interfaces de otros módulos de `core/` y piezas sueltas de `lib/` como `result` o `dates`. Nunca `adapters/`, `composition`, `app/`, `components/` ni el cliente de la base (`@supabase/*`).
 - `adapters/` importa `ports/` y los tipos de `core/` que necesita.
 - `app/` importa `composition` y los tipos de `core/`. Las pantallas no tienen reglas de negocio.
 - `components/` no importa `composition`, salvo la campana de sesión (`components/shell/notifications-bell.tsx`): lee los no leídos como una página, porque Next.js no vuelve a ejecutar el layout al navegar y el número quedaría viejo. No lleva reglas de negocio.
