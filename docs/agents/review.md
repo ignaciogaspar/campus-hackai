@@ -1,6 +1,6 @@
 # Review de PRs
 
-Cómo revisa Claude un PR de este repo. La siguen la review automática al abrir un PR (`.github/workflows/claude-review.yml`) y las que se piden con `@claude` (`.github/workflows/claude.yml`).
+Cómo revisa Claude un PR de este repo. La siguen la review automática, una por PR, que al terminar deja la label `revisado-por-claude` (`.github/workflows/claude-review.yml`), y las que se piden con `@claude` (`.github/workflows/claude.yml`).
 
 Esta guía es lo que aprende la review: cuando Claude marca algo que no correspondía o se le escapa algo, se suma una línea en «Qué mirar» o en «Qué queda afuera», con el PR de ejemplo entre paréntesis. A mano, o pidiéndolo en el PR: «@claude sumá a docs/agents/review.md que…».
 
