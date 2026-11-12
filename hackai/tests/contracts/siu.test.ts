@@ -76,7 +76,12 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
     const summer = await siu.sections({ termId: 'verano-2027' })
     assert.ok(summer.ok)
-    assert.deepEqual(sorted(summer.value.map((s) => s.id)), ['sec-am1-fce-v', 'sec-fi1-fi-v', 'sec-pr1-fi-v'])
+    assert.deepEqual(sorted(summer.value.map((s) => s.id)), [
+      'sec-am1-fce-v',
+      'sec-fi1-fi-v',
+      'sec-fi1-fi-vt',
+      'sec-pr1-fi-v'
+    ])
   })
 
   it('devuelve las comisiones que dicta un docente', async (siu) => {
@@ -111,7 +116,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
     const exams = await siu.examEnrollments(siuId('p-taguirre'))
     assert.ok(exams.ok)
-    assert.deepEqual(exams.value, syntheticData.siu.examEnrollments)
+    assert.deepEqual(
+      exams.value,
+      syntheticData.siu.examEnrollments.filter((e) => e.personId === siuId('p-taguirre'))
+    )
   })
 
   it('devuelve el cronograma de una comisión', async (siu) => {

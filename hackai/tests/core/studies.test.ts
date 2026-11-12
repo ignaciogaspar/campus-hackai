@@ -222,7 +222,8 @@ test('sectionsOf de un docente devuelve las comisiones que dicta, y de un alumno
     docente.value.data.map((s) => [s.sectionId, s.role]),
     [
       ['sec-am1-fi-b', 'profesor'],
-      ['sec-fi1-fi-v', 'profesor']
+      ['sec-fi1-fi-v', 'profesor'],
+      ['sec-fi1-fi-vt', 'profesor']
     ]
   )
 
@@ -624,20 +625,23 @@ test('la mesa de una materia que está cursando avisa que le falta la regularida
 test('no ve la mesa a la que ya se inscribió ni el verano de lo que está cursando', async () => {
   const { studies } = build()
 
-  // Tomás ya está en la mesa de Álgebra y cursa Análisis I y Programación I.
+  // Tomás ya está en la mesa de Álgebra, tiene regular Sistemas de Representación y cursa Análisis I y Programación I.
   const result = await studies.openEnrollments('p-taguirre')
 
   assert.ok(result.ok)
   assert.deepEqual(openings(result.value.data), [
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
+    ['examen', 'sre', '2026-12-05T02:59:00.000Z'],
     ['cursada', 'fi1', '2026-12-19T02:59:00.000Z']
   ])
 })
 
 test('una materia sin lugar en sus comisiones igual aparece: cuántos lugares quedan lo dice la oferta', async () => {
-  const { studies } = build()
+  // Sin la comisión de la tarde, la única de Física I de verano está llena.
+  const data = structuredClone(syntheticData)
+  data.siu.sections = data.siu.sections.filter((s) => s.id !== 'sec-fi1-fi-vt')
+  const { studies } = build(data)
 
-  // La única comisión de Física I de verano está llena.
   const result = await studies.openEnrollments('p-vfunes')
   const offer = await studies.offer('p-vfunes', { kind: 'cursada', subjectId: 'fi1' })
 
@@ -860,7 +864,7 @@ test('si cumple las condiciones de la constancia de alumno regular, trae el enla
       type: 'alumno-regular',
       meetsConditions: true,
       reasons: [],
-      url: 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=alumno-regular'
+      url: '/simulado/siu/constancias/solicitar?tipo=alumno-regular'
     }
   })
 })
@@ -881,7 +885,7 @@ test('si no cumple la de alumno regular porque su propuesta está pasiva, lo dic
   assert.ok(result.ok)
   assert.equal(result.value.meetsConditions, false)
   assert.deepEqual(result.value.reasons, ['sin-propuesta-activa'])
-  assert.equal(result.value.url, 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=alumno-regular')
+  assert.equal(result.value.url, '/simulado/siu/constancias/solicitar?tipo=alumno-regular')
 })
 
 test('si no cumple la de alumno regular porque no tiene inscripciones a cursada vigentes, lo dice', async () => {
@@ -914,7 +918,7 @@ test('si no cumple la de examen final porque no rindió ningún final, lo dice',
   assert.ok(result.ok)
   assert.equal(result.value.meetsConditions, false)
   assert.deepEqual(result.value.reasons, ['sin-examenes-rendidos'])
-  assert.equal(result.value.url, 'https://autogestion.example.edu.ar/constancias/solicitar?tipo=examen-final')
+  assert.equal(result.value.url, '/simulado/siu/constancias/solicitar?tipo=examen-final')
 })
 
 test('la constancia de examen final la cumple quien ya rindió un final', async () => {
@@ -1463,8 +1467,11 @@ test('la oferta dice cuántos lugares quedan: ninguno si se llenó, y sin tope s
 
   assert.ok(fi1.ok && am1.ok && pr1.ok)
   assert.deepEqual(
-    fi1.value.map((o) => o.spotsLeft),
-    [0]
+    fi1.value.map((o) => [o.name, o.capacity, o.spotsLeft]),
+    [
+      ['Verano', 2, 0],
+      ['Verano tarde', 25, 25]
+    ]
   )
   assert.deepEqual(
     am1.value.map((o) => [o.name, o.capacity, o.enrolled, o.spotsLeft]),

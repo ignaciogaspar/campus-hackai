@@ -78,6 +78,21 @@ El ingreso de demo queda abierto a propósito. La identidad en memoria es el ún
 
 La cookie va marcada `Secure` solo si el pedido llegó por HTTPS, y eso se sabe por el header `x-forwarded-proto`. Si el hosting no lo manda, la cookie sale sin `Secure` y no avisa. La sesión no se guarda en el servidor: «Salir» borra la cookie, pero una copia de la cookie sigue valiendo hasta que vence, a los 30 días.
 
+## Datos y fecha de la demo
+
+Todo sale del set sintético, `lib/adapters/synthetic-data.ts`. Sus fechas son absolutas. Sin configurar, el reloj queda fijo en su «hoy», el martes 10/11 a las 12, que es lo que usan los tests. **La demo va con `HACKAI_CLOCK=sistema`**, como trae `.env.example`: así Hoy muestra la fecha del día y la cuenta regresiva al próximo parcial es la real.
+
+El set está pensado para el ensayo del jueves 12/11 y la demo del viernes 13/11, y `tests/synthetic-data.test.ts` lo verifica para esos dos días. El alumno de la demo es Tomás Aguirre:
+
+- tiene el segundo parcial de Análisis Matemático I el lunes 16/11;
+- Física I de verano tiene la inscripción abierta, con la comisión de la mañana sin cupo y la de la tarde con lugar;
+- a la mesa de diciembre de Sistemas de Representación, que desaprobó en febrero, le queda un solo lugar;
+- Análisis Matemático I y Programación I tienen avisos, material y tareas con fecha en Moodle.
+
+Los enlaces a Moodle y a la Autogestión del SIU («Ir al aula», el material, las constancias, «Seguir en la Autogestión») no salen de HackAI: van a `/simulado/<moodle|siu>/<ruta del sistema real>` (`app/simulado/`), una página que dice que el sistema está simulado y qué abriría el enlace en producción. No pide sesión ni lee datos.
+
+Si cambiás el set, corré `npm run siu:seed`, `npm run moodle:seed` y `npm run people:seed` y commiteá los SQL: un test avisa si alguno quedó viejo.
+
 ## Vínculos de Personas en Supabase
 
 Personas guarda el id de cada persona en cada sistema (la identidad, el SIU, Moodle y Discord). Sin configurar, esos vínculos salen del set sintético y viven en memoria. Con `HACKAI_STORE=supabase` se leen de la tabla propia `people_accounts`.
@@ -158,7 +173,7 @@ Para cargarlas en el Supabase del equipo:
 psql "$DATABASE_URL" -f supabase/simulados/0002_moodle.sql -f supabase/simulados/moodle_seed.sql
 ```
 
-Los dos adaptadores arman el enlace al aula con `courseUrl(courseId)`: `<base>/course/view.php?id=<id>`, con la base de `data.moodle.baseUrl` en el set sintético. Si cambiás `synthetic-data.ts`, corré `npm run moodle:seed` y commiteá el SQL: un test avisa si quedó viejo.
+Los dos adaptadores arman el enlace al aula con `courseUrl(courseId)`: `<base>/course/view.php?id=<id>`, con la base de `data.moodle.baseUrl` en el set sintético. En la demo esa base es `/simulado/moodle`, la página de lo simulado («Datos y fecha de la demo»). Si cambiás `synthetic-data.ts`, corré `npm run moodle:seed` y commiteá el SQL: un test avisa si quedó viejo.
 
 La batería de contrato del aula virtual (`tests/contracts/classroom.test.ts`) corre siempre contra el aula en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice. Cada caso que matricula deja las matrículas como estaban, así se puede repetir.
 
@@ -226,7 +241,8 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `CRON_SECRET` | Secreto de la corrida periódica (`/api/cron/sync`). Sin ella la ruta queda cerrada. Ver «Corrida periódica». |
 | `ANTHROPIC_API_KEY` | API de Claude. |
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
-| `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES`, `HACKAI_CLOCK` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
+| `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
+| `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
 | `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |
 
@@ -260,6 +276,7 @@ No las imprimas en logs ni en reportes.
 | `app/(app)/academico/`, `components/academic/` | Académico, del alumno: las notas de parciales juntas (la última destacada), la historia con las materias aprobadas por año y el promedio, y las constancias con el enlace a la Autogestión o el motivo por el que todavía no se puede pedir. |
 | `app/(app)/materias/` | Mis materias: las actuales arriba y las archivadas aparte, para alumno y docente, cada una con su espacio, el enlace a su aula de Moodle y sus tareas con fecha. Si el SIU o Moodle no responden, muestra lo último leído con el aviso de desactualizado. En `[subjectId]/`, el espacio de la materia. |
 | `app/(app)/inscripciones/`, `components/enrollment/` | Inscripciones del alumno: las cursadas y los finales abiertos que le sirven y, por materia, la oferta de comisiones (`[materia]/`) o de mesas de examen (`[materia]/final/`) con horario o fecha, cupo y docentes. Inscribirse y darse de baja van por el mismo flujo en los dos casos; si el SIU no deja hacerlo por API, llevan a la Autogestión. El final inscripto sale en Hoy. |
+| `app/simulado/`, `components/simulated/` | La página a la que llevan los enlaces al SIU y a Moodle simulados: dice que es una demo y qué abriría el enlace en producción. |
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, subir y organizar el material y escribirle en privado a un docente de la comisión. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
 
