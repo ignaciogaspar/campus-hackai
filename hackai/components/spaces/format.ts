@@ -2,7 +2,7 @@
    nombres de los canales y los enlaces entre pestañas. Sin reglas de negocio:
    solo formato. Las horas van en la hora de Buenos Aires, sin «hoy» ni «hace
    un rato», porque la demo corre con el reloj fijo de Espacios. */
-import type { Channel, ChannelKind } from '@/lib/core/spaces'
+import type { Channel, ChannelKind, Thread } from '@/lib/core/spaces'
 
 const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
@@ -115,4 +115,14 @@ export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {
   }
   const search = params.toString()
   return `/materias/${encodeURIComponent(subjectId)}${search ? `?${search}` : ''}`
+}
+
+/** Lo que queda al pie de una lista de mensajes: el último, o su última
+    respuesta, y si lo escribió quien mira. Una respuesta en una consulta vieja
+    no cuenta: se ve arriba, en su tarjeta. `null` si no hay mensajes. */
+export function latestOf(threads: Thread[], viewerId: string): { id: string; mine: boolean } | null {
+  const last = threads.at(-1)
+  if (!last) return null
+  const message = last.replies.at(-1) ?? last.message
+  return { id: message.id, mine: message.author.personId === viewerId }
 }

@@ -43,7 +43,7 @@ const ERRORS: Record<SpaceError, string> = {
   'no-es-consulta': 'Solo se marcan resueltas las consultas de los alumnos.',
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano o compartí un enlace.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
-  'nombre-invalido': 'Usá letras, números y guiones, sin espacios: por ejemplo «parciales-viejos».',
+  'nombre-invalido': 'Poné un nombre con al menos una letra o un número.',
   'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.',
   'solo-alumno-docente': 'Los mensajes directos son solo entre un alumno y un docente.',
   'sin-comision-en-comun': 'Solo podés escribirle en privado a los docentes de tu comisión.'
@@ -96,9 +96,10 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
   const attachments = file
     ? [{ name: file.name, contentType: file.type || 'application/octet-stream', bytes: await bytesOf(file) }]
     : undefined
+  const replyTo = text(form, 'replyTo') || undefined
   const result = await system().spaces.post(session.personId, channelId, {
     text: text(form, 'text') ?? '',
-    replyTo: text(form, 'replyTo') || undefined,
+    replyTo,
     attachments
   })
   if (!result.ok) {
@@ -109,7 +110,7 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
     )
   }
   refresh(subjectId)
-  return done()
+  return done(replyTo ? 'Respuesta enviada.' : 'Mensaje enviado.')
 }
 
 /** Marca una consulta como resuelta. */

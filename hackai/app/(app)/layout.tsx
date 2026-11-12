@@ -4,12 +4,15 @@
    sin la lista de materias o con los no leídos en 0; cada pantalla muestra su
    propio error.
    Next.js no vuelve a ejecutar este layout al navegar entre pantallas hermanas:
-   cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta. */
-import type { ReactNode } from 'react'
+   cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta.
+   Sí lo vuelve a ejecutar `router.refresh()`, que es como LiveRefresh mantiene
+   al día el espacio abierto y estos no leídos. */
+import { type ReactNode, Suspense } from 'react'
 import { unreadBySubject } from '@/components/novedades/format'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { spaceHref } from '@/components/spaces/format'
+import { LiveRefresh } from '@/components/spaces/live-refresh'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 
@@ -35,6 +38,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell school={person.ok ? person.value.school.name : undefined} subjects={[...nav.values()]}>
       {children}
+      {/* Lee la URL con useSearchParams: sin Suspense, Next.js no podría armar las pantallas estáticas. */}
+      <Suspense fallback={null}>
+        <LiveRefresh />
+      </Suspense>
     </AppShell>
   )
 }

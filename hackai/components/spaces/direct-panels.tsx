@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { BackLink } from '@/components/spaces/back-link'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
-import { type SpaceRef, spaceHref } from '@/components/spaces/format'
+import { latestOf, type SpaceRef, spaceHref } from '@/components/spaces/format'
+import { LatestMark } from '@/components/spaces/latest-mark'
 import { AuthorAvatar, MessageCard } from '@/components/spaces/messages'
 import { StartDirect } from '@/components/spaces/start-direct'
 import { EmptyState } from '@/components/ui/states'
@@ -110,16 +111,20 @@ export function DirectsPanel({
   )
 }
 
-/* Una conversación privada: los mensajes en orden, el más nuevo abajo, y el
-   campo para escribirle a la otra persona. La flecha vuelve a Directos. */
+/* Una conversación privada: los mensajes en orden, el más nuevo abajo y a la
+   vista, y el campo para escribirle a la otra persona. La flecha vuelve a
+   Directos. */
 export function DirectPanel({
   subjectId,
   channel,
-  threads
+  threads,
+  viewerId
 }: {
   subjectId: string
   channel: Channel
   threads: Thread[]
+  /** Quien mira: lo que acaba de enviar se deja a la vista. */
+  viewerId: string
 }) {
   const other = otherPersonIn(channel)
   const firstName = other.name.split(/\s+/)[0]
@@ -127,19 +132,21 @@ export function DirectPanel({
   return (
     <>
       <BackLink href={spaceHref(subjectId, { vista: 'directos' })}>Volver a Directos</BackLink>
-      {messages.length ? (
-        <ol className='flex flex-col gap-3'>
-          {messages.map((m) => (
-            <li key={m.id}>
-              <MessageCard message={m} />
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <EmptyState icon={AtSign} title={`Escribile a ${other.name}`}>
-          {`Lo que escribas acá lo ven solo vos y ${other.name}.`}
-        </EmptyState>
-      )}
+      <LatestMark scope={channel.id} latest={latestOf(threads, viewerId)} at='bottom'>
+        {messages.length ? (
+          <ol className='flex flex-col gap-3'>
+            {messages.map((m) => (
+              <li key={m.id}>
+                <MessageCard message={m} />
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyState icon={AtSign} title={`Escribile a ${other.name}`}>
+            {`Lo que escribas acá lo ven solo vos y ${other.name}.`}
+          </EmptyState>
+        )}
+      </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
           <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Escribile a ${firstName}`} />

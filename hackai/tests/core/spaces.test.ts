@@ -690,6 +690,22 @@ test('el nombre de un canal nuevo se normaliza y no puede repetir uno que vean l
   assert.equal(await create('p-gferreyra', 'grupo', materia), 'nombre-repetido')
 })
 
+test('un nombre con espacios, mayúsculas o tildes se normaliza en vez de dar error', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const create = async (name: string) => {
+    const created = await spaces.createChannel('p-mledesma', ids.spaceId, { name, scope: { kind: 'materia' } })
+    return created.ok ? created.value.name : created.error
+  }
+
+  assert.equal(await create('Parciales Viejos'), 'parciales-viejos')
+  assert.equal(await create('  #TP 1  '), 'tp-1')
+  assert.equal(await create('ÑANDÚ'), 'ñandú')
+  // Lo que se pega de un PDF o escribe un teclado de Mac puede traer la tilde aparte de la letra.
+  assert.equal(await create('Álgebra 2'), 'álgebra-2')
+  assert.equal(await create('álgebra 2'), 'nombre-repetido')
+})
+
 const pdf = (name: string, section: string | null = null) => ({
   name,
   contentType: 'application/pdf',
