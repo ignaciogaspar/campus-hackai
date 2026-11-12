@@ -11,12 +11,8 @@
      entra al canal, y si es de un hilo, como respuesta a su mensaje. El autor
      se busca en Personas por su id externo; si no está vinculado, queda el
      nombre con que llegó.
-   - Las reglas de quién escribe valen también para lo que llega: en el canal
-     de material solo entran los adjuntos de docentes de la materia, y en
-     `#avisos`, los mensajes de docentes de la comisión. Un bot o un webhook
-     (los configura quien administra el servidor) también entra. Un alumno o
-     alguien sin cuenta vinculada no: el canal externo puede dejar escribir a
-     todos, pero HackAI no lo publica.
+   - Entra todo lo que llega, escriba quien escriba: quién puede publicar en
+     el canal externo lo decide su servidor (pregunta abierta 18).
    - Cada mensaje y cada archivo guarda su origen y su id externo, así nada
      entra dos veces: ni lo que vuelve de lo que envió HackAI, ni lo que se
      relee después de una sincronización cortada.
@@ -36,9 +32,7 @@ import type {
   StoredChannel,
   StoredMessage
 } from '@/lib/core/spaces'
-import { canManage, membershipOf, postRefusal } from '@/lib/core/spaces/access'
 import { authorsFrom } from '@/lib/core/spaces/authors'
-import type { Studies } from '@/lib/core/studies'
 import type {
   ExternalAttachment,
   ExternalChannelError,
@@ -65,7 +59,6 @@ export function addCounts(a: SyncCounts, b: SyncCounts): SyncCounts {
 
 export type SyncDeps = {
   people: People
-  studies: Studies
   externalChannel: ExternalChannelPort
   files: FilesPort
   store: SpacesStore
@@ -77,10 +70,7 @@ type Linked = StoredChannel & { externalLink: ExternalLink }
 
 const isLinked = (channel: StoredChannel): channel is Linked => channel.externalLink !== null
 
-/** Si el autor de un mensaje externo puede publicar en el canal. */
-type Gate = (message: ExternalMessage, authorId: PersonId | null) => Promise<boolean>
-
-export function createSync({ people, studies, externalChannel, files, store, timer }: SyncDeps) {
+export function createSync({ people, externalChannel, files, store, timer }: SyncDeps) {
   /** La cola de cada espacio: lo que se sincroniza espera a lo anterior. */
   const queues = new Map<SpaceId, Promise<unknown>>()
   /** Cuándo empezó la última sincronización de cada espacio, según `timer`. */
@@ -245,13 +235,11 @@ export function createSync({ people, studies, externalChannel, files, store, tim
   async function importMessage(
     channel: Linked,
     known: Map<string, StoredMessage>,
-    allowed: Gate,
     message: ExternalMessage
   ): Promise<Result<number, ExternalFailure>> {
     if (known.has(message.id)) return ok(0)
     const replyTo = threadRootOf(known, message)
     const author = await authorOf(channel.externalLink, message)
-    if (!(await allowed(message, author.authorId))) return ok(0)
     const attachments = await copyAttachments(message)
     if (!attachments.ok) return attachments
     const added = await store.addMessage({
@@ -307,12 +295,10 @@ export function createSync({ people, studies, externalChannel, files, store, tim
   async function importMaterial(
     channel: Linked,
     known: Set<string>,
-    allowed: Gate,
     message: ExternalMessage
   ): Promise<Result<number, ExternalFailure>> {
     let imported = 0
     const { authorId } = await authorOf(channel.externalLink, message)
-    if (!(await allowed(message, authorId))) return ok(0)
     for (const attachment of message.attachments.filter((a) => !known.has(a.id))) {
       const added = await importAttachment(channel, message, attachment, authorId)
       if (!added.ok) return added
@@ -322,44 +308,18 @@ export function createSync({ people, studies, externalChannel, files, store, tim
     return ok(imported)
   }
 
-  /** Quién puede publicar en el canal lo que llega del canal externo: en el material,
-      los docentes de la materia; en `#avisos`, los de la comisión; en el resto, todos.
-      Bots y webhooks entran siempre. Se pregunta una vez por autor y lectura. */
-  async function gateFor(channel: Linked): Promise<Result<Gate, ExternalFailure>> {
-    if (channel.kind !== 'material' && channel.kind !== 'avisos') return ok(async () => true)
-    const space = await store.space(channel.spaceId)
-    if (!space.ok) return space
-    const where = space.value
-    if (!where) return ok(async () => false)
-    const decided = new Map<PersonId, Promise<boolean>>()
-    const decide = async (personId: PersonId) => {
-      const member = await membershipOf(studies, personId, where.subjectId, where.schoolId)
-      if (!member.ok) return false
-      return channel.kind === 'material' ? canManage(member.value) : postRefusal(member.value, channel) === null
-    }
-    return ok(async (message, authorId) => {
-      if (message.author.isBot) return true
-      if (authorId === null) return false
-      if (!decided.has(authorId)) decided.set(authorId, decide(authorId))
-      return decided.get(authorId)!
-    })
-  }
-
   async function importer(
     channel: Linked
   ): Promise<Result<(message: ExternalMessage) => Promise<Result<number, ExternalFailure>>, ExternalFailure>> {
-    const gate = await gateFor(channel)
-    if (!gate.ok) return gate
-    const allowed = gate.value
     if (channel.kind !== 'material') {
       const known = await byExternalId(channel)
-      return known.ok ? ok((m) => importMessage(channel, known.value, allowed, m)) : known
+      return known.ok ? ok((m) => importMessage(channel, known.value, m)) : known
     }
     const material = await store.material([channel.spaceId])
     if (!material.ok) return material
     const origin = channel.externalLink.system
     const known = new Set(material.value.filter((m) => m.origin === origin).map((m) => m.externalId ?? ''))
-    return ok((m) => importMaterial(channel, known, allowed, m))
+    return ok((m) => importMaterial(channel, known, m))
   }
 
   /** Guarda lo leído y avanza el cursor solo si entró todo. */

@@ -1300,7 +1300,7 @@ test('los adjuntos del canal de material de Discord entran al material, y lo que
       { filename: 'vieja.pdf', contentType: 'application/pdf', content: 'vieja', expired: true }
     ]
   })
-  // En Discord puede subir cualquiera, pero el material lo publican solo los docentes de la materia.
+  // Entra lo que sube cualquiera: quién publica en el canal lo decide el servidor de Discord.
   discord.receive(discordMaterial.id, {
     author: { id: discordOf('p-taguirre'), name: 'tomi.aguirre' },
     text: 'Mis apuntes',
@@ -1317,11 +1317,13 @@ test('los adjuntos del canal de material de Discord entran al material, y lo que
   assert.deepEqual(
     view.value.material.recent.map((m) => [m.name, m.origin, m.addedBy?.personId ?? null, m.unread]),
     [
-      ['guia-4.pdf', 'discord', 'p-mledesma', true],
-      ['resumen-derivadas.pdf', 'discord', 'p-gferreyra', true]
+      ['resumen-anonimo.pdf', 'discord', null, true],
+      ['apuntes-tomi.pdf', 'discord', 'p-taguirre', false],
+      ['guia-4.pdf', 'discord', 'p-mledesma', true]
     ]
   )
-  const file = await spaces.file('p-lbenitez', fileIdOf(view.value.material.recent[0].url))
+  const guide = view.value.material.recent.find((m) => m.name === 'guia-4.pdf')
+  const file = await spaces.file('p-lbenitez', fileIdOf(guide?.url))
   assert.ok(file.ok)
   assert.equal(decoded(file.value.bytes), 'Guía 4')
   // El texto no entra: el canal de material no lleva mensajes.
@@ -1346,25 +1348,26 @@ test('los adjuntos del canal de material de Discord entran al material, y lo que
   assert.equal(again.value.material.recent.filter((m) => m.name === 'Guía 5.pdf').length, 1)
 })
 
-test('en #avisos de Discord, lo que escribe un alumno no se publica en HackAI', async () => {
+test('en #avisos de Discord entra lo que escribe cualquiera; sin cuenta vinculada, con su nombre de Discord', async () => {
   const { spaces, discord } = buildSynced()
   const ids = await am1(spaces)
   discord.receive(discordAvisos.id, {
-    author: { id: discordOf('p-taguirre'), name: 'tomi.aguirre' },
-    text: 'Mañana no hay clase'
+    author: { id: '1290000000000000777', name: 'ayudante.am1' },
+    text: 'Hoy llego tarde.'
   })
   discord.receive(discordAvisos.id, { author: LEDESMA_EN_DISCORD, text: 'El jueves hay consulta.' })
   assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
 
   const seen = await spaces.channel('p-taguirre', ids.avisosA)
   assert.ok(seen.ok)
-  // El webhook de la cátedra y la docente de la comisión, sí; el alumno, no.
+  // Quién publica en el canal lo decide el servidor de Discord (pregunta abierta 18).
   assert.deepEqual(
-    seen.value.threads.map((t) => t.message.text),
+    seen.value.threads.map((t) => [t.message.text, t.message.author.personId, t.message.author.name]),
     [
-      'Recuerden que el segundo parcial es el lunes 16. Adjunto los temas.',
-      'Ya están las notas del primer parcial en el SIU.',
-      'El jueves hay consulta.'
+      ['Recuerden que el segundo parcial es el lunes 16. Adjunto los temas.', 'p-mledesma', 'Mariana Ledesma'],
+      ['Ya están las notas del primer parcial en el SIU.', null, 'Avisos de la cátedra'],
+      ['Hoy llego tarde.', null, 'ayudante.am1'],
+      ['El jueves hay consulta.', 'p-mledesma', 'Mariana Ledesma']
     ]
   )
 })

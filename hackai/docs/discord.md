@@ -107,15 +107,7 @@ Un canal de Discord se vincula con un solo canal de HackAI. Lo vinculan los doce
 
 Para la prueba con el servidor del equipo, cargá el id real de tu cuenta (clic derecho sobre tu nombre → **Copiar ID de usuario**) en la persona de demo que vas a usar, por ejemplo con `update people_accounts set external_id = '<tu id>' where person_id = 'p-mledesma' and system = 'discord';`. Eso necesita `HACKAI_STORE=supabase`: en memoria, los vínculos salen del set sintético y no se pueden cambiar.
 
-**Quién publica desde Discord.** En Discord puede escribir cualquiera, pero HackAI aplica sus reglas a lo que entra:
-
-| Canal de HackAI | Qué entra de Discord |
-| --- | --- |
-| Material | Solo los adjuntos de docentes de la materia. El texto del mensaje no entra |
-| `#avisos` | Solo los mensajes de docentes de la comisión |
-| `#consultas` y canales libres | Todo |
-
-Los bots y webhooks (por ejemplo «Avisos de la cátedra») entran siempre: los configura quien administra el servidor. Un alumno o una cuenta sin vincular se ignoran en Material y `#avisos`. Por eso, para probar como docente desde Discord, tu cuenta tiene que estar vinculada a un docente de la demo. Conviene igual que la cátedra deje esos canales de Discord solo para docentes, así los alumnos no publican algo que después no ven en HackAI.
+**Quién publica desde Discord.** HackAI trae todo lo que se publica en el canal vinculado, escriba quien escriba. En el canal de material entran los adjuntos, no el texto. Quién puede escribir en cada canal lo decide el servidor de Discord: si la cátedra no quiere que los alumnos publiquen avisos o material, tiene que dejar esos canales de Discord solo para docentes. Está abierto en la pregunta 18 de [preguntas-abiertas.md](../../docs/product/preguntas-abiertas.md).
 
 **Dónde queda guardado.** Con `HACKAI_STORE` y `HACKAI_FILES` vacías, espacios, mensajes, vínculos con Discord y archivos viven en la memoria del proceso: al reiniciar la app o recrear el contenedor se pierden, y hay que volver a vincular los canales. Para guardarlos van `HACKAI_STORE=supabase` y `HACKAI_FILES=supabase`, con `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y las migraciones `0001` a `0004` aplicadas (README). Los archivos van al bucket privado `hackai-files` y su registro a `space_material` o a los adjuntos de `space_messages`.
 

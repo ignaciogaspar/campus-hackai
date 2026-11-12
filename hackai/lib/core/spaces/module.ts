@@ -92,7 +92,7 @@ const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(m
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
   const { people, studies, classroom, files, clock, store, externalChannel, timer } = deps
-  const sync = createSync({ people, studies, externalChannel, files, store, timer })
+  const sync = createSync({ people, externalChannel, files, store, timer })
   /** Cuándo trajo `open` lo nuevo de Moodle de cada espacio, en milisegundos del reloj. */
   const lastSync = new Map<string, number>()
 

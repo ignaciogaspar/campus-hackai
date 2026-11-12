@@ -148,8 +148,9 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 ### 18. ¿Quién puede publicar en HackAI desde Discord?
 
 - **Por qué importa:** en Discord escribe cualquiera que tenga acceso al canal. Si todo lo que llega entrara a HackAI, un alumno podría subir material o publicar un aviso que en HackAI solo publican los docentes.
-- **Hipótesis:** así lo implementa Espacios desde #15: en el canal de material solo entran los adjuntos de docentes de la materia, y en `#avisos`, los mensajes de docentes de la comisión, reconocidos por su cuenta de Discord vinculada en Personas. Bots y webhooks entran, porque los configura quien administra el servidor. En `#consultas` y en los libres entra todo. Lo que no entra se ignora sin avisar.
-- **Opciones:** como está; avisar en Discord (una reacción o una respuesta del bot) cuando algo no entra; dejar que entren los ayudantes sin cuenta vinculada; pedirle a cada cátedra que deje esos canales de Discord solo para docentes y no filtrar.
+- **Hipótesis:** como lo implementa Espacios desde #15, entra todo lo que se publica en el canal vinculado, escriba quien escriba, y un autor sin cuenta vinculada aparece con su nombre y «desde Discord», como pide #15. Quién puede escribir en cada canal lo decide el servidor de Discord: la cátedra deja Material y `#avisos` solo para docentes.
+- **Lo que vimos (11/11/2026, #15):** se probó un filtro que solo dejaba entrar a Material lo de docentes de la materia y a `#avisos` lo de docentes de la comisión, con su cuenta de Discord vinculada. Se sacó hasta que el equipo decida: descartaba sin avisar lo de cuentas sin vincular, y como el cursor avanza, eso no volvía aunque después se vinculara la cuenta.
+- **Opciones:** como está, sin filtro; filtrar en Material y `#avisos` como se probó; filtrar y avisar en Discord (una reacción o una respuesta del bot) cuando algo no entra; filtrar pero dejar entrar a los ayudantes sin cuenta vinculada.
 - **Estado:** abierta
 - **Decisión:** pendiente
 
