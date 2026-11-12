@@ -906,7 +906,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     )
   }
 
-  /** Mesas de la materia en la facultad que todavía no se tomaron, y si para rendirla le falta la regularidad. */
+  /** Mesas de la materia en la facultad que todavía no se tomaron, y si para rendirla le falta la regularidad.
+      La regularidad es solo un aviso: si la historia no se pudo leer, las mesas salen igual, sin él. */
   async function boardOffer(person: SiuPersonRef, subject: SiuSubject): Promise<Result<OfferItem[], ReadError>> {
     const at = clock.now().toISOString()
     const [boards, enrollments, progress] = await Promise.all([
@@ -916,7 +917,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     ])
     if (!boards.ok) return boards
     if (!enrollments.ok) return enrollments
-    if (!progress.ok) return progress
+    const known = progress.ok ? progress.value : null
     const upcoming = boards.value.filter((b) => b.date >= at).sort((a, b) => a.date.localeCompare(b.date))
     const teachers = all(await Promise.all(upcoming.map((b) => teachersOf(b))))
     if (!teachers.ok) return teachers
@@ -933,7 +934,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           modality: null,
           alreadyEnrolled: enrollments.value.some((e) => e.examBoardId === board.id),
           enrolledElsewhere: null,
-          needsRegularity: needsRegularity(subject.id, progress.value)
+          needsRegularity: known ? needsRegularity(subject.id, known) : false
         })
       )
     )

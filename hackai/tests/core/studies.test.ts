@@ -1677,6 +1677,19 @@ test('la oferta de mesas avisa si para rendir le falta regularizar la cursada; l
   )
 })
 
+test('si la historia no se puede leer, la oferta de mesas sale igual, sin el aviso de regularidad', async () => {
+  const { studies } = build(syntheticData, {}, { siuOverrides: { history: async () => fail('falla-externa') } })
+
+  const am1 = await studies.offer('p-vfunes', { kind: 'examen', subjectId: 'am1' })
+
+  assert.ok(am1.ok)
+  assert.ok(am1.value.length > 0)
+  assert.deepEqual(
+    am1.value.map((o) => o.needsRegularity),
+    am1.value.map(() => false)
+  )
+})
+
 test('darse de baja de una mesa da de baja en el SIU sin tocar el aula', async () => {
   let unenrols = 0
   const { studies, siu } = build(
