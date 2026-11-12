@@ -191,3 +191,44 @@ test('con el reloj fijo de la demo, lo nuevo del canal externo entra al volver a
   assert.ok(seen.ok)
   assert.equal(seen.value.threads.at(-1)?.message.text, '¿Hay clase?')
 })
+
+test('sin HACKAI_CAIDAS no hay interruptor de caídas, como en producción, y un valor desconocido corta el arranque', () => {
+  assert.equal(compose({}).outages, null)
+  assert.equal(compose({ HACKAI_CAIDAS: 'no' }).outages, null)
+  assert.throws(() => compose({ HACKAI_CAIDAS: 'siempre' }), /HACKAI_CAIDAS/)
+})
+
+test('con HACKAI_CAIDAS=si, tirar el SIU deja las pantallas con lo último leído y levantarlo las pone al día', async () => {
+  const system = compose({ HACKAI_CAIDAS: 'si' })
+  assert.ok(system.outages)
+  assert.deepEqual(system.outages.state(), { siu: false, moodle: false })
+  const first = await system.studies.subjectsOf('p-taguirre')
+  assert.ok(first.ok)
+  const person = await system.people.get('p-taguirre')
+
+  system.outages.set('siu', true)
+  // El saludo y la tarjeta de Hoy siguen: la persona sale de lo último leído.
+  assert.deepEqual(await system.people.get('p-taguirre'), person)
+  const stale = await system.studies.subjectsOf('p-taguirre')
+  assert.ok(stale.ok)
+  assert.equal(stale.value.stale, true)
+  const today = await system.today.today('p-taguirre')
+  assert.ok(today.ok)
+  assert.equal(today.value.staleSince, first.value.readAt)
+
+  system.outages.set('siu', false)
+  const back = await system.studies.subjectsOf('p-taguirre')
+  assert.ok(back.ok)
+  assert.equal(back.value.stale, false)
+})
+
+test('con HACKAI_CAIDAS=si, tirar Moodle deja las materias sin el aula y el SIU sigue al día', async () => {
+  const system = compose({ HACKAI_CAIDAS: 'si' })
+  system.outages?.set('moodle', true)
+
+  const result = await system.studies.subjectsOf('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.equal(result.value.data.classroomUnavailable, true)
+})

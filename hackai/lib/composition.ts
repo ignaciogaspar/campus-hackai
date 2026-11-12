@@ -31,10 +31,16 @@
    Con `discord`, el token del bot va en `DISCORD_BOT_TOKEN` (guía:
    docs/discord.md).
 
+   `HACKAI_CAIDAS=si` envuelve al SIU y al aula virtual con un interruptor que
+   los hace responder como caídos, para mostrarlo en la demo desde `/caidas`
+   (README, «Mostrar una caída en la demo»). Vacía o `no`, el interruptor no
+   existe: es lo de producción.
+
    Cada ticket que suma un adaptador lo agrega a su lista acá. Un valor
    desconocido o una variable que falta corta el arranque: es un error de
    configuración, no algo que el núcleo pueda resolver. */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
@@ -65,6 +71,8 @@ import type { SiuPort } from '@/lib/ports/siu'
 
 export type Env = Record<string, string | undefined>
 
+export type { OutageState, OutageSwitch, OutageSystem } from '@/lib/adapters/caida'
+
 const ADAPTERS = {
   identity: { variable: 'HACKAI_IDENTITY', values: ['memoria'] },
   siu: { variable: 'HACKAI_SIU', values: ['memoria', 'simulado'] },
@@ -94,6 +102,8 @@ export type System = {
   adapters: AdapterChoice
   /** Los puertos armados. Las pantallas no los usan: son para tests y scripts. */
   ports: Ports
+  /** El interruptor de caídas de la demo, o `null` si `HACKAI_CAIDAS` no lo pide. */
+  outages: OutageSwitch | null
   people: People
   studies: Studies
   spaces: Spaces
@@ -117,6 +127,13 @@ function required(env: Env, variable: string, neededBy: string): string {
   return value
 }
 
+/** El interruptor de caídas, solo si `HACKAI_CAIDAS=si`. */
+function outagesFrom(env: Env): OutageSwitch | null {
+  const value = env.HACKAI_CAIDAS?.trim() || 'no'
+  if (value !== 'si' && value !== 'no') throw new Error('HACKAI_CAIDAS tiene que ser si o no')
+  return value === 'si' ? createOutageSwitch() : null
+}
+
 /** Arma todos los módulos con los adaptadores que piden las variables de
     entorno. Cada llamada tiene su propia copia de los datos en memoria. */
 export function compose(env: Env = process.env, data: SyntheticData = syntheticData): System {
@@ -136,16 +153,20 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   let client: SupabaseClient | undefined
   const supabase = () => (client ??= supabaseFromEnv(env))
 
+  const outages = outagesFrom(env)
+  const siu =
+    adapters.siu === 'simulado'
+      ? createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
+      : createMemorySiu(data, clock)
+  const classroom =
+    adapters.classroom === 'simulado'
+      ? createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl })
+      : createMemoryClassroom(data)
+
   const ports: Ports = {
     identity: createMemoryIdentity(data),
-    siu:
-      adapters.siu === 'simulado'
-        ? createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
-        : createMemorySiu(data, clock),
-    classroom:
-      adapters.classroom === 'simulado'
-        ? createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl })
-        : createMemoryClassroom(data),
+    siu: outages ? withSiuOutage(siu, outages) : siu,
+    classroom: outages ? withClassroomOutage(classroom, outages) : classroom,
     externalChannel:
       adapters.externalChannel === 'discord'
         ? createDiscordExternalChannel({ token: required(env, 'DISCORD_BOT_TOKEN', 'HACKAI_EXTERNAL_CHANNEL=discord') })
@@ -175,7 +196,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   })
   const today = createToday({ studies, spaces, clock })
 
-  return { adapters, ports, people, studies, spaces, today }
+  return { adapters, ports, outages, people, studies, spaces, today }
 }
 
 /** Guardado en `globalThis` porque Next.js empaqueta las páginas, las server

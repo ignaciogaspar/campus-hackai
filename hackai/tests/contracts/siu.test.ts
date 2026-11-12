@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createClient } from '@supabase/supabase-js'
+import { createOutageSwitch, withSiuOutage } from '@/lib/adapters/caida'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
@@ -291,6 +292,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 const clock = () => createFixedClock(syntheticData.now)
 
 siuContract('SIU en memoria', () => createMemorySiu(syntheticData, clock()))
+// Con el interruptor de caídas levantado, el SIU que envuelve se porta igual.
+siuContract('SIU con caídas de la demo', () =>
+  withSiuOutage(createMemorySiu(syntheticData, clock()), createOutageSwitch())
+)
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL
 const key = process.env.HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY

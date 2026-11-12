@@ -26,7 +26,7 @@ import type {
 import type { Membership } from '@/lib/core/spaces/access'
 import type { Studies } from '@/lib/core/studies'
 import type { ClassroomAnnouncement, ClassroomContent, ClassroomPort } from '@/lib/ports/classroom'
-import type { Result } from '@/lib/result'
+import { ok, type Result } from '@/lib/result'
 
 export type ClassroomImportDeps = { classroom: ClassroomPort; studies: Studies; people: People; store: SpacesStore }
 
@@ -75,7 +75,8 @@ async function coursesBySection(classroom: ClassroomPort, sectionIds: string[]):
     responde, el material sale solo de las comisiones que ya tienen canales. */
 async function offeredSections(studies: Studies, member: Membership, space: StoredSpace): Promise<string[]> {
   const offer = await studies.offer(member.personId, { kind: 'cursada', subjectId: space.subjectId })
-  const items = orEmpty(offer, 'no se pudo leer la oferta de la materia', { subjectId: space.subjectId })
+  const read = offer.ok ? ok(offer.value.data) : offer
+  const items = orEmpty(read, 'no se pudo leer la oferta de la materia', { subjectId: space.subjectId })
   return items.flatMap((item) => (item.target.kind === 'comision' ? [item.target.sectionId] : []))
 }
 

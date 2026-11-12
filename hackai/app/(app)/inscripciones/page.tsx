@@ -26,7 +26,8 @@ import { PageHeader } from '@/components/shell/page-header'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { examDetail } from '@/components/today/upcoming'
 import { railItem, railTrack } from '@/components/ui/rail'
-import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
+import { StaleBanner } from '@/components/ui/stale-banner'
+import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Person } from '@/lib/core/people'
@@ -39,6 +40,7 @@ import type {
   SubjectStanding,
   UpcomingItem
 } from '@/lib/core/studies'
+import { staleSince } from '@/lib/fresh'
 import type { Result } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -225,13 +227,13 @@ function Detail({
   person
 }: {
   tab: Tab
-  offer: Result<OfferItem[], StudiesReadError>
+  offer: Read<OfferItem[]>
   standing: SubjectStanding | undefined
   person: Person | null
 }) {
   if (!offer.ok) return <ErrorNotice>{readErrorText(offer.error, 'la oferta de esta materia')}</ErrorNotice>
   // Las comisiones de otras carreras no se muestran: no se puede inscribir a ellas.
-  const items = offer.value.filter((item) => !item.otherProgram)
+  const items = offer.value.data.filter((item) => !item.otherProgram)
   const name = items[0]?.subjectName ?? standing?.name
   if (!name || items.length === 0) {
     return (
@@ -301,7 +303,7 @@ function EnrollmentBoard({
   mine: ListItem[]
   mineError: string | null
   selected: string | undefined
-  offer: Result<OfferItem[], StudiesReadError> | null
+  offer: Read<OfferItem[]> | null
   standings: SubjectStanding[]
   person: Person | null
 }) {
@@ -380,6 +382,7 @@ export default async function InscripcionesPage({
       : null
   ])
   const lists = listsFor(tab, open, career, sections, upcoming)
+  const stale = staleSince([open, career, sections, upcoming, ...(offer ? [offer] : [])])
 
   return (
     <>
@@ -407,11 +410,7 @@ export default async function InscripcionesPage({
           <ErrorNotice>{readErrorText(open.error, 'las inscripciones')}</ErrorNotice>
         ) : (
           <>
-            {open.value.stale && (
-              <StaleNotice>
-                El SIU no responde. Te mostramos lo último que trajimos: puede estar desactualizado.
-              </StaleNotice>
-            )}
+            {stale && <StaleBanner since={stale} />}
             <EnrollmentBoard
               tab={tab}
               {...lists}

@@ -51,7 +51,22 @@ test('get de una persona que no existe devuelve «persona desconocida»', async 
   assert.deepEqual(await build().get('p-nadie'), { ok: false, error: 'persona-desconocida' })
 })
 
-test('get con el SIU caído devuelve «falla externa» como valor', async () => {
+test('get con el SIU caído devuelve la persona como la leyó la última vez, y una que nunca leyó, «falla externa»', async () => {
+  let down = false
+  const real = createMemorySiu(syntheticData, createFixedClock(syntheticData.now))
+  const people = build({ siu: { person: (id) => (down ? Promise.resolve(fail('falla-externa')) : real.person(id)) } })
+  const first = await people.get('p-taguirre')
+  assert.ok(first.ok)
+
+  down = true
+
+  assert.deepEqual(await people.get('p-taguirre'), first)
+  assert.deepEqual(await people.get('p-vfunes'), { ok: false, error: 'falla-externa' })
+  // Una persona que no existe sigue siendo desconocida, no lo último leído.
+  assert.deepEqual(await people.get('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
+test('get con el SIU caído y nada leído antes devuelve «falla externa» como valor', async () => {
   const people = build({ siu: { person: async () => fail('falla-externa') } })
   assert.deepEqual(await people.get('p-taguirre'), { ok: false, error: 'falla-externa' })
 })

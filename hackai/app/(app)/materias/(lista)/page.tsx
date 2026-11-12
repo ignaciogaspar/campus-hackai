@@ -7,8 +7,10 @@
    Cada tarjeta lleva lo que no leíste en su espacio. Sin reglas de negocio:
    qué es actual, qué se archiva, qué está regular y qué aprobado lo deciden
    Cursada (`subjectsOf`, `career` y `pendingFinals`, que da la próxima mesa
-   de cada final pendiente); qué no leíste, Espacios. Si el SIU o Moodle no
-   responden, muestra lo último leído con el aviso de desactualizado. */
+   de cada final pendiente); qué no leíste, Espacios. Si el SIU no responde,
+   muestra lo último leído con el aviso de desactualizado; si Moodle no
+   responde, las materias salen igual, sin enlaces al aula ni tareas, y un aviso
+   dice qué falta. */
 import { Archive, BookOpen, Hourglass, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -18,7 +20,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedCard, CourseCard, PendingFinalCard, SubjectGrid } from '@/components/subjects/subject-grid'
 import { Pagination } from '@/components/ui/pagination'
 import { StaleBanner } from '@/components/ui/stale-banner'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MySubjects, PendingFinal, StudiesReadError, SubjectStanding } from '@/lib/core/studies'
@@ -233,6 +235,11 @@ function SubjectsView({
   return (
     <>
       {stale && <StaleBanner since={stale} />}
+      {subjects.classroomUnavailable && (
+        <StaleNotice>
+          El Campus Virtual no responde: tus materias están, pero faltan los enlaces al aula y las tareas de Moodle.
+        </StaleNotice>
+      )}
       <ViewTabs current={view} counts={counts} student={student} />
       {cards.length === 0 ? (
         <EmptyState icon={empty.icon} title={empty.title}>

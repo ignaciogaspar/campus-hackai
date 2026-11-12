@@ -7,12 +7,12 @@
 import { BookOpenCheck, ChartPie } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { readTime } from '@/components/dates'
 import { filtersFrom } from '@/components/grades/filters'
 import { GradesBoard } from '@/components/grades/grades-board'
 import { gradeText } from '@/components/grades/status'
 import { PageHeader } from '@/components/shell/page-header'
-import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
+import { StaleBanner } from '@/components/ui/stale-banner'
+import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError } from '@/lib/core/studies'
@@ -53,12 +53,7 @@ export default async function NotasPage({
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus notas.'}</ErrorNotice>
         ) : (
           <>
-            {result.value.stale && (
-              <StaleNotice>
-                El SIU no responde. Te mostramos tus notas como estaban el {readTime(result.value.readAt)}: puede que
-                falte alguna.
-              </StaleNotice>
-            )}
+            {result.value.stale && <StaleBanner since={result.value.readAt} />}
             {taken.length === 0 ? (
               <EmptyState icon={BookOpenCheck} title='Todavía no cursaste materias'>
                 Cuando te inscribas a una materia, aparece acá con sus parciales y sus notas.

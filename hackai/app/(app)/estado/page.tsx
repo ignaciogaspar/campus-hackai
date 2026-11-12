@@ -7,10 +7,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PlanLegend, PlanLink, PlanMap } from '@/components/career/plan-map'
 import { ProgressBar, ProgressRing } from '@/components/career/progress'
-import { readTime } from '@/components/dates'
 import { gradeText, isApproved } from '@/components/grades/status'
 import { PageHeader } from '@/components/shell/page-header'
-import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
+import { StaleBanner } from '@/components/ui/stale-banner'
+import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Career, StudiesReadError } from '@/lib/core/studies'
@@ -129,11 +129,7 @@ export default async function EstadoPage() {
           </ErrorNotice>
         ) : (
           <>
-            {result.value.stale && (
-              <StaleNotice>
-                El SIU no responde. Te mostramos tu carrera como estaba el {readTime(result.value.readAt)}.
-              </StaleNotice>
-            )}
+            {result.value.stale && <StaleBanner since={result.value.readAt} />}
             <Overview career={career} />
             <section aria-labelledby='plan' className='flex flex-col gap-3'>
               <div className='flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-1'>

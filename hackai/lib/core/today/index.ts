@@ -7,7 +7,8 @@
      Solo corta todo una persona que Cursada no conoce.
    - Los próximos son los parciales y finales del SIU más, como complemento, las
      tareas con fecha de Moodle de sus materias actuales, que vienen con las
-     materias. Por eso una caída de Moodle se lleva las entregas, no los parciales.
+     materias. Por eso una caída de Moodle se lleva las entregas, no los parciales:
+     las materias salen igual, del SIU, y `unavailable` lleva `assignments`.
    - Lo que pasó y lo que cerró se mira contra el reloj al armar la pantalla, no
      al leer: una lectura desactualizada puede ser de antes de que pasara un
      parcial o cerrara una inscripción.
@@ -45,8 +46,9 @@ import { staleSince } from '@/lib/fresh'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
 
-/** Cada parte de la pantalla que sale de una lectura aparte. */
-export type TodayPart = 'subjects' | 'upcoming' | 'openEnrollments' | 'unread'
+/** Cada parte de la pantalla que sale de una lectura aparte, más las entregas de Moodle (`assignments`), que
+    vienen con las materias y faltan si Moodle no responde. */
+export type TodayPart = 'subjects' | 'assignments' | 'upcoming' | 'openEnrollments' | 'unread'
 
 /** El próximo parcial o final, con los días de calendario que faltan (0 si es hoy). */
 export type NextExam = UpcomingItem & { daysLeft: number }
@@ -111,7 +113,7 @@ export type TodayDeps = {
   clock: ClockPort
 }
 
-const EMPTY_SUBJECTS: MySubjects = { current: [], archived: [] }
+const EMPTY_SUBJECTS: MySubjects = { current: [], archived: [], classroomUnavailable: false }
 
 /** Los tipos que pueden ser «el próximo parcial o final». */
 const NEXT_EXAM_KINDS: UpcomingItem['kind'][] = ['parcial', 'final']
@@ -218,7 +220,10 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         unread: valueOr(unread, []),
         openEnrollments: openEnrollments.ok ? openEnrollments.value.data.filter((o) => o.closesAt >= now) : [],
         staleSince: staleSince([subjects, upcoming, openEnrollments]),
-        unavailable: failed<TodayPart>(reads)
+        unavailable: [
+          ...failed<Exclude<TodayPart, 'assignments'>>(reads),
+          ...(mySubjects.classroomUnavailable ? (['assignments'] as const) : [])
+        ]
       })
     }
   }

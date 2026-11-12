@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { TodayCalendar } from '@/components/today/calendar'
 import { classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
 import { StaleBanner } from '@/components/ui/stale-banner'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { UpcomingItem } from '@/lib/core/studies'
@@ -79,11 +79,14 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
           </EmptyState>
         ) : (
           <>
-            {result.value.staleSince && <StaleBanner since={result.value.staleSince} />}
+            {result.value.staleSince && <StaleBanner since={result.value.staleSince} now={result.value.now} />}
             {result.value.unavailable.includes('upcoming') && (
               <ErrorNotice>
                 No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.
               </ErrorNotice>
+            )}
+            {result.value.unavailable.includes('assignments') && (
+              <StaleNotice>Faltan las entregas de Moodle porque el Campus Virtual no responde.</StaleNotice>
             )}
             <TodayCalendar
               events={eventsOf(

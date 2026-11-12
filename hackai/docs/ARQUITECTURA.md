@@ -19,7 +19,7 @@ Quién es quién.
 | --- | --- |
 | `signIn(credencial)` | La persona que entra, según el puerto de identidad: en la demo, una persona elegida de la lista; en producción, la cuenta de Microsoft de la Austral |
 | `demoPeople()` | Personas sintéticas para el ingreso de demo |
-| `get(persona)` | Rol (alumno o docente), facultad y propuesta |
+| `get(persona)` | Rol (alumno o docente), facultad y propuesta. Si el SIU no responde, la persona como se leyó la última vez |
 | `accountIn(persona, sistema)` | Su id en un sistema de origen o canal externo (SIU, Moodle, Discord) |
 | `byExternalAccount(sistema, idExterno)` | La persona dueña de ese id, o nada. Se vincula por id, porque nombres de usuario y mails cambian o se repiten |
 
@@ -33,7 +33,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | --- | --- |
 | `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
-| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró. En una mesa, si para rendir le falta regularizar la cursada |
+| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró (mirado con el reloj de cada llamada, aunque sea lo último que se leyó). En una mesa, si para rendir le falta regularizar la cursada |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados. Cada final lleva su turno de examen y, si el SIU lo da, dónde se rinde. Cada próximo dice si la persona tiene (o tuvo) comisión de la materia (`hasSection`): un final que rinde libre no tiene espacio al que llevar. Al docente, los parciales de sus comisiones y las mesas que integra |
@@ -60,7 +60,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Constancias:** si cumple lo dice el SIU (en la API real, solo `cumple_condiciones`). El motivo lo deduce Cursada con lo que la API también da: propuesta activa, inscripción vigente, finales rendidos. Si no lo encuentra, no inventa uno.
 
-**Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta.
+**Lecturas que toleran caídas:** si el SIU o Moodle no responden, las lecturas devuelven lo último que se leyó con su hora («actualizado hace 20 min»), marcado como desactualizado. Vale para todas las lecturas, también la oferta y las constancias. No falla toda la pantalla porque un sistema de origen esté caído, que es justamente una de las quejas de la encuesta. Si se cae solo Moodle, `subjectsOf` no usa lo último leído: devuelve las materias al día del SIU, sin enlaces al aula ni tareas, y lo marca con `classroomUnavailable`; Hoy lo anota en `unavailable` como `assignments`.
 
 Usa Personas y los puertos del SIU, del aula virtual y el reloj.
 
@@ -146,6 +146,8 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
 
+**Caídas de la demo** (`adapters/caida/`): con `HACKAI_CAIDAS=si`, `composition` envuelve al adaptador del SIU y al del aula con un interruptor que, prendido, hace que toda consulta devuelva `falla-externa`. Así se muestra en vivo la tolerancia a caídas sin tocar el núcleo, que ve un puerto que falla como uno real. Sin la variable el interruptor no existe, que es lo de producción. Con el interruptor levantado, los dos pasan la batería de contrato de su puerto.
+
 Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales: [research del SIU](../../docs/research/2026-11-10-siu-guarani-integracion.md) y [research de Moodle](../../docs/research/2026-11-10-moodle-web-services.md). Inscribir y el cronograma no existen en la API real del SIU: solo los provee el simulado. El adaptador de Discord sigue la [research de canales externos](../../docs/research/2026-11-10-canales-externos-apis.md): lee por REST desde un cursor, necesita el intent Message Content y ante un 429 espera `retry_after`. Si Discord pide esperar más de 30 segundos o sigue limitando después de 3 reintentos, el adaptador devuelve `falla-externa` en vez de bloquear la request, y la próxima sincronización reintenta. Es una desviación aceptada del issue #11, que pedía esperar siempre.
 
 **Capacidades:** cada adaptador de un sistema de origen declara qué soporta: por ejemplo, si permite inscribir, si tiene cronograma, si ya matricula en Moodle, o si avisa por evento en vez de leerse desde un cursor. El núcleo decide con esas declaraciones, nunca preguntando qué adaptador es. Así el mismo núcleo funciona con el simulado de la demo y con el sistema real, que tiene menos capacidades.
@@ -159,7 +161,7 @@ hackai/
 ├── lib/
 │   ├── core/            people/, studies/, spaces/, today/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
-│   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/
+│   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/, caida/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
 │   └── demo-base/       preparar, verificar y probar la base de la demo (npm run demo:*); no lo usa la app
 ├── app/                 pantallas y server actions

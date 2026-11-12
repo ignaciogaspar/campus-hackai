@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createClient } from '@supabase/supabase-js'
+import { createOutageSwitch, withClassroomOutage } from '@/lib/adapters/caida'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
@@ -185,6 +186,10 @@ function classroomContract(name: string, make: () => ClassroomPort, skip: string
 }
 
 classroomContract('Aula en memoria', () => createMemoryClassroom(syntheticData))
+// Con el interruptor de caídas levantado, el aula que envuelve se porta igual.
+classroomContract('Aula con caídas de la demo', () =>
+  withClassroomOutage(createMemoryClassroom(syntheticData), createOutageSwitch())
+)
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL
 const key = process.env.HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY
