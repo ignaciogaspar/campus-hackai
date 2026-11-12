@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { calendarFile } from '@/lib/calendar'
+import { calendarFile, calendarItems } from '@/lib/calendar'
 import type { UpcomingItem } from '@/lib/core/studies'
 
 const item = (over: Partial<UpcomingItem>): UpcomingItem => ({
@@ -51,4 +51,22 @@ test('sin próximos, el calendario sale vacío pero válido', () => {
     calendarFile([], '2026-11-12T15:00:00.000Z'),
     'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//HackAI//Campus HackAI//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nEND:VCALENDAR\r\n'
   )
+})
+
+test('van los próximos que no pasaron; con una mesa, solo ese final, y una mesa que no es suya da un calendario vacío', () => {
+  const upcoming = [
+    item({ id: 'evaluacion:ev-1', past: true }),
+    item({}),
+    item({ id: 'mesa:mesa-aga-fi-dic', kind: 'final', name: 'Final' })
+  ]
+
+  assert.deepEqual(
+    calendarItems(upcoming, null).map((i) => i.id),
+    ['evaluacion:ev-5', 'mesa:mesa-aga-fi-dic']
+  )
+  assert.deepEqual(
+    calendarItems(upcoming, 'mesa-aga-fi-dic').map((i) => i.id),
+    ['mesa:mesa-aga-fi-dic']
+  )
+  assert.deepEqual(calendarItems(upcoming, 'mesa-sre-fi-dic'), [])
 })

@@ -3,6 +3,7 @@
    Cursada; acá solo se muestran. */
 import { CalendarClock, CalendarX } from 'lucide-react'
 import { shortDate } from '@/components/dates'
+import { creditsText } from '@/components/enrollment/format'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
@@ -38,7 +39,7 @@ export function OpenEnrollmentList({ items }: { items: OpenEnrollment[] }) {
             title={`${TITLE[item.kind]} ${item.subjectName}`}
             description={
               item.credits !== null
-                ? `${item.credits} créditos`
+                ? creditsText(item.credits)
                 : item.needsRegularity
                   ? 'Para rendirlo, antes tenés que regularizar la cursada.'
                   : undefined

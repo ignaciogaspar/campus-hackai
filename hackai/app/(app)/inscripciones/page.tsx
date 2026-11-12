@@ -16,7 +16,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, readTime, shortDate, timeOf } from '@/components/dates'
-import { closingText, REGULARITY_NOTE, spotsLeftText } from '@/components/enrollment/format'
+import { closingText, creditsText, REGULARITY_NOTE, spotsLeftText } from '@/components/enrollment/format'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { PageHeader } from '@/components/shell/page-header'
 import { Card } from '@/components/ui/card'
@@ -75,7 +75,7 @@ function EnrollmentLink({ item }: { item: OpenEnrollment }) {
   return (
     <OfferLink href={offerHref(item.subjectId, item.kind)} title={item.subjectName}>
       <span className={detailClass}>
-        {KIND_NAME[item.kind]} · {item.credits !== null && `${item.credits} créditos · `}
+        {KIND_NAME[item.kind]} · {item.credits !== null && `${creditsText(item.credits)} · `}
         <span className={cn(soon && 'font-semibold text-warning-foreground')}>{closingText(item.closesInDays)}</span> (
         <time dateTime={item.closesAt}>{shortDate(item.closesAt)}</time>)
       </span>

@@ -108,7 +108,7 @@ function SectionChips({ view }: { view: SpaceView }) {
 
 function RetryLink({ href }: { href: string }) {
   return (
-    <Link href={href} className='inline-flex min-h-10 items-center gap-1 font-bold underline'>
+    <Link href={href} className='inline-flex min-h-11 items-center gap-1 font-bold underline'>
       Reintentar
       <ChevronRight aria-hidden='true' className='size-4' />
     </Link>

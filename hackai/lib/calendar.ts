@@ -39,6 +39,11 @@ function summary(item: UpcomingItem): string {
   return item.name === kind ? `${kind} · ${item.subjectName}` : `${kind}: ${item.name} · ${item.subjectName}`
 }
 
+/** Lo que va al archivo: los próximos que no pasaron o, con `mesa`, solo ese final. */
+export function calendarItems(upcoming: UpcomingItem[], mesa: string | null): UpcomingItem[] {
+  return upcoming.filter((i) => !i.past && (!mesa || i.id === `mesa:${mesa}`))
+}
+
 export function calendarFile(items: UpcomingItem[], now: string): string {
   const events = items.flatMap((item) => [
     'BEGIN:VEVENT',
