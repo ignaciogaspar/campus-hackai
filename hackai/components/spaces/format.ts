@@ -59,13 +59,17 @@ const DEFAULT_NAMES: Partial<Record<ChannelKind, string>> = {
   material: 'Material'
 }
 
-/** Avisos, Consultas y Material para los canales por defecto; los que crea un
-    docente, con `#`; un directo, con el nombre de la otra persona. Si la
+/** Avisos, Consultas y Material para los canales por defecto; los que crea un docente, con `#`. */
+export function channelTitle(kind: ChannelKind, name: string): string {
+  return DEFAULT_NAMES[kind] ?? `#${name}`
+}
+
+/** Como `channelTitle`, y un directo con el nombre de la otra persona. Si la
     persona ve canales de más de una comisión, cada uno lleva su comisión:
     «Avisos · A». */
 export function channelLabel(channel: Channel, severalSections: boolean): string {
   if (channel.kind === 'directo') return channel.counterpart?.name ?? 'Mensaje directo'
-  const base = DEFAULT_NAMES[channel.kind] ?? `#${channel.name}`
+  const base = channelTitle(channel.kind, channel.name)
   return severalSections && channel.sectionName ? `${base} · ${channel.sectionName}` : base
 }
 

@@ -6,6 +6,7 @@
    Next.js no vuelve a ejecutar este layout al navegar entre pantallas hermanas:
    cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta. */
 import type { ReactNode } from 'react'
+import { unreadBySubject } from '@/components/novedades/format'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { spaceHref } from '@/components/spaces/format'
@@ -21,15 +22,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   ])
 
   // Espacios da los no leídos por canal: la barra muestra la suma de cada materia.
-  const unreadBySubject = new Map<string, number>()
-  for (const item of unread.ok ? unread.value : []) {
-    unreadBySubject.set(item.subjectId, (unreadBySubject.get(item.subjectId) ?? 0) + item.count)
-  }
+  const bySubject = unreadBySubject(unread.ok ? unread.value : [])
 
   const nav = new Map<string, NavSubject>()
   if (subjects.ok) {
     for (const s of subjects.value.data.current) {
-      const count = unreadBySubject.get(s.subjectId) ?? 0
+      const count = bySubject.get(s.subjectId) ?? 0
       nav.set(s.subjectId, { href: spaceHref(s.subjectId), code: s.code, name: s.name, unread: count })
     }
   }
