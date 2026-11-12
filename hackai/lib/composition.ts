@@ -17,7 +17,10 @@
 
    `simulado` es el SIU simulado sobre las tablas siu_* de Supabase, o el Moodle
    simulado sobre las moodle_*: necesita NEXT_PUBLIC_SUPABASE_URL y
-   SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas (hackai/README.md).
+   SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas (hackai/README.md). Los dos
+   van envueltos en la caché de lecturas (lib/adapters/cache/): cada lectura es
+   una consulta a la base y una pantalla hace muchas. También el almacén de
+   Personas en Supabase. Los de memoria no la necesitan.
 
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
@@ -40,6 +43,7 @@
    desconocido o una variable que falta corta el arranque: es un error de
    configuración, no algo que el núcleo pueda resolver. */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
@@ -78,6 +82,9 @@ export {
   type OutageSwitch,
   type OutageSystem
 } from '@/lib/adapters/caida'
+
+/** El PDF de una página del set sintético: lo sirve el Moodle simulado de la demo (app/simulado/moodle/). */
+export { syntheticPdf } from '@/lib/adapters/synthetic-files'
 
 const ADAPTERS = {
   identity: { variable: 'HACKAI_IDENTITY', values: ['memoria'] },
@@ -165,11 +172,11 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   const outages = outagesFrom(env)
   const siu =
     adapters.siu === 'simulado'
-      ? createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
+      ? withSiuCache(createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl }))
       : createMemorySiu(data, clock)
   const classroom =
     adapters.classroom === 'simulado'
-      ? createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl })
+      ? withClassroomCache(createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl }))
       : createMemoryClassroom(data)
 
   const ports: Ports = {
@@ -188,7 +195,9 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     identity: ports.identity,
     siu: ports.siu,
     store:
-      adapters.store === 'supabase' ? createSupabasePeopleStore({ client: supabase() }) : createMemoryPeopleStore(data)
+      adapters.store === 'supabase'
+        ? withPeopleStoreCache(createSupabasePeopleStore({ client: supabase() }))
+        : createMemoryPeopleStore(data)
   })
   const studies = createStudies({ people, siu: ports.siu, classroom: ports.classroom, clock })
   const spaces = createSpaces({

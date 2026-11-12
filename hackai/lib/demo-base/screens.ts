@@ -35,7 +35,6 @@ export const DEMO_SCREENS: DemoScreens[] = [
     personId: 'p-lbenitez',
     role: 'alumno',
     paths: [
-      '/hoy',
       '/novedades',
       '/materias',
       '/materias/am1',

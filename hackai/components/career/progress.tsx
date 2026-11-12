@@ -33,8 +33,20 @@ export function ProgressRing({ percent }: { percent: number }) {
   )
 }
 
-/* Una barra: el nombre, cuántas de cuántas y la proporción. */
-export function ProgressBar({ label, progress }: { label: string; progress: CareerProgress }) {
+/* Una barra: el nombre, cuántas de cuántas (en materias, créditos u horas) y la proporción. */
+export function ProgressBar({
+  label,
+  progress,
+  unit,
+  hint
+}: {
+  label: string
+  progress: CareerProgress
+  /** Detrás del total: «créditos», «horas». Sin unidad, son materias. */
+  unit?: string
+  /** Debajo de la barra, chico: qué pide la carrera. */
+  hint?: string
+}) {
   const ratio = progress.total ? progress.approved / progress.total : 0
   return (
     <div className='flex flex-col gap-1.5'>
@@ -42,6 +54,7 @@ export function ProgressBar({ label, progress }: { label: string; progress: Care
         <span className='font-semibold text-ink'>{label}</span>
         <span className='text-muted-foreground tabular-nums'>
           <b className='font-semibold text-ink'>{progress.approved}</b> de {progress.total}
+          {unit && ` ${unit}`}
         </span>
       </div>
       <div
@@ -52,8 +65,9 @@ export function ProgressBar({ label, progress }: { label: string; progress: Care
         aria-valuenow={progress.approved}
         className='h-2 overflow-hidden rounded-full bg-accent'
       >
-        <div className='h-full rounded-full bg-blue' style={{ width: `${Math.round(ratio * 100)}%` }} />
+        <div className='h-full rounded-full bg-blue' style={{ width: `${Math.round(Math.min(ratio, 1) * 100)}%` }} />
       </div>
+      {hint && <p className='text-[0.75rem] text-muted-foreground'>{hint}</p>}
     </div>
   )
 }

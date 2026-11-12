@@ -8,12 +8,15 @@ import { SidebarFrame } from '@/components/shell/sidebar-frame'
 export function AppShell({
   school,
   subjects,
+  unread = 0,
   shell,
   sidebarCollapsed = false,
   children
 }: {
   school?: string
   subjects: NavSubject[]
+  /** Lo sin leer de todas las materias, para Novedades en la barra. */
+  unread?: number
   shell: Shell
   /** Si la persona dejó la barra lateral plegada, según la cookie. */
   sidebarCollapsed?: boolean
@@ -23,7 +26,7 @@ export function AppShell({
     <ShellProvider value={shell}>
       <SidebarFrame
         initialCollapsed={sidebarCollapsed}
-        nav={{ school, subjects, person: shell.person, detail: shell.detail }}
+        nav={{ school, subjects, unread, person: shell.person, detail: shell.detail }}
       >
         {children}
       </SidebarFrame>

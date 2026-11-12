@@ -94,11 +94,11 @@ async function runTargetAction<E extends string, O extends Outcome>(
 
   const result = await call(session.personId, target)
   // Algo cambió en el SIU también si quedó a medias: la pantalla tiene que verlo.
-  // Hoy muestra los finales a los que está inscripto y las inscripciones abiertas.
+  // Calendario muestra los finales a los que está inscripto y las inscripciones abiertas.
   if (result.ok || result.error === 'a-medias') {
     revalidatePath('/inscripciones', 'layout')
     revalidatePath('/materias')
-    revalidatePath('/hoy')
+    revalidatePath('/calendario')
   }
   if (!result.ok) return { kind: 'error', message: errors[target.kind][result.error] }
   if (result.value.kind === 'requiere-autogestion') return { kind: 'requiere-autogestion', url: result.value.url, step }

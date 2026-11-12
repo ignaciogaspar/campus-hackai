@@ -1,7 +1,9 @@
-/* Estado de la carrera: cuánto lleva aprobado (obligatorias, optativas y vida
-   universitaria), el promedio, lo que cursa y los finales que le faltan, y el
-   plan de estudios como mapa con el estado de cada materia. Sin reglas de
-   negocio: el avance, el promedio y los estados los calcula Cursada. */
+/* Plan de estudios (antes «Estado de la carrera»): cuánto lleva aprobado —las
+   obligatorias en materias, las optativas y seminarios en horas y la vida
+   universitaria en créditos, que es como lo pide la carrera—, el promedio, lo
+   que cursa y los finales que le faltan, y el plan como mapa con el estado de
+   cada materia. Sin reglas de negocio: el avance, el promedio, los estados y
+   lo que pide la carrera los calcula Cursada. */
 import { BookOpen, ClipboardCheck, GraduationCap, type LucideIcon, Sigma } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -15,7 +17,7 @@ import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Career, StudiesReadError } from '@/lib/core/studies'
 
-export const metadata: Metadata = { title: 'Estado de la carrera · Campus HackAI' }
+export const metadata: Metadata = { title: 'Plan de estudios · Campus HackAI' }
 
 const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'falla-externa': 'No pudimos traer tu carrera del SIU. Probá de nuevo en un rato.',
@@ -81,9 +83,24 @@ function Overview({ career }: { career: Career }) {
           </p>
         </div>
         <div className='flex min-w-0 flex-1 flex-col justify-center gap-4'>
-          <ProgressBar label='Materias obligatorias' progress={career.required} />
-          <ProgressBar label='Optativas' progress={career.electives} />
-          <ProgressBar label='Vida universitaria' progress={career.universityLife} />
+          <ProgressBar
+            label='Materias obligatorias'
+            progress={career.required}
+            unit='materias'
+            hint={`Te faltan ${Math.max(career.required.total - career.required.approved, 0)} para terminar las obligatorias.`}
+          />
+          <ProgressBar
+            label='Optativas y seminarios'
+            progress={career.electiveHours}
+            unit='horas'
+            hint={`Tu carrera pide ${career.electiveHours.total} horas de optativas o seminarios.`}
+          />
+          <ProgressBar
+            label='Vida universitaria'
+            progress={career.universityLifeCredits}
+            unit='créditos'
+            hint={`Tu carrera pide ${career.universityLifeCredits.total} créditos de actividades de vida universitaria.`}
+          />
         </div>
       </section>
       <div className='grid grid-cols-2 gap-4'>
@@ -120,12 +137,12 @@ export default async function EstadoPage() {
 
   return (
     <>
-      <PageHeader title='Estado de la carrera' subtitle={career?.program?.name} art='academico' />
+      <PageHeader title='Plan de estudios' subtitle={career?.program?.name} art='academico' />
 
-      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+      <main className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         {!result.ok || !career ? (
           <ErrorNotice>
-            {(!result.ok && ERRORS[result.error]) || 'Algo salió mal al traer el estado de tu carrera.'}
+            {(!result.ok && ERRORS[result.error]) || 'Algo salió mal al traer tu plan de estudios.'}
           </ErrorNotice>
         ) : (
           <>
@@ -135,7 +152,7 @@ export default async function EstadoPage() {
               <div className='flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-1'>
                 <div className='flex flex-col gap-1'>
                   <h2 id='plan' className='text-lg font-extrabold text-ink'>
-                    Plan de estudios
+                    Materias del plan
                   </h2>
                   <PlanLegend />
                 </div>

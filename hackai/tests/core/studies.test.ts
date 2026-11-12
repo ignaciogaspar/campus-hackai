@@ -2284,6 +2284,10 @@ test('la carrera trae cada materia del plan con su estado, sus notas y el avance
   assert.deepEqual(career.required, { approved: 3, total: 18 })
   assert.deepEqual(career.electives, { approved: 0, total: 2 })
   assert.deepEqual(career.universityLife, { approved: 1, total: 3 })
+  // Lo que pide la carrera en otras unidades (fijo para la demo): el Taller de Oratoria da 2 de los 10
+  // créditos, y las dos optativas del plan son 128 horas, ninguna aprobada.
+  assert.deepEqual(career.universityLifeCredits, { approved: 2, total: 10 })
+  assert.deepEqual(career.electiveHours, { approved: 0, total: 128 })
   assert.equal(career.percent, 17)
 })
 

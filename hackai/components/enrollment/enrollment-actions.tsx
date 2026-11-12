@@ -85,13 +85,13 @@ function BoardEnrolled({ target, transactionNumber, needsRegularity }: EnrolledP
   return (
     <>
       <p>
-        <b>Listo, quedaste inscripto al final.</b> Ya estás en el SIU y lo vas a ver en Hoy, entre tus próximos.
+        <b>Listo, quedaste inscripto al final.</b> Ya estás en el SIU y lo vas a ver en tu Calendario.
       </p>
       {needsRegularity && <p className='font-semibold text-warning-foreground'>{REGULARITY_NOTE}</p>}
       <Receipt transactionNumber={transactionNumber} />
       <div className='flex flex-wrap gap-2'>
-        <Link href='/hoy' className={linkButton}>
-          Ver en Hoy
+        <Link href='/calendario' className={linkButton}>
+          Ver en el calendario
         </Link>
         {target.kind === 'mesa' && (
           <a

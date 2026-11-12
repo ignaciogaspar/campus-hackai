@@ -348,7 +348,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
 
       <main
         data-just-read={hadUnread ? '' : undefined}
-        className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-6 lg:pt-8 lg:pb-8'
+        className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8'
       >
         {view.staleSince && (
           <StaleNotice>
@@ -357,7 +357,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15.5rem_minmax(0,1fr)_17.5rem] lg:items-start lg:gap-6'>
+        <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}

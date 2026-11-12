@@ -10,29 +10,37 @@
    ticket #8). Tailwind y shadcn/ui (ADR 0006): los tokens de shadcn (--primary,
    --background…) toman los colores de la Austral. */
 :root {
-  --azul: #1d21a9;
-  --blue-light: #1f5cff;
-  --blue-deep: #14178a;
-  --navy: #0b1150;
+  /* Azul de la Austral, apagado para la app: el mismo tono que la marca con
+     menos saturación (OKLCH 0.44 0.13 264), así botones, íconos y selecciones
+     se ven profesionales y no brillan en el celular. */
+  --azul: #2c4e99;
+  --blue-light: #4573c0;
+  --blue-deep: #1f3573;
+  --navy: #0e1548;
+  /* Gris medio azulado: solo lo secundario (íconos sin elegir de la barra de
+     abajo, la barra de carga). Lo elegido va en azul suave, no en gris. */
+  --gris-azulado: #646f84;
+  --gris-azulado-claro: #e3e8f0;
   --cian: #3ff0ff;
   --naranja: #ff7a1a;
-  --hielo: #eef0fb;
+  --hielo: #f0f4fa;
   --tinta: #10142c;
-  --gris: #5f6474;
+  --gris: #575e69;
   --gray-light: #8a8fa0;
   --borde: #e4e7f0;
   /* Avisos: algo para tener en cuenta, que no es un error. */
-  --warning: var(--naranja);
-  --warning-background: #fff4ea;
-  --warning-icon: #b45309;
-  --warning-foreground: #5c2c04;
+  /* El naranja de la marca, apagado: lo urgente se nota sin encandilar. */
+  --warning: #de9046;
+  --warning-background: #fff1de;
+  --warning-icon: #a65c20;
+  --warning-foreground: #633416;
   --error-background: #fdecea;
   --error-foreground: #5e130c;
-  --success: #0f7b4a;
-  --success-background: #e3f5ec;
+  --success: #236e44;
+  --success-background: #e1f7e7;
   /* Origen de un material o una fecha: texto oscuro sobre fondo suave (AA). */
-  --origin-hackai: #1d21a9;
-  --origin-hackai-background: #e8e9fb;
+  --origin-hackai: #2c4e99;
+  --origin-hackai-background: #e5efff;
   --origin-discord: #3b3fb8;
   --origin-discord-background: #ecebff;
   --origin-moodle: #9a4a06;
@@ -56,7 +64,7 @@
   --kind-entrega: #1d6797;
   --kind-entrega-background: #e5f3fb;
   --kind-entrega-border: #c8e4f5;
-  --background: #f2f4fb;
+  --background: #f5f7fc;
   --foreground: var(--tinta);
   --card: oklch(1 0 0);
   --card-foreground: var(--tinta);
@@ -68,8 +76,8 @@
   --secondary-foreground: var(--tinta);
   --muted: var(--hielo);
   --muted-foreground: var(--gris);
-  --accent: #e6edff;
-  --accent-foreground: var(--blue-light);
+  --accent: #e5efff;
+  --accent-foreground: var(--azul);
   --destructive: #b42318;
   --border: var(--borde);
   --input: var(--borde);
@@ -136,6 +144,8 @@
   --color-gray-light: var(--gray-light);
   --color-blue-light: var(--blue-light);
   --color-blue-deep: var(--blue-deep);
+  --color-steel: var(--gris-azulado);
+  --color-steel-light: var(--gris-azulado-claro);
   --color-origin-hackai: var(--origin-hackai);
   --color-origin-hackai-background: var(--origin-hackai-background);
   --color-origin-discord: var(--origin-discord);
@@ -205,5 +215,24 @@
   label:has(> input[type='radio']),
   label:has(> input[type='checkbox']) {
     cursor: pointer;
+  }
+}
+/* La campana se mueve una vez cuando hay novedades sin leer (components/shell/notifications-bell.tsx). */
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-14deg);
+  }
+  40% {
+    transform: rotate(10deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  80% {
+    transform: rotate(3deg);
   }
 }

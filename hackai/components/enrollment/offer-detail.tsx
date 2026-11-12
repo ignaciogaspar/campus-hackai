@@ -22,6 +22,7 @@ import { EnrollmentActions } from '@/components/enrollment/enrollment-actions'
 import { capacityText, durationText, instanceText, modalityName, scheduleLine } from '@/components/enrollment/format'
 import type { EnrollmentAction } from '@/components/enrollment/state'
 import { WindowNote } from '@/components/enrollment/window-note'
+import { StatusPill } from '@/components/ui/status-pill'
 import type { OfferItem } from '@/lib/core/studies'
 import { dayKey } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -76,9 +77,7 @@ function OfferCard({
           <h3 className='text-base leading-snug font-semibold text-ink'>{title}</h3>
           <p className='text-[0.8125rem] text-muted-foreground'>{item.period}</p>
         </div>
-        {item.alreadyEnrolled && (
-          <span className='rounded-full bg-blue px-2.5 py-0.5 text-[0.75rem] font-semibold text-white'>Inscripto</span>
-        )}
+        {item.alreadyEnrolled && <StatusPill tone='success'>Inscripto</StatusPill>}
       </div>
       <dl className='grid grid-cols-2 gap-x-4 gap-y-3.5 sm:gap-x-6'>{facts}</dl>
       <p className='text-[0.75rem] text-muted-foreground'>

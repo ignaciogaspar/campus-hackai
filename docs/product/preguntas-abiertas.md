@@ -186,6 +186,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 23. ¿Cuántos créditos de vida universitaria y cuántas horas de optativas o seminarios pide cada carrera, y quién lo carga?
+
+- **Por qué importa:** el Plan de estudios (antes «Estado de la carrera») mostraba la vida universitaria y las optativas como cantidad de materias. La carrera las pide en otras unidades: créditos de actividades de vida universitaria y horas de optativas o seminarios. El SIU no lo expone y depende de cada carrera.
+- **Hipótesis (12/11/2026):** lo configura un administrador por carrera. Mientras tanto queda fijo en `hackai/lib/core/studies/requirements.ts`: 10 créditos de vida universitaria para todas las carreras, y 64 horas por cada optativa que pide el plan (128 horas en un plan con dos optativas). Los créditos aprobados salen de los de cada actividad en el SIU (`SiuSubject.credits`).
+- **Opciones:** tabla de requisitos por carrera en la base de HackAI con una pantalla de administración; leerlo del plan si el SIU real lo trae; dejarlo fijo para la demo.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

@@ -1,5 +1,5 @@
 /* Académico pasó a llamarse Notas (las constancias están en Trámites y el
-   promedio, en Estado de la carrera). La ruta vieja sigue andando. */
+   promedio, en Plan de estudios). La ruta vieja sigue andando. */
 import { permanentRedirect } from 'next/navigation'
 
 export default function AcademicoPage() {

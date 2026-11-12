@@ -19,22 +19,22 @@ export const metadata: Metadata = { title: 'Caídas de la demo · Campus HackAI'
 const TEXTS: Record<OutageSystem, { name: string; down: string; up: string }> = {
   siu: {
     name: 'SIU Guaraní',
-    down: 'Hoy, Mis materias, Inscripciones, Notas y Trámites muestran lo último leído con «actualizado hace…». Inscribirse avisa que el SIU no responde y no deja nada a medias.',
+    down: 'Mis materias, Calendario, Inscripciones, Notas y Trámites muestran lo último leído con «actualizado hace…». Inscribirse avisa que el SIU no responde y no deja nada a medias.',
     up: 'Responde normal.'
   },
   moodle: {
     name: 'Campus Virtual (Moodle)',
-    down: 'Mis materias sale igual, desde el SIU, sin enlaces al aula ni tareas y avisando qué falta. Hoy avisa que faltan las entregas.',
+    down: 'Mis materias sale igual, desde el SIU, sin enlaces al aula ni tareas y avisando qué falta. El calendario avisa que faltan las entregas.',
     up: 'Responde normal.'
   }
 }
 
 const SCREENS = [
-  { href: '/hoy', label: 'Hoy' },
   { href: '/materias', label: 'Mis materias' },
+  { href: '/calendario', label: 'Calendario' },
   { href: '/inscripciones', label: 'Inscripciones' },
   { href: '/notas', label: 'Notas' },
-  { href: '/tramites', label: 'Trámites' }
+  { href: '/tramites', label: 'Trámites y reportes' }
 ]
 
 export default async function CaidasPage() {
@@ -45,7 +45,7 @@ export default async function CaidasPage() {
 
   return (
     <>
-      <PageHeader title='Caídas de la demo' kicker='Demo de HackAI' backHref='/hoy' signedOut />
+      <PageHeader title='Caídas de la demo' kicker='Demo de HackAI' backHref='/' signedOut />
       <main className='mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pt-6 pb-8 lg:px-6 lg:pt-10'>
         <p className='text-sm text-pretty text-muted-foreground'>
           Recorré primero las pantallas con todo andando, así HackAI tiene algo leído. Después tirá un sistema y volvé a

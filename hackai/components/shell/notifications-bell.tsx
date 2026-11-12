@@ -4,17 +4,32 @@ import { unreadTotal } from '@/components/news/format'
 import { UnreadCount } from '@/components/ui/unread-count'
 import { getSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { cn } from '@/lib/utils'
 
-/* Campana del encabezado: lleva a Novedades, con lo que hay sin leer de todas las materias. */
+/* Campana del encabezado: lleva a Novedades, con lo que hay sin leer de todas
+   las materias. Con algo sin leer se pinta blanca, para que se vea sobre el
+   navy; en compu dice «Novedades» y el número va adentro. */
 export function NotificationsBell({ unread }: { unread: number }) {
+  const pending = unread > 0
   return (
     <Link
       href='/novedades'
-      aria-label={unread > 0 ? `Novedades, ${unread} sin leer` : 'Novedades'}
-      className='relative grid size-10 place-items-center rounded-full text-white hover:bg-white/10 focus-ring'
+      aria-label={pending ? `Novedades, ${unread} sin leer` : 'Novedades'}
+      className={cn(
+        'relative inline-flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
+        pending
+          ? 'bg-white text-navy ring-white hover:bg-white/90'
+          : 'bg-white/10 text-white ring-white/20 hover:bg-white/20'
+      )}
     >
-      <Bell aria-hidden='true' className='size-5' />
-      <UnreadCount count={unread} className='absolute -top-0.5 -right-0.5 bg-orange text-ink' />
+      <Bell aria-hidden='true' className={cn('size-5', pending && 'motion-safe:animate-[wiggle_1.2s_ease-in-out_1]')} />
+      <span aria-hidden='true' className='hidden lg:inline'>
+        Novedades
+      </span>
+      <UnreadCount
+        count={unread}
+        className='absolute -top-1 -right-1 bg-blue text-white ring-2 ring-navy lg:static lg:ring-0'
+      />
     </Link>
   )
 }

@@ -86,14 +86,14 @@ function matches(ifNoneMatch: string | null, etag: string): boolean {
     cambia la paleta, cambian acá. */
 const PAGE_STYLE = [
   '*{box-sizing:border-box}',
-  'body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:16px;background:#f2f4fb;color:#10142c;font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}',
+  'body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:16px;background:#f5f7fc;color:#10142c;font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}',
   'main{width:100%;max-width:26rem;padding:24px;border:1px solid #e4e7f0;border-radius:14px;background:#fff}',
   'h1{margin:0 0 8px;font-size:1.25rem;line-height:1.3;text-wrap:balance}',
   'p{margin:0 0 20px;color:#5f6474;text-wrap:pretty}',
   'nav{display:flex;flex-wrap:wrap;gap:8px}',
-  'a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:12px;font-weight:600;text-decoration:none;color:#1d21a9;border:1px solid #e4e7f0}',
-  'a:first-child{background:#1d21a9;border-color:#1d21a9;color:#fff}',
-  'a:focus-visible{outline:3px solid #1f5cff;outline-offset:2px}'
+  'a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:12px;font-weight:600;text-decoration:none;color:#2c4e99;border:1px solid #e4e7f0}',
+  'a:first-child{background:#2c4e99;border-color:#2c4e99;color:#fff}',
+  'a:focus-visible{outline:3px solid #4573c0;outline-offset:2px}'
 ].join('')
 
 /** Una página corta, sin nada que venga del pedido: todo el texto es fijo. */

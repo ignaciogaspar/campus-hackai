@@ -1,6 +1,8 @@
 /* Los filtros de Notas: año lectivo, tipo de materia, año de la carrera y
    estado. Viven en la URL (?lectivo=2025&tipo=optativa&anio=1&estado=en-curso)
-   para que una vista filtrada se pueda compartir. Solo filtran lo que da
+   para que una vista filtrada se pueda compartir. También cómo se agrupan las
+   materias: por año lectivo, el más reciente primero (de entrada), o por año
+   de la carrera (`?agrupar=carrera`). Solo filtran y agrupan lo que da
    Cursada: no deciden el estado de nada. */
 import { groupName } from '@/components/grades/status'
 import type { SubjectStanding } from '@/lib/core/studies'
@@ -72,4 +74,25 @@ export function byGroup(subjects: SubjectStanding[]): { name: string; items: Sub
     else groups.push({ name, items: [subject] })
   }
   return groups
+}
+
+/** Cómo se agrupan las materias: por año lectivo (de entrada) o por año de la carrera. */
+export type Grouping = 'lectivo' | 'carrera'
+
+export const groupingFrom = (params: Params): Grouping => (params.agrupar === 'carrera' ? 'carrera' : 'lectivo')
+
+/** Las materias que no tienen año lectivo: las aprobadas sin una cursada en el SIU, como una equivalencia. */
+export const NO_ACADEMIC_YEAR = 'Sin cursada en el SIU'
+
+/** Por año lectivo, el más reciente primero; las que no tienen, al final. Adentro, en el orden en que vienen. */
+export function byAcademicYear(subjects: SubjectStanding[]): { name: string; items: SubjectStanding[] }[] {
+  const years = [...new Set(subjects.map((s) => s.academicYear))].sort((a, b) => (b ?? -1) - (a ?? -1))
+  return years.map((year) => ({
+    name: year === null ? NO_ACADEMIC_YEAR : String(year),
+    items: subjects.filter((s) => s.academicYear === year)
+  }))
+}
+
+export function groupsOf(subjects: SubjectStanding[], grouping: Grouping) {
+  return grouping === 'carrera' ? byGroup(subjects) : byAcademicYear(subjects)
 }

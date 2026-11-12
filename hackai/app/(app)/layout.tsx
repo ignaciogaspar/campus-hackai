@@ -11,10 +11,11 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
-import { unreadBySubject } from '@/components/news/format'
+import { unreadBySubject, unreadTotal } from '@/components/news/format'
 import { activeProgram } from '@/components/session/person-text'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
+import { NavigationProgress } from '@/components/shell/navigation-progress'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
 import { spaceHref } from '@/components/spaces/format'
 import { UnreadRefresh } from '@/components/spaces/unread-refresh'
@@ -54,13 +55,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppShell
       school={found?.school.name}
       subjects={[...nav.values()]}
+      unread={unread.ok ? unreadTotal(unread.value) : 0}
       shell={{ person: found, detail: found ? profileDetail(found) : undefined }}
       sidebarCollapsed={jar.get(SIDEBAR_COOKIE)?.value === 'plegada'}
     >
       {children}
-      {/* Lee la URL con useSearchParams: sin Suspense, Next.js no podría armar las pantallas estáticas. */}
+      {/* Leen la URL con useSearchParams: sin Suspense, Next.js no podría armar las pantallas estáticas. */}
       <Suspense fallback={null}>
         <UnreadRefresh />
+        <NavigationProgress />
       </Suspense>
     </AppShell>
   )

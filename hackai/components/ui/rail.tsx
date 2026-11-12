@@ -33,7 +33,7 @@ export const railItem = cva(
       size: {
         md: 'min-h-14 flex-col justify-center gap-1 rounded-[16px] px-1 text-xs [&_svg]:size-5',
         sm: 'min-h-10 flex-1 justify-center gap-1.5 rounded-full px-3 text-[0.8125rem] whitespace-nowrap',
-        column: 'min-h-11 flex-row justify-start gap-2.5 rounded-[16px] px-3 text-sm [&_svg]:size-5'
+        column: 'min-h-12 flex-row justify-start gap-3 rounded-[16px] px-3.5 text-[0.9375rem] [&_svg]:size-5'
       }
     },
     defaultVariants: { size: 'md' }

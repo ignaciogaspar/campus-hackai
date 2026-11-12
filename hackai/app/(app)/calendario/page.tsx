@@ -7,17 +7,19 @@
 
    `?semana=AAAA-MM-DD` abre en la semana de ese día: lo usa el mensaje de
    inscripción para mostrar la cursada nueva. */
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { dueTime } from '@/components/dates'
 import { PageHeader } from '@/components/shell/page-header'
 import { TodayCalendar } from '@/components/today/calendar'
 import { classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
+import { buttonVariants } from '@/components/ui/button'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { UpcomingItem } from '@/lib/core/studies'
+import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Calendario · Campus HackAI' }
 
@@ -99,6 +101,21 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
               now={result.value.now}
               initialDay={initialDay}
               filters
+              below={
+                <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
+                  <p className='min-w-0 flex-1 basis-64 text-[0.8125rem] text-muted-foreground'>
+                    Las entregas vienen de Moodle: solo aparecen las que el docente cargó con fecha.
+                  </p>
+                  <a
+                    href='/calendario/exportar'
+                    download
+                    className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 flex-none')}
+                  >
+                    <CalendarPlus aria-hidden='true' data-icon='inline-start' />
+                    Agregar a mi calendario
+                  </a>
+                </div>
+              }
               aside={<NextDates items={result.value.upcoming} />}
             />
           </>

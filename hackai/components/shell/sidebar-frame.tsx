@@ -15,7 +15,7 @@ import { SidebarContext } from '@/components/shell/sidebar-context'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
 
 /* Plegada, el ancho deja el ícono justo en el medio: 1 rem de la barra, 1 rem de la fila y el ícono de 1,125 rem. */
-const WIDTH = { abierta: '15.5rem', plegada: '5.125rem' }
+const WIDTH = { abierta: '17rem', plegada: '5.125rem' }
 
 /** Si la tecla se apretó escribiendo: ahí ⌘B no pliega la barra. */
 function typing(target: EventTarget | null): boolean {
