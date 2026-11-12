@@ -63,6 +63,9 @@ function Dates({ view, children }: { view: TodayView; children: ReactNode }) {
       {siuDown && <ErrorNotice>{UPCOMING_DOWN}</ErrorNotice>}
       {children}
       <p className='text-[0.8125rem] text-muted-foreground'>{moodleDown ? ASSIGNMENTS_DOWN : MOODLE_NOTE}</p>
+      <a href='/calendario' download className='self-start text-[0.8125rem] font-bold text-blue-light underline'>
+        Agregar a mi calendario
+      </a>
     </>
   )
 }

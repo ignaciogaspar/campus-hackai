@@ -44,8 +44,9 @@ export type SiuTerm = {
   enrollmentEnd: string
 }
 
-/** Materia («actividad» en el SIU). Se dicta en una o más facultades. */
-export type SiuSubject = { id: string; code: string; name: string }
+/** Materia («actividad» en el SIU). Se dicta en una o más facultades. Las
+    actividades de vida universitaria dan créditos; las materias, `null`. */
+export type SiuSubject = { id: string; code: string; name: string; credits: number | null }
 
 export type SiuSchedule = {
   day: 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado'

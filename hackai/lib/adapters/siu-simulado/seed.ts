@@ -71,7 +71,7 @@ export function siuSeedSql(data: SyntheticData): string {
     upsert(
       'siu_subjects',
       ['id'],
-      siu.subjects.map((s) => ({ id: text(s.id), code: text(s.code), name: text(s.name) }))
+      siu.subjects.map((s) => ({ id: text(s.id), code: text(s.code), name: text(s.name), credits: num(s.credits) }))
     ),
     upsert(
       'siu_sections',

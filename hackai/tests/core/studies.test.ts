@@ -6,7 +6,13 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu, type MemorySiuOptions } from '@/lib/adapters/memoria/siu'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
-import { createStudies, type MySubject, type OpenEnrollment, type UpcomingItem } from '@/lib/core/studies'
+import {
+  createStudies,
+  type MySubject,
+  type OpenEnrollment,
+  type PendingFinal,
+  type UpcomingItem
+} from '@/lib/core/studies'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
@@ -585,18 +591,21 @@ test('ve las mesas de lo que tiene regular o está cursando y las comisiones de 
   const { studies } = build()
 
   // Valentina tiene Álgebra regular, cursa Análisis I y no cursó Física I ni Programación I.
+  // Las actividades de Ingeniería que dan créditos salen como «actividad».
   const result = await studies.openEnrollments('p-vfunes')
 
   assert.ok(result.ok)
   assert.equal(result.value.stale, false)
   assert.equal(result.value.readAt, NOW)
   assert.deepEqual(openings(result.value.data), [
+    ['actividad', 'tor', '2026-11-17T02:59:00.000Z'],
     ['examen', 'aga', '2026-12-05T02:59:00.000Z'],
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
     ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
-    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z']
+    ['cursada', 'pr1', '2026-12-19T02:59:00.000Z'],
+    ['actividad', 'lid', '2026-12-19T02:59:00.000Z']
   ])
-  assert.deepEqual(result.value.data[3], {
+  assert.deepEqual(result.value.data[4], {
     kind: 'cursada',
     subjectId: 'pr1',
     subjectName: 'Programación I',
@@ -604,8 +613,11 @@ test('ve las mesas de lo que tiene regular o está cursando y las comisiones de 
     closesAt: '2026-12-19T02:59:00.000Z',
     closesInDays: 38,
     spotsLeft: null,
-    needsRegularity: false
+    needsRegularity: false,
+    credits: null
   })
+  assert.equal(result.value.data[0].credits, 2)
+  assert.equal(result.value.data[5].credits, 3)
 })
 
 test('cada inscripción abierta dice en cuántos días cierra y cuántos lugares quedan', async () => {
@@ -620,10 +632,12 @@ test('cada inscripción abierta dice en cuántos días cierra y cuántos lugares
   assert.deepEqual(
     result.value.data.map((i) => [i.kind, i.subjectId, i.closesInDays, i.spotsLeft]),
     [
+      ['actividad', 'tor', 6, 30],
       ['examen', 'aga', 24, 1],
       ['examen', 'am1', 24, 40],
       ['cursada', 'fi1', 38, 25],
-      ['cursada', 'pr1', 38, null]
+      ['cursada', 'pr1', 38, null],
+      ['actividad', 'lid', 38, 40]
     ]
   )
 })
@@ -663,10 +677,12 @@ test('los días para el cierre se cuentan con el reloj de cada lectura, aunque s
   assert.ok(stale.ok)
   assert.equal(stale.value.stale, true)
   assert.deepEqual(days(stale.value.data), [
+    ['actividad', 'tor', -18],
     ['examen', 'aga', 0],
     ['examen', 'am1', 0],
     ['cursada', 'fi1', 14],
-    ['cursada', 'pr1', 14]
+    ['cursada', 'pr1', 14],
+    ['actividad', 'lid', 14]
   ])
 })
 
@@ -694,9 +710,11 @@ test('no ve la mesa a la que ya se inscribió ni el verano de lo que está cursa
 
   assert.ok(result.ok)
   assert.deepEqual(openings(result.value.data), [
+    ['actividad', 'tor', '2026-11-17T02:59:00.000Z'],
     ['examen', 'am1', '2026-12-05T02:59:00.000Z'],
     ['examen', 'sre', '2026-12-05T02:59:00.000Z'],
-    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z']
+    ['cursada', 'fi1', '2026-12-19T02:59:00.000Z'],
+    ['actividad', 'lid', '2026-12-19T02:59:00.000Z']
   ])
 })
 
@@ -752,7 +770,8 @@ test('cuando cierra la inscripción a las mesas dejan de aparecer, y sin nada ab
     december.value.data.map((i) => [i.kind, i.subjectId]),
     [
       ['cursada', 'fi1'],
-      ['cursada', 'pr1']
+      ['cursada', 'pr1'],
+      ['actividad', 'lid']
     ]
   )
   assert.deepEqual(later.value.data, [])
@@ -781,6 +800,102 @@ test('las inscripciones abiertas con el SIU caído devuelven lo último que ley�
     value: { data: first.value.data, readAt: NOW, stale: true }
   })
   assert.deepEqual(await studies.openEnrollments('p-taguirre'), { ok: false, error: 'falla-externa' })
+})
+
+// Finales pendientes
+
+const pending = (items: PendingFinal[]) =>
+  items.map((p) => [p.subjectId, p.next?.examBoardId ?? null, p.next?.status ?? null])
+
+test('los finales pendientes son lo regular sin aprobar, con la próxima mesa por fecha; un final desaprobado sigue pendiente', async () => {
+  const { studies } = build()
+
+  // Tomás tiene regular Álgebra (ya inscripto a la mesa) y Sistemas de Representación (desaprobó el final en febrero).
+  const result = await studies.pendingFinals('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(pending(result.value.data), [
+    ['sre', 'mesa-sre-fi-dic', 'abierta'],
+    ['aga', 'mesa-aga-fi-dic', 'inscripto']
+  ])
+  assert.equal(result.value.data[0].regularSince, '2025-11-27T03:00:00.000Z')
+  assert.equal(result.value.data[0].next?.examPeriod, 'Turno Diciembre 2026')
+})
+
+test('una materia aprobada por promoción, final o equivalencia no es un final pendiente', async () => {
+  const data = structuredClone(syntheticData)
+  const regular = (personId: string, subjectId: string) => ({
+    ...data.siu.history.find((h) => h.type === 'cursada' && h.result === 'regular')!,
+    id: `h-${personId}-${subjectId}`,
+    personId,
+    subjectId,
+    date: '2024-12-01T03:00:00.000Z'
+  })
+  // Regulares antes de aprobarlas: Química (promoción), Antropología (final) e Introducción a la Administración (equivalencia).
+  data.siu.history.push(regular('30101', 'qui'), regular('30101', 'an1'), regular('30108', 'iad'))
+  const { studies } = build(data)
+
+  const tomas = await studies.pendingFinals('p-taguirre')
+  const nicolas = await studies.pendingFinals('p-nherrera')
+
+  assert.ok(tomas.ok && nicolas.ok)
+  assert.deepEqual(
+    tomas.value.data.map((p) => p.subjectId),
+    ['sre', 'aga']
+  )
+  assert.deepEqual(nicolas.value.data, [])
+})
+
+test('la próxima mesa de un final pendiente dice si está sin cupo o si todavía no abrió', async () => {
+  const full = structuredClone(syntheticData)
+  full.siu.examEnrollments.push({ ...full.siu.examEnrollments[0], id: 'ie-extra', personId: '30105' })
+  const later = structuredClone(syntheticData)
+  later.siu.examBoards = later.siu.examBoards.map((b) =>
+    b.id === 'mesa-aga-fi-dic' ? { ...b, enrollmentStart: '2026-11-20T03:00:00.000Z' } : b
+  )
+
+  // Valentina tiene regular Álgebra y no se anotó a la mesa.
+  const sinCupo = await build(full).studies.pendingFinals('p-vfunes')
+  const noAbrio = await build(later).studies.pendingFinals('p-vfunes')
+
+  assert.ok(sinCupo.ok && noAbrio.ok)
+  assert.deepEqual(pending(sinCupo.value.data), [['aga', 'mesa-aga-fi-dic', 'sin-cupo']])
+  assert.deepEqual(pending(noAbrio.value.data), [['aga', 'mesa-aga-fi-dic', 'no-abrio']])
+})
+
+test('cuando cierra la inscripción a la mesa, el pendiente queda sin mesa; si ya estaba inscripto, la conserva', async () => {
+  const { studies, advance } = build()
+
+  advance(25 * 24 * 60) // 5/12: cerraron las mesas de diciembre, que todavía no se tomaron.
+  const valentina = await studies.pendingFinals('p-vfunes')
+  const tomas = await studies.pendingFinals('p-taguirre')
+
+  assert.ok(valentina.ok && tomas.ok)
+  assert.deepEqual(pending(valentina.value.data), [['aga', null, null]])
+  assert.deepEqual(pending(tomas.value.data), [
+    ['aga', 'mesa-aga-fi-dic', 'inscripto'],
+    ['sre', null, null]
+  ])
+})
+
+test('un docente no tiene finales pendientes; con el SIU caído vuelve lo último leído, y de alguien que no existe, «persona desconocida»', async () => {
+  const { studies, siuState, advance } = build()
+  assert.deepEqual(await studies.pendingFinals('p-mledesma'), {
+    ok: true,
+    value: { data: [], readAt: NOW, stale: false }
+  })
+  assert.deepEqual(await studies.pendingFinals('p-nadie'), { ok: false, error: 'persona-desconocida' })
+  const first = await studies.pendingFinals('p-taguirre')
+  assert.ok(first.ok)
+
+  advance(20)
+  siuState.down = true
+
+  assert.deepEqual(await studies.pendingFinals('p-taguirre'), {
+    ok: true,
+    value: { data: first.value.data, readAt: NOW, stale: true }
+  })
+  assert.deepEqual(await studies.pendingFinals('p-vfunes'), { ok: false, error: 'falla-externa' })
 })
 
 // Notas, historia y constancias
@@ -1501,7 +1616,8 @@ test('las inscripciones abiertas a cursada son las materias de su facultad con u
       closesAt: '2026-12-19T02:59:00.000Z',
       closesInDays: 38,
       spotsLeft: 25,
-      needsRegularity: false
+      needsRegularity: false,
+      credits: null
     }
   ])
   assert.deepEqual(

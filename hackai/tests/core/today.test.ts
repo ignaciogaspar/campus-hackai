@@ -69,9 +69,11 @@ test('arma la pantalla del alumno en una sola llamada: materias, próximos por f
   assert.deepEqual(
     view.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'tor'],
       ['examen', 'am1'],
       ['examen', 'sre'],
-      ['cursada', 'fi1']
+      ['cursada', 'fi1'],
+      ['actividad', 'lid']
     ]
   )
   assert.equal(view.now, NOW)
@@ -214,9 +216,11 @@ test('con Moodle caído y nada leído antes faltan las materias y sus entregas, 
   assert.deepEqual(
     result.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'tor'],
       ['examen', 'am1'],
       ['examen', 'sre'],
-      ['cursada', 'fi1']
+      ['cursada', 'fi1'],
+      ['actividad', 'lid']
     ]
   )
   assert.equal(result.value.staleSince, null)
@@ -240,15 +244,20 @@ test('lo desactualizado se mira contra el reloj: lo que ya pasó sale pasado y l
   assert.deepEqual(
     monday.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'tor'],
       ['examen', 'am1'],
       ['examen', 'sre'],
-      ['cursada', 'fi1']
+      ['cursada', 'fi1'],
+      ['actividad', 'lid']
     ]
   )
   assert.deepEqual(
     december.value.openEnrollments.map((i) => [i.kind, i.subjectId]),
-    [['cursada', 'fi1']],
-    'la mesa cerró el 4/12; el verano sigue abierto'
+    [
+      ['cursada', 'fi1'],
+      ['actividad', 'lid']
+    ],
+    'la mesa y el Taller de Oratoria cerraron; el verano sigue abierto'
   )
 })
 

@@ -44,6 +44,7 @@ function Receipt({ transactionNumber }: { transactionNumber: string }) {
 }
 
 type EnrolledProps = {
+  target: Target
   inClassroom: boolean
   subjectId: string
   transactionNumber: string
@@ -75,7 +76,7 @@ function SectionEnrolled({ inClassroom, subjectId, transactionNumber }: Enrolled
 }
 
 /** La mesa: quedó en el SIU y el final sale en Hoy, adonde lleva. Si le falta la regularidad, se lo recuerda. */
-function BoardEnrolled({ transactionNumber, needsRegularity }: EnrolledProps) {
+function BoardEnrolled({ target, transactionNumber, needsRegularity }: EnrolledProps) {
   return (
     <>
       <p>
@@ -87,6 +88,11 @@ function BoardEnrolled({ transactionNumber, needsRegularity }: EnrolledProps) {
         <Link href='/hoy' className={linkButton}>
           Ver en Hoy
         </Link>
+        {target.kind === 'mesa' && (
+          <a href={`/calendario?mesa=${encodeURIComponent(target.examBoardId)}`} download className={outlineLinkButton}>
+            Agregar a mi calendario
+          </a>
+        )}
       </div>
     </>
   )
@@ -111,6 +117,7 @@ function Enrolled({
       <CheckCircle2 aria-hidden className='mt-0.5 size-5 shrink-0 text-primary' />
       <div className='flex flex-col gap-2'>
         <Done
+          target={target}
           inClassroom={state.inClassroom}
           subjectId={subjectId}
           transactionNumber={state.transactionNumber}

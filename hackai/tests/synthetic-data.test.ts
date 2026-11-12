@@ -207,6 +207,21 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
     )
   })
 
+  test(`el ${day} el alumno de la demo tiene dos actividades con créditos abiertas, una que cierra en pocos días`, async () => {
+    const { studies } = systemAt(now)
+
+    const open = await studies.openEnrollments(DEMO_STUDENT)
+
+    assert.ok(open.ok)
+    const activities = open.value.data.filter((o) => o.kind === 'actividad')
+    assert.ok(activities.length >= 2, 'faltan actividades con créditos abiertas')
+    assert.ok(activities.every((a) => a.credits !== null && a.credits > 0))
+    assert.ok(
+      activities.some((a) => a.closesInDays <= 4),
+      'falta una actividad que cierre en pocos días'
+    )
+  })
+
   test(`el ${day} el alumno de la demo puede anotarse a una mesa de examen a la que le queda un solo lugar`, async () => {
     const { studies } = systemAt(now)
 
