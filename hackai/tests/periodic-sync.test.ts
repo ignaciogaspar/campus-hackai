@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { GET, POST } from '@/app/api/cron/sync/route'
 import type { SyncReport } from '@/lib/core/spaces'
 import { handlePeriodicSync } from '@/lib/periodic-sync'
-import { notImplemented, ok } from '@/lib/result'
+import { fail, ok } from '@/lib/result'
 
 const SECRET = 'secreto-de-prueba-0123456789'
 const URL = 'http://localhost/api/cron/sync'
@@ -65,18 +65,18 @@ test('si falta CRON_SECRET en el entorno la ruta queda cerrada y avisa que no es
   assert.match(logs[0], /CRON_SECRET/)
 })
 
-test('si Espacios todavía no sincroniza responde «no implementado», sin romper', async () => {
+test('si el almacén de Espacios no responde, devuelve 502 con el error, sin romper', async () => {
   const logs: string[] = []
 
   const response = await handlePeriodicSync(request(`Bearer ${SECRET}`), {
     secret: SECRET,
-    syncAll: notImplemented,
+    syncAll: async () => fail('falla-externa'),
     log: (m) => logs.push(m)
   })
 
-  assert.equal(response.status, 501)
-  assert.deepEqual(await response.json(), { error: 'no-implementado' })
-  assert.deepEqual(logs, ['[corrida-periodica] no-implementado'])
+  assert.equal(response.status, 502)
+  assert.deepEqual(await response.json(), { error: 'falla-externa' })
+  assert.deepEqual(logs, ['[corrida-periodica] falla-externa'])
 })
 
 test('ni la respuesta ni el log llevan el secreto ni lo que trajo el pedido', async () => {
@@ -99,7 +99,7 @@ test('ni la respuesta ni el log llevan el secreto ni lo que trajo el pedido', as
 
 // La ruta de verdad, con el sistema armado sobre los adaptadores en memoria.
 
-test('la ruta toma el secreto de CRON_SECRET y, mientras Espacios no sincronice (#15), responde «no implementado»', async () => {
+test('la ruta toma el secreto de CRON_SECRET y sincroniza los canales vinculados', async () => {
   process.env.CRON_SECRET = SECRET
   try {
     assert.equal((await GET(request())).status, 401)
@@ -108,8 +108,10 @@ test('la ruta toma el secreto de CRON_SECRET y, mientras Espacios no sincronice 
     const get = await GET(request(`Bearer ${SECRET}`))
     const post = await POST(request(`Bearer ${SECRET}`))
 
-    assert.deepEqual([get.status, await get.json()], [501, { error: 'no-implementado' }])
-    assert.equal(post.status, 501)
+    // En memoria arranca sin canales vinculados: no hay nada que sincronizar.
+    const nothing = { channels: 0, imported: 0, sent: 0, pending: 0 }
+    assert.deepEqual([get.status, await get.json()], [200, nothing])
+    assert.deepEqual([post.status, await post.json()], [200, nothing])
   } finally {
     delete process.env.CRON_SECRET
   }

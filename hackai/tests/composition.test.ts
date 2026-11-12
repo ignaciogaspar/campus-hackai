@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import type { MemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { compose } from '@/lib/composition'
 
@@ -25,16 +26,11 @@ test('sin variables de entorno arma todos los módulos con los adaptadores en me
   assert.equal((await system.studies.subjectsOf(alumno.id)).ok, true)
   assert.equal((await system.studies.record(alumno.id)).ok, true)
   assert.equal((await system.spaces.open(alumno.id, 'am1')).ok, true)
-  assert.deepEqual(await system.spaces.syncAll(), { ok: false, error: 'no-implementado' })
-})
-
-test('cada módulo expone su interfaz completa y lo que falta devuelve «no implementado»', async () => {
-  const { spaces } = compose({})
-  const p = 'persona'
-  const calls = [spaces.link(p, 'c', { system: 'discord', channelId: 'd' }), spaces.syncAll()]
-  for (const result of await Promise.all(calls)) {
-    assert.deepEqual(result, { ok: false, error: 'no-implementado' })
-  }
+  // En memoria arranca sin canales vinculados.
+  assert.deepEqual(await system.spaces.syncAll(), {
+    ok: true,
+    value: { channels: 0, imported: 0, sent: 0, pending: 0 }
+  })
 })
 
 test('cada puerto se elige por su variable de entorno y un valor desconocido se rechaza al armar', () => {
@@ -159,4 +155,27 @@ test('cada armado tiene su propia copia de los datos sintéticos', async () => {
   assert.equal(enrolled.ok, true)
   const inB = await b.ports.siu.courseEnrollments(student.id)
   assert.equal(inB.ok && inB.value.some((e) => e.sectionId === section.id), false)
+})
+
+test('con el reloj fijo de la demo, lo nuevo del canal externo entra al volver a abrir el espacio pasados unos segundos', async (t) => {
+  // El reloj de la demo no avanza: el espaciado de las sincronizaciones tiene que medirse con el tiempo real.
+  let elapsed = 0
+  t.mock.method(performance, 'now', () => elapsed)
+  const system = compose({})
+  const discord = system.ports.externalChannel as MemoryExternalChannel
+  const [, consultas] = syntheticData.discord.channels
+
+  const opened = await system.spaces.open('p-mledesma', 'am1')
+  assert.ok(opened.ok)
+  const channel = opened.value.channels.find((c) => c.kind === 'consultas')!
+  assert.ok((await system.spaces.link('p-mledesma', channel.id, { system: 'discord', channelId: consultas.id })).ok)
+  await system.spaces.open('p-mledesma', 'am1')
+
+  discord.receive(consultas.id, { author: { id: '1290000000000000777', name: 'alguien' }, text: '¿Hay clase?' })
+  elapsed += 10_000
+  await system.spaces.open('p-mledesma', 'am1')
+
+  const seen = await system.spaces.channel('p-mledesma', channel.id)
+  assert.ok(seen.ok)
+  assert.equal(seen.value.threads.at(-1)?.message.text, '¿Hay clase?')
 })

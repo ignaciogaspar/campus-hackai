@@ -188,6 +188,39 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
     assert.deepEqual(value(await store.channels([space.id])), created)
   })
 
+  it('vincula un canal con uno externo, lo encuentra entre los vinculados y guarda hasta dónde se leyó', async (store, ids) => {
+    const space = await newSpace(store, ids)
+    const avisos = value(
+      await store.createChannel(channelOf(space.id, 'avisos', { kind: 'comision', sectionId: 'com-a' }))
+    )
+    const consultas = value(
+      await store.createChannel(channelOf(space.id, 'consultas', { kind: 'comision', sectionId: 'com-a' }))
+    )
+    const mine = async () => value(await store.linkedChannels()).filter((c) => c.spaceId === space.id)
+    assert.deepEqual(await mine(), [])
+    assert.equal(value(await store.syncCursor(avisos.id)), null)
+
+    const link = { system: 'discord', channelId: '1300000000000000101' } as const
+    const linked = value(await store.linkChannel(avisos.id, link))
+    assert.deepEqual(linked, { ...avisos, externalLink: link })
+    assert.deepEqual(value(await store.channel(avisos.id)), linked)
+    assert.deepEqual(await mine(), [linked])
+
+    value(await store.setSyncCursor(avisos.id, '1310000000000000002'))
+    assert.equal(value(await store.syncCursor(avisos.id)), '1310000000000000002')
+    assert.equal(value(await store.syncCursor(consultas.id)), null)
+
+    // Con otro canal externo se lee desde el principio; desvinculado, deja de estar entre los vinculados.
+    const other = { system: 'discord', channelId: '1300000000000000102' } as const
+    assert.deepEqual(value(await store.linkChannel(avisos.id, other)), { ...avisos, externalLink: other })
+    assert.equal(value(await store.syncCursor(avisos.id)), null)
+    assert.deepEqual(value(await store.linkChannel(avisos.id, null)), avisos)
+    assert.deepEqual(await mine(), [])
+
+    assert.equal(value(await store.linkChannel(randomUUID(), link)), null)
+    assert.equal(value(await store.linkChannel('no-existe', link)), null)
+  })
+
   it('el nombre de un canal no se repite dentro de su alcance, pero sí entre alcances', async (store, ids) => {
     const space = await newSpace(store, ids)
     const other = await newSpace(store, ids, 2)
@@ -285,6 +318,23 @@ function spacesStoreContract(name: string, make: () => SpacesStore, skip: string
     assert.deepEqual(value(await store.setResolved(question.id, true)), { ...question, resolved: true })
     assert.deepEqual(value(await store.message(question.id)), { ...question, resolved: true })
     assert.deepEqual(value(await store.setResolved(question.id, false)), question)
+  })
+
+  it('un mensaje pendiente queda publicado con su id externo, que no puede repetir otro del canal', async (store, ids) => {
+    const space = await newSpace(store, ids)
+    const avisos = value(await store.createChannel(channelOf(space.id, 'avisos', { kind: 'materia' })))
+    const fromDiscord = value(
+      await store.addMessage(messageOf(avisos.id, { origin: 'discord', externalId: '1310000000000000001' }))
+    )
+    const pending = value(await store.addMessage(messageOf(avisos.id, { status: 'pendiente' })))
+
+    assert.deepEqual(await store.markSent(pending.id, fromDiscord.externalId!), { ok: false, error: 'duplicado' })
+    assert.deepEqual(value(await store.message(pending.id)), pending)
+
+    const sent = { ...pending, status: 'publicado' as const, externalId: '1310000000000000002' }
+    assert.deepEqual(value(await store.markSent(pending.id, '1310000000000000002')), sent)
+    assert.deepEqual(value(await store.message(pending.id)), sent)
+    assert.equal(value(await store.markSent(randomUUID(), '1310000000000000003')), null)
   })
 
   it('guarda el material con id y seq nuevos, y lo devuelve por seq y por espacio', async (store, ids) => {
@@ -406,7 +456,8 @@ const TABLES = {
       'person_ids',
       'scope_key',
       'external_system',
-      'external_channel_id'
+      'external_channel_id',
+      'external_cursor'
     ],
     uuid: ['id', 'space_id'],
     generated: { id: 'uuid', seq: 'identity' },

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
+import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -14,6 +15,7 @@ import { type Channel, createSpaces, type SpacesStore, type SpaceView } from '@/
 import { createStudies } from '@/lib/core/studies'
 import type { ClassroomAnnouncement, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
+import type { ExternalChannelPort } from '@/lib/ports/external-channel'
 import type { FilesPort } from '@/lib/ports/files'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail, ok } from '@/lib/result'
@@ -62,6 +64,9 @@ function build(
     peopleStore?: PeopleStore
     /** Que el reloj diga que avanza solo, como el del sistema: así `open` mide cada cuánto sincroniza. */
     clockMoves?: boolean
+    externalChannel?: ExternalChannelPort
+    /** Los milisegundos que espacian las sincronizaciones con el canal externo al abrir un espacio. */
+    timer?: () => number
   } = {}
 ) {
   let now = data.now
@@ -80,11 +85,13 @@ function build(
   const spaces = createSpaces({
     people,
     studies,
-    externalChannel: createMemoryExternalChannel(data, clock),
+    externalChannel: overrides.externalChannel ?? createMemoryExternalChannel(data, clock),
     classroom,
     files,
     clock,
-    store
+    store,
+    // Sin temporizador propio no avanza: cada espacio se sincroniza una vez al abrirlo.
+    timer: overrides.timer ?? (() => 0)
   })
   return { spaces, studies, store, files, siuState, setNow }
 }
@@ -607,6 +614,7 @@ test('el docente crea un canal de la materia, que ven todos, o de su comisión, 
       unread: 0,
       canPost: true,
       canResolve: true,
+      canLink: true,
       externalLink: null,
       counterpart: null
     }
@@ -1043,6 +1051,395 @@ test('quien se inscribe en una comisión ve enseguida los canales de su espacio'
   assert.equal(named(opened.value, 'consultas', 'Verano').kind, 'consultas')
 })
 
+// Sincronización con el canal externo de la cátedra (Discord, en memoria)
+
+const [discordAvisos, discordConsultas, discordMaterial] = syntheticData.discord.channels
+const discordOf = (personId: string) => syntheticData.people.find((p) => p.id === personId)!.discordId!
+const LEDESMA_EN_DISCORD = { id: discordOf('p-mledesma'), name: 'mledesma' }
+/** El último mensaje que tenía el canal externo antes de cada prueba. */
+const LAST_SYNTHETIC = '1310000000000000005'
+
+/** Espacios con el canal externo a mano: se puede «caer», escribir en él como si
+    fuera Discord y adelantar el temporizador que espacia las sincronizaciones. */
+function buildSynced() {
+  let ms = 0
+  const discord = createMemoryExternalChannel(syntheticData, createFixedClock(NOW))
+  const { port, state } = fallible(discord)
+  const openedThreads: string[] = []
+  const externalChannel: ExternalChannelPort = {
+    capabilities: discord.capabilities,
+    read: (channelId, cursor) => port.read(channelId, cursor),
+    post: (channelId, text) => port.post(channelId, text),
+    reply: (channelId, threadId, text) => port.reply(channelId, threadId, text),
+    download: (attachment) => port.download(attachment),
+    async openThread(channelId, messageId) {
+      openedThreads.push(messageId)
+      return port.openThread(channelId, messageId)
+    }
+  }
+  const built = build(syntheticData, { externalChannel, timer: () => ms })
+  const wait = (seconds: number) => {
+    ms += seconds * 1000
+  }
+  return { ...built, discord, discordState: state, openedThreads, wait }
+}
+
+const decoded = (bytes: Uint8Array) => new TextDecoder().decode(bytes)
+
+test('el docente vincula #avisos con su canal de Discord y entra lo que ya había, con su autor', async () => {
+  const { spaces } = buildSynced()
+  const ids = await am1(spaces)
+
+  const linked = await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })
+
+  assert.ok(linked.ok)
+  assert.deepEqual(linked.value.externalLink, { system: 'discord', channelId: discordAvisos.id })
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  const [fromTeacher, fromWebhook] = seen.value.threads.map((t) => t.message)
+  // La cuenta de Discord vinculada en el seed se reconoce a través de Personas.
+  assert.equal(fromTeacher.author.personId, 'p-mledesma')
+  assert.equal(fromTeacher.author.role, 'profesor')
+  assert.deepEqual(
+    [fromTeacher.origin, fromTeacher.externalId, fromTeacher.unread],
+    ['discord', '1310000000000000001', true]
+  )
+  // Sin cuenta vinculada, llega con el nombre que tiene en Discord.
+  assert.deepEqual(fromWebhook.author, { personId: null, name: 'Avisos de la cátedra', role: null })
+
+  // El adjunto se copió a Archivos: se abre aunque venza el enlace de Discord, y solo para quien ve el canal.
+  const [attachment] = fromTeacher.attachments
+  assertFileUrl(attachment.url, 'temas-parcial-2.pdf')
+  const file = await spaces.file('p-taguirre', fileIdOf(attachment.url))
+  assert.ok(file.ok)
+  assert.equal(decoded(file.value.bytes), 'Contenido sintético de temas-parcial-2.pdf')
+  assert.deepEqual(await spaces.file('p-mcabrera', fileIdOf(attachment.url)), { ok: false, error: 'sin-acceso' })
+})
+
+test('vinculan los docentes del canal, con un canal de Discord que exista y no esté vinculado con otro', async () => {
+  const { spaces } = buildSynced()
+  const ids = await am1(spaces)
+  const avisos = { system: 'discord', channelId: discordAvisos.id } as const
+
+  assert.deepEqual(await spaces.link('p-taguirre', ids.avisosA, avisos), { ok: false, error: 'solo-docentes' })
+  // Ferreyra dicta la B: los canales de la A ni los ve.
+  assert.deepEqual(await spaces.link('p-gferreyra', ids.avisosA, avisos), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(
+    await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: '1309999999999999999' }),
+    { ok: false, error: 'canal-externo-inexistente' }
+  )
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, avisos)).ok)
+  assert.deepEqual(await spaces.link('p-mledesma', ids.consultasA, avisos), {
+    ok: false,
+    error: 'canal-externo-en-uso'
+  })
+
+  const asStudent = await spaces.open('p-taguirre', 'am1')
+  const asTeacher = await spaces.open('p-mledesma', 'am1')
+  assert.ok(asStudent.ok && asTeacher.ok)
+  assert.equal(named(asStudent.value, 'avisos', 'A').canLink, false)
+  assert.deepEqual(
+    [named(asTeacher.value, 'avisos', 'A').canLink, named(asTeacher.value, 'material').canLink],
+    [true, true]
+  )
+})
+
+test('lo publicado en HackAI llega a Discord sin volver duplicado, y la respuesta del docente allá vuelve a su consulta', async () => {
+  const { spaces, discord, openedThreads, wait } = buildSynced()
+  const ids = await am1(spaces)
+  const consultas = { system: 'discord', channelId: discordConsultas.id } as const
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, consultas)).ok)
+
+  // Lo que ya había en Discord: una consulta de Tomás con la respuesta en su hilo.
+  const before = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(before.ok)
+  const [old] = before.value.threads
+  assert.deepEqual([old.message.author.personId, old.message.question], ['p-taguirre', { resolved: false }])
+  assert.deepEqual(
+    old.replies.map((r) => [r.author.personId, r.text]),
+    [['p-mledesma', 'No, llega hasta derivadas y sus aplicaciones.']]
+  )
+
+  const posted = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Hay consulta el viernes?' })
+  assert.ok(posted.ok)
+  assert.equal(posted.value.status, 'publicado')
+  assert.ok(posted.value.externalId)
+  // La consulta abre su hilo en Discord, para que la respuesta quede junta.
+  assert.deepEqual(openedThreads, [posted.value.externalId])
+  const answer = await spaces.post('p-mledesma', ids.consultasA, { text: 'Leé el apunte', replyTo: old.message.id })
+  assert.ok(answer.ok)
+
+  const inDiscord = await discord.read(discordConsultas.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.deepEqual(
+    inDiscord.value.messages.map((m) => [m.id, m.threadId]),
+    [
+      [posted.value.externalId, null],
+      [answer.value.externalId, old.message.externalId]
+    ]
+  )
+  // El texto va primero, para que el hilo se llame como la consulta, y el autor al final.
+  assert.match(inDiscord.value.messages[0].text, /^¿Hay consulta el viernes\?\n-# .+ · desde HackAI$/)
+  assert.match(inDiscord.value.messages[1].text, /^Leé el apunte\n-# .+ \(docente\) · desde HackAI$/)
+
+  discord.receive(discordConsultas.id, {
+    author: LEDESMA_EN_DISCORD,
+    text: 'Sí, a las 18 en el aula 4.',
+    threadId: posted.value.externalId
+  })
+  wait(10)
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+
+  const after = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(after.ok)
+  assert.deepEqual(
+    after.value.threads.map((t) => [t.message.text, t.replies.map((r) => [r.author.personId, r.text, r.origin])]),
+    [
+      [
+        '¿Entran integrales en el segundo parcial?',
+        [
+          ['p-mledesma', 'No, llega hasta derivadas y sus aplicaciones.', 'discord'],
+          ['p-mledesma', 'Leé el apunte', 'hackai']
+        ]
+      ],
+      ['¿Hay consulta el viernes?', [['p-mledesma', 'Sí, a las 18 en el aula 4.', 'discord']]]
+    ]
+  )
+})
+
+test('si Discord no responde, lo publicado queda pendiente y la siguiente sincronización lo envía en orden', async () => {
+  const { spaces, discord, discordState } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+
+  discordState.down = true
+  const first = await spaces.post('p-mledesma', ids.avisosA, { text: 'Mañana no hay clase.' })
+  assert.ok(first.ok)
+  const reply = await spaces.post('p-mledesma', ids.avisosA, {
+    text: 'Recuperamos el jueves.',
+    replyTo: first.value.id
+  })
+  assert.ok(reply.ok)
+  // Queda publicado en HackAI: los alumnos lo ven aunque Discord esté caído.
+  assert.deepEqual([first.value.status, first.value.externalId, reply.value.status], ['pendiente', null, 'pendiente'])
+  const seenByStudent = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seenByStudent.ok)
+  assert.equal(seenByStudent.value.threads.at(-1)?.message.text, 'Mañana no hay clase.')
+
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 2 } })
+
+  discordState.down = false
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 2, pending: 0 } })
+  // Otra sincronización no reenvía ni importa lo que ya está.
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 0 } })
+
+  const inDiscord = await discord.read(discordAvisos.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  const [firstOut, replyOut] = inDiscord.value.messages
+  assert.match(firstOut.text, /^Mañana no hay clase\.\n/)
+  assert.deepEqual([replyOut.threadId, inDiscord.value.messages.length], [firstOut.id, 2])
+
+  const seen = await spaces.channel('p-mledesma', ids.avisosA)
+  assert.ok(seen.ok)
+  const mine = seen.value.threads.at(-1)!
+  assert.deepEqual(
+    [mine.message.status, mine.message.externalId, mine.replies.map((r) => [r.status, r.externalId])],
+    ['publicado', firstOut.id, [['publicado', replyOut.id]]]
+  )
+  assert.equal(seen.value.threads.length, 3, 'los dos avisos que ya había y el nuevo, sin duplicados')
+})
+
+test('abrir el espacio trae lo nuevo de Discord, pero no más de una vez cada pocos segundos', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+  const texts = async () => {
+    const seen = await spaces.channel('p-taguirre', ids.avisosA)
+    assert.ok(seen.ok)
+    return seen.value.threads.map((t) => t.message.text)
+  }
+
+  discord.receive(discordAvisos.id, {
+    author: LEDESMA_EN_DISCORD,
+    text: 'La clase de hoy es en el aula 3.',
+    attachments: [{ filename: 'plano.pdf', contentType: 'application/pdf', content: 'plano', expired: true }]
+  })
+  const opened = await spaces.open('p-taguirre', 'am1')
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 3)
+  assert.equal((await texts()).at(-1), 'La clase de hoy es en el aula 3.')
+
+  discord.receive(discordAvisos.id, { author: LEDESMA_EN_DISCORD, text: 'Traigan calculadora.' })
+  wait(1)
+  await spaces.open('p-taguirre', 'am1')
+  assert.equal((await texts()).at(-1), 'La clase de hoy es en el aula 3.')
+
+  wait(5)
+  await spaces.open('p-taguirre', 'am1')
+  assert.equal((await texts()).at(-1), 'Traigan calculadora.')
+
+  // Un adjunto cuyo enlace ya había vencido no se pudo copiar: queda con su enlace original.
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  const [expired] = seen.value.threads.at(-2)!.message.attachments
+  assert.equal(expired.name, 'plano.pdf')
+  assert.match(expired.url, /^https:\/\/cdn\.discordapp\.com\//)
+})
+
+test('los adjuntos del canal de material de Discord entran al material, y lo que se sube en HackAI se avisa allá', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  const material = { system: 'discord', channelId: discordMaterial.id } as const
+  assert.ok((await spaces.link('p-gferreyra', ids.material, material)).ok)
+
+  discord.receive(discordMaterial.id, {
+    author: LEDESMA_EN_DISCORD,
+    text: 'Guía 4 y la vieja',
+    attachments: [
+      { filename: 'guia-4.pdf', contentType: 'application/pdf', content: 'Guía 4' },
+      { filename: 'vieja.pdf', contentType: 'application/pdf', content: 'vieja', expired: true }
+    ]
+  })
+  // Entra lo que sube cualquiera: quién publica en el canal lo decide el servidor de Discord.
+  discord.receive(discordMaterial.id, {
+    author: { id: discordOf('p-taguirre'), name: 'tomi.aguirre' },
+    text: 'Mis apuntes',
+    attachments: [{ filename: 'apuntes-tomi.pdf', contentType: 'application/pdf', content: 'apuntes' }]
+  })
+  discord.receive(discordMaterial.id, {
+    author: { id: '1290000000000000777', name: 'sin.vincular' },
+    text: 'Resumen',
+    attachments: [{ filename: 'resumen-anonimo.pdf', contentType: 'application/pdf', content: 'resumen' }]
+  })
+  wait(10)
+  const view = await spaces.open('p-taguirre', 'am1')
+  assert.ok(view.ok)
+  assert.deepEqual(
+    view.value.material.recent.map((m) => [m.name, m.origin, m.addedBy?.personId ?? null, m.unread]),
+    [
+      ['resumen-anonimo.pdf', 'discord', null, true],
+      ['apuntes-tomi.pdf', 'discord', 'p-taguirre', false],
+      ['guia-4.pdf', 'discord', 'p-mledesma', true]
+    ]
+  )
+  const guide = view.value.material.recent.find((m) => m.name === 'guia-4.pdf')
+  const file = await spaces.file('p-lbenitez', fileIdOf(guide?.url))
+  assert.ok(file.ok)
+  assert.equal(decoded(file.value.bytes), 'Guía 4')
+  // El texto no entra: el canal de material no lleva mensajes.
+  const channel = await spaces.channel('p-taguirre', ids.material)
+  assert.ok(channel.ok)
+  assert.deepEqual(channel.value.threads, [])
+
+  const added = await spaces.addMaterial('p-mledesma', ids.spaceId, {
+    name: 'Guía 5.pdf',
+    contentType: 'application/pdf',
+    bytes: new TextEncoder().encode('Guía 5'),
+    section: 'Unidad 3'
+  })
+  assert.ok(added.ok)
+  const inDiscord = await discord.read(discordMaterial.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.match(inDiscord.value.messages.at(-1)?.text ?? '', /subió material en HackAI \(Unidad 3\):\n📎 Guía 5\.pdf$/)
+  // El aviso vuelve sin adjuntos: no se duplica en el material.
+  wait(10)
+  const again = await spaces.open('p-taguirre', 'am1')
+  assert.ok(again.ok)
+  assert.equal(again.value.material.recent.filter((m) => m.name === 'Guía 5.pdf').length, 1)
+})
+
+test('en #avisos de Discord entra lo que escribe cualquiera; sin cuenta vinculada, con su nombre de Discord', async () => {
+  const { spaces, discord } = buildSynced()
+  const ids = await am1(spaces)
+  discord.receive(discordAvisos.id, {
+    author: { id: '1290000000000000777', name: 'ayudante.am1' },
+    text: 'Hoy llego tarde.'
+  })
+  discord.receive(discordAvisos.id, { author: LEDESMA_EN_DISCORD, text: 'El jueves hay consulta.' })
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  // Quién publica en el canal lo decide el servidor de Discord (pregunta abierta 18).
+  assert.deepEqual(
+    seen.value.threads.map((t) => [t.message.text, t.message.author.personId, t.message.author.name]),
+    [
+      ['Recuerden que el segundo parcial es el lunes 16. Adjunto los temas.', 'p-mledesma', 'Mariana Ledesma'],
+      ['Ya están las notas del primer parcial en el SIU.', null, 'Avisos de la cátedra'],
+      ['Hoy llego tarde.', null, 'ayudante.am1'],
+      ['El jueves hay consulta.', 'p-mledesma', 'Mariana Ledesma']
+    ]
+  )
+})
+
+test('una respuesta a un mensaje de antes de vincular el canal sale suelta y no traba lo que sigue', async () => {
+  const { spaces, discord } = buildSynced()
+  const ids = await am1(spaces)
+  // Publicado antes de vincular: nunca llega a Discord, así que no tiene id externo.
+  const old = await spaces.post('p-taguirre', ids.consultasA, { text: '¿El TP se entrega impreso?' })
+  assert.ok(old.ok)
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, { system: 'discord', channelId: discordConsultas.id })).ok)
+
+  const answer = await spaces.post('p-mledesma', ids.consultasA, { text: 'No, por el aula.', replyTo: old.value.id })
+  const next = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Y la fecha?' })
+  assert.ok(answer.ok && next.ok)
+  assert.deepEqual([answer.value.status, next.value.status], ['publicado', 'publicado'])
+  // En HackAI sigue en su hilo; en Discord va suelta, porque su mensaje no está allá.
+  assert.equal(answer.value.replyTo, old.value.id)
+  const inDiscord = await discord.read(discordConsultas.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.deepEqual(
+    inDiscord.value.messages.map((m) => [m.id, m.threadId]),
+    [
+      [answer.value.externalId, null],
+      [next.value.externalId, null]
+    ]
+  )
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 0 } })
+})
+
+test('la versión de un canal cambia cuando entra algo de HackAI o de Discord, y no cambia si no pasó nada', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, { system: 'discord', channelId: discordConsultas.id })).ok)
+  const versionOf = async (channelId: string) => {
+    const v = await spaces.version(channelId)
+    assert.ok(v.ok)
+    return v.value
+  }
+
+  const seen = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(seen.ok)
+  const start = seen.value.version
+  assert.equal(await versionOf(ids.consultasA), start, 'la de leer el canal es la misma')
+  assert.equal(await versionOf(ids.consultasA), start, 'sin nada nuevo, no cambia')
+
+  // Lo que llega de Discord entra al chequear, respetando el espaciado de las sincronizaciones.
+  discord.receive(discordConsultas.id, { author: LEDESMA_EN_DISCORD, text: 'Mañana hay consulta.' })
+  wait(10)
+  const afterDiscord = await versionOf(ids.consultasA)
+  assert.notEqual(afterDiscord, start)
+
+  const question = await spaces.post('p-taguirre', ids.consultasA, { text: '¿A qué hora?' })
+  assert.ok(question.ok)
+  const afterPost = await versionOf(ids.consultasA)
+  assert.notEqual(afterPost, afterDiscord)
+
+  assert.ok((await spaces.resolve('p-mledesma', question.value.id)).ok)
+  assert.notEqual(await versionOf(ids.consultasA), afterPost)
+
+  // El material: cambia cuando se sube un archivo.
+  const material = await versionOf(ids.material)
+  await spaces.addMaterial('p-mledesma', ids.spaceId, {
+    name: 'Guía 6.pdf',
+    contentType: 'application/pdf',
+    bytes: new TextEncoder().encode('Guía 6')
+  })
+  assert.notEqual(await versionOf(ids.material), material)
+
+  assert.deepEqual(await spaces.version('no-existe'), { ok: false, error: 'canal-desconocido' })
+})
+
 // Avisos y material de Moodle (#16). Estos tests arman el aula con el set completo.
 
 /** Los mensajes de un canal como los ve la persona. */
@@ -1402,6 +1799,8 @@ test('el alumno abre un canal directo con un docente de su comisión, le escribe
       unread: 0,
       canPost: true,
       canResolve: false,
+      // Los directos no se vinculan con el canal externo.
+      canLink: false,
       externalLink: null,
       counterpart: { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }
     }

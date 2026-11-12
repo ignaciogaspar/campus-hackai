@@ -73,7 +73,7 @@ Procesos completos, hoy contra HackAI, con 3 alumnos por ciclo en sus propias cu
 
 - **T1, «¿qué me toca?»:** el próximo parcial o final y qué hay esta semana.
 - **T2, «anotarme a algo abierto»:** hasta el botón «Inscribirse» del SIU, sin apretarlo. En HackAI, el flujo completo.
-- **T3, «enterarme»:** cuánto tarda en llegar un aviso o un material nuevo. Hoy se le pregunta al alumno; en HackAI se mide en vivo, del Discord del docente al celular.
+- **T3, «enterarme»:** cuánto tarda en llegar un aviso o un material nuevo. Hoy se le pregunta al alumno. En HackAI la demora depende solo del sistema: la mide el equipo una vez, con su cota. A los alumnos se les pregunta además si les llega la notificación de Discord al celular ([validaciones.md](validaciones.md#t3-enterarme)).
 - **T4, «encontrar la nota de mi último parcial»:** hoy puede estar en historia académica o en actuación provisoria. Se mide de punta a punta mirando.
 - **T5, «pedir una constancia de alumno regular»:** hasta el botón «Guardar» del SIU, sin apretarlo.
 - **Piloto con Laboratorio 3:** esa cátedra ya usa Discord. Si su docente acepta, se conecta un espacio de HackAI a su servidor y se mide cuánto tarda una consulta en tener respuesta. El contacto lo decide el equipo.
