@@ -9,8 +9,8 @@
    En el celular es una columna y el campo para escribir queda pegado abajo.
    En compu, tres columnas: canales, conversación y un panel de contexto.
 
-   Mientras está abierto se actualiza solo (LiveRefresh): lo nuevo del canal
-   externo, de Moodle o de otros aparece sin recargar.
+   Mientras está abierto se actualiza solo (LiveRefresh, en el layout): lo
+   nuevo del canal externo, de Moodle o de otros aparece sin recargar.
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído. */
@@ -37,7 +37,6 @@ import {
   type SpaceQuery,
   spaceHref
 } from '@/components/spaces/format'
-import { LiveRefresh } from '@/components/spaces/live-refresh'
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
@@ -252,7 +251,8 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
   const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
   const channels = view.channels.map((c) => (c.id === selected?.id ? selected : c))
-  // Si tenía no leídos, los de la barra lateral quedaron viejos: LiveRefresh la vuelve a leer.
+  // Si tenía no leídos, los de la barra lateral quedaron viejos: con `data-just-read` en <main>,
+  // LiveRefresh la vuelve a leer.
   const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
 
   return (
@@ -266,7 +266,10 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         <SectionChips view={view} />
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-6 lg:pt-8 lg:pb-8'>
+      <main
+        data-just-read={hadUnread ? '' : undefined}
+        className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-6 lg:pt-8 lg:pb-8'
+      >
         {view.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(view.staleSince)}: puede estar
@@ -299,7 +302,6 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           />
         </div>
       </main>
-      <LiveRefresh readChannel={hadUnread && selected ? selected.id : null} />
     </>
   )
 }

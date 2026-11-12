@@ -1,7 +1,7 @@
 /* El espacio abierto se vuelve a leer solo mientras la pestaña está a la vista, y enseguida al volver a ella. */
 import assert from 'node:assert/strict'
 import { mock, test } from 'node:test'
-import { refreshWhileVisible } from '@/components/spaces/live-refresh-schedule'
+import { isSpacePath, refreshWhileVisible } from '@/components/spaces/live-refresh-schedule'
 
 /** Una pestaña de mentira: se puede ocultar y volver a mostrar. */
 class FakePage extends EventTarget {
@@ -65,4 +65,13 @@ test('al dejar el espacio no se lee más', (t) => {
   page.show('hidden')
   page.show('visible')
   assert.equal(refreshes.count, 0)
+})
+
+test('se actualiza solo el espacio de una materia, no las otras pantallas', () => {
+  assert.equal(isSpacePath('/materias/am1'), true)
+  assert.equal(isSpacePath('/materias/f%C3%ADsica-1'), true)
+  assert.equal(isSpacePath('/materias'), false)
+  assert.equal(isSpacePath('/materias/'), false)
+  assert.equal(isSpacePath('/hoy'), false)
+  assert.equal(isSpacePath('/inscripciones/am1'), false)
 })
