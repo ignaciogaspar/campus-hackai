@@ -5,6 +5,9 @@
      fuentes), así se ve igual que el resto aunque no se haya abierto nunca.
    - Lo estático (/_next/static, que lleva el hash en el nombre, los íconos, las
      ilustraciones y el logo) se sirve de la caché después de la primera vez.
+     De /_next/image, que no lleva hash, solo se guardan al instalarse las que
+     pide la página sin conexión (el logo de la marca): así la caché no crece
+     con cada imagen y tamaño que se pida.
 
    Nunca guarda el HTML de las pantallas ni lo de /api: son datos de una persona
    con sesión y quedarían desactualizados. Esos pedidos van siempre a la red.
@@ -12,15 +15,18 @@
    Si cambia lo que guarda este archivo, subí VERSION: al activarse, el service
    worker nuevo borra las cachés de las versiones anteriores. */
 
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE = `hackai-${VERSION}`
 const OFFLINE_URL = '/sin-conexion'
-const STATIC_PREFIXES = ['/_next/static/', '/_next/image', '/icons/', '/headers/', '/logo-austral.png']
+const STATIC_PREFIXES = ['/_next/static/', '/icons/', '/headers/', '/logo-austral.png']
 
-/* Las URLs de /_next/static que pide el HTML de la página sin conexión. */
+/* Las URLs de /_next/static y /_next/image que pide el HTML de la página sin
+   conexión. Las de las imágenes vienen en src y srcset, con &amp; en vez de &. */
 function assetsOf(html) {
   const urls = new Set()
-  for (const match of html.matchAll(/["'(](\/_next\/static\/[^"')\s]+)/g)) urls.add(match[1])
+  for (const match of html.matchAll(/["'(,\s](\/_next\/(?:static|image)[/?][^"')\s,]+)/g)) {
+    urls.add(match[1].replaceAll('&amp;', '&'))
+  }
   return [...urls]
 }
 
@@ -79,5 +85,10 @@ self.addEventListener('fetch', (event) => {
   }
   if (STATIC_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
     event.respondWith(cacheFirst(request))
+    return
+  }
+  if (url.pathname === '/_next/image') {
+    // Solo las que se guardaron al instalarse; el resto va a la red sin guardarse.
+    event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)))
   }
 })
