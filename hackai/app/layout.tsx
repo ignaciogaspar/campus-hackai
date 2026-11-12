@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
+import { ServiceWorker } from '@/components/shell/service-worker'
 import { cn } from '@/lib/utils'
 import './globals.css'
 
@@ -23,7 +24,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang='es-AR' className={cn('font-sans', inter.variable)}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   )
 }
