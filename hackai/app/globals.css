@@ -298,4 +298,12 @@ body {
   html {
     @apply font-sans;
   }
+  /* Tailwind 4 deja los botones con el puntero común: lo que se toca muestra la mano. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label:has(> input[type='radio']),
+  label:has(> input[type='checkbox']) {
+    cursor: pointer;
+  }
 }

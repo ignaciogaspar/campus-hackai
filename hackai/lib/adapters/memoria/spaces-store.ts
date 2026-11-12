@@ -23,6 +23,8 @@ export function createMemorySpacesStore(): SpacesStore {
   const channels: StoredChannel[] = []
   const messages: StoredMessage[] = []
   const material: StoredMaterial[] = []
+  /** Por canal vinculado, hasta dónde se leyó el canal externo. */
+  const cursors = new Map<string, string>()
   /** Por persona y canal, hasta qué `seq` leyó. */
   const reads = new Map<string, number>()
   const counters = { space: 0, channel: 0, message: 0, material: 0 }
@@ -77,6 +79,29 @@ export function createMemorySpacesStore(): SpacesStore {
       return ok(copy(created))
     },
 
+    async linkedChannels() {
+      return ok(copy(channels.filter((c) => c.externalLink !== null)))
+    },
+
+    async linkChannel(channelId, link) {
+      const found = channels.find((c) => c.id === channelId)
+      if (!found) return ok(null)
+      found.externalLink = copy(link)
+      cursors.delete(channelId)
+      return ok(copy(found))
+    },
+
+    async syncCursor(channelId) {
+      return ok(cursors.get(channelId) ?? null)
+    },
+
+    async setSyncCursor(channelId, cursor) {
+      if (!channels.some((c) => c.id === channelId)) return ok(null)
+      if (cursor === null) cursors.delete(channelId)
+      else cursors.set(channelId, cursor)
+      return ok(null)
+    },
+
     async messages(channelIds) {
       return ok(copy(messages.filter((m) => channelIds.includes(m.channelId))))
     },
@@ -103,6 +128,17 @@ export function createMemorySpacesStore(): SpacesStore {
       const found = messages.find((m) => m.id === messageId)
       if (!found) return ok(null)
       found.resolved = resolved
+      return ok(copy(found))
+    },
+
+    async markSent(messageId, externalId) {
+      const found = messages.find((m) => m.id === messageId)
+      if (!found) return ok(null)
+      if (messages.some((m) => m !== found && m.channelId === found.channelId && m.externalId === externalId)) {
+        return fail('duplicado')
+      }
+      found.status = 'publicado'
+      found.externalId = externalId
       return ok(copy(found))
     },
 

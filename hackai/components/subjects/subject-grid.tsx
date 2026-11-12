@@ -55,8 +55,27 @@ function CardHead({
 
 const CARD = 'flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4'
 
-/* Una materia que cursa o dicta: horarios, aula y lo próximo de Moodle, con el espacio y el aula. */
-export function CourseCard({ subject, standing }: { subject: MySubject; standing?: SubjectStanding }) {
+/** Lo que no leyó en el espacio de la materia. En compu también está en la barra lateral. */
+function UnreadPill({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className='inline-flex w-fit items-center gap-1.5 rounded-full bg-accent px-2.5 py-0.5 text-[0.75rem] font-semibold text-blue motion-safe:animate-in motion-safe:zoom-in-50'>
+      <span aria-hidden='true' className='size-1.5 rounded-full bg-blue' />
+      {count} sin leer
+    </span>
+  )
+}
+
+/* Una materia que cursa o dicta: horarios, aula, lo que no leyó y lo próximo de Moodle, con el espacio y el aula. */
+export function CourseCard({
+  subject,
+  standing,
+  unread = 0
+}: {
+  subject: MySubject
+  standing?: SubjectStanding
+  unread?: number
+}) {
   const next = subject.assignments.find((a) => !a.past)
   const modality = modalityName(subject.modality)
   const place = modality === subject.location ? modality : [modality, subject.location].filter(Boolean).join(' · ')
@@ -70,6 +89,7 @@ export function CourseCard({ subject, standing }: { subject: MySubject; standing
       <div className='flex flex-col gap-1.5'>
         <Row icon={CalendarClock}>{subject.schedule.map(scheduleLine).join(' · ') || 'Horario a confirmar'}</Row>
         <Row icon={MapPin}>{place}</Row>
+        <UnreadPill count={unread} />
         {subject.role === 'profesor' && (
           <p className='w-fit rounded-full bg-accent px-2 py-0.5 text-[0.75rem] font-semibold text-blue'>
             Dictás esta comisión

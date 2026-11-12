@@ -45,7 +45,7 @@ function RowIcon({ children }: { children: ReactNode }) {
 
 export default function MuestraPage() {
   return (
-    <AppShell school={SCHOOL} subjects={SUBJECTS} shell={{ person: null, unread: 4 }}>
+    <AppShell school={SCHOOL} subjects={SUBJECTS} shell={{ person: null }}>
       <PageHeader title='Muestra del sistema visual' subtitle='Datos de ejemplo' school={SCHOOL} art='hoy' />
       <main className='flex w-full flex-col gap-8 px-4 pt-5 pb-8 lg:px-6'>
         <Section title='Botones'>

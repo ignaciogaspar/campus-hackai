@@ -27,7 +27,7 @@ export type SupabaseFilesOptions = {
 
 export const DEFAULT_BUCKET = 'hackai-files'
 
-const MAX_BYTES = 10 * 1024 * 1024
+export const MAX_BYTES = 10 * 1024 * 1024
 const FALLBACK_CONTENT_TYPE = 'application/octet-stream'
 
 /** Lo que importa de un error de Storage. supabase-js no exporta su tipo

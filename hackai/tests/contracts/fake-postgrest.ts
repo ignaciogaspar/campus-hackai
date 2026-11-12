@@ -2,9 +2,11 @@
    REST de Supabase sobre tablas en memoria, sin red, para correr un almacén de
    Supabase contra su batería de contrato.
 
-   Entiende lo que usan los almacenes y nada más: lecturas con `select`, filtros
-   `eq`, `in` y `cs` (contiene, solo sobre columnas jsonb) y `order`; inserts con `return=representation`; PATCH con
-   filtros; y funciones por `rpc`. Asigna los uuid y los contadores `identity`,
+   Entiende lo que usan los almacenes y los chequeos de la base de la demo, y
+   nada más: lecturas con `select`, filtros `eq`, `in` y `cs` (contiene, solo
+   sobre columnas jsonb), `order` y `limit`; inserts con
+   `return=representation`; PATCH con filtros; y funciones por `rpc`, con POST
+   o con GET y los argumentos en la URL. Asigna los uuid y los contadores `identity`,
    aplica las claves únicas (409 con el código 23505 de Postgres) y rechaza un
    id con forma de uuid inválida (400 con 22P02), como la base. Cualquier otra
    forma de consulta es un 400, así un almacén que pide algo distinto hace
@@ -78,7 +80,7 @@ function parseList(raw: string): string[] | null {
 
 type Filter = (row: FakeRow) => boolean
 type Order = { column: string; ascending: boolean }
-type Query = { filters: Filter[]; select: string[] | null; order: Order[] }
+type Query = { filters: Filter[]; select: string[] | null; order: Order[]; limit: number | null }
 
 const asText = (value: unknown) => (value === null || value === undefined ? null : String(value))
 
@@ -143,11 +145,17 @@ function parseSelect(table: FakeTable, raw: string): string[] {
   return columns
 }
 
+function parseLimit(raw: string): number {
+  if (!/^\d+$/.test(raw)) throw bad(`límite inválido: ${raw}`)
+  return Number(raw)
+}
+
 function parseQuery(table: FakeTable, params: URLSearchParams): Query {
-  const query: Query = { filters: [], select: null, order: [] }
+  const query: Query = { filters: [], select: null, order: [], limit: null }
   for (const [name, raw] of params) {
     if (name === 'select') query.select = parseSelect(table, raw)
     else if (name === 'order') query.order = parseOrder(table, raw)
+    else if (name === 'limit') query.limit = parseLimit(raw)
     else query.filters.push(parseFilter(table, name, raw))
   }
   return query
@@ -232,15 +240,15 @@ export function createFakePostgrest({ tables, functions = {} }: FakePostgrestOpt
     const found = sorted(
       rows.filter((row) => query.filters.every((f) => f(row))),
       query.order
-    )
+    ).slice(0, query.limit ?? undefined)
     // Una lectura siempre devuelve sus filas, aunque no pida `return=representation`.
     headers.set('prefer', 'return=representation')
     return respond(200, project(found, query.select ?? table.columns), headers)
   }
 
   function insert(name: string, table: FakeTable, params: URLSearchParams, headers: Headers, body: unknown) {
-    const { select: columns, filters, order } = parseQuery(table, params)
-    if (filters.length || order.length) throw bad('un insert solo acepta select')
+    const { select: columns, filters, order, limit } = parseQuery(table, params)
+    if (filters.length || order.length || limit !== null) throw bad('un insert solo acepta select')
     if (body === null || typeof body !== 'object' || Array.isArray(body)) throw bad('se inserta una fila por vez')
     const row = newRow(name, table, body as FakeRow)
     checkUnique(name, table, data[name], [row])
@@ -274,12 +282,16 @@ export function createFakePostgrest({ tables, functions = {} }: FakePostgrestOpt
     return result === undefined ? new Response(null, { status: 204 }) : json(200, result)
   }
 
+  function rpc(method: string, fn: string, url: URL, body: unknown): Response {
+    // Por GET, los argumentos van en la URL, como texto.
+    if (method === 'GET') return call(fn, Object.fromEntries(url.searchParams))
+    if (method !== 'POST') throw bad('rpc solo por POST o GET')
+    return call(fn, body)
+  }
+
   function handle(method: string, url: URL, headers: Headers, body: unknown): Response {
     const path = url.pathname.replace(/^\/rest\/v1\//, '')
-    if (path.startsWith('rpc/')) {
-      if (method !== 'POST') throw bad('rpc solo por POST')
-      return call(path.slice(4), body)
-    }
+    if (path.startsWith('rpc/')) return rpc(method, path.slice(4), url, body)
     const table = tables[path]
     if (!table) throw new PostgrestError(404, '42P01', `tabla desconocida: ${path}`)
     if (method === 'GET') return select(table, data[path], url.searchParams, headers)

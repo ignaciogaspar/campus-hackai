@@ -143,7 +143,7 @@ function classroomContract(name: string, make: () => ClassroomPort, skip: string
     })
     assert.deepEqual(await classroom.announcements('c-am1-fi-a', aviso.createdAt), { ok: true, value: [] })
     assert.deepEqual(await classroom.announcements('c-am1-fi-a', '2026-12-01T00:00:00.000Z'), { ok: true, value: [] })
-    assert.deepEqual(await classroom.announcements('c-pr1-fi-a'), { ok: true, value: [] })
+    assert.deepEqual(await classroom.announcements('c-am1-fi-b'), { ok: true, value: [] })
     assert.deepEqual(await classroom.announcements('nada'), { ok: false, error: 'curso-inexistente' })
   })
 

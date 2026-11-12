@@ -33,11 +33,11 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | --- | --- |
 | `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
-| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes |
-| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
-| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle |
+| `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró. En una mesa, si para rendir le falta regularizar la cursada |
+| `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
+| `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
-| `openEnrollments(persona)` | Inscripciones abiertas que le sirven |
+| `openEnrollments(persona)` | Inscripciones abiertas que le sirven, con los días que faltan para que cierren (contados con el reloj de cada llamada, aunque sea lo último que se leyó) y los lugares que quedan entre todas las comisiones o mesas abiertas de la materia |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
 | `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |
 | `career(persona)` | Cada materia de su plan de estudios (y las que cursó fuera de él) con su estado, sus notas de parciales, la nota de cursada, la final y el final al que está inscripto, más el promedio y el avance de la carrera. Las reglas están en `lib/core/studies/career.ts` |
@@ -46,13 +46,14 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 
 **Invariantes de `enroll`:**
 
+- **Solo alumnos.** Un docente no se inscribe ni se da de baja: devuelve `solo-alumnos` sin tocar el SIU ni el aula.
 - **Todo o nada.** Si el SIU inscribe y Moodle falla, deshace la inscripción del SIU antes de devolver `falla-externa`. Si deshacerla también falla, devuelve `a-medias`: el SIU y el aula quedaron distintos y no se le puede decir al alumno que no pasó nada. Sin usuario de Moodle no se inscribe y devuelve `sin-cuenta-del-aula`, porque reintentar no lo arregla.
 - **Una comisión vigente por materia.** Con una inscripción aceptada o pendiente a una comisión de un período que no terminó, inscribirse a otra comisión de la misma materia devuelve `ya-inscripto`, aunque sea de otro período. La oferta lo marca y las inscripciones abiertas no ofrecen esa materia.
 - **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
 - **La baja es el camino inverso.** Desmatricula de las aulas y después da de baja en el SIU. Si el SIU la rechaza (fuera de período, caído), vuelve a matricular: lo que se deshace sin riesgo es la matrícula, no la inscripción.
 - **Si el SIU no deja inscribir por API,** el adaptador lo declara y `enroll` devuelve `requiere-autogestion` con el enlace a la comisión en la Autogestión. Es el caso de la API real del SIU hoy. La pantalla lo muestra como un paso más, no como un error.
 
-**Comisiones por carrera:** una comisión puede abrirse solo para algunas propuestas (`programIds` en el puerto del SIU). Un alumno ve en la oferta, en las inscripciones abiertas y al inscribirse solo las de sus propuestas activas y las abiertas a todas; inscribirse a una de otra carrera devuelve `objetivo-desconocido`.
+**Comisiones por carrera:** una comisión puede abrirse solo para algunas propuestas (`programIds` en el puerto del SIU). Las inscripciones abiertas solo cuentan las de sus propuestas activas y las abiertas a todas, e inscribirse a una de otra carrera devuelve `objetivo-desconocido`. La oferta trae todas las de la facultad y marca las de otra carrera (`otherProgram`): Inscripciones no las muestra, y Espacios las usa para juntar el material de toda la materia.
 
 **Carrera:** el plan es el de su primera propuesta activa, que el SIU da con `studyPlan`; una pasiva, como la de aspirante, no cuenta. El estado de cada materia sigue este orden: promocionada o aprobada; si no, en curso; si no, regular (le falta el final); si no, pendiente. El avance cuenta las obligatorias aprobadas y, hasta lo que pide el plan, las optativas y las actividades de vida universitaria.
 
@@ -68,17 +69,18 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 
 | Operación | Qué hace |
 | --- | --- |
-| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos, el material y qué puede hacer. Crea el espacio y los canales de sus comisiones si no existen |
+| `open(persona, materia)` | Trae lo nuevo del canal externo y de Moodle, y devuelve los canales que la persona ve, sus no leídos, el material y qué puede hacer, incluido a quiénes les puede escribir en privado (`directContacts`). Crea el espacio y los canales de sus comisiones si no existen |
 | `channel(persona, canal)` | Mensajes del canal, con las consultas y sus respuestas en hilos; en el de material, el material. Marca leído |
+| `version(canal)` | Si hay algo nuevo en el canal, sin leerlo: trae lo nuevo del canal externo y devuelve una versión que cambia cuando entra, se envía o se resuelve algo. No chequea la membresía, para no consultar Cursada en cada chequeo: dice si el canal cambió, nunca qué tiene. La pantalla abierta la pregunta cada 15 segundos (`/api/canales/<id>/version`) y se vuelve a pedir solo si cambió |
 | `post(persona, canal, mensaje)` | Publica y lo envía al canal externo vinculado |
 | `resolve(persona, consulta)` | Marca una consulta como resuelta |
 | `createChannel(persona, espacio, alcance)` | Canal nuevo de la materia o de una comisión |
 | `addMaterial(persona, espacio, archivo)` | Sube un archivo al material, con Archivos, en la unidad o el tema que elige el docente |
 | `organizeMaterial(persona, espacio, modo)` | Organiza el material por unidad, por semana o sin secciones |
-| `openDirect(persona, otraPersona)` | Canal directo entre alumno y docente |
-| `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra |
+| `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
+| `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Devuelve `canal-externo-inexistente` si no lo encuentra y `canal-externo-en-uso` si ya está vinculado con otro canal |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
-| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Hoy |
+| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Novedades, Hoy y la navegación: por canal, cuántas y la más nueva, con quién la publicó (y su texto o, si solo trae un adjunto, el nombre del archivo); en un directo, de quién es; y si todo es de un mismo hilo, cuál. No crea espacios |
 | `file(persona, archivo)` | Los bytes de un archivo guardado, si la persona ve el espacio de su material o el canal de su adjunto |
 
 **Reglas que hace cumplir:**
@@ -86,14 +88,21 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 - **Un espacio por materia y facultad.** Se crea la primera vez que alguien lo abre, con sus canales por defecto: material de la materia, y `#avisos` y `#consultas` por comisión.
 - **Membresía.** Se deduce de `sectionsOf` de Cursada y no se guarda aparte. Por eso no hay operación para agregar miembros: quien se inscribe ya está adentro.
 - **Quién ve:** el alumno ve los canales de la materia y los de su comisión, nunca los de otra comisión. Con los archivos guardados pasa lo mismo: el material lo baja cualquiera del espacio, y un adjunto, quien ve su canal.
-- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión; entre alumnos no hay. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`), así la pantalla no repite estas reglas.
+- **Quién escribe:** en `#avisos` escriben solo los docentes de la comisión; en `#consultas` y en los canales que crea el docente, todos los que los ven. El material lo suben y lo organizan los docentes de la materia, y su canal no lleva mensajes. Las consultas las marcan resueltas los docentes de su comisión. Los canales directos son solo entre alumno y docente de la misma comisión, contando las comisiones vigentes del alumno, o todas si la materia está archivada para él; entre alumnos no hay. Vinculan un canal con el canal externo los docentes que lo gestionan: los de la materia si es de la materia, los de la comisión si es de una comisión; los directos no se vinculan. Cada canal le dice a quien lo mira qué puede hacer (`canPost`, `canResolve`, `canLink`), y el espacio, a quiénes les puede escribir en privado (`viewer.directContacts`), así la pantalla no repite estas reglas.
 - **Canales por defecto:** el espacio y su canal de material se crean la primera vez que alguien abre el espacio; `#avisos` y `#consultas` de una comisión, la primera vez que lo abre alguien de esa comisión. Los nombres no se repiten entre canales que ven las mismas personas.
-- **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que en la demo está fija.
+- **No leídos:** por persona y canal, lo que publicaron otros después de lo último que leyó. Lo ordena un contador del almacén, no la hora, que con el reloj fijo de los tests no avanza.
 - **Sincronización:**
   - Cada mensaje guarda su origen (HackAI, Discord, Moodle) y su id externo, y un mensaje no entra dos veces.
-  - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización.
-  - Los adjuntos externos se copian a Archivos al leerlos, porque las URLs de Discord vencen.
-  - `open` no sincroniza más de una vez cada pocos segundos por espacio.
+  - De ida: lo publicado en un canal vinculado se guarda pendiente y se envía enseguida: primero el texto y al final, en letra chica, quién lo escribió, porque Discord nombra el hilo de una consulta con la primera línea. Una respuesta va al hilo de su mensaje y una consulta abre su hilo. Las menciones (`@everyone`, `@usuario`) no notifican (pregunta abierta 12). Lo que se sube al material se avisa en el canal de material vinculado con el nombre del archivo, sin el archivo; ese aviso no se reintenta (pregunta abierta 19).
+  - Si el envío al canal externo falla, el mensaje queda publicado en HackAI como pendiente y se reintenta en la siguiente sincronización, en el orden en que se publicó.
+  - De vuelta: se lee el canal externo desde el cursor guardado. En el canal de material, los adjuntos entran al material y el texto no; en los demás, cada mensaje entra al canal, y si es de un hilo, como respuesta a su mensaje. Un mensaje de primer nivel en `#consultas` que no escribió un docente es una consulta. El autor se busca en Personas por su id externo; sin vínculo, queda el nombre con que llegó y la pantalla dice «desde Discord».
+  - De vuelta entra todo lo que se publica en el canal vinculado, escriba quien escriba: quién puede publicar en cada canal lo decide el servidor del canal externo (pregunta abierta 18).
+  - Los adjuntos externos se copian a Archivos al leerlos, porque las URLs de Discord vencen. Uno que ya venció queda con su enlace original en un mensaje y no entra al material.
+  - El cursor avanza solo si se guardó todo lo leído; si algo falla a la mitad, la próxima sincronización relee y los duplicados se descartan por el id externo.
+  - Una sola sincronización a la vez por espacio, para no enviar dos veces el mismo pendiente. `open` no sincroniza más de una vez cada 5 segundos por espacio: lo mide un temporizador obligatorio que se inyecta (`timer`, en `composition` el tiempo real del proceso). No es el reloj: el de la demo está fijo, y con él un espacio se sincronizaba una sola vez por proceso.
+  - Al vincular, el canal externo se lee desde el principio: lo que ya tenía entra a HackAI, pero lo que ya había en HackAI no se envía.
+  - Moodle: `open` no trae lo nuevo de Moodle más de una vez cada 10 segundos por espacio. Con el reloj fijo (`capabilities.fixed`) la hora no avanza y no se puede medir el intervalo: lo trae en cada apertura. El material de Moodle sale de los cursos de todas las comisiones vigentes de la materia, que da la oferta de Cursada, y no solo de las comisiones que ya tienen canales: así no depende de quién abrió antes el espacio.
+  - `open` espera las dos sincronizaciones antes de devolver la vista. Cada lectura de los adaptadores tiene tiempo máximo (5 s en Moodle simulado, 10 s en Discord) y lo que no llega entra en la próxima, así que un sistema lento demora la apertura pero no la rompe. Los límites se guardan en la memoria del proceso: con varias instancias, cada una lleva el suyo. Alcanza para la demo, que corre en una sola. La corrida periódica (`syncAll`) hoy sincroniza solo el canal externo; en producción debería traer también lo de Moodle y sacar la sincronización del camino de `open`.
 
 Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Archivos y el reloj.
 
@@ -129,7 +138,7 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **Identidad** | Validar una credencial y devolver quién es | Selector de demo, en memoria. En producción, Microsoft Entra ID (OpenID Connect) |
 | **SIU** | Personas, comisiones y oferta, inscripciones a cursada y examen, mesas, cronograma, historia, condiciones de constancias; inscribir y dar de baja; qué capacidades soporta | SIU simulado sobre tablas `siu_*`, en memoria |
 | **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
-| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, responder en un hilo, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
+| **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, abrir un hilo, responder en él, bajar un adjunto | Discord, en memoria. Slack queda diseñado |
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
 
@@ -147,7 +156,8 @@ hackai/
 │   ├── core/            people/, studies/, spaces/, today/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/
-│   └── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   └── demo-base/       preparar, verificar y probar la base de la demo (npm run demo:*); no lo usa la app
 ├── app/                 pantallas y server actions
 ├── components/
 ├── supabase/migrations/ tablas propias de HackAI
@@ -162,7 +172,8 @@ hackai/
 - `core/` importa `ports/` y las interfaces de otros módulos de `core/`. Nunca `adapters/`, `app/` ni `lib/db`.
 - `adapters/` importa `ports/` y los tipos de `core/` que necesita.
 - `app/` importa `composition` y los tipos de `core/`. Las pantallas no tienen reglas de negocio.
-- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria.
+- `components/` no importa `composition`, salvo la campana de sesión (`components/shell/notifications-bell.tsx`): lee los no leídos como una página, porque Next.js no vuelve a ejecutar el layout al navegar y el número quedaría viejo. No lleva reglas de negocio.
+- `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria. Fuera de `lib/`, también los usan los scripts de `scripts/` (seeds y base de la demo), que arman lo suyo con `lib/adapters/supabase/demo-base.ts` y se lo pasan a `lib/demo-base/`.
 
 ## De la demo a producción
 
@@ -197,7 +208,7 @@ Esta tabla es el plan; en la hackathon se construyen solo los adaptadores de la 
   - una inscripción que falla en Moodle deshace la del SIU;
   - un alumno de la comisión A no ve `#consultas` de la B;
   - no hay canal directo entre dos alumnos;
-  - un mensaje nacido en HackAI no vuelve duplicado de Discord;
+  - un mensaje nacido en HackAI no vuelve duplicado de Discord, y uno pendiente se envía en la siguiente sincronización;
   - parciales y finales salen ordenados por fecha.
 
 ## Qué se descartó y por qué

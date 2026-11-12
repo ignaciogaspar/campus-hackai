@@ -51,7 +51,7 @@ export function MaterialRow({ item, compact }: { item: MaterialItem; compact?: b
           <span className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
             <OriginBadge origin={item.origin} />
             <span>
-              {compact ? '' : `${fileSize(item.size)} · `}
+              {compact || item.size === 0 ? '' : `${fileSize(item.size)} · `}
               <time dateTime={item.addedAt}>{shortDate(item.addedAt)}</time>
             </span>
           </span>

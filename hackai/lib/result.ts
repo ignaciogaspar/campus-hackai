@@ -24,6 +24,12 @@ export async function notImplemented(): Promise<Fail<NotImplemented>> {
   return fail('no-implementado')
 }
 
+/** El error esperable de una operación que devuelve un Result (o una promesa de uno). */
+export type ErrorOf<T> = Extract<Awaited<T>, Fail<string>>['error']
+
+/** El mensaje de una excepción, para un log o un reporte. */
+export const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'error desconocido')
+
 /** Junta varios Result en uno: los valores en orden, o el primer error. */
 export function all<T, E extends string>(results: Result<T, E>[]): Result<T[], E> {
   const values: T[] = []

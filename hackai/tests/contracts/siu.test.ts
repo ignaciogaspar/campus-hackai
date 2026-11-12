@@ -80,6 +80,7 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       'sec-am1-fce-v',
       'sec-cda-fi-v',
       'sec-fi1-fi-v',
+      'sec-fi1-fi-vt',
       'sec-pr1-fi-v',
       'sec-pye-fi-va',
       'sec-pye-fi-vb',
@@ -145,7 +146,10 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
     const exams = await siu.examEnrollments(siuId('p-taguirre'))
     assert.ok(exams.ok)
-    assert.deepEqual(exams.value, syntheticData.siu.examEnrollments)
+    assert.deepEqual(
+      exams.value,
+      syntheticData.siu.examEnrollments.filter((e) => e.personId === siuId('p-taguirre'))
+    )
   })
 
   it('devuelve el cronograma de una comisión', async (siu) => {

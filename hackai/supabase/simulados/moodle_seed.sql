@@ -3,7 +3,7 @@
 begin;
 
 delete from moodle_enrolments e where not exists (
-  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('304', 'c-pr1-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
+  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('302', 'c-fi1-fi-vt'), ('304', 'c-pr1-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
   where keep.user_id = e.user_id and keep.course_id = e.course_id
 );
 
@@ -36,6 +36,7 @@ insert into moodle_courses (id, short_name, full_name, siu_section_ids) values
   ('c-aga-fi-a', '1C-2026-AGA-FI-A', 'Álgebra y Geometría Analítica - Comisión A (FI) - Grado 1er Cuatrimestre 2026', array['sec-aga-fi-a']::text[]),
   ('c-iec-fce-a', '1C-2026-IEC-FCE-A', 'Introducción a la Economía - Comisión A (FCE) - Grado 1er Cuatrimestre 2026', array['sec-iec-fce-a']::text[]),
   ('c-fi1-fi-v', 'VERANO-2027-FI1-FI-Verano', 'Física I - Comisión Verano (FI) - Curso de Verano 2027', array['sec-fi1-fi-v']::text[]),
+  ('c-fi1-fi-vt', 'VERANO-2027-FI1-FI-Verano tarde', 'Física I - Comisión Verano tarde (FI) - Curso de Verano 2027', array['sec-fi1-fi-vt']::text[]),
   ('c-pr1-fi-v', 'VERANO-2027-PR1-FI-Verano', 'Programación I - Comisión Verano (FI) - Curso de Verano 2027', array['sec-pr1-fi-v']::text[]),
   ('c-am1-fce-v', 'VERANO-2027-AM1-FCE-Verano', 'Análisis Matemático I - Comisión Verano (FCE) - Curso de Verano 2027', array['sec-am1-fce-v']::text[]),
   ('c-pye-fi-va', 'VERANO-2027-PYE-FI-Verano A', 'Probabilidad y Estadística - Comisión Verano A (FI) - Curso de Verano 2027', array['sec-pye-fi-va']::text[]),
@@ -54,6 +55,7 @@ insert into moodle_enrolments (user_id, course_id, role) values
   ('301', 'c-aga-fi-a', 'editingteacher'),
   ('303', 'c-iec-fce-a', 'editingteacher'),
   ('302', 'c-fi1-fi-v', 'editingteacher'),
+  ('302', 'c-fi1-fi-vt', 'editingteacher'),
   ('304', 'c-pr1-fi-v', 'editingteacher'),
   ('303', 'c-am1-fce-v', 'editingteacher'),
   ('306', 'c-pye-fi-va', 'editingteacher'),
@@ -85,15 +87,17 @@ on conflict (user_id, course_id) do update set role = excluded.role;
 
 insert into moodle_announcements (id, course_id, author_id, subject, message, created_at, attachments) values
   ('av-1', 'c-am1-fi-a', '301', 'Cambio de aula para el segundo parcial', 'El segundo parcial del lunes 16 se toma en el aula 20. Traigan DNI.', '2026-11-06T20:12:00.000Z', '[]'::jsonb),
-  ('av-2', 'c-co1-fce-a', '305', 'Temas del segundo parcial', 'Les dejo la lista de temas que entran en el segundo parcial.', '2026-11-03T23:40:00.000Z', '[{"name":"temas-segundo-parcial.pdf","url":"https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf","contentType":"application/pdf","size":48213}]'::jsonb)
+  ('av-2', 'c-co1-fce-a', '305', 'Temas del segundo parcial', 'Les dejo la lista de temas que entran en el segundo parcial.', '2026-11-03T23:40:00.000Z', '[{"name":"temas-segundo-parcial.pdf","url":"/simulado/moodle/pluginfile.php/co1/temas-segundo-parcial.pdf","contentType":"application/pdf","size":48213}]'::jsonb),
+  ('av-3', 'c-pr1-fi-a', '304', 'Consulta antes del parcial', 'El jueves 19 a las 18 hay consulta por Meet para el parcial del viernes 20. Entra todo hasta recursión. El enlace está en el aula.', '2026-11-09T22:30:00.000Z', '[]'::jsonb)
 on conflict (id) do update set course_id = excluded.course_id, author_id = excluded.author_id, subject = excluded.subject, message = excluded.message, created_at = excluded.created_at, attachments = excluded.attachments;
 
 insert into moodle_contents (id, course_id, topic, name, type, url, modified_at) values
-  ('r-1', 'c-am1-fi-a', 'Unidad 1: Límites', 'Guía de ejercicios 1', 'file', 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf', '2026-08-11T12:00:00.000Z'),
-  ('r-2', 'c-am1-fi-a', 'Unidad 2: Derivadas', 'Guía de ejercicios 2', 'file', 'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf', '2026-09-29T12:00:00.000Z'),
-  ('r-3', 'c-am1-fi-b', 'Bibliografía', 'Apunte de la cátedra', 'url', 'https://example.edu.ar/apuntes/am1', '2026-08-12T18:00:00.000Z'),
-  ('r-4', 'c-pr1-fi-a', 'Trabajos prácticos', 'Enunciado del TP integrador', 'file', 'https://moodle.example.edu.ar/pluginfile.php/pr1-fi-a/tp-integrador.pdf', '2026-09-04T13:00:00.000Z'),
-  ('r-5', 'c-am1-fce-a', 'Unidad 1', 'Apunte de funciones', 'file', 'https://moodle.example.edu.ar/pluginfile.php/am1-fce-a/funciones.pdf', '2026-08-14T22:00:00.000Z')
+  ('r-1', 'c-am1-fi-a', 'Unidad 1: Límites', 'Guía de ejercicios 1', 'file', '/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf', '2026-08-11T12:00:00.000Z'),
+  ('r-2', 'c-am1-fi-a', 'Unidad 2: Derivadas', 'Guía de ejercicios 2', 'file', '/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf', '2026-09-29T12:00:00.000Z'),
+  ('r-3', 'c-am1-fi-b', 'Bibliografía', 'Apunte de la cátedra', 'url', '/simulado/moodle/mod/url/view.php?id=r-3', '2026-08-12T18:00:00.000Z'),
+  ('r-4', 'c-pr1-fi-a', 'Trabajos prácticos', 'Enunciado del TP integrador', 'file', '/simulado/moodle/pluginfile.php/pr1-fi-a/tp-integrador.pdf', '2026-09-04T13:00:00.000Z'),
+  ('r-5', 'c-am1-fce-a', 'Unidad 1', 'Apunte de funciones', 'file', '/simulado/moodle/pluginfile.php/am1-fce-a/funciones.pdf', '2026-08-14T22:00:00.000Z'),
+  ('r-6', 'c-pr1-fi-a', 'Unidad 4: Recursión', 'Guía de ejercicios de recursión', 'file', '/simulado/moodle/pluginfile.php/pr1-fi-a/guia-recursion.pdf', '2026-11-06T14:00:00.000Z')
 on conflict (id) do update set course_id = excluded.course_id, topic = excluded.topic, name = excluded.name, type = excluded.type, url = excluded.url, modified_at = excluded.modified_at;
 
 insert into moodle_assignments (id, course_id, name, due_date) values

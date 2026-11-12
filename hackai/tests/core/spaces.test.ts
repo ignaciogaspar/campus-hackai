@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
+import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -9,13 +10,17 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
-import { createPeople } from '@/lib/core/people'
+import { syntheticPdf } from '@/lib/adapters/synthetic-files'
+import { createPeople, type PeopleStore } from '@/lib/core/people'
 import { type Channel, createSpaces, type SpacesStore, type SpaceView } from '@/lib/core/spaces'
 import { createStudies } from '@/lib/core/studies'
+import type { ClassroomAnnouncement, ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
+import type { ExternalChannelPort } from '@/lib/ports/external-channel'
 import type { FilesPort } from '@/lib/ports/files'
 import type { SiuPort } from '@/lib/ports/siu'
-import { fail } from '@/lib/result'
+import { fail, ok } from '@/lib/result'
+import { fallible } from '@/tests/core/helpers'
 
 const NOW = syntheticData.now
 
@@ -41,27 +46,53 @@ function assertFileUrl(url: string | undefined, name: string) {
   assert.ok(url?.endsWith(`/${encodeURIComponent(name)}`))
 }
 
-function build(data: SyntheticData = syntheticData, overrides: { store?: SpacesStore; files?: FilesPort } = {}) {
+/** Copia del set sin avisos ni recursos de Moodle: abrir un espacio no importa nada del aula. */
+function withoutMoodleContent(data: SyntheticData): SyntheticData {
+  const copy = structuredClone(data)
+  copy.moodle.announcements = []
+  copy.moodle.contents = []
+  return copy
+}
+
+/** Por defecto el aula no tiene avisos ni recursos, para que los tests que no son
+    de Moodle no cuenten lo que se importa al abrir. Los de Moodle pasan su aula. */
+function build(
+  data: SyntheticData = syntheticData,
+  overrides: {
+    store?: SpacesStore
+    files?: FilesPort
+    classroom?: ClassroomPort
+    peopleStore?: PeopleStore
+    /** Que el reloj diga que avanza solo, como el del sistema: así `open` mide cada cuánto sincroniza. */
+    clockMoves?: boolean
+    externalChannel?: ExternalChannelPort
+    /** Los milisegundos que espacian las sincronizaciones con el canal externo al abrir un espacio. */
+    timer?: () => number
+  } = {}
+) {
   let now = data.now
   // Reloj que se puede mover, para subir material en distintas semanas.
-  const clock: ClockPort = { capabilities: { fixed: true }, now: () => new Date(now) }
+  const clock: ClockPort = { capabilities: { fixed: !overrides.clockMoves }, now: () => new Date(now) }
   const setNow = (iso: string) => {
     now = iso
   }
   const { port: siu, state: siuState } = fallibleSiu(createMemorySiu(data, clock))
-  const classroom = createMemoryClassroom(data)
-  const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
+  const classroom = overrides.classroom ?? createMemoryClassroom(withoutMoodleContent(data))
+  const peopleStore = overrides.peopleStore ?? createMemoryPeopleStore(data)
+  const people = createPeople({ identity: createMemoryIdentity(data), siu, store: peopleStore })
   const studies = createStudies({ people, siu, classroom, clock })
   const store = overrides.store ?? createMemorySpacesStore()
   const files: FilesPort = overrides.files ?? createMemoryFiles()
   const spaces = createSpaces({
     people,
     studies,
-    externalChannel: createMemoryExternalChannel(data, clock),
+    externalChannel: overrides.externalChannel ?? createMemoryExternalChannel(data, clock),
     classroom,
     files,
     clock,
-    store
+    store,
+    // Sin temporizador propio no avanza: cada espacio se sincroniza una vez al abrirlo.
+    timer: overrides.timer ?? (() => 0)
   })
   return { spaces, studies, store, files, siuState, setNow }
 }
@@ -194,7 +225,8 @@ test('el docente ve sus comisiones con sus docentes y puede gestionar el espacio
         teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }]
       }
     ],
-    canManage: true
+    canManage: true,
+    directContacts: []
   })
   const student = await spaces.open('p-taguirre', 'am1')
   assert.ok(student.ok)
@@ -583,7 +615,9 @@ test('el docente crea un canal de la materia, que ven todos, o de su comisión, 
       unread: 0,
       canPost: true,
       canResolve: true,
-      externalLink: null
+      canLink: true,
+      externalLink: null,
+      counterpart: null
     }
   )
   const forSection = await spaces.createChannel('p-mledesma', ids.spaceId, {
@@ -663,6 +697,22 @@ test('el nombre de un canal nuevo se normaliza y no puede repetir uno que vean l
   assert.equal(await create('p-gferreyra', 'consultas', sectionB), 'nombre-repetido')
   assert.equal(await create('p-gferreyra', 'Ñandú álgebra 2_bis', sectionB), 'nombre-repetido')
   assert.equal(await create('p-gferreyra', 'grupo', materia), 'nombre-repetido')
+})
+
+test('un nombre con espacios, mayúsculas o tildes se normaliza en vez de dar error', async () => {
+  const { spaces } = build()
+  const ids = await am1(spaces)
+  const create = async (name: string) => {
+    const created = await spaces.createChannel('p-mledesma', ids.spaceId, { name, scope: { kind: 'materia' } })
+    return created.ok ? created.value.name : created.error
+  }
+
+  assert.equal(await create('Parciales Viejos'), 'parciales-viejos')
+  assert.equal(await create('  #TP 1  '), 'tp-1')
+  assert.equal(await create('ÑANDÚ'), 'ñandú')
+  // Lo que se pega de un PDF o escribe un teclado de Mac puede traer la tilde aparte de la letra.
+  assert.equal(await create('Álgebra 2'), 'álgebra-2')
+  assert.equal(await create('álgebra 2'), 'nombre-repetido')
 })
 
 const pdf = (name: string, section: string | null = null) => ({
@@ -842,7 +892,13 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
 
   assert.ok(unread.ok)
   assert.deepEqual(
-    unread.value.map((u) => [u.subjectName, u.channelName, u.kind, u.count, u.latest]),
+    unread.value.map((u) => [
+      u.subjectName,
+      u.channelName,
+      u.kind,
+      u.count,
+      { text: u.latest.text, origin: u.latest.origin, createdAt: u.latest.createdAt }
+    ]),
     [
       [
         'Análisis Matemático I',
@@ -884,7 +940,9 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
       channelName: 'avisos',
       kind: 'avisos',
       count: 2,
-      latest: undefined
+      latest: undefined,
+      counterpart: null,
+      thread: null
     }
   )
 
@@ -900,6 +958,32 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
   assert.deepEqual(await spaces.unreadFor('p-nadie'), { ok: false, error: 'persona-desconocida' })
   siuState.down = true
   assert.deepEqual(await spaces.unreadFor('p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('cada novedad dice quién la publicó, y un mensaje con solo un adjunto se muestra con el nombre del archivo', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+  setNow('2026-11-09T13:00:00.000Z')
+  await spaces.post('p-lbenitez', ids.consultasA, {
+    text: '  ',
+    attachments: [{ name: 'ejercicio 3.png', contentType: 'image/png', bytes: new Uint8Array([1]) }]
+  })
+  setNow('2026-11-09T14:00:00.000Z')
+  await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf'))
+
+  const unread = await spaces.unreadFor('p-taguirre')
+
+  assert.ok(unread.ok)
+  assert.deepEqual(
+    unread.value.map((u) => [u.kind, u.latest.text, u.latest.author]),
+    [
+      ['material', 'Guía 4.pdf', { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }],
+      ['consultas', 'ejercicio 3.png', { personId: 'p-lbenitez', name: 'Lucía Benítez', role: 'alumno' }],
+      ['avisos', 'Parcial el 16.', { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }]
+    ]
+  )
 })
 
 test('un mensaje de un canal externo sin persona lleva el nombre con que llegó, y uno de alguien sin datos se muestra igual', async () => {
@@ -1016,4 +1100,1057 @@ test('quien se inscribe en una comisión ve enseguida los canales de su espacio'
   assert.deepEqual(labels(opened.value.channels), ['#avisos (Verano)', '#consultas (Verano)', '#material'])
   assert.equal(named(opened.value, 'avisos', 'Verano').kind, 'avisos')
   assert.equal(named(opened.value, 'consultas', 'Verano').kind, 'consultas')
+})
+
+// Sincronización con el canal externo de la cátedra (Discord, en memoria)
+
+const [discordAvisos, discordConsultas, discordMaterial] = syntheticData.discord.channels
+const discordOf = (personId: string) => syntheticData.people.find((p) => p.id === personId)!.discordId!
+const LEDESMA_EN_DISCORD = { id: discordOf('p-mledesma'), name: 'mledesma' }
+/** El último mensaje que tenía el canal externo antes de cada prueba. */
+const LAST_SYNTHETIC = '1310000000000000005'
+
+/** Espacios con el canal externo a mano: se puede «caer», escribir en él como si
+    fuera Discord y adelantar el temporizador que espacia las sincronizaciones. */
+function buildSynced() {
+  let ms = 0
+  const discord = createMemoryExternalChannel(syntheticData, createFixedClock(NOW))
+  const { port, state } = fallible(discord)
+  const openedThreads: string[] = []
+  const externalChannel: ExternalChannelPort = {
+    capabilities: discord.capabilities,
+    read: (channelId, cursor) => port.read(channelId, cursor),
+    post: (channelId, text) => port.post(channelId, text),
+    reply: (channelId, threadId, text) => port.reply(channelId, threadId, text),
+    download: (attachment) => port.download(attachment),
+    async openThread(channelId, messageId) {
+      openedThreads.push(messageId)
+      return port.openThread(channelId, messageId)
+    }
+  }
+  const built = build(syntheticData, { externalChannel, timer: () => ms })
+  const wait = (seconds: number) => {
+    ms += seconds * 1000
+  }
+  return { ...built, discord, discordState: state, openedThreads, wait }
+}
+
+const decoded = (bytes: Uint8Array) => new TextDecoder().decode(bytes)
+
+test('el docente vincula #avisos con su canal de Discord y entra lo que ya había, con su autor', async () => {
+  const { spaces } = buildSynced()
+  const ids = await am1(spaces)
+
+  const linked = await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })
+
+  assert.ok(linked.ok)
+  assert.deepEqual(linked.value.externalLink, { system: 'discord', channelId: discordAvisos.id })
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  const [fromTeacher, fromWebhook] = seen.value.threads.map((t) => t.message)
+  // La cuenta de Discord vinculada en el seed se reconoce a través de Personas.
+  assert.equal(fromTeacher.author.personId, 'p-mledesma')
+  assert.equal(fromTeacher.author.role, 'profesor')
+  assert.deepEqual(
+    [fromTeacher.origin, fromTeacher.externalId, fromTeacher.unread],
+    ['discord', '1310000000000000001', true]
+  )
+  // Sin cuenta vinculada, llega con el nombre que tiene en Discord.
+  assert.deepEqual(fromWebhook.author, { personId: null, name: 'Avisos de la cátedra', role: null })
+
+  // El adjunto se copió a Archivos: se abre aunque venza el enlace de Discord, y solo para quien ve el canal.
+  const [attachment] = fromTeacher.attachments
+  assertFileUrl(attachment.url, 'temas-parcial-2.pdf')
+  const file = await spaces.file('p-taguirre', fileIdOf(attachment.url))
+  assert.ok(file.ok)
+  // El set sintético guarda los PDF de Discord como PDF de verdad, que el navegador puede mostrar.
+  assert.equal(decoded(file.value.bytes), syntheticPdf('temas-parcial-2'))
+  assert.deepEqual(await spaces.file('p-mcabrera', fileIdOf(attachment.url)), { ok: false, error: 'sin-acceso' })
+})
+
+test('vinculan los docentes del canal, con un canal de Discord que exista y no esté vinculado con otro', async () => {
+  const { spaces } = buildSynced()
+  const ids = await am1(spaces)
+  const avisos = { system: 'discord', channelId: discordAvisos.id } as const
+
+  assert.deepEqual(await spaces.link('p-taguirre', ids.avisosA, avisos), { ok: false, error: 'solo-docentes' })
+  // Ferreyra dicta la B: los canales de la A ni los ve.
+  assert.deepEqual(await spaces.link('p-gferreyra', ids.avisosA, avisos), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(
+    await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: '1309999999999999999' }),
+    { ok: false, error: 'canal-externo-inexistente' }
+  )
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, avisos)).ok)
+  assert.deepEqual(await spaces.link('p-mledesma', ids.consultasA, avisos), {
+    ok: false,
+    error: 'canal-externo-en-uso'
+  })
+
+  const asStudent = await spaces.open('p-taguirre', 'am1')
+  const asTeacher = await spaces.open('p-mledesma', 'am1')
+  assert.ok(asStudent.ok && asTeacher.ok)
+  assert.equal(named(asStudent.value, 'avisos', 'A').canLink, false)
+  assert.deepEqual(
+    [named(asTeacher.value, 'avisos', 'A').canLink, named(asTeacher.value, 'material').canLink],
+    [true, true]
+  )
+})
+
+test('lo publicado en HackAI llega a Discord sin volver duplicado, y la respuesta del docente allá vuelve a su consulta', async () => {
+  const { spaces, discord, openedThreads, wait } = buildSynced()
+  const ids = await am1(spaces)
+  const consultas = { system: 'discord', channelId: discordConsultas.id } as const
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, consultas)).ok)
+
+  // Lo que ya había en Discord: una consulta de Tomás con la respuesta en su hilo.
+  const before = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(before.ok)
+  const [old] = before.value.threads
+  assert.deepEqual([old.message.author.personId, old.message.question], ['p-taguirre', { resolved: false }])
+  assert.deepEqual(
+    old.replies.map((r) => [r.author.personId, r.text]),
+    [['p-mledesma', 'No, llega hasta derivadas y sus aplicaciones.']]
+  )
+
+  const posted = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Hay consulta el viernes?' })
+  assert.ok(posted.ok)
+  assert.equal(posted.value.status, 'publicado')
+  assert.ok(posted.value.externalId)
+  // La consulta abre su hilo en Discord, para que la respuesta quede junta.
+  assert.deepEqual(openedThreads, [posted.value.externalId])
+  const answer = await spaces.post('p-mledesma', ids.consultasA, { text: 'Leé el apunte', replyTo: old.message.id })
+  assert.ok(answer.ok)
+
+  const inDiscord = await discord.read(discordConsultas.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.deepEqual(
+    inDiscord.value.messages.map((m) => [m.id, m.threadId]),
+    [
+      [posted.value.externalId, null],
+      [answer.value.externalId, old.message.externalId]
+    ]
+  )
+  // El texto va primero, para que el hilo se llame como la consulta, y el autor al final.
+  assert.match(inDiscord.value.messages[0].text, /^¿Hay consulta el viernes\?\n-# .+ · desde HackAI$/)
+  assert.match(inDiscord.value.messages[1].text, /^Leé el apunte\n-# .+ \(docente\) · desde HackAI$/)
+
+  discord.receive(discordConsultas.id, {
+    author: LEDESMA_EN_DISCORD,
+    text: 'Sí, a las 18 en el aula 4.',
+    threadId: posted.value.externalId
+  })
+  wait(10)
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+
+  const after = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(after.ok)
+  assert.deepEqual(
+    after.value.threads.map((t) => [t.message.text, t.replies.map((r) => [r.author.personId, r.text, r.origin])]),
+    [
+      [
+        '¿Entran integrales en el segundo parcial?',
+        [
+          ['p-mledesma', 'No, llega hasta derivadas y sus aplicaciones.', 'discord'],
+          ['p-mledesma', 'Leé el apunte', 'hackai']
+        ]
+      ],
+      ['¿Hay consulta el viernes?', [['p-mledesma', 'Sí, a las 18 en el aula 4.', 'discord']]]
+    ]
+  )
+})
+
+test('si Discord no responde, lo publicado queda pendiente y la siguiente sincronización lo envía en orden', async () => {
+  const { spaces, discord, discordState } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+
+  discordState.down = true
+  const first = await spaces.post('p-mledesma', ids.avisosA, { text: 'Mañana no hay clase.' })
+  assert.ok(first.ok)
+  const reply = await spaces.post('p-mledesma', ids.avisosA, {
+    text: 'Recuperamos el jueves.',
+    replyTo: first.value.id
+  })
+  assert.ok(reply.ok)
+  // Queda publicado en HackAI: los alumnos lo ven aunque Discord esté caído.
+  assert.deepEqual([first.value.status, first.value.externalId, reply.value.status], ['pendiente', null, 'pendiente'])
+  const seenByStudent = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seenByStudent.ok)
+  assert.equal(seenByStudent.value.threads.at(-1)?.message.text, 'Mañana no hay clase.')
+
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 2 } })
+
+  discordState.down = false
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 2, pending: 0 } })
+  // Otra sincronización no reenvía ni importa lo que ya está.
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 0 } })
+
+  const inDiscord = await discord.read(discordAvisos.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  const [firstOut, replyOut] = inDiscord.value.messages
+  assert.match(firstOut.text, /^Mañana no hay clase\.\n/)
+  assert.deepEqual([replyOut.threadId, inDiscord.value.messages.length], [firstOut.id, 2])
+
+  const seen = await spaces.channel('p-mledesma', ids.avisosA)
+  assert.ok(seen.ok)
+  const mine = seen.value.threads.at(-1)!
+  assert.deepEqual(
+    [mine.message.status, mine.message.externalId, mine.replies.map((r) => [r.status, r.externalId])],
+    ['publicado', firstOut.id, [['publicado', replyOut.id]]]
+  )
+  assert.equal(seen.value.threads.length, 3, 'los dos avisos que ya había y el nuevo, sin duplicados')
+})
+
+test('abrir el espacio trae lo nuevo de Discord, pero no más de una vez cada pocos segundos', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+  const texts = async () => {
+    const seen = await spaces.channel('p-taguirre', ids.avisosA)
+    assert.ok(seen.ok)
+    return seen.value.threads.map((t) => t.message.text)
+  }
+
+  discord.receive(discordAvisos.id, {
+    author: LEDESMA_EN_DISCORD,
+    text: 'La clase de hoy es en el aula 3.',
+    attachments: [{ filename: 'plano.pdf', contentType: 'application/pdf', content: 'plano', expired: true }]
+  })
+  const opened = await spaces.open('p-taguirre', 'am1')
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 3)
+  assert.equal((await texts()).at(-1), 'La clase de hoy es en el aula 3.')
+
+  discord.receive(discordAvisos.id, { author: LEDESMA_EN_DISCORD, text: 'Traigan calculadora.' })
+  wait(1)
+  await spaces.open('p-taguirre', 'am1')
+  assert.equal((await texts()).at(-1), 'La clase de hoy es en el aula 3.')
+
+  wait(5)
+  await spaces.open('p-taguirre', 'am1')
+  assert.equal((await texts()).at(-1), 'Traigan calculadora.')
+
+  // Un adjunto cuyo enlace ya había vencido no se pudo copiar: queda con su enlace original.
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  const [expired] = seen.value.threads.at(-2)!.message.attachments
+  assert.equal(expired.name, 'plano.pdf')
+  assert.match(expired.url, /^https:\/\/cdn\.discordapp\.com\//)
+})
+
+test('los adjuntos del canal de material de Discord entran al material, y lo que se sube en HackAI se avisa allá', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  const material = { system: 'discord', channelId: discordMaterial.id } as const
+  assert.ok((await spaces.link('p-gferreyra', ids.material, material)).ok)
+
+  discord.receive(discordMaterial.id, {
+    author: LEDESMA_EN_DISCORD,
+    text: 'Guía 4 y la vieja',
+    attachments: [
+      { filename: 'guia-4.pdf', contentType: 'application/pdf', content: 'Guía 4' },
+      { filename: 'vieja.pdf', contentType: 'application/pdf', content: 'vieja', expired: true }
+    ]
+  })
+  // Entra lo que sube cualquiera: quién publica en el canal lo decide el servidor de Discord.
+  discord.receive(discordMaterial.id, {
+    author: { id: discordOf('p-taguirre'), name: 'tomi.aguirre' },
+    text: 'Mis apuntes',
+    attachments: [{ filename: 'apuntes-tomi.pdf', contentType: 'application/pdf', content: 'apuntes' }]
+  })
+  discord.receive(discordMaterial.id, {
+    author: { id: '1290000000000000777', name: 'sin.vincular' },
+    text: 'Resumen',
+    attachments: [{ filename: 'resumen-anonimo.pdf', contentType: 'application/pdf', content: 'resumen' }]
+  })
+  wait(10)
+  const view = await spaces.open('p-taguirre', 'am1')
+  assert.ok(view.ok)
+  assert.deepEqual(
+    view.value.material.recent.map((m) => [m.name, m.origin, m.addedBy?.personId ?? null, m.unread]),
+    [
+      ['resumen-anonimo.pdf', 'discord', null, true],
+      ['apuntes-tomi.pdf', 'discord', 'p-taguirre', false],
+      ['guia-4.pdf', 'discord', 'p-mledesma', true]
+    ]
+  )
+  const guide = view.value.material.recent.find((m) => m.name === 'guia-4.pdf')
+  const file = await spaces.file('p-lbenitez', fileIdOf(guide?.url))
+  assert.ok(file.ok)
+  assert.equal(decoded(file.value.bytes), 'Guía 4')
+  // El texto no entra: el canal de material no lleva mensajes.
+  const channel = await spaces.channel('p-taguirre', ids.material)
+  assert.ok(channel.ok)
+  assert.deepEqual(channel.value.threads, [])
+
+  const added = await spaces.addMaterial('p-mledesma', ids.spaceId, {
+    name: 'Guía 5.pdf',
+    contentType: 'application/pdf',
+    bytes: new TextEncoder().encode('Guía 5'),
+    section: 'Unidad 3'
+  })
+  assert.ok(added.ok)
+  const inDiscord = await discord.read(discordMaterial.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.match(inDiscord.value.messages.at(-1)?.text ?? '', /subió material en HackAI \(Unidad 3\):\n📎 Guía 5\.pdf$/)
+  // El aviso vuelve sin adjuntos: no se duplica en el material.
+  wait(10)
+  const again = await spaces.open('p-taguirre', 'am1')
+  assert.ok(again.ok)
+  assert.equal(again.value.material.recent.filter((m) => m.name === 'Guía 5.pdf').length, 1)
+})
+
+test('en #avisos de Discord entra lo que escribe cualquiera; sin cuenta vinculada, con su nombre de Discord', async () => {
+  const { spaces, discord } = buildSynced()
+  const ids = await am1(spaces)
+  discord.receive(discordAvisos.id, {
+    author: { id: '1290000000000000777', name: 'ayudante.am1' },
+    text: 'Hoy llego tarde.'
+  })
+  discord.receive(discordAvisos.id, { author: LEDESMA_EN_DISCORD, text: 'El jueves hay consulta.' })
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+
+  const seen = await spaces.channel('p-taguirre', ids.avisosA)
+  assert.ok(seen.ok)
+  // Quién publica en el canal lo decide el servidor de Discord (pregunta abierta 18).
+  assert.deepEqual(
+    seen.value.threads.map((t) => [t.message.text, t.message.author.personId, t.message.author.name]),
+    [
+      ['Recuerden que el segundo parcial es el lunes 16. Adjunto los temas.', 'p-mledesma', 'Mariana Ledesma'],
+      ['Ya están las notas del primer parcial en el SIU.', null, 'Avisos de la cátedra'],
+      ['Hoy llego tarde.', null, 'ayudante.am1'],
+      ['El jueves hay consulta.', 'p-mledesma', 'Mariana Ledesma']
+    ]
+  )
+})
+
+test('una respuesta a un mensaje de antes de vincular el canal sale suelta y no traba lo que sigue', async () => {
+  const { spaces, discord } = buildSynced()
+  const ids = await am1(spaces)
+  // Publicado antes de vincular: nunca llega a Discord, así que no tiene id externo.
+  const old = await spaces.post('p-taguirre', ids.consultasA, { text: '¿El TP se entrega impreso?' })
+  assert.ok(old.ok)
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, { system: 'discord', channelId: discordConsultas.id })).ok)
+
+  const answer = await spaces.post('p-mledesma', ids.consultasA, { text: 'No, por el aula.', replyTo: old.value.id })
+  const next = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Y la fecha?' })
+  assert.ok(answer.ok && next.ok)
+  assert.deepEqual([answer.value.status, next.value.status], ['publicado', 'publicado'])
+  // En HackAI sigue en su hilo; en Discord va suelta, porque su mensaje no está allá.
+  assert.equal(answer.value.replyTo, old.value.id)
+  const inDiscord = await discord.read(discordConsultas.id, LAST_SYNTHETIC)
+  assert.ok(inDiscord.ok)
+  assert.deepEqual(
+    inDiscord.value.messages.map((m) => [m.id, m.threadId]),
+    [
+      [answer.value.externalId, null],
+      [next.value.externalId, null]
+    ]
+  )
+  assert.deepEqual(await spaces.syncAll(), { ok: true, value: { channels: 1, imported: 0, sent: 0, pending: 0 } })
+})
+
+test('la versión de un canal cambia cuando entra algo de HackAI o de Discord, y no cambia si no pasó nada', async () => {
+  const { spaces, discord, wait } = buildSynced()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.link('p-mledesma', ids.consultasA, { system: 'discord', channelId: discordConsultas.id })).ok)
+  const versionOf = async (channelId: string) => {
+    const v = await spaces.version(channelId)
+    assert.ok(v.ok)
+    return v.value
+  }
+
+  const seen = await spaces.channel('p-taguirre', ids.consultasA)
+  assert.ok(seen.ok)
+  const start = seen.value.version
+  assert.equal(await versionOf(ids.consultasA), start, 'la de leer el canal es la misma')
+  assert.equal(await versionOf(ids.consultasA), start, 'sin nada nuevo, no cambia')
+
+  // Lo que llega de Discord entra al chequear, respetando el espaciado de las sincronizaciones.
+  discord.receive(discordConsultas.id, { author: LEDESMA_EN_DISCORD, text: 'Mañana hay consulta.' })
+  wait(10)
+  const afterDiscord = await versionOf(ids.consultasA)
+  assert.notEqual(afterDiscord, start)
+
+  const question = await spaces.post('p-taguirre', ids.consultasA, { text: '¿A qué hora?' })
+  assert.ok(question.ok)
+  const afterPost = await versionOf(ids.consultasA)
+  assert.notEqual(afterPost, afterDiscord)
+
+  assert.ok((await spaces.resolve('p-mledesma', question.value.id)).ok)
+  assert.notEqual(await versionOf(ids.consultasA), afterPost)
+
+  // El material: cambia cuando se sube un archivo.
+  const material = await versionOf(ids.material)
+  await spaces.addMaterial('p-mledesma', ids.spaceId, {
+    name: 'Guía 6.pdf',
+    contentType: 'application/pdf',
+    bytes: new TextEncoder().encode('Guía 6')
+  })
+  assert.notEqual(await versionOf(ids.material), material)
+
+  assert.deepEqual(await spaces.version('no-existe'), { ok: false, error: 'canal-desconocido' })
+})
+
+// Avisos y material de Moodle (#16). Estos tests arman el aula con el set completo.
+
+/** Los mensajes de un canal como los ve la persona. */
+async function messagesOf(spaces: ReturnType<typeof build>['spaces'], personId: string, channelId: string) {
+  const read = await spaces.channel(personId, channelId)
+  assert.ok(read.ok)
+  return read.value.threads.map((t) => t.message)
+}
+
+test('al abrir el espacio, los avisos del foro de Moodle llegan a #avisos de su comisión, con origen Moodle', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 1)
+  const [aviso, ...rest] = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(rest, [])
+  assert.deepEqual(
+    { ...aviso, id: undefined, channelId: undefined },
+    {
+      id: undefined,
+      channelId: undefined,
+      author: { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' },
+      text: 'Cambio de aula para el segundo parcial\n\nEl segundo parcial del lunes 16 se toma en el aula 20. Traigan DNI.',
+      attachments: [],
+      origin: 'moodle',
+      externalId: 'av-1',
+      status: 'publicado',
+      replyTo: null,
+      question: null,
+      unread: true,
+      createdAt: '2026-11-06T20:12:00.000Z'
+    }
+  )
+})
+
+test('volver a abrir el espacio no duplica los avisos de Moodle, y el de la A no llega a #avisos de la B', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+  const ids = await am1(spaces)
+
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+  assert.ok((await spaces.open('p-mledesma', 'am1')).ok)
+
+  const avisosA = await messagesOf(spaces, 'p-mledesma', ids.avisosA)
+  assert.deepEqual(
+    avisosA.map((m) => [m.origin, m.externalId]),
+    [['moodle', 'av-1']]
+  )
+  assert.deepEqual(await messagesOf(spaces, 'p-gferreyra', ids.avisosB), [])
+})
+
+/** El material como lo muestra la pantalla, sección por sección. */
+const materialRows = (view: SpaceView) =>
+  view.material.sections.map((s) => [
+    s.title,
+    s.items.map((i) => [i.name, i.origin, i.url, i.contentType, i.size, i.addedBy, i.addedAt, i.unread])
+  ])
+
+test('al abrir el espacio, los recursos del curso de Moodle aparecen en el material con su tema y el enlace al recurso', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  // Moodle no da el tamaño de un recurso: 0 es «sin dato». El apunte es del curso de la B, que también
+  // es una comisión vigente de la materia.
+  assert.deepEqual(materialRows(opened.value), [
+    [
+      'Bibliografía',
+      [
+        [
+          'Apunte de la cátedra',
+          'moodle',
+          '/simulado/moodle/mod/url/view.php?id=r-3',
+          'text/uri-list',
+          0,
+          null,
+          '2026-08-12T18:00:00.000Z',
+          true
+        ]
+      ]
+    ],
+    [
+      'Unidad 1: Límites',
+      [
+        [
+          'Guía de ejercicios 1',
+          'moodle',
+          '/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf',
+          'application/pdf',
+          0,
+          null,
+          '2026-08-11T12:00:00.000Z',
+          true
+        ]
+      ]
+    ],
+    [
+      'Unidad 2: Derivadas',
+      [
+        [
+          'Guía de ejercicios 2',
+          'moodle',
+          '/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf',
+          'application/pdf',
+          0,
+          null,
+          '2026-09-29T12:00:00.000Z',
+          true
+        ]
+      ]
+    ]
+  ])
+  assert.equal(named(opened.value, 'material').unread, 3)
+})
+
+test('el material reúne los recursos de Moodle de todas las comisiones vigentes, aunque nadie de la otra haya abierto el espacio, sin duplicarlos', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  // Nadie de la B abrió el espacio todavía: sus recursos salen igual, de la oferta de la materia.
+  await spaces.open('p-taguirre', 'am1')
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  // El apunte es del curso de la B y es un enlace; el de AM1 de Ciencias Empresariales es de otro espacio.
+  assert.deepEqual(
+    opened.value.material.sections.map((s) => [s.title, s.items.map((i) => [i.name, i.contentType])]),
+    [
+      ['Bibliografía', [['Apunte de la cátedra', 'text/uri-list']]],
+      ['Unidad 1: Límites', [['Guía de ejercicios 1', 'application/pdf']]],
+      ['Unidad 2: Derivadas', [['Guía de ejercicios 2', 'application/pdf']]]
+    ]
+  )
+  assert.equal(named(opened.value, 'material').unread, 3)
+})
+
+test('lo que trae de Moodle entra por fecha, así lo más nuevo queda primero aunque Moodle lo liste en otro orden', async () => {
+  const data = structuredClone(syntheticData)
+  data.moodle.contents.reverse()
+  data.moodle.announcements.push({
+    ...data.moodle.announcements[0],
+    id: 'av-viejo',
+    subject: 'Bienvenida',
+    message: 'Bienvenidos a la materia.',
+    createdAt: '2026-08-10T12:00:00.000Z'
+  })
+  const { spaces } = build(data, { classroom: createMemoryClassroom(data) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.material.recent.map((i) => i.name),
+    ['Guía de ejercicios 2', 'Apunte de la cátedra', 'Guía de ejercicios 1']
+  )
+  const avisos = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(
+    avisos.map((m) => m.externalId),
+    ['av-viejo', 'av-1'],
+    'en el orden en que se publicaron'
+  )
+})
+
+test('los adjuntos de un aviso de Moodle quedan como enlace al archivo en Moodle, sin copiarse a Archivos', async () => {
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-fjuarez', 'co1')
+
+  assert.ok(opened.ok)
+  const [aviso] = await messagesOf(spaces, 'p-fjuarez', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(aviso.author, { personId: 'p-srosales', name: 'Silvina Rosales', role: 'profesor' })
+  assert.deepEqual(aviso.attachments, [
+    {
+      name: 'temas-segundo-parcial.pdf',
+      contentType: 'application/pdf',
+      size: 48213,
+      url: '/simulado/moodle/pluginfile.php/co1/temas-segundo-parcial.pdf'
+    }
+  ])
+})
+
+test('con Moodle caído el espacio abre igual, sin lo de Moodle, y lo trae en la próxima apertura', async () => {
+  const { port: classroom, state } = fallible(createMemoryClassroom(syntheticData))
+  const { spaces } = build(syntheticData, { classroom })
+  state.down = true
+
+  const down = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(down.ok)
+  assert.deepEqual(down.value.material.sections, [])
+  assert.equal(named(down.value, 'avisos', 'A').unread, 0)
+
+  state.down = false
+  const back = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(back.ok)
+  assert.equal(named(back.value, 'avisos', 'A').unread, 1)
+  assert.equal(named(back.value, 'material').unread, 3)
+})
+
+/** Aula en memoria con el set completo a la que se le pueden publicar avisos después de armarla. */
+function classroomWithNewAnnouncements(data: SyntheticData) {
+  const inner = createMemoryClassroom(data)
+  const published: ClassroomAnnouncement[] = []
+  const classroom: ClassroomPort = {
+    ...inner,
+    async announcements(courseId, since) {
+      const read = await inner.announcements(courseId, since)
+      if (!read.ok) return read
+      return ok([...read.value, ...published.filter((a) => a.courseId === courseId)])
+    }
+  }
+  return { classroom, publish: (a: ClassroomAnnouncement) => published.push(a) }
+}
+
+test('un aviso que se publica en Moodle después de abrir el espacio entra en la próxima apertura, sin repetir los otros', async () => {
+  const { classroom, publish } = classroomWithNewAnnouncements(syntheticData)
+  const { spaces } = build(syntheticData, { classroom })
+  const first = await spaces.open('p-taguirre', 'am1')
+  assert.ok(first.ok)
+  const avisosA = named(first.value, 'avisos', 'A').id
+  await spaces.channel('p-taguirre', avisosA)
+
+  publish({
+    id: 'av-nuevo',
+    courseId: 'c-am1-fi-a',
+    authorId: syntheticData.moodle.announcements[0].authorId,
+    subject: 'Consultas antes del parcial',
+    message: 'El viernes hay clase de consulta a las 18.',
+    createdAt: '2026-11-10T21:00:00.000Z',
+    attachments: []
+  })
+  const second = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(second.ok)
+  assert.equal(named(second.value, 'avisos', 'A').unread, 1)
+  assert.deepEqual(
+    (await messagesOf(spaces, 'p-taguirre', avisosA)).map((m) => [m.externalId, m.unread]),
+    [
+      ['av-1', false],
+      ['av-nuevo', true]
+    ]
+  )
+})
+
+test('con un reloj que avanza, abrir el espacio no vuelve a Moodle antes de 10 segundos, y después sí', async () => {
+  const { classroom, publish } = classroomWithNewAnnouncements(syntheticData)
+  const reads = { courses: 0 }
+  const counted: ClassroomPort = {
+    ...classroom,
+    coursesForSection: async (id) => {
+      reads.courses++
+      return classroom.coursesForSection(id)
+    }
+  }
+  const { spaces, setNow } = build(syntheticData, { classroom: counted, clockMoves: true })
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+  const afterFirst = reads.courses
+  publish({
+    id: 'av-nuevo',
+    courseId: 'c-am1-fi-a',
+    authorId: syntheticData.moodle.announcements[0].authorId,
+    subject: 'Consultas antes del parcial',
+    message: 'El viernes hay clase de consulta a las 18.',
+    createdAt: '2026-11-10T21:00:00.000Z',
+    attachments: []
+  })
+
+  setNow(new Date(Date.parse(syntheticData.now) + 9_000).toISOString())
+  const soon = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(soon.ok)
+  assert.equal(reads.courses, afterFirst, 'no le pregunta a Moodle de nuevo')
+  assert.equal(named(soon.value, 'avisos', 'A').unread, 1)
+
+  setNow(new Date(Date.parse(syntheticData.now) + 10_000).toISOString())
+  const later = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(later.ok)
+  assert.equal(named(later.value, 'avisos', 'A').unread, 2)
+})
+
+test('si Personas no responde al buscar al autor de un aviso, el aviso entra en la próxima apertura con su autor', async () => {
+  const inner = createMemoryPeopleStore(syntheticData)
+  const moodleDown = { value: true }
+  const peopleStore: PeopleStore = {
+    ...inner,
+    ownerOf: async (system, id) =>
+      moodleDown.value && system === 'moodle' ? fail('falla-externa') : inner.ownerOf(system, id)
+  }
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData), peopleStore })
+
+  const down = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(down.ok)
+  const avisosA = named(down.value, 'avisos', 'A').id
+  assert.deepEqual(await messagesOf(spaces, 'p-taguirre', avisosA), [])
+
+  moodleDown.value = false
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+
+  const [aviso] = await messagesOf(spaces, 'p-taguirre', avisosA)
+  assert.deepEqual([aviso.externalId, aviso.author.personId], ['av-1', 'p-mledesma'])
+})
+
+test('un aviso de una cuenta de Moodle que no es de nadie en HackAI se muestra igual, sin autor vinculado', async () => {
+  const data = structuredClone(syntheticData)
+  data.moodle.announcements[0].authorId = '999999'
+  const { spaces } = build(data, { classroom: createMemoryClassroom(data) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  const [aviso] = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.deepEqual(
+    [aviso.externalId, aviso.author],
+    ['av-1', { personId: null, name: 'Persona sin datos', role: null }]
+  )
+})
+
+test('si otro guardó lo mismo de Moodle a la vez y el almacén responde duplicado, el espacio abre igual', async () => {
+  const inner = createMemorySpacesStore()
+  const store: SpacesStore = {
+    ...inner,
+    addMessage: async (m) => (m.origin === 'moodle' ? fail('duplicado') : inner.addMessage(m)),
+    addMaterial: async (m) => (m.origin === 'moodle' ? fail('duplicado') : inner.addMaterial(m))
+  }
+  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData), store })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 0)
+})
+
+// Canales directos (#19). En el set, Ledesma dicta la A de AM1 (Tomás, Lucía y
+// Joaquín) y Ferreyra la B (Martín, Sofía y Valentina). Joaquín y Martín
+// también cursan Física I de verano con Ferreyra.
+
+test('el alumno abre un canal directo con un docente de su comisión, le escribe y el docente le responde', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+
+  const opened = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    { ...opened.value, id: undefined },
+    {
+      id: undefined,
+      spaceId,
+      name: 'directo',
+      kind: 'directo',
+      scope: { kind: 'directo', personIds: ['p-mledesma', 'p-taguirre'] },
+      sectionName: null,
+      unread: 0,
+      canPost: true,
+      canResolve: false,
+      // Los directos no se vinculan con el canal externo.
+      canLink: false,
+      externalLink: null,
+      counterpart: { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }
+    }
+  )
+  const directId = opened.value.id
+  const asked = await spaces.post('p-taguirre', directId, { text: '¿Puedo rendir el recuperatorio otro día?' })
+  assert.ok(asked.ok)
+  assert.equal(asked.value.question, null)
+
+  const seen = await spaces.channel('p-mledesma', directId)
+  assert.ok(seen.ok)
+  assert.deepEqual(seen.value.channel.counterpart, { personId: 'p-taguirre', name: 'Tomás Aguirre', role: 'alumno' })
+  assert.deepEqual(
+    seen.value.threads.map((t) => [t.message.author.personId, t.message.text, t.message.unread]),
+    [['p-taguirre', '¿Puedo rendir el recuperatorio otro día?', true]]
+  )
+  const answered = await spaces.post('p-mledesma', directId, { text: 'Sí, escribime la semana que viene.' })
+  assert.ok(answered.ok)
+
+  const back = await spaces.channel('p-taguirre', directId)
+  assert.ok(back.ok)
+  assert.deepEqual(
+    back.value.threads.map((t) => [t.message.author.name, t.message.text]),
+    [
+      ['Tomás Aguirre', '¿Puedo rendir el recuperatorio otro día?'],
+      ['Mariana Ledesma', 'Sí, escribime la semana que viene.']
+    ]
+  )
+})
+
+test('el espacio le dice al alumno a qué docentes de su comisión les puede escribir en privado, y al docente, a nadie', async () => {
+  const { spaces } = build()
+  await am1(spaces)
+
+  const student = await spaces.open('p-taguirre', 'am1')
+  const teacher = await spaces.open('p-gferreyra', 'am1')
+
+  assert.ok(student.ok && teacher.ok)
+  assert.deepEqual(student.value.viewer.directContacts, [
+    { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor', sectionName: 'A' }
+  ])
+  const opened = await spaces.openDirect('p-taguirre', student.value.space.id, 'p-mledesma')
+  assert.ok(opened.ok, 'cada contacto es alguien con quien `openDirect` abre el canal')
+  assert.deepEqual(teacher.value.viewer.directContacts, [])
+})
+
+/** Joaquín cursa la A de AM1 con Ledesma y, antes, cursó AM1 en el 1er cuatrimestre con Ferreyra. */
+function withPastSection(): SyntheticData {
+  const data = withEnrollment('30105', 'sec-am1-fi-1c')
+  const b = data.siu.sections.find((s) => s.id === 'sec-am1-fi-b')
+  assert.ok(b)
+  data.siu.sections.push({ ...b, id: 'sec-am1-fi-1c', name: 'C', termId: '1c-2026' })
+  return data
+}
+
+test('quien recursa le escribe en privado al docente de su comisión vigente, no al de la que cursó antes', async () => {
+  const { spaces } = build(withPastSection())
+  await am1(spaces)
+
+  const opened = await spaces.open('p-jescobar', 'am1')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.viewer.sections.map((s) => [s.name, s.current]),
+    [
+      ['A', true],
+      ['C', false]
+    ]
+  )
+  assert.deepEqual(
+    opened.value.viewer.directContacts.map((c) => c.personId),
+    ['p-mledesma']
+  )
+  const spaceId = opened.value.space.id
+  assert.deepEqual(await spaces.openDirect('p-jescobar', spaceId, 'p-gferreyra'), {
+    ok: false,
+    error: 'sin-comision-en-comun'
+  })
+  assert.deepEqual(await spaces.openDirect('p-gferreyra', spaceId, 'p-jescobar'), {
+    ok: false,
+    error: 'sin-comision-en-comun'
+  })
+})
+
+test('en una materia archivada, el alumno le sigue pudiendo escribir en privado al docente de su comisión', async () => {
+  const { spaces } = build()
+
+  // Valentina cursó Álgebra con Ledesma en el 1er cuatrimestre: no tiene comisión vigente (pregunta abierta 17).
+  const opened = await spaces.open('p-vfunes', 'aga')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.viewer.directContacts.map((c) => [c.personId, c.sectionName]),
+    [['p-mledesma', 'A']]
+  )
+  const direct = await spaces.openDirect('p-vfunes', opened.value.space.id, 'p-mledesma')
+  assert.ok(direct.ok)
+})
+
+test('no hay canal directo entre dos alumnos, entre dos docentes ni con un docente de otra comisión', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  const direct = async (personId: string, otherPersonId: string, space = spaceId) => {
+    const opened = await spaces.openDirect(personId, space, otherPersonId)
+    return opened.ok ? 'ok' : opened.error
+  }
+
+  // Lucía es de la misma comisión que Tomás, pero es alumna.
+  assert.equal(await direct('p-taguirre', 'p-lbenitez'), 'solo-alumno-docente')
+  assert.equal(await direct('p-mledesma', 'p-gferreyra'), 'solo-alumno-docente')
+  assert.equal(await direct('p-taguirre', 'p-taguirre'), 'solo-alumno-docente')
+  // Ferreyra dicta la B; Tomás es de la A.
+  assert.equal(await direct('p-taguirre', 'p-gferreyra'), 'sin-comision-en-comun')
+  assert.equal(await direct('p-gferreyra', 'p-taguirre'), 'sin-comision-en-comun')
+  // Joaquín y Ferreyra comparten Física I, no una comisión de AM1.
+  assert.equal(await direct('p-jescobar', 'p-gferreyra'), 'sin-comision-en-comun')
+  // Alguien de la materia en otra facultad, o que no existe.
+  assert.equal(await direct('p-taguirre', 'p-cbustos'), 'sin-comision-en-comun')
+  assert.equal(await direct('p-taguirre', 'p-nadie'), 'sin-comision-en-comun')
+  // Quien abre tiene que ser del espacio.
+  assert.equal(await direct('p-agimenez', 'p-mledesma'), 'sin-acceso')
+  assert.equal(await direct('p-nadie', 'p-mledesma'), 'persona-desconocida')
+  assert.equal(await direct('p-taguirre', 'p-mledesma', 'sp-nada'), 'espacio-desconocido')
+
+  // Ninguno de los intentos dejó un canal directo.
+  const opened = await spaces.open('p-taguirre', 'am1')
+  assert.ok(opened.ok)
+  assert.equal(
+    opened.value.channels.some((c) => c.kind === 'directo'),
+    false
+  )
+})
+
+test('el canal directo es uno por par y por espacio, lo abra quien lo abra', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+
+  const first = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  const again = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  const fromTeacher = await spaces.openDirect('p-mledesma', spaceId, 'p-taguirre')
+
+  assert.ok(first.ok && again.ok && fromTeacher.ok)
+  assert.equal(again.value.id, first.value.id)
+  assert.equal(fromTeacher.value.id, first.value.id)
+  assert.deepEqual(fromTeacher.value.counterpart, { personId: 'p-taguirre', name: 'Tomás Aguirre', role: 'alumno' })
+  // Martín y Ferreyra comparten AM1 B y Física I de verano: un canal en cada espacio.
+  const physics = await spaces.open('p-gferreyra', 'fi1')
+  assert.ok(physics.ok)
+  const inAm1 = await spaces.openDirect('p-mcabrera', spaceId, 'p-gferreyra')
+  const inPhysics = await spaces.openDirect('p-mcabrera', physics.value.space.id, 'p-gferreyra')
+  assert.ok(inAm1.ok && inPhysics.ok)
+  assert.notEqual(inAm1.value.id, inPhysics.value.id)
+  assert.equal(inPhysics.value.spaceId, physics.value.space.id)
+})
+
+test('el canal directo y sus adjuntos los ven solo sus dos personas', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  const opened = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  assert.ok(opened.ok)
+  const directId = opened.value.id
+  const posted = await spaces.post('p-taguirre', directId, {
+    text: 'Le mando el certificado.',
+    attachments: [{ name: 'certificado.pdf', contentType: 'application/pdf', bytes: new Uint8Array([7]) }]
+  })
+  assert.ok(posted.ok)
+  const fileId = posted.value.attachments[0].url.split('/')[2]
+
+  // Los dos lo ven al final de sus canales, con el nombre del otro.
+  const asStudent = await spaces.open('p-taguirre', 'am1')
+  const asTeacher = await spaces.open('p-mledesma', 'am1')
+  assert.ok(asStudent.ok && asTeacher.ok)
+  assert.equal(asStudent.value.channels.at(-1)?.counterpart?.name, 'Mariana Ledesma')
+  assert.equal(asTeacher.value.channels.at(-1)?.counterpart?.name, 'Tomás Aguirre')
+  assert.ok((await spaces.file('p-mledesma', fileId)).ok)
+
+  // Ni otra alumna de la comisión ni el docente de la otra lo ven.
+  for (const personId of ['p-lbenitez', 'p-gferreyra']) {
+    const other = await spaces.open(personId, 'am1')
+    assert.ok(other.ok)
+    assert.equal(
+      other.value.channels.some((c) => c.id === directId),
+      false,
+      personId
+    )
+    assert.deepEqual(await spaces.channel(personId, directId), { ok: false, error: 'sin-acceso' }, personId)
+    assert.deepEqual(await spaces.post(personId, directId, { text: 'Hola' }), { ok: false, error: 'sin-acceso' })
+    assert.deepEqual(await spaces.file(personId, fileId), { ok: false, error: 'sin-acceso' }, personId)
+  }
+})
+
+test('los mensajes directos sin leer aparecen como novedad solo para quien los recibe', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  const opened = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  assert.ok(opened.ok)
+  const directId = opened.value.id
+  await spaces.post('p-taguirre', directId, { text: '¿Puedo rendir el recuperatorio otro día?' })
+
+  const forTeacher = await spaces.unreadFor('p-mledesma')
+  assert.ok(forTeacher.ok)
+  assert.deepEqual(
+    forTeacher.value.filter((u) => u.kind === 'directo').map((u) => [u.channelId, u.subjectId, u.count, u.latest.text]),
+    [[directId, 'am1', 1, '¿Puedo rendir el recuperatorio otro día?']]
+  )
+  assert.equal((await unreadOf(spaces, 'p-mledesma')).directo, 1)
+  const fromTeacher = await spaces.openDirect('p-mledesma', spaceId, 'p-taguirre')
+  assert.ok(fromTeacher.ok)
+  assert.equal(fromTeacher.value.unread, 1)
+  for (const personId of ['p-taguirre', 'p-lbenitez']) {
+    const unread = await spaces.unreadFor(personId)
+    assert.ok(unread.ok)
+    assert.equal(
+      unread.value.some((u) => u.channelId === directId),
+      false,
+      personId
+    )
+  }
+
+  // Una vez leído, deja de ser novedad.
+  await spaces.channel('p-mledesma', directId)
+  const after = await spaces.unreadFor('p-mledesma')
+  assert.ok(after.ok)
+  assert.equal(
+    after.value.some((u) => u.channelId === directId),
+    false
+  )
+})
+
+test('si todo lo sin leer de un canal es respuesta de una misma consulta, la novedad lleva a ese hilo', async () => {
+  const { spaces } = build()
+  const { consultasA } = await am1(spaces)
+  const threadOf = async () => {
+    const unread = await spaces.unreadFor('p-taguirre')
+    assert.ok(unread.ok)
+    return unread.value.find((u) => u.channelId === consultasA)?.thread
+  }
+  const question = await spaces.post('p-taguirre', consultasA, { text: '¿Entra límites?' })
+  assert.ok(question.ok)
+  await spaces.post('p-mledesma', consultasA, { text: 'Sí.', replyTo: question.value.id })
+  await spaces.post('p-lbenitez', consultasA, { text: '¿Y derivadas?', replyTo: question.value.id })
+
+  assert.equal(await threadOf(), question.value.id)
+
+  // Una consulta nueva va al canal, igual que lo sin leer de más de un hilo.
+  await spaces.channel('p-taguirre', consultasA)
+  await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
+  assert.equal(await threadOf(), null)
+  await spaces.post('p-mledesma', consultasA, { text: 'Derivadas no.', replyTo: question.value.id })
+  assert.equal(await threadOf(), null)
+})
+
+test('un mensaje directo sin leer dice de quién es; en el resto de los canales no hay otra persona', async () => {
+  const { spaces, setNow } = build()
+  const { spaceId, avisosA } = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', avisosA, { text: 'Parcial el 16.' })
+  setNow('2026-11-09T13:00:00.000Z')
+  const fromStudent = await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')
+  const fromTeacher = await spaces.openDirect('p-mledesma', spaceId, 'p-lbenitez')
+  assert.ok(fromStudent.ok && fromTeacher.ok)
+  await spaces.post('p-taguirre', fromStudent.value.id, { text: '¿Puedo rendir el recuperatorio otro día?' })
+  await spaces.post('p-mledesma', fromTeacher.value.id, { text: 'Te falta entregar el TP.' })
+
+  const forStudent = await spaces.unreadFor('p-lbenitez')
+  const forTeacher = await spaces.unreadFor('p-mledesma')
+
+  assert.ok(forStudent.ok && forTeacher.ok)
+  assert.deepEqual(
+    forStudent.value.map((u) => [u.kind, u.counterpart]),
+    [
+      ['directo', { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' }],
+      ['avisos', null]
+    ]
+  )
+  assert.deepEqual(
+    forTeacher.value.map((u) => [u.kind, u.counterpart]),
+    [['directo', { personId: 'p-taguirre', name: 'Tomás Aguirre', role: 'alumno' }]]
+  )
+})
+
+test('si Cursada no responde por alguna de las dos personas, abrir un canal directo da falla externa', async () => {
+  const { spaces, siuState } = build()
+  const { spaceId } = await am1(spaces)
+  siuState.down = true
+
+  // Nunca se leyeron las comisiones de Tomás ni las de Joaquín.
+  assert.deepEqual(await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma'), { ok: false, error: 'falla-externa' })
+  assert.deepEqual(await spaces.openDirect('p-mledesma', spaceId, 'p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('un canal directo no le quita el nombre a un canal que crea el docente', async () => {
+  const { spaces } = build()
+  const { spaceId } = await am1(spaces)
+  assert.ok((await spaces.openDirect('p-taguirre', spaceId, 'p-mledesma')).ok)
+
+  const created = await spaces.createChannel('p-mledesma', spaceId, { name: 'directo', scope: { kind: 'materia' } })
+
+  assert.ok(created.ok)
+  assert.equal(created.value.kind, 'libre')
 })

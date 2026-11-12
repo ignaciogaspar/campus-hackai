@@ -1,8 +1,9 @@
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { type ReactNode, Suspense } from 'react'
 import { Brand } from '@/components/shell/brand'
 import { InstallButton } from '@/components/shell/install-button'
+import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
 import { HeaderSessionActions } from '@/components/shell/shell-context'
 import type { SubjectArt } from '@/components/subjects/subject-icon'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,8 @@ export type HeaderArt = 'hoy' | 'materias' | 'academico' | 'inscripciones' | 'in
 
 type Props = {
   title: string
+  /** Arriba del título, chico: de dónde es la pantalla («De todas tus materias»). */
+  kicker?: string
   /** Debajo del título, en una línea: la fecha, la carrera o la comisión. */
   subtitle?: string
   /** A la izquierda del título, como el ícono de la materia en su espacio. */
@@ -24,7 +27,11 @@ type Props = {
   backHref?: string
   /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
   hideBackOnDesktop?: boolean
-  /** Pantallas sin sesión, como el ingreso: no hay barra lateral, así que la marca se ve también en compu. */
+  /** Lo sin leer de todas las materias, para la campana, si la pantalla ya lo leyó de Espacios.
+      Si no viene, la campana se lo pide a Espacios con la sesión. */
+  unread?: number
+  /** Pantallas sin sesión, como el ingreso: no hay barra lateral ni novedades,
+      así que la marca se ve también en compu y no va la campana. */
   signedOut?: boolean
   /** Arriba a la derecha, antes de la campana: acciones propias de la pantalla. */
   actions?: ReactNode
@@ -47,12 +54,14 @@ function HeaderArtLayer({ art }: { art: HeaderArt }) {
 
 export function PageHeader({
   title,
+  kicker,
   subtitle,
   icon,
   art,
   school,
   backHref,
   hideBackOnDesktop,
+  unread,
   signedOut = false,
   actions,
   children
@@ -77,13 +86,22 @@ export function PageHeader({
           )}
         </div>
         <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
-          {actions}
           <InstallButton />
+          {!signedOut &&
+            (unread === undefined ? (
+              <Suspense fallback={<NotificationsBell unread={0} />}>
+                <SessionBell />
+              </Suspense>
+            ) : (
+              <NotificationsBell unread={unread} />
+            ))}
+          {actions}
           <HeaderSessionActions />
         </div>
         <div className='col-span-2 mt-3 flex min-w-0 items-center gap-3.5 lg:col-span-1 lg:col-start-1 lg:mt-0'>
           {icon}
           <div className='min-w-0'>
+            {kicker && <p className='text-[0.8125rem] text-white/75'>{kicker}</p>}
             <h1 className='text-3xl leading-tight font-extrabold text-balance lg:text-[2rem]'>{title}</h1>
             {subtitle && <p className='mt-1 text-sm text-pretty text-white/75'>{subtitle}</p>}
           </div>

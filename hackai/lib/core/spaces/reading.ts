@@ -5,7 +5,6 @@
 import type { PersonId } from '@/lib/core/people'
 import type {
   ChannelId,
-  Origin,
   SpaceId,
   SpacesStore,
   SpacesStoreError,
@@ -42,6 +41,20 @@ export async function loadSnapshot(
   return ok({ personId, marks: marks.value, messages: messages.value, material: material.value })
 }
 
+/** La versión de los mensajes de un canal: cambia cuando entra uno, cuando uno
+    pendiente se envía o cuando se resuelve una consulta. */
+export function messagesVersion(messages: StoredMessage[]): string {
+  const last = messages.reduce((max, m) => Math.max(max, m.seq), 0)
+  const pending = messages.filter((m) => m.status === 'pendiente').length
+  const resolved = messages.filter((m) => m.resolved === true).length
+  return `m${last}.${pending}.${resolved}`
+}
+
+/** La versión del material de un espacio: cambia cuando entra un archivo. */
+export function materialVersion(lastSeq: number): string {
+  return `a${lastSeq}`
+}
+
 export function markOf(snapshot: Snapshot, channelId: ChannelId): number {
   return snapshot.marks[channelId] ?? 0
 }
@@ -54,21 +67,20 @@ export function isUnreadMaterial(personId: PersonId, mark: number, item: StoredM
   return item.seq > mark && item.addedBy !== personId
 }
 
-/** Una novedad, como la muestra Hoy: el texto del mensaje o el nombre del archivo. */
-export type Latest = { text: string; origin: Origin; createdAt: string }
+/** Lo que la persona no leyó en un canal: mensajes o, en el de material, archivos, por `seq`. */
+export type UnreadIn = { count: number; messages: StoredMessage[]; material: StoredMaterial[] }
 
-/** Cuántas cosas no leyó en el canal y la más nueva de ellas. */
-export function unreadIn(snapshot: Snapshot, channel: StoredChannel): { count: number; latest: Latest | null } {
+/** Lo que no leyó en el canal. */
+export function unreadIn(snapshot: Snapshot, channel: StoredChannel): UnreadIn {
   const mark = markOf(snapshot, channel.id)
-  const items: (Latest & { seq: number })[] =
-    channel.kind === 'material'
-      ? snapshot.material
-          .filter((m) => m.spaceId === channel.spaceId && isUnreadMaterial(snapshot.personId, mark, m))
-          .map((m) => ({ seq: m.seq, text: m.name, origin: m.origin, createdAt: m.addedAt }))
-      : snapshot.messages
-          .filter((m) => m.channelId === channel.id && isUnreadMessage(snapshot.personId, mark, m))
-          .map((m) => ({ seq: m.seq, text: m.text, origin: m.origin, createdAt: m.createdAt }))
-  if (items.length === 0) return { count: 0, latest: null }
-  const newest = items.reduce((a, b) => (b.seq > a.seq ? b : a))
-  return { count: items.length, latest: { text: newest.text, origin: newest.origin, createdAt: newest.createdAt } }
+  if (channel.kind === 'material') {
+    const material = snapshot.material.filter(
+      (m) => m.spaceId === channel.spaceId && isUnreadMaterial(snapshot.personId, mark, m)
+    )
+    return { count: material.length, messages: [], material }
+  }
+  const messages = snapshot.messages.filter(
+    (m) => m.channelId === channel.id && isUnreadMessage(snapshot.personId, mark, m)
+  )
+  return { count: messages.length, messages, material: [] }
 }

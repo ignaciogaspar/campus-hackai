@@ -48,7 +48,7 @@ test('arma el enlace al aula sin consultar la base', () => {
   const { classroom } = moodleWith(async () => {
     throw new Error('no debería pedir nada')
   })
-  assert.equal(classroom.courseUrl('c-am1-fi-a'), 'https://moodle.example.edu.ar/course/view.php?id=c-am1-fi-a')
+  assert.equal(classroom.courseUrl('c-am1-fi-a'), '/simulado/moodle/course/view.php?id=c-am1-fi-a')
 })
 
 test('si la base no responde a tiempo devuelve «falla externa» en vez de quedarse esperando', async () => {

@@ -74,6 +74,10 @@ function Overview({ career }: { career: Career }) {
             {career.program
               ? `${career.program.plan} · ${career.program.years} años`
               : 'Sin plan de estudios en el SIU'}
+            {/* Una estimación de HackAI con las materias del plan: el porcentaje oficial es el del SIU (#61). */}
+            <span className='mt-1 block text-[0.75rem]'>
+              Estimado por HackAI. El avance oficial está en los reportes del SIU.
+            </span>
           </p>
         </div>
         <div className='flex min-w-0 flex-1 flex-col justify-center gap-4'>

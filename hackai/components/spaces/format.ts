@@ -1,8 +1,9 @@
 /* Cómo se escriben en las pantallas del espacio las horas, los tamaños, los
    nombres de los canales y los enlaces entre pestañas. Sin reglas de negocio:
-   solo formato. Las horas van en la hora de Buenos Aires, sin «hoy» ni «hace
-   un rato», porque la demo corre con el reloj fijo de Espacios. */
-import type { Channel, ChannelKind } from '@/lib/core/spaces'
+   solo formato. Las horas van en la hora de Buenos Aires, con día y hora y sin
+   «hoy» ni «hace un rato»: un mensaje se lee igual aunque la pantalla quede
+   abierta un rato. */
+import type { Channel, ChannelKind, Thread } from '@/lib/core/spaces'
 
 const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
@@ -60,14 +61,16 @@ const DEFAULT_NAMES: Partial<Record<ChannelKind, string>> = {
 }
 
 /** Avisos, Consultas y Material para los canales por defecto; los que crea un docente, con `#`. */
-export function channelName(kind: ChannelKind, name: string): string {
+export function channelTitle(kind: ChannelKind, name: string): string {
   return DEFAULT_NAMES[kind] ?? `#${name}`
 }
 
-/** El nombre del canal y, si la persona ve canales de más de una comisión, su
-    comisión: «Avisos · A». */
+/** Como `channelTitle`, y un directo con el nombre de la otra persona. Si la
+    persona ve canales de más de una comisión, cada uno lleva su comisión:
+    «Avisos · A». */
 export function channelLabel(channel: Channel, severalSections: boolean): string {
-  const base = channelName(channel.kind, channel.name)
+  if (channel.kind === 'directo') return channel.counterpart?.name ?? 'Mensaje directo'
+  const base = channelTitle(channel.kind, channel.name)
   return severalSections && channel.sectionName ? `${base} · ${channel.sectionName}` : base
 }
 
@@ -84,7 +87,34 @@ export function hasSeveralSections(channels: Channel[]): boolean {
   return sections.size > 1
 }
 
-export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal' }
+/** Si el canal va en la pestaña Directos y no suelto en el riel. */
+export const isDirect = (channel: Channel) => channel.kind === 'directo'
+
+/** El espacio de una materia, como lo necesitan los formularios: la ruta va por materia y el módulo, por espacio. */
+export type SpaceRef = { subjectId: string; spaceId: string }
+
+/** Una pieza del riel de canales: un canal, o la pestaña Directos, que junta los canales directos. */
+export type RailTab = {
+  id: string
+  href: string
+  label: string
+  kind: ChannelKind
+  /** A quién llega: «Toda la materia», «Comisión A». */
+  audience: string
+  unread: number
+  selected: boolean
+}
+
+/** `?vista=directos` es la lista de mensajes directos; un canal, directo o no, va en `?canal=` con su id. */
+export type SpaceQuery = { canal?: string; hilo?: string; filtro?: string; nuevo?: 'canal'; vista?: 'directos' }
+
+/** Donde viven los espacios: `/materias/<id de la materia>`. */
+const SPACES_PATH = '/materias'
+
+/** Si `pathname` es el espacio de una materia, sin query: ni la lista de materias ni otra pantalla. */
+export function isSpacePath(pathname: string): boolean {
+  return pathname.startsWith(`${SPACES_PATH}/`) && /^[^/]+$/.test(pathname.slice(SPACES_PATH.length + 1))
+}
 
 /** El enlace a una pestaña, un hilo o un filtro del espacio. */
 export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {
@@ -93,5 +123,18 @@ export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {
     if (value) params.set(key, value)
   }
   const search = params.toString()
-  return `/materias/${encodeURIComponent(subjectId)}${search ? `?${search}` : ''}`
+  return `${SPACES_PATH}/${encodeURIComponent(subjectId)}${search ? `?${search}` : ''}`
+}
+
+/** El último mensaje de una lista, y si lo escribió quien mira. */
+export type Latest = { id: string; mine: boolean }
+
+/** Lo que queda al pie de una lista de mensajes: el último, o su última
+    respuesta, y si lo escribió quien mira. Una respuesta en una consulta vieja
+    no cuenta: se ve arriba, en su tarjeta. `null` si no hay mensajes. */
+export function latestOf(threads: Thread[], viewerId: string): Latest | null {
+  const last = threads.at(-1)
+  if (!last) return null
+  const message = last.replies.at(-1) ?? last.message
+  return { id: message.id, mine: message.author.personId === viewerId }
 }

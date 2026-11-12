@@ -7,11 +7,13 @@
 
    Al docente, por ahora, lo saluda, dice dónde dicta y lo lleva a Mis materias:
    su Hoy no está diseñado todavía, así que la página elige la vista según el
-   rol de la sesión y al docente no le pide Hoy. Más allá de eso no decide
-   nada: qué hay en cada parte lo dicen Personas y Hoy. */
+   rol de la sesión y al docente no le pide Hoy: su campana pide los no leídos
+   a Espacios, como los mensajes directos de sus alumnos. Más allá de eso, no
+   decide nada: qué hay en cada parte lo dicen Personas, Hoy y Espacios. */
 import { CalendarDays, type LucideIcon, Moon, Sun, Sunset } from 'lucide-react'
 import type { Metadata } from 'next'
 import { longDay } from '@/components/dates'
+import { unreadTotal } from '@/components/news/format'
 import { activeProgram, firstName } from '@/components/session/person-text'
 import { PageHeader } from '@/components/shell/page-header'
 import { SubjectsShortcut } from '@/components/subjects/subjects-shortcut'
@@ -68,6 +70,8 @@ export default async function HoyPage() {
   ])
   const person = found.ok ? found.value : null
   const view: TodayView | null = today?.ok ? today.value : null
+  // Hoy ya trae los no leídos del alumno; sin Hoy, la campana se los pide a Espacios.
+  const unread = view ? unreadTotal(view.unread) : undefined
 
   let content = <TeacherHome />
   if (view) content = <TodayScreen view={view} person={person} />
@@ -91,6 +95,7 @@ export default async function HoyPage() {
         subtitle={view ? longDay(view.now) : person ? belonging(person) : undefined}
         school={person?.school.name}
         art='hoy'
+        unread={unread}
       />
 
       <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>{content}</main>

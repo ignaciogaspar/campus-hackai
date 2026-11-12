@@ -56,5 +56,11 @@ export type ExternalChannelPort = {
     threadId: string,
     text: string
   ): Promise<Result<ExternalMessage, ExternalChannelError | 'mensaje-inexistente' | 'no-soportado'>>
+  /** Abre un hilo sobre un mensaje, sin escribir nada en él, para que las respuestas
+      queden juntas. Si ya tenía uno, no hace nada. */
+  openThread(
+    channelId: string,
+    messageId: string
+  ): Promise<Result<null, ExternalChannelError | 'mensaje-inexistente' | 'no-soportado'>>
   download(attachment: ExternalAttachment): Promise<Result<ExternalDownload, 'adjunto-vencido' | ExternalFailure>>
 }

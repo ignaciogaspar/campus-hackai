@@ -1,19 +1,24 @@
 /* Implementación de Espacios. Se importa solo desde ./index.ts: desde afuera
    del módulo se usa su interfaz. Las piezas viven al lado: quién entra y qué
    puede hacer (access), los canales (channels), lo leído (reading), los
-   autores (authors), los mensajes y sus hilos (messages) y el material
-   (material). Los archivos guardados se entregan acá, con la misma regla de
-   quién ve qué.
+   autores (authors), los mensajes y sus hilos (messages), el material
+   (material), los canales directos (direct) y lo que se trae de Moodle
+   (classroom-import). Los archivos guardados se entregan acá, con la misma
+   regla de quién ve qué.
 
-   Todavía no sincroniza con el canal externo ni con Moodle: `open` no trae lo
-   nuevo, `post` no envía al canal externo vinculado y `link` y `syncAll` no
-   están (#15 y #16). */
+   `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
+   vista, no más de una vez cada `SYNC_EVERY_MS` por espacio. La
+   sincronización con el canal externo es su propia pieza (sync): `open` y
+   `version` traen lo nuevo, `post` envía, `link` vincula y trae lo que ya
+   había, y `syncAll` es la corrida periódica. */
 import type { PersonId } from '@/lib/core/people'
 import type {
   AccessError,
   Channel,
   ChannelId,
   ChannelView,
+  ExternalLink,
+  MaterialItem,
   MaterialView,
   Message,
   MessageId,
@@ -31,8 +36,10 @@ import type {
   StoredSpace
 } from '@/lib/core/spaces'
 import {
+  canLink,
   canManage,
   canResolve,
+  directRefusal,
   type Membership,
   membershipInSpace,
   membershipOf,
@@ -41,17 +48,40 @@ import {
   teachesSection,
   viewerOf
 } from '@/lib/core/spaces/access'
-import { authorsFrom } from '@/lib/core/spaces/authors'
+import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
 import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
+import { importFromClassroom } from '@/lib/core/spaces/classroom-import'
+import { counterpartOf, directChannel } from '@/lib/core/spaces/direct'
 import { materialItems, materialView } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
-import { isUnreadMessage, loadSnapshot, markOf, unreadIn } from '@/lib/core/spaces/reading'
+import {
+  isUnreadMessage,
+  loadSnapshot,
+  markOf,
+  materialVersion,
+  messagesVersion,
+  unreadIn
+} from '@/lib/core/spaces/reading'
+import { addCounts, createSync } from '@/lib/core/spaces/sync'
 import { unreadFor } from '@/lib/core/spaces/unread'
 import { isFileId } from '@/lib/ports/files'
-import { fail, notImplemented, ok, type Result } from '@/lib/result'
+import { fail, ok, type Result } from '@/lib/result'
+
+/** Cada cuánto, como mucho, `open` trae lo nuevo de los sistemas de origen a un mismo espacio. */
+const SYNC_EVERY_MS = 10_000
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
 type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }
+
+/** El canal como lo ve la persona, con la otra persona si es un canal directo. */
+async function channelFor(
+  authors: Authors,
+  member: Membership,
+  channel: StoredChannel,
+  unread: number
+): Promise<Channel> {
+  return toChannel(member, channel, unread, await counterpartOf(authors, member, channel))
+}
 
 function toSpace(space: StoredSpace): Space {
   const { id, subjectId, subjectCode, schoolId, name } = space
@@ -61,7 +91,22 @@ function toSpace(space: StoredSpace): Space {
 const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(max, i.seq), 0)
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
-  const { people, studies, files, clock, store } = deps
+  const { people, studies, classroom, files, clock, store, externalChannel, timer } = deps
+  const sync = createSync({ people, externalChannel, files, store, timer })
+  /** Cuándo trajo `open` lo nuevo de Moodle de cada espacio, en milisegundos del reloj. */
+  const lastSync = new Map<string, number>()
+
+  /** Si a `open` le toca traer lo nuevo de Moodle del espacio, y si le toca, lo anota. Con el reloj fijo la hora
+      no avanza, así que no se puede medir el intervalo: trae siempre, como en los tests y en la demo
+      con los adaptadores en memoria. */
+  function syncDue(spaceId: string): boolean {
+    if (clock.capabilities.fixed) return true
+    const now = clock.now().getTime()
+    const last = lastSync.get(spaceId)
+    if (last !== undefined && now - last < SYNC_EVERY_MS) return false
+    lastSync.set(spaceId, now)
+    return true
+  }
 
   /** El espacio de la materia y facultad de la membresía; lo crea si no existe. */
   async function spaceOf(member: Membership): Promise<Result<StoredSpace, SpacesStoreError>> {
@@ -87,11 +132,15 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!snapshot.ok) return snapshot
     const materialChannel = visible.find((c) => c.kind === 'material')
     const mark = materialChannel ? markOf(snapshot.value, materialChannel.id) : 0
-    const items = await materialItems(snapshot.value.material, authorsFrom(people), member.personId, mark)
+    const authors = authorsFrom(people)
+    const [items, shown] = await Promise.all([
+      materialItems(snapshot.value.material, authors, member.personId, mark),
+      Promise.all(visible.map((c) => channelFor(authors, member, c, unreadIn(snapshot.value, c).count)))
+    ])
     return ok({
       space: toSpace(space),
       viewer: viewerOf(member),
-      channels: visible.map((c) => toChannel(member, c, unreadIn(snapshot.value, c).count)),
+      channels: shown,
       material: materialView(space.materialLayout, items),
       staleSince: member.staleSince
     })
@@ -104,7 +153,11 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!space.ok) return space
     const channels = await ensureChannels(store, space.value, member.value)
     if (!channels.ok) return channels
-    // Acá va a ir traer lo nuevo del canal externo vinculado y de Moodle (#15 y #16).
+    if (syncDue(space.value.id)) {
+      await importFromClassroom({ classroom, studies, people, store }, member.value, space.value, channels.value)
+    }
+    // Lo nuevo del canal externo vinculado. Si no responde, se muestra lo que ya hay.
+    await sync.ifDue(space.value.id, channels.value)
     return spaceView(member.value, space.value, channels.value)
   }
 
@@ -134,6 +187,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok({
       space: toSpace(space),
       channel: toChannel(member, channel, 0),
+      version: materialVersion(material.value.lastSeq),
       threads: [],
       material: material.value.view
     })
@@ -156,7 +210,8 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!marked.ok) return marked
     return ok({
       space: toSpace(space),
-      channel: toChannel(member, channel, 0),
+      channel: await channelFor(authors, member, channel, 0),
+      version: messagesVersion(stored.value),
       threads: threadsOf(messages),
       material: null
     })
@@ -203,14 +258,14 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     return ok(saved)
   }
 
-  /** Guarda un mensaje ya validado y lo marca leído para quien lo escribió. */
+  /** Guarda un mensaje ya validado y lo marca leído para quien lo escribió. En un canal
+      vinculado se guarda pendiente y se envía enseguida; si el envío falla, queda pendiente. */
   async function publish(
     { channel, member }: InChannel,
     draft: { text: string; replyTo: MessageId | null; attachments: StoredAttachment[] }
   ): Promise<Result<Message, SpacesStoreError>> {
     // Un mensaje de primer nivel de un alumno en #consultas es una consulta.
     const isQuestion = channel.kind === 'consultas' && draft.replyTo === null && member.role === 'alumno'
-    // El envío al canal externo vinculado llega con la sincronización (#15).
     const added = await store.addMessage({
       ...draft,
       channelId: channel.id,
@@ -218,7 +273,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       authorName: null,
       origin: 'hackai',
       externalId: null,
-      status: 'publicado',
+      status: channel.externalLink ? 'pendiente' : 'publicado',
       resolved: isQuestion ? false : null,
       createdAt: clock.now().toISOString()
     })
@@ -229,7 +284,10 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     }
     const marked = await store.markRead(member.personId, channel.id, added.value.seq)
     if (!marked.ok) return marked
-    return ok(await toMessage(added.value, authorsFrom(people), false))
+    if (!channel.externalLink) return ok(await toMessage(added.value, authorsFrom(people), false))
+    await sync.sendPending(channel)
+    const sent = await store.message(added.value.id)
+    return ok(await toMessage(sent.ok && sent.value ? sent.value : added.value, authorsFrom(people), false))
   }
 
   const post: Spaces['post'] = async (personId, channelId, message) => {
@@ -376,7 +434,92 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       return fail('falla-externa')
     }
     const [item] = await materialItems([added.value], authorsFrom(people), personId, 0)
+    await announceMaterial(spaceId, item)
     return ok(item)
+  }
+
+  /** Avisa en el canal externo del material que se subió en HackAI, si el canal de
+      material está vinculado. Es lo mejor que se puede hacer: el archivo ya está en
+      HackAI y un aviso que no sale no se reintenta. */
+  async function announceMaterial(spaceId: SpaceId, item: MaterialItem): Promise<void> {
+    const channels = await store.channels([spaceId])
+    const link = channels.ok ? channels.value.find((c) => c.kind === 'material')?.externalLink : null
+    if (!link) return
+    const where = item.section ? ` (${item.section})` : ''
+    const who = item.addedBy ? `**${item.addedBy.name}** subió` : 'Se subió'
+    await externalChannel.post(
+      link.channelId,
+      `${who} material en HackAI${where}:
+📎 ${item.name}`
+    )
+  }
+
+  /** El canal externo ya vinculado con otro canal de HackAI. */
+  async function linkedElsewhere(
+    channelId: ChannelId,
+    external: ExternalLink
+  ): Promise<Result<boolean, SpacesStoreError>> {
+    const linked = await store.linkedChannels()
+    if (!linked.ok) return linked
+    const same = (c: StoredChannel) =>
+      c.id !== channelId &&
+      c.externalLink?.system === external.system &&
+      c.externalLink.channelId === external.channelId
+    return ok(linked.value.some(same))
+  }
+
+  /** El canal, si la persona puede vincularlo y el canal externo no está vinculado con otro. */
+  async function linkable(
+    personId: PersonId,
+    channelId: ChannelId,
+    external: ExternalLink
+  ): Promise<Result<InChannel, 'canal-desconocido' | 'solo-docentes' | 'canal-externo-en-uso' | AccessError>> {
+    const found = await inChannel(personId, channelId)
+    if (!found.ok) return found
+    if (!canLink(found.value.member, found.value.channel)) return fail('solo-docentes')
+    const taken = await linkedElsewhere(channelId, external)
+    if (!taken.ok) return taken
+    return taken.value ? fail('canal-externo-en-uso') : found
+  }
+
+  const link: Spaces['link'] = async (personId, channelId, external) => {
+    const found = await linkable(personId, channelId, external)
+    if (!found.ok) return found
+    const { member } = found.value
+    // Leerlo desde el principio comprueba que existe y trae lo que ya tenía.
+    const page = await externalChannel.read(external.channelId, null)
+    if (!page.ok) return fail(page.error === 'canal-inexistente' ? 'canal-externo-inexistente' : page.error)
+    const linked = await store.linkChannel(channelId, external)
+    if (!linked.ok) return linked
+    if (!linked.value) return fail('canal-desconocido')
+    // Si traerlo falla, el cursor no avanzó: lo trae la próxima sincronización.
+    await sync.importFirst(linked.value, page.value)
+    return ok(toChannel(member, linked.value, 0))
+  }
+
+  const version: Spaces['version'] = async (channelId) => {
+    const channel = await store.channel(channelId)
+    if (!channel.ok) return channel
+    if (!channel.value) return fail('canal-desconocido')
+    const { spaceId, kind } = channel.value
+    const channels = await store.channels([spaceId])
+    if (!channels.ok) return channels
+    await sync.ifDue(spaceId, channels.value)
+    if (kind === 'material') {
+      const material = await store.material([spaceId])
+      return material.ok ? ok(materialVersion(maxSeq(material.value))) : material
+    }
+    const messages = await store.messages([channelId])
+    return messages.ok ? ok(messagesVersion(messages.value)) : messages
+  }
+
+  const syncAll: Spaces['syncAll'] = async () => {
+    const linked = await store.linkedChannels()
+    if (!linked.ok) return linked
+    const bySpace = Map.groupBy(linked.value, (c) => c.spaceId)
+    let total = { imported: 0, sent: 0, pending: 0 }
+    for (const [spaceId, channels] of bySpace) total = addCounts(total, await sync.now(spaceId, channels))
+    return ok({ channels: linked.value.length, ...total })
   }
 
   const organizeMaterial: Spaces['organizeMaterial'] = async (personId, spaceId, layout) => {
@@ -390,6 +533,23 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     const channel = channels.value.find((c) => c.kind === 'material')
     const material = await materialFor(found.value.member, space.value, channel?.id ?? null)
     return material.ok ? ok(material.value.view) : material
+  }
+
+  const openDirect: Spaces['openDirect'] = async (personId, spaceId, otherPersonId) => {
+    const found = await inSpace(personId, spaceId)
+    if (!found.ok) return found
+    const { space, member } = found.value
+    // Alguien que no existe o no es de la materia no comparte ninguna comisión del espacio.
+    const other = await membershipInSpace(studies, otherPersonId, space)
+    if (!other.ok) return fail(other.error === 'falla-externa' ? other.error : 'sin-comision-en-comun')
+    const refusal = directRefusal(member, other.value)
+    if (refusal) return fail(refusal)
+    const channel = await directChannel(store, space, personId, otherPersonId)
+    if (!channel.ok) return channel
+    const snapshot = await loadSnapshot(store, personId, [channel.value], [])
+    if (!snapshot.ok) return snapshot
+    const unread = unreadIn(snapshot.value, channel.value).count
+    return ok(await channelFor(authorsFrom(people), member, channel.value, unread))
   }
 
   /** Si la persona ve el espacio o el canal del archivo. Un dueño que ya no existe
@@ -427,14 +587,15 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       if (!found.ok) return found
       return found.value.channel.kind === 'material' ? readMaterial(found.value) : readMessages(found.value)
     },
+    version,
     post,
     createChannel,
     addMaterial,
     organizeMaterial,
-    openDirect: notImplemented,
-    link: notImplemented,
-    syncAll: notImplemented,
-    unreadFor: (personId) => unreadFor(studies, store, personId),
+    openDirect,
+    link,
+    syncAll,
+    unreadFor: (personId) => unreadFor({ studies, people, store }, personId),
     file
   }
 }

@@ -1,18 +1,23 @@
 /* Inscripciones: a materias (cursada) y a exámenes (finales), en dos pestañas.
-   A la izquierda, las materias con la inscripción abierta que le sirven al
-   alumno; al elegir una, a la derecha su detalle: cada comisión de su carrera
-   (o cada mesa) con modalidad, fechas y horarios, duración, cupo, si se
-   promociona, sede, docentes y observaciones, el botón para inscribirse y el
-   certificado (de prueba). En el celular, la lista y el detalle van uno por
-   vez. Todo vive en la URL: `?tab=examenes&materia=aga`.
+   A la izquierda, en cada pestaña, las materias con la inscripción abierta que
+   le sirven al alumno, las que cierran antes primero, con los días que faltan
+   y los lugares que quedan; y debajo, lo que ya tiene: sus cursadas o sus
+   finales. Al elegir una, a la derecha su detalle: cada comisión de su
+   carrera (o cada mesa) con modalidad, fechas y horarios, duración, cupo, si
+   se promociona, sede, docentes y observaciones, el botón para inscribirse o
+   darse de baja y el certificado (de prueba). En el celular, la lista y el
+   detalle van uno por vez. Todo vive en la URL: `?tab=examenes&materia=aga`.
 
-   Qué está abierto, qué le sirve, qué comisiones son de su carrera y si ya
-   está inscripto lo decide Cursada; la página solo lo muestra. */
+   Qué está abierto, qué le sirve, qué comisiones son de su carrera, si a un
+   final le falta la regularidad, los días y los lugares los calcula Cursada;
+   la página solo los muestra. Si una lectura falla, su parte lo dice y el
+   resto se ve igual. */
 import { ChevronLeft, ChevronRight, ClipboardList, MousePointerClick } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
 import { shortDate } from '@/components/dates'
+import { closingText, spotsLeftText } from '@/components/enrollment/format'
 import { BoardCard, SectionCard } from '@/components/enrollment/offer-detail'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { KIND, yearName } from '@/components/grades/status'
@@ -24,7 +29,15 @@ import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Person } from '@/lib/core/people'
-import type { OfferItem, OpenEnrollment, StudiesReadError, SubjectStanding } from '@/lib/core/studies'
+import type {
+  Fresh,
+  MySection,
+  OfferItem,
+  OpenEnrollment,
+  StudiesReadError,
+  SubjectStanding,
+  UpcomingItem
+} from '@/lib/core/studies'
 import type { Result } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -32,10 +45,15 @@ export const metadata: Metadata = { title: 'Inscripciones · Campus HackAI' }
 
 type Tab = 'materias' | 'examenes'
 
+type Read<T> = Result<Fresh<T>, StudiesReadError>
+
 const TABS: { tab: Tab; label: string }[] = [
   { tab: 'materias', label: 'Inscripción a materias' },
   { tab: 'examenes', label: 'Inscripción a exámenes' }
 ]
+
+/** Faltan pocos días para que cierre: se resalta. */
+const CLOSING_SOON_DAYS = 3
 
 function href(tab: Tab, subjectId?: string): string {
   const params = new URLSearchParams()
@@ -45,8 +63,15 @@ function href(tab: Tab, subjectId?: string): string {
   return query ? `/inscripciones?${query}` : '/inscripciones'
 }
 
-/** Una materia de la lista: la de la inscripción abierta o, si ya se inscribió, la elegida. */
-type ListItem = { subjectId: string; subjectName: string; closesAt: string | null; enrolled: boolean }
+/** Una fila de la lista: la materia y, debajo, lo que importa para elegirla. */
+type ListItem = {
+  subjectId: string
+  subjectName: string
+  /** Debajo del nombre: el año del plan, cuándo cierra o en qué comisión o mesa está. */
+  detail: string
+  /** Cierra en pocos días o no le queda lugar: va resaltado. */
+  urgent: boolean
+}
 
 /** El año de la carrera o el tipo de la materia, según su plan. */
 function planLabel(standing: SubjectStanding | undefined): string | null {
@@ -55,84 +80,152 @@ function planLabel(standing: SubjectStanding | undefined): string | null {
   return standing.year ? yearName(standing.year) : null
 }
 
-function SubjectList({
+function SubjectRow({ tab, item, active }: { tab: Tab; item: ListItem; active: boolean }) {
+  return (
+    <li>
+      <Link
+        href={href(tab, item.subjectId)}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-ring',
+          active ? 'bg-accent' : 'hover:bg-ink/4'
+        )}
+      >
+        <SubjectIcon name={item.subjectName} size='md' tone={active ? 'solid' : 'soft'} />
+        <span className='min-w-0 flex-1'>
+          <span className='block text-[0.875rem] leading-snug font-semibold text-ink'>{item.subjectName}</span>
+          <span
+            className={cn(
+              'block text-[0.75rem]',
+              item.urgent ? 'font-semibold text-warning-foreground' : 'text-muted-foreground'
+            )}
+          >
+            {item.detail}
+          </span>
+        </span>
+        <ChevronRight
+          aria-hidden='true'
+          className={cn(
+            'size-4.5 flex-none transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none',
+            active ? 'text-blue' : 'text-gray-light'
+          )}
+          strokeWidth={2}
+        />
+      </Link>
+    </li>
+  )
+}
+
+function ListGroup({
+  title,
   tab,
   items,
-  selected,
-  standings
+  selected
 }: {
+  title: string
   tab: Tab
   items: ListItem[]
   selected: string | undefined
-  standings: SubjectStanding[]
 }) {
-  if (items.length === 0) {
-    return (
-      <EmptyState icon={ClipboardList} title='No hay inscripciones abiertas'>
-        {tab === 'materias'
-          ? 'Ahora no hay inscripciones a cursada que te sirvan. Cuando abra una, aparece acá.'
-          : 'Ahora no hay mesas abiertas de materias que tengas regulares o estés cursando.'}
-      </EmptyState>
-    )
-  }
   return (
-    <ul className='flex flex-col gap-1'>
-      {items.map((item) => {
-        const active = item.subjectId === selected
-        const plan = planLabel(standings.find((s) => s.subjectId === item.subjectId))
-        return (
-          <li key={item.subjectId}>
-            <Link
-              href={href(tab, item.subjectId)}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-ring',
-                active ? 'bg-accent' : 'hover:bg-ink/4'
-              )}
-            >
-              <SubjectIcon name={item.subjectName} size='md' tone={active ? 'solid' : 'soft'} />
-              <span className='min-w-0 flex-1'>
-                <span className='block text-[0.875rem] leading-snug font-semibold text-ink'>{item.subjectName}</span>
-                <span className='block text-[0.75rem] text-muted-foreground'>
-                  {[
-                    plan,
-                    item.enrolled ? 'Ya estás inscripto' : item.closesAt && `Cierra el ${shortDate(item.closesAt)}`
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </span>
-              <ChevronRight
-                aria-hidden='true'
-                className={cn(
-                  'size-4.5 flex-none transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none',
-                  active ? 'text-blue' : 'text-gray-light'
-                )}
-                strokeWidth={2}
-              />
-            </Link>
-          </li>
-        )
-      })}
-    </ul>
+    <div className='flex flex-col gap-1'>
+      <h2 className='px-3 pt-2 pb-1 text-[0.75rem] font-semibold text-muted-foreground'>{title}</h2>
+      <ul className='flex flex-col gap-1'>
+        {items.map((item) => (
+          <SubjectRow key={item.subjectId} tab={tab} item={item} active={item.subjectId === selected} />
+        ))}
+      </ul>
+    </div>
   )
+}
+
+/* La columna de la izquierda: lo abierto y, debajo, lo que ya tiene. */
+function SubjectList({
+  tab,
+  open,
+  mine,
+  mineError,
+  selected
+}: {
+  tab: Tab
+  open: ListItem[]
+  mine: ListItem[]
+  mineError: string | null
+  selected: string | undefined
+}) {
+  return (
+    <div className='flex flex-col gap-2'>
+      {open.length === 0 ? (
+        <EmptyState icon={ClipboardList} title='No hay inscripciones abiertas'>
+          {tab === 'materias'
+            ? 'Ahora no hay inscripciones a cursada que te sirvan. Cuando abra una, aparece acá.'
+            : 'Ahora no hay mesas abiertas de materias que tengas regulares o estés cursando.'}
+        </EmptyState>
+      ) : (
+        <ListGroup title='Con inscripción abierta' tab={tab} items={open} selected={selected} />
+      )}
+      {mine.length > 0 && (
+        <ListGroup
+          title={tab === 'materias' ? 'Tus cursadas' : 'Tus finales'}
+          tab={tab}
+          items={mine}
+          selected={selected}
+        />
+      )}
+      {mineError && <ErrorNotice>{mineError}</ErrorNotice>}
+    </div>
+  )
+}
+
+function openItems(openings: OpenEnrollment[], standings: SubjectStanding[]): ListItem[] {
+  return openings.map((o) => {
+    const spots = spotsLeftText(o.spotsLeft)
+    const plan = planLabel(standings.find((s) => s.subjectId === o.subjectId))
+    return {
+      subjectId: o.subjectId,
+      subjectName: o.subjectName,
+      detail: [plan, `${closingText(o.closesInDays)} (${shortDate(o.closesAt)})`, spots.full ? spots.text : null]
+        .filter(Boolean)
+        .join(' · '),
+      urgent: spots.full || (o.closesInDays >= 0 && o.closesInDays <= CLOSING_SOON_DAYS)
+    }
+  })
+}
+
+/** Lo que ya tiene en esta pestaña: sus comisiones actuales o los finales a los que está inscripto. */
+function mineItems(tab: Tab, sections: Read<MySection[]>, upcoming: Read<UpcomingItem[]>): ListItem[] {
+  if (tab === 'materias') {
+    const current = sections.ok ? sections.value.data.filter((s) => s.current && s.role === 'alumno') : []
+    return current.map((s) => ({
+      subjectId: s.subjectId,
+      subjectName: s.subjectName,
+      detail: `Comisión ${s.name} · ${s.termName}`,
+      urgent: false
+    }))
+  }
+  const finals = upcoming.ok ? upcoming.value.data.filter((i) => i.kind === 'final' && !i.past) : []
+  return finals.map((f) => ({
+    subjectId: f.subjectId,
+    subjectName: f.subjectName,
+    detail: `Final del ${shortDate(f.date)}`,
+    urgent: false
+  }))
 }
 
 function Detail({
   tab,
   offer,
-  opening,
   standing,
   person
 }: {
   tab: Tab
   offer: Result<OfferItem[], StudiesReadError>
-  opening: OpenEnrollment | undefined
   standing: SubjectStanding | undefined
   person: Person | null
 }) {
   if (!offer.ok) return <ErrorNotice>{readErrorText(offer.error, 'la oferta de esta materia')}</ErrorNotice>
-  const items = offer.value
+  // Las comisiones de otras carreras no se muestran: no se puede inscribir a ellas.
+  const items = offer.value.filter((item) => !item.otherProgram)
   const name = items[0]?.subjectName ?? standing?.name
   if (!name || items.length === 0) {
     return (
@@ -146,7 +239,6 @@ function Detail({
   const student = person?.name ?? ''
   const program = (person && activeProgram(person)?.name) ?? ''
   const plan = planLabel(standing)
-  const needsRegularity = opening?.needsRegularity ?? standing?.status === 'en-curso'
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex items-start gap-3.5 rounded-2xl bg-accent/60 p-4'>
@@ -177,7 +269,6 @@ function Detail({
               item={item}
               student={student}
               program={program}
-              needsRegularity={needsRegularity}
               enrollAction={enrollAction}
               dropAction={dropAction}
             />
@@ -188,52 +279,33 @@ function Detail({
   )
 }
 
-function listItems(
-  openings: OpenEnrollment[],
-  selected: string | undefined,
-  offer: Result<OfferItem[], StudiesReadError> | null
-): ListItem[] {
-  const items: ListItem[] = openings.map((o) => ({
-    subjectId: o.subjectId,
-    subjectName: o.subjectName,
-    closesAt: o.closesAt,
-    enrolled: false
-  }))
-  // Recién inscripto, la materia deja de estar entre las abiertas: sigue en la
-  // lista, marcada, para que no se pierda lo que se eligió.
-  const chosen = offer?.ok ? offer.value[0] : undefined
-  if (selected && chosen && !items.some((i) => i.subjectId === selected)) {
-    const enrolled = offer?.ok === true && offer.value.some((i) => i.alreadyEnrolled)
-    items.unshift({ subjectId: selected, subjectName: chosen.subjectName, closesAt: chosen.enrollmentEnd, enrolled })
-  }
-  return items
-}
-
 /* La lista a la izquierda y el detalle a la derecha; en el celular, uno por vez. */
 function EnrollmentBoard({
   tab,
-  items,
+  open,
+  mine,
+  mineError,
   selected,
   offer,
-  openings,
   standings,
   person
 }: {
   tab: Tab
-  items: ListItem[]
+  open: ListItem[]
+  mine: ListItem[]
+  mineError: string | null
   selected: string | undefined
   offer: Result<OfferItem[], StudiesReadError> | null
-  openings: OpenEnrollment[]
   standings: SubjectStanding[]
   person: Person | null
 }) {
   return (
     <div className='grid gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start'>
       <section
-        aria-label='Materias con inscripción abierta'
+        aria-label='Materias'
         className={cn('rounded-2xl border border-border bg-card p-2 lg:sticky lg:top-6', selected && 'max-lg:hidden')}
       >
-        <SubjectList tab={tab} items={items} selected={selected} standings={standings} />
+        <SubjectList tab={tab} open={open} mine={mine} mineError={mineError} selected={selected} />
       </section>
 
       <section aria-label='Detalle de la materia' className={cn(!selected && 'max-lg:hidden')}>
@@ -247,13 +319,7 @@ function EnrollmentBoard({
           </Link>
         )}
         {selected && offer ? (
-          <Detail
-            tab={tab}
-            offer={offer}
-            opening={openings.find((o) => o.subjectId === selected)}
-            standing={standings.find((s) => s.subjectId === selected)}
-            person={person}
-          />
+          <Detail tab={tab} offer={offer} standing={standings.find((s) => s.subjectId === selected)} person={person} />
         ) : (
           <EmptyState icon={MousePointerClick} title='Elegí una materia'>
             {tab === 'materias'
@@ -266,6 +332,26 @@ function EnrollmentBoard({
   )
 }
 
+/** Las dos listas de la pestaña, el plan de cada materia y si falló leer lo que ya tiene. */
+function listsFor(
+  tab: Tab,
+  open: Read<OpenEnrollment[]>,
+  career: Read<{ subjects: SubjectStanding[] }>,
+  sections: Read<MySection[]>,
+  upcoming: Read<UpcomingItem[]>
+) {
+  const kind = tab === 'examenes' ? 'examen' : 'cursada'
+  const standings = career.ok ? career.value.data.subjects : []
+  const openings = open.ok ? open.value.data.filter((o) => o.kind === kind) : []
+  const mineRead = tab === 'materias' ? sections : upcoming
+  return {
+    standings,
+    open: openItems(openings, standings),
+    mine: mineItems(tab, sections, upcoming),
+    mineError: mineRead.ok ? null : readErrorText(mineRead.error, tab === 'materias' ? 'tus cursadas' : 'tus finales')
+  }
+}
+
 export default async function InscripcionesPage({
   searchParams
 }: {
@@ -276,18 +362,17 @@ export default async function InscripcionesPage({
   const tab: Tab = params.tab === 'examenes' ? 'examenes' : 'materias'
   const selected = params.materia || undefined
   const studies = system().studies
-  const [person, open, career, offer] = await Promise.all([
+  const [person, open, career, sections, upcoming, offer] = await Promise.all([
     system().people.get(session.personId),
     studies.openEnrollments(session.personId),
     studies.career(session.personId),
+    studies.sectionsOf(session.personId),
+    studies.upcoming(session.personId),
     selected
       ? studies.offer(session.personId, { kind: tab === 'examenes' ? 'examen' : 'cursada', subjectId: selected })
       : null
   ])
-  const kind = tab === 'examenes' ? 'examen' : 'cursada'
-  const openings = open.ok ? open.value.data.filter((o) => o.kind === kind) : []
-  const standings = career.ok ? career.value.data.subjects : []
-  const items = listItems(openings, selected, offer)
+  const lists = listsFor(tab, open, career, sections, upcoming)
 
   return (
     <>
@@ -322,11 +407,9 @@ export default async function InscripcionesPage({
             )}
             <EnrollmentBoard
               tab={tab}
-              items={items}
+              {...lists}
               selected={selected}
               offer={offer}
-              openings={openings}
-              standings={standings}
               person={person.ok ? person.value : null}
             />
           </>

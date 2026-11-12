@@ -21,6 +21,7 @@ import { CertificateButton } from '@/components/enrollment/certificate-button'
 import { EnrollmentActions } from '@/components/enrollment/enrollment-actions'
 import { capacityText, durationText, instanceText, modalityName, scheduleLine } from '@/components/enrollment/format'
 import type { EnrollmentAction } from '@/components/enrollment/state'
+import { WindowNote } from '@/components/enrollment/window-note'
 import type { OfferItem } from '@/lib/core/studies'
 import { dayKey } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -48,21 +49,6 @@ function Fact({
   )
 }
 
-function WindowNote({ item }: { item: OfferItem }) {
-  if (item.enrollmentOpen) {
-    return (
-      <>
-        Inscripción abierta hasta el <time dateTime={item.enrollmentEnd}>{shortDate(item.enrollmentEnd)}</time>
-      </>
-    )
-  }
-  return (
-    <>
-      Inscripción cerrada · fue del {shortDate(item.enrollmentStart)} al {shortDate(item.enrollmentEnd)}
-    </>
-  )
-}
-
 const teachersOf = (item: OfferItem) => item.teachers.map((t) => t.name).join(', ') || 'A confirmar'
 
 /** Lo común a una comisión y una mesa: el marco, el nombre, el estado y los botones. */
@@ -82,7 +68,7 @@ function OfferCard({
       className={cn(
         'flex flex-col gap-4 rounded-2xl border bg-card p-5',
         item.alreadyEnrolled ? 'border-blue/40 shadow-[0_0_0_3px_var(--accent)]' : 'border-border',
-        !item.enrollmentOpen && 'bg-muted/40'
+        item.enrollmentWindow !== 'abierta' && 'bg-muted/40'
       )}
     >
       <div className='flex flex-wrap items-start justify-between gap-2'>
@@ -162,7 +148,7 @@ export function SectionCard({
         <>
           <div className='flex-1'>
             <EnrollmentActions
-              target={{ kind: 'comision', id: item.target.sectionId }}
+              target={item.target}
               subjectId={item.subjectId}
               label={label}
               status={item}
@@ -200,10 +186,9 @@ export function BoardCard({
   item,
   student,
   program,
-  needsRegularity,
   enrollAction,
   dropAction
-}: { item: OfferItem; student: string; program: string; needsRegularity: boolean } & Actions) {
+}: { item: OfferItem; student: string; program: string } & Actions) {
   if (item.target.kind !== 'mesa' || !item.date) return null
   const capacity = capacityText(item)
   const when = dueTime(item.date)
@@ -223,7 +208,7 @@ export function BoardCard({
             <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
           </Fact>
           <Fact icon={ScrollText} label='Condición'>
-            {needsRegularity ? 'Necesitás regularizar la cursada antes de la mesa' : 'Regular'}
+            {item.needsRegularity ? 'Necesitás regularizar la cursada antes de la mesa' : 'Regular'}
           </Fact>
           <Fact icon={UserRound} label='Tribunal' wide>
             {teachersOf(item)}
@@ -239,11 +224,10 @@ export function BoardCard({
         <>
           <div className='flex-1'>
             <EnrollmentActions
-              target={{ kind: 'mesa', id: item.target.examBoardId }}
+              target={item.target}
               subjectId={item.subjectId}
               label={`el final de ${item.subjectName} del ${shortDate(item.date)}`}
               status={item}
-              calendarHref={`/calendario?semana=${dayKey(item.date)}`}
               enrollAction={enrollAction}
               dropAction={dropAction}
             />

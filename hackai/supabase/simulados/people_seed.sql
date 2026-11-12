@@ -2,17 +2,15 @@
 
 begin;
 
-delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-rquiroga', 'p-pmolina', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]);
+delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-rquiroga', 'p-pmolina', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]) and system <> all (array['discord']::text[]);
 
 insert into people_accounts (person_id, system, external_id) values
   ('p-mledesma', 'identity', 'demo:p-mledesma'),
   ('p-mledesma', 'siu', '20101'),
   ('p-mledesma', 'moodle', '301'),
-  ('p-mledesma', 'discord', '1290000000000000001'),
   ('p-gferreyra', 'identity', 'demo:p-gferreyra'),
   ('p-gferreyra', 'siu', '20102'),
   ('p-gferreyra', 'moodle', '302'),
-  ('p-gferreyra', 'discord', '1290000000000000002'),
   ('p-cbustos', 'identity', 'demo:p-cbustos'),
   ('p-cbustos', 'siu', '20103'),
   ('p-cbustos', 'moodle', '303'),
@@ -31,11 +29,9 @@ insert into people_accounts (person_id, system, external_id) values
   ('p-taguirre', 'identity', 'demo:p-taguirre'),
   ('p-taguirre', 'siu', '30101'),
   ('p-taguirre', 'moodle', '401'),
-  ('p-taguirre', 'discord', '1290000000000000011'),
   ('p-lbenitez', 'identity', 'demo:p-lbenitez'),
   ('p-lbenitez', 'siu', '30102'),
   ('p-lbenitez', 'moodle', '402'),
-  ('p-lbenitez', 'discord', '1290000000000000012'),
   ('p-mcabrera', 'identity', 'demo:p-mcabrera'),
   ('p-mcabrera', 'siu', '30103'),
   ('p-mcabrera', 'moodle', '403'),
@@ -61,5 +57,12 @@ insert into people_accounts (person_id, system, external_id) values
   ('p-fjuarez', 'siu', '30110'),
   ('p-fjuarez', 'moodle', '410')
 on conflict (person_id, system) do update set external_id = excluded.external_id;
+
+insert into people_accounts (person_id, system, external_id) values
+  ('p-mledesma', 'discord', '1290000000000000001'),
+  ('p-gferreyra', 'discord', '1290000000000000002'),
+  ('p-taguirre', 'discord', '1290000000000000011'),
+  ('p-lbenitez', 'discord', '1290000000000000012')
+on conflict do nothing;
 
 commit;

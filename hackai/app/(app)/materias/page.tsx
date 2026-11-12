@@ -4,13 +4,15 @@
    así la pantalla muestra primero lo de este cuatrimestre. Sirve al alumno y
    al docente; el docente no tiene finales pendientes.
 
-   Sin reglas de negocio: qué es actual, qué se archiva, qué está regular y qué
-   aprobado lo deciden Cursada (`subjectsOf` y `career`). Si el SIU o Moodle no
+   Cada tarjeta lleva lo que no leíste en su espacio. Sin reglas de negocio:
+   qué es actual, qué se archiva, qué está regular y qué aprobado lo deciden
+   Cursada (`subjectsOf` y `career`); qué no leíste, Espacios. Si el SIU o Moodle no
    responden, muestra lo último leído con el aviso de desactualizado. */
 import { Archive, BookOpen, Hourglass, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { unreadBySubject, unreadTotal } from '@/components/news/format'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedCard, CourseCard, PendingFinalCard, SubjectGrid } from '@/components/subjects/subject-grid'
 import { Pagination } from '@/components/ui/pagination'
@@ -96,7 +98,12 @@ function ViewTabs({ current, counts, student }: { current: View; counts: Record<
 }
 
 /** Lo que va en cada vista, ya como tarjetas, para paginar. */
-function cardsFor(view: View, subjects: MySubjects, standings: SubjectStanding[]): ReactNode[] {
+function cardsFor(
+  view: View,
+  subjects: MySubjects,
+  standings: SubjectStanding[],
+  unread: Map<string, number>
+): ReactNode[] {
   const standingOf = (id: string) => standings.find((s) => s.subjectId === id)
   if (view === 'final-pendiente')
     return standings
@@ -106,7 +113,14 @@ function cardsFor(view: View, subjects: MySubjects, standings: SubjectStanding[]
     return subjects.archived.map((s) => (
       <ArchivedCard key={s.sectionId} subject={s} standing={standingOf(s.subjectId)} />
     ))
-  return subjects.current.map((s) => <CourseCard key={s.sectionId} subject={s} standing={standingOf(s.subjectId)} />)
+  return subjects.current.map((s) => (
+    <CourseCard
+      key={s.sectionId}
+      subject={s}
+      standing={standingOf(s.subjectId)}
+      unread={unread.get(s.subjectId) ?? 0}
+    />
+  ))
 }
 
 const asView = (value: string | undefined): View =>
@@ -119,18 +133,26 @@ export default async function MateriasPage({
 }) {
   const session = await requireSession()
   const student = session.role === 'alumno'
-  const [params, person, result, career] = await Promise.all([
+  const [params, person, result, career, unread] = await Promise.all([
     searchParams,
     system().people.get(session.personId),
     system().studies.subjectsOf(session.personId),
-    student ? system().studies.career(session.personId) : null
+    student ? system().studies.career(session.personId) : null,
+    system().spaces.unreadFor(session.personId)
   ])
+  // Si Espacios no responde, las tarjetas van sin no leídos y la campana lo vuelve a pedir.
+  const news = unread.ok ? unread.value : []
   const view = student ? asView(params.ver) : asView(params.ver === 'archivadas' ? params.ver : undefined)
   const standings = career?.ok ? career.value.data.subjects : []
 
   return (
     <>
-      <PageHeader title='Mis materias' school={person.ok ? person.value.school.name : undefined} art='materias'>
+      <PageHeader
+        title='Mis materias'
+        school={person.ok ? person.value.school.name : undefined}
+        art='materias'
+        unread={unread.ok ? unreadTotal(news) : undefined}
+      >
         {student && (
           <Link
             href='/inscripciones'
@@ -151,6 +173,7 @@ export default async function MateriasPage({
             page={Number(params.pagina) || 1}
             subjects={result.value.data}
             standings={standings}
+            unread={unreadBySubject(news)}
             student={student}
             stale={result.value.stale ? result.value.readAt : null}
           />
@@ -165,6 +188,7 @@ function SubjectsView({
   page,
   subjects,
   standings,
+  unread,
   student,
   stale
 }: {
@@ -172,6 +196,7 @@ function SubjectsView({
   page: number
   subjects: MySubjects
   standings: SubjectStanding[]
+  unread: Map<string, number>
   student: boolean
   stale: string | null
 }) {
@@ -180,7 +205,7 @@ function SubjectsView({
     'final-pendiente': standings.filter((s) => s.status === 'regular').length,
     archivadas: subjects.archived.length
   }
-  const cards = cardsFor(view, subjects, standings)
+  const cards = cardsFor(view, subjects, standings, unread)
   const pages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE))
   const current = Math.min(Math.max(page, 1), pages)
   const empty = EMPTY[view]

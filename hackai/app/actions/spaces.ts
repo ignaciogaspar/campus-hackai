@@ -1,5 +1,6 @@
 /* Lo que se hace en el espacio de la materia: publicar, responder, marcar una
-   consulta resuelta, crear un canal y subir y organizar el material. Quién
+   consulta resuelta, crear un canal, vincularlo con Discord, subir y organizar
+   el material y abrir un canal directo con un docente. Quién
    puede hacer qué lo decide Espacios; estas acciones validan lo que llega del
    navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
    Se usan con useActionState: devuelven el estado que muestra el formulario. */
@@ -11,7 +12,7 @@ import { spaceHref } from '@/components/spaces/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
-import type { Fail } from '@/lib/result'
+import type { ErrorOf } from '@/lib/result'
 
 /** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. */
 export type SpaceActionState =
@@ -19,14 +20,14 @@ export type SpaceActionState =
   | { status: 'ok'; message: string | null; at: number }
   | { status: 'error'; message: string; at: number }
 
-type ErrorOf<T extends (...args: never[]) => unknown> = Extract<Awaited<ReturnType<T>>, Fail<string>>['error']
-
 type SpaceError =
-  | ErrorOf<Spaces['post']>
-  | ErrorOf<Spaces['resolve']>
-  | ErrorOf<Spaces['createChannel']>
-  | ErrorOf<Spaces['addMaterial']>
-  | ErrorOf<Spaces['organizeMaterial']>
+  | ErrorOf<ReturnType<Spaces['post']>>
+  | ErrorOf<ReturnType<Spaces['resolve']>>
+  | ErrorOf<ReturnType<Spaces['createChannel']>>
+  | ErrorOf<ReturnType<Spaces['addMaterial']>>
+  | ErrorOf<ReturnType<Spaces['organizeMaterial']>>
+  | ErrorOf<ReturnType<Spaces['link']>>
+  | ErrorOf<ReturnType<Spaces['openDirect']>>
 
 const ERRORS: Record<SpaceError, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
@@ -41,9 +42,17 @@ const ERRORS: Record<SpaceError, string> = {
   'no-es-consulta': 'Solo se marcan resueltas las consultas de los alumnos.',
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano o compartí un enlace.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
-  'nombre-invalido': 'Usá letras, números y guiones, sin espacios: por ejemplo «parciales-viejos».',
-  'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.'
+  'nombre-invalido': 'Poné un nombre con al menos una letra o un número.',
+  'nombre-repetido': 'Ya hay un canal con ese nombre. Elegí otro.',
+  'canal-externo-inexistente':
+    'No encontramos ese canal en Discord. Revisá el ID y que el bot de HackAI esté invitado al servidor.',
+  'canal-externo-en-uso': 'Ese canal de Discord ya está vinculado con otro canal de HackAI.',
+  'solo-alumno-docente': 'Los mensajes directos son solo entre un alumno y un docente.',
+  'sin-comision-en-comun': 'Solo podés escribirle en privado a los docentes de tu comisión.'
 }
+
+/** El ID de un canal de Discord: un número de 17 a 20 dígitos. */
+const DISCORD_ID = /^\d{17,20}$/
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
 const LAYOUTS: readonly MaterialLayout[] = ['unidad', 'semana', 'todo']
@@ -92,9 +101,10 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
   const attachments = file
     ? [{ name: file.name, contentType: file.type || 'application/octet-stream', bytes: await bytesOf(file) }]
     : undefined
+  const replyTo = text(form, 'replyTo') || undefined
   const result = await system().spaces.post(session.personId, channelId, {
     text: text(form, 'text') ?? '',
-    replyTo: text(form, 'replyTo') || undefined,
+    replyTo,
     attachments
   })
   if (!result.ok) {
@@ -105,7 +115,7 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
     )
   }
   refresh(subjectId)
-  return done()
+  return done(replyTo ? 'Respuesta enviada.' : 'Mensaje enviado.')
 }
 
 /** Marca una consulta como resuelta. */
@@ -182,6 +192,27 @@ export async function addMaterial(_prev: SpaceActionState, form: FormData): Prom
   return done(`Listo: subiste ${result.value.name}.`)
 }
 
+/** Vincula un canal del espacio con un canal de Discord y trae lo que ya tenía. */
+export async function linkChannel(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const channelId = text(form, 'channelId')
+  if (!subjectId || !channelId) return failed(UNEXPECTED)
+  const externalId = text(form, 'discordChannelId')?.trim() ?? ''
+  if (!DISCORD_ID.test(externalId)) return failed('Pegá el ID del canal de Discord: un número de 18 o 19 dígitos.')
+
+  const result = await system().spaces.link(session.personId, channelId, { system: 'discord', channelId: externalId })
+  if (!result.ok) {
+    return failed(
+      result.error === 'solo-docentes'
+        ? 'Solo los docentes de la materia o de la comisión vinculan este canal.'
+        : ERRORS[result.error]
+    )
+  }
+  refresh(subjectId)
+  return done('Listo: este canal queda sincronizado con Discord.')
+}
+
 /** Cambia cómo se agrupa el material: por unidad, por semana o sin secciones. */
 export async function organizeMaterial(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
@@ -198,4 +229,18 @@ export async function organizeMaterial(_prev: SpaceActionState, form: FormData):
   }
   refresh(subjectId)
   return done()
+}
+
+/** Abre el canal directo con un docente (o, para el docente, con un alumno) y lleva a él. */
+export async function openDirect(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const spaceId = text(form, 'spaceId')
+  const otherPersonId = text(form, 'otherPersonId')
+  if (!subjectId || !spaceId || !otherPersonId) return failed(UNEXPECTED)
+
+  const result = await system().spaces.openDirect(session.personId, spaceId, otherPersonId)
+  if (!result.ok) return failed(ERRORS[result.error])
+  refresh(subjectId)
+  redirect(spaceHref(subjectId, { canal: result.value.id }))
 }
