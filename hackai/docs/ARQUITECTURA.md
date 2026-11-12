@@ -144,7 +144,8 @@ hackai/
 │   ├── core/            people/, studies/, spaces/, today/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/
-│   └── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   └── demo-base/       preparar, verificar y probar la base de la demo (npm run demo:*); no lo usa la app
 ├── app/                 pantallas y server actions
 ├── components/
 ├── supabase/migrations/ tablas propias de HackAI

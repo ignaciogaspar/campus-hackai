@@ -85,13 +85,9 @@ Personas guarda el id de cada persona en cada sistema (la identidad, el SIU, Moo
 | Archivo | Qué hace |
 | --- | --- |
 | `supabase/migrations/0001_people.sql` | Crea `people_accounts`. Es una tabla propia de HackAI: va también en producción. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
-| `supabase/simulados/people_seed.sql` | Carga los vínculos de las personas sintéticas. Es solo de la demo, por eso va con lo simulado y no se aplica en producción. Idempotente: borra los vínculos de esas personas y los carga de nuevo. Se genera con `npm run people:seed` desde `lib/adapters/synthetic-data.ts`; no se edita a mano. |
+| `supabase/simulados/people_seed.sql` | Carga los vínculos de las personas sintéticas. Es solo de la demo, por eso va con lo simulado y no se aplica en producción. Idempotente: borra los vínculos de esas personas con la identidad, el SIU y Moodle y los carga de nuevo. Los de Discord no los pisa: si una persona ya tiene uno, por ejemplo el real de quien la usa en la demo, lo deja, y el del set entra solo si no tiene ninguno. Se genera con `npm run people:seed` desde `lib/adapters/synthetic-data.ts`; no se edita a mano. |
 
-Para cargarlos en el Supabase del equipo:
-
-```bash
-psql "$DATABASE_URL" -f supabase/migrations/0001_people.sql -f supabase/simulados/people_seed.sql
-```
+Se cargan en el Supabase del equipo con `npm run demo:preparar` («Base de la demo»).
 
 Si cambiás las personas de `synthetic-data.ts`, corré `npm run people:seed` y commiteá el SQL: un test avisa si quedó viejo.
 
@@ -112,9 +108,7 @@ El espacio y sus canales se crean la primera vez que alguien los abre. Sin confi
 | `supabase/migrations/0002_spaces.sql` | Crea `spaces`, `space_channels`, `space_messages`, `space_material` y `space_reads`, y la función `space_mark_read`, que marca leído sin retroceder. Tablas propias de HackAI: van también en producción. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. |
 | `supabase/migrations/0003_files.sql` | Crea el bucket privado `hackai-files`, de hasta 10 MB por archivo. Sin políticas: solo lo toca el servidor con el service role. |
 
-```bash
-psql "$DATABASE_URL" -f supabase/migrations/0002_spaces.sql -f supabase/migrations/0003_files.sql
-```
+Se aplican con `npm run demo:preparar`, que además vacía lo que dejaron los ensayos («Base de la demo»).
 
 Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/route.ts`), que pide sesión y le pide el archivo a Espacios. Espacios chequea que la persona vea el espacio del material o el canal del adjunto; si no, la ruta responde 404, igual que a un archivo que no existe. Solo se abren en el navegador PDF, imágenes y texto plano; el resto se descarga.
 
@@ -131,13 +125,9 @@ Por eso sus migraciones y su seed van **aparte** de las propias, en `supabase/si
 | `supabase/simulados/0001_siu.sql` | Crea las tablas `siu_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. Sobre una base ya creada, agrega lo que falte (por ejemplo, las columnas de las evaluaciones de la historia del issue #14). |
 | `supabase/simulados/siu_seed.sql` | Carga el set sintético. Idempotente: pisa cada fila por su clave y borra las inscripciones hechas durante la demo y las notas que el set ya no tiene. Se genera con `npm run siu:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el SIU en memoria; no se edita a mano. |
 
-Para cargarlas en el Supabase del equipo:
+Se cargan en el Supabase del equipo con `npm run demo:preparar` («Base de la demo»).
 
-```bash
-psql "$DATABASE_URL" -f supabase/simulados/0001_siu.sql -f supabase/simulados/siu_seed.sql
-```
-
-Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: un test avisa si quedó viejo. Si cambia `0001_siu.sql`, volvé a correr los dos archivos con el mismo comando.
+Si cambiás `synthetic-data.ts`, corré `npm run siu:seed` y commiteá el SQL: un test avisa si quedó viejo. Si cambia `0001_siu.sql` o el seed, volvé a correr `npm run demo:preparar`.
 
 La batería de contrato del SIU (`tests/contracts/siu.test.ts`) corre siempre contra el SIU en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice.
 
@@ -152,15 +142,52 @@ Con `HACKAI_CLASSROOM=simulado`, el puerto del aula virtual lee y escribe las ta
 | `supabase/simulados/0002_moodle.sql` | Crea las tablas `moodle_*`. Idempotente, en una transacción, con RLS activado sin políticas y sin acceso para `anon` ni `authenticated`. En el encabezado figura qué campos de la API quedan afuera. |
 | `supabase/simulados/moodle_seed.sql` | Carga cursos, matrículas, avisos, contenidos y tareas del set sintético. Idempotente: pisa cada fila por su clave y borra las matrículas hechas durante la demo. Se genera con `npm run moodle:seed` desde `lib/adapters/synthetic-data.ts`, la misma fuente que el aula en memoria; no se edita a mano. |
 
-Para cargarlas en el Supabase del equipo:
-
-```bash
-psql "$DATABASE_URL" -f supabase/simulados/0002_moodle.sql -f supabase/simulados/moodle_seed.sql
-```
+Se cargan en el Supabase del equipo con `npm run demo:preparar` («Base de la demo»).
 
 Los dos adaptadores arman el enlace al aula con `courseUrl(courseId)`: `<base>/course/view.php?id=<id>`, con la base de `data.moodle.baseUrl` en el set sintético. Si cambiás `synthetic-data.ts`, corré `npm run moodle:seed` y commiteá el SQL: un test avisa si quedó viejo.
 
 La batería de contrato del aula virtual (`tests/contracts/classroom.test.ts`) corre siempre contra el aula en memoria. Contra el simulado corre solo si definís `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`, de una base de prueba con las dos SQL aplicadas; si no, la saltea y lo dice. Cada caso que matricula deja las matrículas como estaban, así se puede repetir.
+
+## Base de la demo
+
+Tres comandos dejan lista la base del Supabase del equipo para la demo y dicen si está bien armada. Toman las variables de `hackai/.env.local`. Antes de cada demo o ensayo, en este orden:
+
+```bash
+npm run demo:preparar                          # deja la base como nueva; pide confirmación
+npm run demo:verificar                         # solo lectura: ¿está lista?
+npm run demo:probar                            # con la app levantada: entra como alumno y como docente (http://localhost:3000)
+npm run demo:probar -- https://<dominio>       # lo mismo contra el deploy
+```
+
+**Preparar** (`scripts/demo-preparar.ts`; qué hace: `lib/demo-base/prepare.ts`) aplica con `psql`, en este orden:
+
+1. Las migraciones propias, `supabase/migrations/*.sql`.
+2. Las tablas de los sistemas simulados, `supabase/simulados/0*.sql`.
+3. `supabase/simulados/demo_reset.sql`, que vacía los espacios, los canales, los mensajes, el material y lo leído de los ensayos. Los espacios y sus canales por defecto se vuelven a crear al abrir cada materia, con lo de Moodle.
+4. Los seeds del set sintético, `supabase/simulados/*_seed.sql`.
+
+Después borra todos los archivos del bucket `hackai-files` por la API de Storage, porque Storage no deja borrarlos por SQL. Todo es idempotente: correrlo dos veces deja lo mismo. Un SQL nuevo en `supabase/migrations/` o en `supabase/simulados/` entra solo; uno en `supabase/simulados/` que no sea tabla (`0001_*.sql`), seed (`*_seed.sql`) ni el vaciado frena el comando hasta que se le encuentre lugar.
+
+Antes de tocar nada, se fija dos cosas:
+
+- **Que la base sea la de la demo.** `HACKAI_DEMO_SUPABASE_REF` tiene que ser el ref del proyecto de Supabase de la demo (el subdominio de `https://<ref>.supabase.co`), y `NEXT_PUBLIC_SUPABASE_URL` y `DATABASE_URL`, directa o por el pooler, tienen que apuntar a ese proyecto. Si no, se niega y no toca nada: así un `.env.local` que apunta a otra base no la vacía.
+- **Que quien lo corre confirme**, escribiendo «preparar». Para correrlo sin terminal: `npm run demo:preparar -- --si`.
+
+Necesita `psql`, el cliente de PostgreSQL (con Homebrew, `brew install postgresql@17`), y las variables `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` y `HACKAI_DEMO_SUPABASE_REF`. Los mensajes nombran archivos y variables, nunca sus valores.
+
+Qué se conserva: los vínculos de Discord de las personas de la demo, porque `people_seed.sql` no los pisa. Qué no: los vínculos de los canales de un espacio con canales de Discord viven en `space_channels` y se borran con los espacios, así que se vuelven a vincular después de preparar (#15).
+
+**Verificar** (`scripts/demo-verificar.ts`; qué revisa: `lib/demo-base/verify.ts`) no escribe nada. Marca cada chequeo con ✓, ! (aviso) o ✗, y sale con 1 si alguno falla:
+
+- Las variables que necesita la app, por nombre.
+- Que el sistema arme con los adaptadores elegidos, cuáles son, y que lea la lista de demo y las comisiones de un alumno. Avisa qué puertos están en memoria y no usan la base.
+- Las tablas y las funciones de los SQL de `supabase/migrations/` y `supabase/simulados/`: una migración nueva entra sola. Las funciones se prueban con un `rpc` por GET, que PostgREST corre en una transacción de solo lectura.
+- El bucket `hackai-files`: que exista, que sea privado y que su tope sea el que declara Archivos.
+- Los seeds: las personas, comisiones y mesas del SIU, los cursos de Moodle y los vínculos de Personas del set sintético.
+
+**Probar** (`scripts/demo-probar.ts`; qué pide: `lib/demo-base/screens.ts`) firma una sesión de alumno (`p-taguirre`) y otra de docente (`p-mledesma`) con el `SESSION_SECRET` de `.env.local` y pide Hoy, Mis materias, el espacio de una materia y, al alumno, Académico e Inscripciones. Cada pantalla tiene que responder 200, sin redirigir al ingreso y sin mostrar un aviso de error (`ErrorNotice`). Contra el deploy, el `SESSION_SECRET` de `.env.local` tiene que ser el del deploy. Las pantallas están en `DEMO_SCREENS`: una pantalla nueva se suma ahí.
+
+Además, `/api/health` deja de responder ok si el sistema no se puede armar («Con Docker»).
 
 ## Con Docker
 
@@ -174,7 +201,7 @@ docker build --target check -t hackai .   # typecheck y tests dentro del contene
 
 Las variables se leen de `.env.local` al arrancar el contenedor, nunca se copian a la imagen (`.dockerignore` excluye `.env*`). Sin `.env.local`, arranca con los adaptadores en memoria, pero no se puede entrar: el ingreso necesita `SESSION_SECRET`.
 
-`GET /api/health` responde `{ "status": "ok" }` sin tocar la base. El `HEALTHCHECK` de la imagen lo consulta, y `docker compose ps` muestra el estado (`healthy` o `unhealthy`).
+`GET /api/health` responde `{ "status": "ok" }` si el sistema se arma con los adaptadores que piden las variables, sin tocar la base. Si no se puede armar, por ejemplo por un adaptador desconocido o una variable que falta, responde 503 con `{ "status": "error", "reason": "configuracion" }`, y el log del servidor nombra la variable (`lib/health.ts`). Sin variables arma todo en memoria y responde ok. El `HEALTHCHECK` de la imagen lo consulta, y `docker compose ps` muestra el estado (`healthy` o `unhealthy`).
 
 ## Corrida periódica
 
@@ -221,7 +248,8 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Proyecto Supabase del equipo. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Acceso a datos desde el servidor. Nunca llega al cliente. |
-| `DATABASE_URL` | Solo para correr migraciones con psql. |
+| `DATABASE_URL` | Solo para `npm run demo:preparar`, que aplica los SQL con psql. |
+| `HACKAI_DEMO_SUPABASE_REF` | El ref del proyecto de Supabase de la demo. Sin ella, o si las URLs apuntan a otro proyecto, `npm run demo:preparar` se niega. Ver «Base de la demo». |
 | `SESSION_SECRET` | Firma la cookie de sesión `hackai_session`. Sin ella no se puede entrar. |
 | `CRON_SECRET` | Secreto de la corrida periódica (`/api/cron/sync`). Sin ella la ruta queda cerrada. Ver «Corrida periódica». |
 | `ANTHROPIC_API_KEY` | API de Claude. |
@@ -262,5 +290,7 @@ No las imprimas en logs ni en reportes.
 | `app/(app)/inscripciones/`, `components/enrollment/` | Inscripciones del alumno: las cursadas y los finales abiertos que le sirven y, por materia, la oferta de comisiones (`[materia]/`) o de mesas de examen (`[materia]/final/`) con horario o fecha, cupo y docentes. Inscribirse y darse de baja van por el mismo flujo en los dos casos; si el SIU no deja hacerlo por API, llevan a la Autogestión. El final inscripto sale en Hoy. |
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, subir y organizar el material y escribirle en privado a un docente de la comisión. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
+| `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |
+| `lib/demo-base/`, `scripts/demo-*.ts` | Preparar, verificar y probar la base de la demo. Ver «Base de la demo». |
 
 Los módulos del núcleo, los puertos, la estructura de carpetas y cómo se testea están en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
