@@ -2505,3 +2505,75 @@ test('los canales del servidor se listan para elegir uno, solo si el docente es 
   assert.ok((await spaces.connect('p-gferreyra', ids.spaceId, SERVER, '1290000000000000888')).ok)
   assert.deepEqual(await spaces.serverChannels('p-gferreyra', ids.spaceId), { ok: false, error: 'no-es-miembro' })
 })
+
+test('si un canal se creó en Discord pero no llegó a vincularse, reintentar lo vincula en vez de crear otro', async () => {
+  const { spaces, discord } = buildWithServer()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.connect('p-mledesma', ids.spaceId, SERVER, discordOf('p-mledesma'))).ok)
+  // Una vuelta anterior creó #avisos-a en la categoría de la materia y se cortó antes de vincularlo.
+  const group = await discord.prepareGroup(MEMORY_SERVER, { name: 'Análisis Matemático I', teacherIds: [] })
+  assert.ok(group.ok)
+  const orphan = await discord.createChannel(MEMORY_SERVER, group.value, { name: 'avisos-a', writers: 'docentes' })
+  assert.ok(orphan.ok)
+
+  const report = await spaces.createExternalChannels('p-mledesma', ids.spaceId)
+
+  assert.ok(report.ok)
+  assert.equal(report.value.created.find((c) => c.id === ids.avisosA)?.externalLink?.channelId, orphan.value.id)
+  const state = discord.serverState(MEMORY_SERVER)
+  assert.ok(state)
+  assert.deepEqual(
+    state.channels
+      .filter((c) => c.category)
+      .map((c) => c.name)
+      .sort(),
+    ['avisos-a', 'consultas-a', 'material']
+  )
+})
+
+test('crear canales no lleva al servidor las comisiones de un cuatrimestre que terminó', async () => {
+  const discord = createMemoryExternalChannel(syntheticData, createFixedClock(NOW))
+  const { spaces } = build(withPastSection(), { externalChannel: discord })
+  const ids = await am1(spaces)
+  // Joaquín abre el espacio con la C, que Ferreyra dictó en el 1er cuatrimestre: se crean sus canales.
+  assert.ok((await spaces.open('p-jescobar', 'am1')).ok)
+  assert.ok((await spaces.connect('p-gferreyra', ids.spaceId, SERVER, discordOf('p-gferreyra'))).ok)
+
+  const report = await spaces.createExternalChannels('p-gferreyra', ids.spaceId)
+
+  assert.ok(report.ok)
+  assert.deepEqual(report.value.created.map((c) => `${c.name}-${c.sectionName ?? ''}`).sort(), [
+    'avisos-B',
+    'consultas-B',
+    'material-'
+  ])
+})
+
+test('un espacio conectado no cambia de servidor, pero otro docente puede vincular su cuenta con el mismo', async () => {
+  const { spaces, people } = buildWithServer()
+  const ids = await am1(spaces)
+  assert.ok((await spaces.connect('p-mledesma', ids.spaceId, SERVER, discordOf('p-mledesma'))).ok)
+
+  const other = { system: 'discord', serverId: '1300000000000000999' } as const
+  assert.deepEqual(await spaces.connect('p-gferreyra', ids.spaceId, other, '1290000000000000888'), {
+    ok: false,
+    error: 'otro-servidor'
+  })
+  assert.deepEqual(await spaces.connect('p-gferreyra', ids.spaceId, SERVER, '1290000000000000888'), {
+    ok: true,
+    value: SERVER
+  })
+  assert.deepEqual(await people.byExternalAccount('discord', '1290000000000000888'), { ok: true, value: 'p-gferreyra' })
+})
+
+test('con un canal externo sin servidores, conectar, listar y crear canales no están disponibles', async () => {
+  const discord = createMemoryExternalChannel(syntheticData, createFixedClock(NOW))
+  const externalChannel: ExternalChannelPort = { ...discord, capabilities: { ...discord.capabilities, servers: false } }
+  const { spaces } = build(syntheticData, { externalChannel })
+  const ids = await am1(spaces)
+  const refused = { ok: false, error: 'no-soportado' }
+
+  assert.deepEqual(await spaces.connect('p-mledesma', ids.spaceId, SERVER, discordOf('p-mledesma')), refused)
+  assert.deepEqual(await spaces.serverChannels('p-mledesma', ids.spaceId), refused)
+  assert.deepEqual(await spaces.createExternalChannels('p-mledesma', ids.spaceId), refused)
+})

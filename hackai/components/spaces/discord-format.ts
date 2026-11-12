@@ -36,7 +36,12 @@ export const DISCORD_NOTICES = {
   'sin-permisos':
     'No se conectó: al bot de HackAI le faltan permisos en ese servidor. Probá de nuevo sin desmarcarlos.',
   'cuenta-en-uso': 'No se conectó: esa cuenta de Discord ya está vinculada con otra persona de HackAI.',
+  'otro-servidor':
+    'No se conectó: la materia ya está conectada con otro servidor de Discord. Al autorizar, elegí ese mismo servidor.',
   'solo-docentes': 'No se conectó: solo los docentes de la materia conectan su Discord.',
+  'espacio-desconocido': 'No se conectó: el espacio de la materia ya no existe. Abrilo de nuevo desde Mis materias.',
+  'persona-desconocida': 'No se conectó: no encontramos tus datos en el SIU. Salí, volvé a entrar y probá de nuevo.',
+  'no-soportado': 'Conectar con Discord no está disponible en esta instalación de HackAI.',
   'falla-externa': 'No se conectó porque Discord o HackAI no respondieron. Probá de nuevo en un rato.',
   'no-configurado': 'Conectar con Discord no está disponible en esta instalación de HackAI.'
 } as const

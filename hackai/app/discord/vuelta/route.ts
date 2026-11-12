@@ -44,9 +44,7 @@ export async function GET(request: Request) {
   if (!authorized.ok) redirect(backToSpace(subjectId, authorized.error))
   const { userId, serverId } = authorized.value
   const connected = await spaces.connect(session.personId, spaceId, { system: 'discord', serverId }, userId)
-  if (!connected.ok) {
-    const shown = ['espacio-desconocido', 'sin-acceso', 'persona-desconocida'].includes(connected.error)
-    redirect(backToSpace(subjectId, shown ? 'solo-docentes' : connected.error))
-  }
+  if (!connected.ok)
+    redirect(backToSpace(subjectId, connected.error === 'sin-acceso' ? 'solo-docentes' : connected.error))
   redirect(backToSpace(subjectId, 'conectado'))
 }

@@ -85,6 +85,7 @@ const SERVER_CHANNELS_ERRORS: Record<ServerChannelsError, string> = {
   'no-es-miembro':
     'Para elegir de la lista, conectá la materia con una cuenta de Discord que sea miembro del servidor. Mientras, pegá el enlace del canal.',
   'sin-servidor': 'Conectá la materia con Discord para elegir el canal de una lista.',
+  'no-soportado': 'El canal externo de esta instalación no lista canales: pegá el enlace del canal.',
   'servidor-inexistente': 'El bot de HackAI ya no está en el servidor conectado. Volvé a conectar con Discord.',
   'sin-permisos': 'El bot de HackAI no puede ver los canales del servidor. Volvé a conectar con Discord.',
   'solo-docentes': 'Solo los docentes de la materia eligen canales del servidor.',
@@ -318,7 +319,16 @@ async function discordFor(
     spaceId: view.space.id,
     canConnect: system().discordOAuth !== null,
     server: view.externalServer,
-    unlinked: view.channels.filter((c) => c.canLink && !c.externalLink).length,
+    // Lo que crearía «Crear canales en Discord»: el material y los de sus comisiones vigentes.
+    unlinked: view.channels.filter(
+      (c) =>
+        c.canLink &&
+        !c.externalLink &&
+        (c.scope.kind === 'materia' ||
+          view.viewer.sections.some(
+            (s) => s.current && c.scope.kind === 'comision' && s.sectionId === c.scope.sectionId
+          ))
+    ).length,
     notice
   }
   const channel = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null

@@ -51,6 +51,7 @@ const ERRORS: Record<SpaceError, string> = {
     'No encontramos ese canal en Discord. Revisá el ID y que el bot de HackAI esté invitado al servidor.',
   'canal-externo-en-uso': 'Ese canal de Discord ya está vinculado con otro canal de HackAI.',
   'sin-servidor': 'Primero conectá la materia con Discord.',
+  'no-soportado': 'El canal externo de esta instalación de HackAI no permite crear canales.',
   'servidor-inexistente':
     'El bot de HackAI ya no está en el servidor de Discord. Volvé a tocar «Conectar con Discord».',
   'sin-permisos':
@@ -242,7 +243,10 @@ export async function createDiscordChannels(_prev: SpaceActionState, form: FormD
     )
   }
   const { created, alreadyLinked } = result.value
-  if (created.length === 0) return done('Tus canales ya estaban vinculados con Discord: no hizo falta crear ninguno.')
+  if (created.length === 0)
+    return done(
+      'Tus canales ya estaban vinculados con Discord. Los docentes con su cuenta vinculada pueden escribir en avisos y material.'
+    )
   const names = created.map((c) => `#${c.name}${c.sectionName ? ` (${c.sectionName})` : ''}`).join(', ')
   const before = alreadyLinked ? ` Otros ${alreadyLinked} ya estaban vinculados.` : ''
   return done(`Listo: se crearon en Discord y quedaron sincronizados ${names}.${before}`)

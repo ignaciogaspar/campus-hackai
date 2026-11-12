@@ -67,9 +67,8 @@ const DEFAULT = 0
 const REPLY = 19
 /** Error de la API de Discord (JSON Error Codes) al abrir un hilo que ya existe. */
 const THREAD_ALREADY_CREATED = 160004
-/** Tipos de canal de Discord: de texto, de anuncios y categoría. */
+/** Tipos de canal de Discord: de texto y categoría. */
 const GUILD_TEXT = 0
-const GUILD_ANNOUNCEMENT = 5
 const GUILD_CATEGORY = 4
 /** Tipos de destinatario de un permiso por canal: un rol o un miembro. */
 const ROLE = 0
@@ -428,8 +427,9 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
         const categories = new Map(
           channels.value.filter((c) => c.type === GUILD_CATEGORY).map((c) => [c.id, c.name ?? ''])
         )
+        // Solo los de texto: los de anuncios se publican distinto y no se leen como un canal común.
         const text = channels.value
-          .filter((c) => c.type === GUILD_TEXT || c.type === GUILD_ANNOUNCEMENT)
+          .filter((c) => c.type === GUILD_TEXT)
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || byId(a, b))
         return ok(text.map((c) => toServerChannel(c, categories)))
       }),

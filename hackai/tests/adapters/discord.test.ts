@@ -347,3 +347,20 @@ test('con Discord caído, las operaciones del servidor devuelven falla-externa',
   assert.deepEqual(await port.serverChannels(GUILD_ID), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await port.isMember(GUILD_ID, TEACHER), { ok: false, error: 'falla-externa' })
 })
+
+test('la lista del servidor trae solo los canales de texto: ni categorías, ni anuncios, ni hilos', async () => {
+  const { fake, port } = setup()
+  const announcements = fake.addChannel('1301000000000000020', null, 'anuncios')
+  announcements.type = 5
+  const category = fake.addChannel('1301000000000000021', null, 'Materias')
+  category.type = 4
+  fake.addChannel('1301000000000000022', CHANNEL)
+
+  const listed = await port.serverChannels(GUILD_ID)
+
+  assert.ok(listed.ok)
+  assert.deepEqual(
+    listed.value.map((c) => c.id),
+    [CHANNEL]
+  )
+})

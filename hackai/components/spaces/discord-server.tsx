@@ -1,7 +1,8 @@
 /* El Discord de la cátedra, para el docente que gestiona el espacio: «Conectar con Discord» lleva a la
    autorización de Discord (app/discord/conectar), donde elige su servidor y agrega el bot; con el servidor
-   conectado, «Crear canales en Discord» crea allá los canales que gestiona y los deja sincronizados. Arriba,
-   cómo volvió de Discord (`?discord=`). Quién puede hacer qué lo decide Espacios; acá solo se muestra. */
+   conectado, «Crear canales en Discord» crea allá los canales que gestiona y los deja sincronizados, y les da el
+   rol de docentes a los que vincularon su cuenta. Otro docente de la materia vincula su cuenta autorizando el
+   mismo servidor: la materia no cambia de servidor. Arriba, cómo volvió de Discord (`?discord=`). Quién puede hacer qué lo decide Espacios; acá solo se muestra. */
 import { MessageSquareShare } from 'lucide-react'
 import { createDiscordChannels } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -36,8 +37,8 @@ function ConnectLink({ subjectId, spaceId, again }: { subjectId: string; spaceId
   const href = `/discord/conectar?${new URLSearchParams({ espacio: spaceId, materia: subjectId })}`
   // Un <a> y no un <Link>: es una ruta que redirige a Discord, y precargarla abriría una autorización.
   return (
-    <a href={href} className={again ? 'self-start font-bold text-blue underline focus-ring' : button}>
-      {again ? 'Conectar otro servidor' : 'Conectar con Discord'}
+    <a href={href} className={again ? 'font-bold text-blue underline focus-ring' : button}>
+      {again ? 'Vincular tu cuenta de Discord' : 'Conectar con Discord'}
     </a>
   )
 }
@@ -64,22 +65,26 @@ export function DiscordServer({ subjectId, spaceId, canConnect, server, unlinked
           <ConnectLink subjectId={subjectId} spaceId={spaceId} again={false} />
         </>
       )}
-      {server && unlinked > 0 && (
+      {server && (
         <ActionForm action={createDiscordChannels} className='flex flex-col gap-2'>
           <input type='hidden' name='subjectId' value={subjectId} />
           <input type='hidden' name='spaceId' value={spaceId} />
           <p className='text-muted-foreground'>
-            Conectada con tu servidor. HackAI crea una categoría con el nombre de la materia y adentro tus canales
-            (#material, #avisos y #consultas de tus comisiones), ya sincronizados. En avisos y material escriben solo
-            los docentes; en consultas, todos.
+            {unlinked > 0
+              ? 'Conectada con el servidor de la cátedra. HackAI crea una categoría con el nombre de la materia y adentro tus canales (#material, #avisos y #consultas de tus comisiones), ya sincronizados. En avisos y material escriben solo los docentes; en consultas, todos.'
+              : 'Conectada con el servidor de la cátedra: tus canales ya están sincronizados. Si un docente vinculó su cuenta después, tocá de nuevo para darle permiso de escribir en avisos y material.'}
           </p>
-          <SubmitButton className={button}>Crear canales en Discord</SubmitButton>
+          <SubmitButton className={button}>
+            {unlinked > 0 ? 'Crear canales en Discord' : 'Actualizar los docentes en Discord'}
+          </SubmitButton>
         </ActionForm>
       )}
-      {server && unlinked === 0 && (
-        <p className='text-muted-foreground'>Conectada con tu servidor: tus canales ya están sincronizados.</p>
+      {server && canConnect && (
+        <p className='text-muted-foreground'>
+          ¿Sos otro docente de la materia? <ConnectLink subjectId={subjectId} spaceId={spaceId} again /> y al autorizar
+          elegí el mismo servidor.
+        </p>
       )}
-      {server && canConnect && <ConnectLink subjectId={subjectId} spaceId={spaceId} again />}
     </section>
   )
 }
