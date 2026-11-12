@@ -72,9 +72,7 @@ function KindFilter({ items, grades, current }: { items: UnreadItem[]; grades: n
 
 function News({ read, kind, grades }: { read: UnreadRead; kind: NewsKind | 'todas'; grades: number }) {
   if (!read.ok) return <ErrorNotice>{ERRORS[read.error]}</ErrorNotice>
-  // Con notas nuevas no está al día, aunque no haya nada sin leer en los espacios.
-  if (read.value.length === 0 && grades > 0) return null
-  if (read.value.length === 0) {
+  if (read.value.length === 0 && grades === 0) {
     return (
       <EmptyState icon={CheckCheck} title='Estás al día'>
         Acá van a aparecer los avisos, las consultas y sus respuestas, el material nuevo y los mensajes directos de tus
@@ -82,6 +80,9 @@ function News({ read, kind, grades }: { read: UnreadRead; kind: NewsKind | 'toda
       </EmptyState>
     )
   }
+  // Con notas nuevas no está al día, aunque no haya nada sin leer en los espacios: en «Todas» van solas, arriba.
+  if (read.value.length === 0 && kind === 'todas') return null
+  // Filtrando por otro tipo, las notas no salen: si no hay nada de ese tipo, el filtro y «Nada de este tipo».
   const shown = kind === 'todas' ? read.value : read.value.filter((i) => newsKindOf(i.kind) === kind)
   return (
     <>
