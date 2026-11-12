@@ -1151,7 +1151,7 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
         [
           'Apunte de la cátedra',
           'moodle',
-          'https://example.edu.ar/apuntes/am1',
+          '/simulado/moodle/mod/url/view.php?id=r-3',
           'text/uri-list',
           0,
           null,
@@ -1166,7 +1166,7 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
         [
           'Guía de ejercicios 1',
           'moodle',
-          'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-1.pdf',
+          '/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf',
           'application/pdf',
           0,
           null,
@@ -1181,7 +1181,7 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
         [
           'Guía de ejercicios 2',
           'moodle',
-          'https://moodle.example.edu.ar/pluginfile.php/am1-fi-a/guia-2.pdf',
+          '/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf',
           'application/pdf',
           0,
           null,
@@ -1254,7 +1254,7 @@ test('los adjuntos de un aviso de Moodle quedan como enlace al archivo en Moodle
       name: 'temas-segundo-parcial.pdf',
       contentType: 'application/pdf',
       size: 48213,
-      url: 'https://moodle.example.edu.ar/pluginfile.php/co1/temas-segundo-parcial.pdf'
+      url: '/simulado/moodle/pluginfile.php/co1/temas-segundo-parcial.pdf'
     }
   ])
 })
