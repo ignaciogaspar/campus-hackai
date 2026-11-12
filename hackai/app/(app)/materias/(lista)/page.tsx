@@ -1,5 +1,7 @@
-/* Mis materias: una grilla de tarjetas, de a seis por página, con las materias
-   que cursa. Las que tienen el final pendiente y las archivadas no se ven
+/* Mis materias: la pantalla de inicio del alumno. Una grilla de tarjetas, de
+   a nueve por página, con las materias que cursa (lo de la semana está en
+   Calendario). Todas las tarjetas tienen el mismo tamaño y llevan al
+   espacio de su materia. Las que tienen el final pendiente y las archivadas no se ven
    hasta que se eligen arriba (`?ver=final-pendiente` o `?ver=archivadas`):
    así la pantalla muestra primero lo de este cuatrimestre. Sirve al alumno y
    al docente; el docente no tiene finales pendientes.
@@ -19,6 +21,7 @@ import { unreadBySubject, unreadTotal } from '@/components/news/format'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedCard, CourseCard, PendingFinalCard, SubjectGrid } from '@/components/subjects/subject-grid'
 import { Pagination } from '@/components/ui/pagination'
+import { railItem, railTrack } from '@/components/ui/rail'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -33,7 +36,7 @@ const ERRORS: Partial<Record<StudiesReadError, string>> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Si recién te inscribiste, puede tardar unos días.'
 }
 
-const PAGE_SIZE = 6
+const PAGE_SIZE = 9
 
 type View = 'en-curso' | 'final-pendiente' | 'archivadas'
 
@@ -69,29 +72,19 @@ function href(view: View, page = 1): string {
   return query ? `/materias?${query}` : '/materias'
 }
 
-/* Las vistas: «En curso» siempre; las otras, con cuántas hay, para elegirlas. */
+/* Las vistas, centradas en un riel: «En curso» siempre; las otras, con cuántas hay, para elegirlas. */
 function ViewTabs({ current, counts, student }: { current: View; counts: Record<View, number>; student: boolean }) {
   return (
-    <nav aria-label='Qué materias ver' className='flex flex-wrap gap-2'>
+    <nav aria-label='Qué materias ver' className={cn(railTrack({ size: 'sm' }), 'mx-auto w-full max-w-xl')}>
       {VIEWS.filter((v) => student || !v.students).map(({ view, label }) => (
         <Link
           key={view}
           href={href(view)}
           aria-current={view === current ? 'page' : undefined}
-          className={cn(
-            'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[0.8125rem] font-semibold transition-colors focus-ring',
-            view === current
-              ? 'border-blue bg-blue text-white'
-              : 'border-border bg-card text-ink hover:border-blue/30 hover:bg-accent'
-          )}
+          className={cn(railItem({ size: 'sm' }), 'group/tab max-sm:gap-1 max-sm:px-2 max-sm:text-[0.75rem]')}
         >
           {label}
-          <span
-            className={cn(
-              'grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[0.6875rem] tabular-nums',
-              view === current ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
-            )}
-          >
+          <span className='grid h-5 min-w-5 place-items-center rounded-full bg-ink/8 px-1.5 text-[0.6875rem] text-ink/70 tabular-nums group-aria-[current=page]/tab:bg-blue group-aria-[current=page]/tab:text-white'>
             {counts[view]}
           </span>
         </Link>
@@ -129,14 +122,14 @@ function cardsFor(
   ))
 }
 
+type StudentReads = { standings: SubjectStanding[]; pending: PendingFinal[] | null }
+
 /** Lo que es solo del alumno: su estado en cada materia y la próxima mesa de cada final pendiente.
     Si no se pudo leer, va vacío: las tarjetas salen sin estado y sin la próxima mesa. */
-async function standingsOf(personId: string, student: boolean) {
+async function studentReads(personId: string, student: boolean): Promise<StudentReads> {
   if (!student) return { standings: [], pending: null }
-  const [career, finals] = await Promise.all([
-    system().studies.career(personId),
-    system().studies.pendingFinals(personId)
-  ])
+  const { studies } = system()
+  const [career, finals] = await Promise.all([studies.career(personId), studies.pendingFinals(personId)])
   return {
     standings: career.ok ? career.value.data.subjects : [],
     pending: finals.ok ? finals.value.data : null
@@ -153,11 +146,11 @@ export default async function MateriasPage({
 }) {
   const session = await requireSession()
   const student = session.role === 'alumno'
-  const [params, person, result, { standings, pending }, unread] = await Promise.all([
+  const [params, person, result, reads, unread] = await Promise.all([
     searchParams,
     system().people.get(session.personId),
     system().studies.subjectsOf(session.personId),
-    standingsOf(session.personId, student),
+    studentReads(session.personId, student),
     system().spaces.unreadFor(session.personId)
   ])
   // Si Espacios no responde, las tarjetas van sin no leídos y la campana lo vuelve a pedir.
@@ -183,7 +176,7 @@ export default async function MateriasPage({
         )}
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+      <main className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         {!result.ok ? (
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus materias.'}</ErrorNotice>
         ) : (
@@ -191,8 +184,7 @@ export default async function MateriasPage({
             view={view}
             page={Number(params.pagina) || 1}
             subjects={result.value.data}
-            standings={standings}
-            pending={pending}
+            reads={reads}
             unread={unreadBySubject(news)}
             student={student}
             stale={result.value.stale ? result.value.readAt : null}
@@ -207,8 +199,7 @@ function SubjectsView({
   view,
   page,
   subjects,
-  standings,
-  pending,
+  reads,
   unread,
   student,
   stale
@@ -216,12 +207,13 @@ function SubjectsView({
   view: View
   page: number
   subjects: MySubjects
-  standings: SubjectStanding[]
-  pending: PendingFinal[] | null
+  reads: StudentReads
   unread: Map<string, number>
   student: boolean
   stale: string | null
 }) {
+  const { standings, pending } = reads
+  const now = system().now()
   const counts: Record<View, number> = {
     'en-curso': subjects.current.length,
     'final-pendiente': standings.filter((s) => s.status === 'regular').length,
@@ -234,7 +226,7 @@ function SubjectsView({
 
   return (
     <>
-      {stale && <StaleBanner since={stale} now={system().now()} />}
+      {stale && <StaleBanner since={stale} now={now} />}
       {subjects.classroomUnavailable && (
         <StaleNotice>
           El Campus Virtual no responde: tus materias están, pero faltan los enlaces al aula y las tareas de Moodle.

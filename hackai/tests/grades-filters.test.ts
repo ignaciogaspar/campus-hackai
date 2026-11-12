@@ -1,7 +1,16 @@
 /* Los filtros de Notas: qué se lee de la URL, qué query arman y qué materias dejan. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { applyFilters, byGroup, DEFAULT_FILTERS, filtersFrom, filtersQuery } from '@/components/grades/filters'
+import {
+  applyFilters,
+  byAcademicYear,
+  byGroup,
+  DEFAULT_FILTERS,
+  filtersFrom,
+  filtersQuery,
+  groupingFrom,
+  NO_ACADEMIC_YEAR
+} from '@/components/grades/filters'
 import type { SubjectStanding } from '@/lib/core/studies'
 
 const subject = (subjectId: string, fields: Partial<SubjectStanding>): SubjectStanding => ({
@@ -78,6 +87,20 @@ test('se agrupan por año de la carrera en el orden en que vienen, y las de cual
       ['2do año', ['am2']],
       ['4to año', ['cda']],
       ['Vida universitaria', ['tor']]
+    ]
+  )
+})
+
+test('de entrada se agrupa por año lectivo, el más reciente primero, y las que no tienen van al final', () => {
+  assert.equal(groupingFrom({}), 'lectivo')
+  assert.equal(groupingFrom({ agrupar: 'carrera' }), 'carrera')
+  assert.equal(groupingFrom({ agrupar: 'otra-cosa' }), 'lectivo')
+  assert.deepEqual(
+    byAcademicYear(SUBJECTS).map((g) => [g.name, ids(g.items)]),
+    [
+      ['2026', ['am2', 'qui']],
+      ['2025', ['am1', 'aga', 'tor']],
+      [NO_ACADEMIC_YEAR, ['cda']]
     ]
   )
 })

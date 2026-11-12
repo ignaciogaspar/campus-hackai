@@ -6,7 +6,9 @@
    Lo que todavía no llegó al Discord vinculado dice que se está enviando. */
 import { Paperclip } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { FilePreview } from '@/components/spaces/file-preview'
 import { fileSize, initialsOf, messageTime } from '@/components/spaces/format'
+import { previewKind } from '@/components/spaces/preview-kind'
 import type { Attachment, Author, Message } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +32,7 @@ export function AuthorAvatar({ author, small }: { author: Author; small?: boolea
 function MessageHead({ message }: { message: Message }) {
   const { author } = message
   return (
-    <p className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8125rem]'>
+    <p className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8125rem] lg:text-[0.9375rem]'>
       <b className='font-bold'>{author.name}</b>
       {author.role === 'profesor' && (
         <span className='rounded-full bg-accent px-2 py-px text-[0.6875rem] font-bold text-blue'>Docente</span>
@@ -50,38 +52,57 @@ function MessageHead({ message }: { message: Message }) {
   )
 }
 
+const ATTACHMENT =
+  'inline-flex min-h-10 max-w-full items-center gap-2 rounded-[10px] border border-border bg-card px-2.5 text-[0.8125rem] font-semibold text-blue hover:bg-muted focus-ring'
+
 function Attachments({ attachments }: { attachments: Attachment[] }) {
   if (!attachments.length) return null
   return (
     <ul className='mt-1 flex flex-col gap-1.5'>
-      {attachments.map((a) => (
-        <li key={a.url}>
-          <a
-            href={a.url}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='inline-flex min-h-10 max-w-full items-center gap-2 rounded-[10px] border border-border bg-card px-2.5 text-[0.8125rem] font-semibold text-blue hover:bg-muted focus-ring'
-          >
+      {attachments.map((a) => {
+        const preview = previewKind(a.url, a.name, a.contentType)
+        const body = (
+          <>
             <Paperclip aria-hidden='true' className='size-4 flex-none' strokeWidth={1.8} />
             <span className='truncate'>{a.name}</span>
             <span className='flex-none font-medium text-muted-foreground'>· {fileSize(a.size)}</span>
-            <span className='sr-only'>(se abre en otra pestaña)</span>
-          </a>
-        </li>
-      ))}
+          </>
+        )
+        return (
+          <li key={a.url}>
+            {preview ? (
+              <FilePreview
+                url={a.url}
+                name={a.name}
+                kind={preview}
+                detail={fileSize(a.size)}
+                className={cn(ATTACHMENT, 'w-auto')}
+              >
+                {body}
+                <span className='sr-only'>(ver la vista previa)</span>
+              </FilePreview>
+            ) : (
+              <a href={a.url} target='_blank' rel='noopener noreferrer' className={ATTACHMENT}>
+                {body}
+                <span className='sr-only'>(se abre en otra pestaña)</span>
+              </a>
+            )}
+          </li>
+        )
+      })}
     </ul>
   )
 }
 
 function MessageText({ text, className }: { text: string; className?: string }) {
   if (!text) return null
-  return <p className={cn('text-[0.9375rem] break-words whitespace-pre-wrap', className)}>{text}</p>
+  return <p className={cn('text-[0.9375rem] break-words whitespace-pre-wrap lg:text-base', className)}>{text}</p>
 }
 
 /** Un mensaje en su tarjeta. Lo de abajo (respuesta, estado, acciones) va en `children`. */
 export function MessageCard({ message, children }: { message: Message; children?: ReactNode }) {
   return (
-    <article className='flex gap-3 rounded-[22px] bg-card p-4 shadow-card'>
+    <article className='flex gap-3 rounded-[22px] bg-card p-4 shadow-card lg:gap-4 lg:p-6'>
       <AuthorAvatar author={message.author} />
       <div className='flex min-w-0 flex-1 flex-col gap-1'>
         <MessageHead message={message} />

@@ -1,4 +1,4 @@
-/* Reportes y trámites, como los del SIU en un solo lugar: las constancias
+/* Trámites y reportes, como los del SIU en un solo lugar: las constancias
    (si cumple las condiciones lo dice el SIU y se piden en la Autogestión), los
    certificados y reportes para descargar (de prueba, armados por HackAI) y
    las solicitudes a la secretaría (simuladas). */
@@ -16,7 +16,7 @@ import { system } from '@/lib/composition'
 import type { CertificateType } from '@/lib/core/studies'
 import { staleSince } from '@/lib/fresh'
 
-export const metadata: Metadata = { title: 'Reportes y trámites · Campus HackAI' }
+export const metadata: Metadata = { title: 'Trámites y reportes · Campus HackAI' }
 
 const CERTIFICATES: CertificateType[] = ['alumno-regular', 'examen-final']
 
@@ -89,7 +89,7 @@ export default async function TramitesPage() {
   return (
     <>
       <PageHeader
-        title='Reportes y trámites'
+        title='Trámites y reportes'
         subtitle='Constancias, certificados y solicitudes, sin buscar en el SIU.'
         art='academico'
       />

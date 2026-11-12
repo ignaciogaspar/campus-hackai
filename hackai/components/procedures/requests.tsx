@@ -7,16 +7,17 @@ import { CircleCheck, FilePlus2 } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { cn } from '@/lib/utils'
+import { StatusPill, type StatusTone } from '@/components/ui/status-pill'
 
-type RequestStatus = 'entregada' | 'en-tramite' | 'recibida'
+type RequestStatus = 'entregada' | 'en-tramite' | 'recibida' | 'rechazada'
 
 type PendingRequest = { id: string; type: string; date: string; status: RequestStatus }
 
-const STATUSES: Record<RequestStatus, { label: string; chip: string }> = {
-  entregada: { label: 'Entregada', chip: 'bg-success-background text-success' },
-  'en-tramite': { label: 'En trámite', chip: 'bg-kind-recuperatorio-background text-kind-recuperatorio' },
-  recibida: { label: 'Recibida', chip: 'bg-accent text-blue' }
+const STATUSES: Record<RequestStatus, { label: string; tone: StatusTone }> = {
+  entregada: { label: 'Entregada', tone: 'success' },
+  'en-tramite': { label: 'En trámite', tone: 'warning' },
+  recibida: { label: 'Recibida', tone: 'info' },
+  rechazada: { label: 'Rechazada', tone: 'danger' }
 }
 
 const TYPES = [
@@ -30,6 +31,7 @@ const TYPES = [
 
 const SAMPLE: PendingRequest[] = [
   { id: 'S-2026-01842', type: 'Certificado analítico parcial', date: '4 nov 2026', status: 'en-tramite' },
+  { id: 'S-2026-01563', type: 'Cambio de comisión', date: '2 sep 2026', status: 'rechazada' },
   { id: 'S-2026-01217', type: 'Constancia de alumno regular', date: '18 ago 2026', status: 'entregada' },
   { id: 'S-2026-00305', type: 'Equivalencia de materias', date: '12 mar 2026', status: 'entregada' }
 ]
@@ -124,14 +126,7 @@ export function Requests() {
                 N.º {r.id} · {r.date}
               </p>
             </div>
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-[0.75rem] leading-5 font-semibold whitespace-nowrap',
-                STATUSES[r.status].chip
-              )}
-            >
-              {STATUSES[r.status].label}
-            </span>
+            <StatusPill tone={STATUSES[r.status].tone}>{STATUSES[r.status].label}</StatusPill>
           </li>
         ))}
       </ul>

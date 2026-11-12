@@ -46,6 +46,27 @@ function rowOf(item: UnreadItem): NewsRow {
   }
 }
 
+/** Los tipos de novedad del filtro: los canales libres van juntos como «otros canales». */
+export type NewsKind = 'avisos' | 'consultas' | 'material' | 'directos' | 'canales'
+
+export const NEWS_KINDS: { kind: NewsKind; label: string }[] = [
+  { kind: 'avisos', label: 'Avisos' },
+  { kind: 'consultas', label: 'Consultas' },
+  { kind: 'material', label: 'Material' },
+  { kind: 'directos', label: 'Directos' },
+  { kind: 'canales', label: 'Otros canales' }
+]
+
+const KIND_OF: Record<ChannelKind, NewsKind> = {
+  avisos: 'avisos',
+  consultas: 'consultas',
+  material: 'material',
+  directo: 'directos',
+  libre: 'canales'
+}
+
+export const newsKindOf = (kind: ChannelKind): NewsKind => KIND_OF[kind]
+
 /** Por materia, en el orden en que llegan (Espacios las da con lo más nuevo primero). */
 export function newsBySubject(items: UnreadItem[]): SubjectNews[] {
   const groups = new Map<string, SubjectNews>()

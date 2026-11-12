@@ -1,13 +1,15 @@
 /* Notas, por materia: las que el alumno cursó o está cursando, cada una con su
    estado (promocionada, aprobada, en curso, regular) y, al tocarla, sus
    parciales, la nota de cursada y la del final. Se filtran por año lectivo,
-   tipo de materia, año de la carrera y estado. Reemplaza a Académico: las
-   constancias pasaron a Trámites y el promedio y el avance, a Estado de la
-   carrera. Sin reglas de negocio: el estado y las notas los decide Cursada. */
+   tipo de materia, año de la carrera y estado, y se agrupan por año lectivo o
+   por año de la carrera. El promedio va en el encabezado. Reemplaza a
+   Académico: las constancias pasaron a Trámites y reportes, y el avance, al
+   Plan de estudios. Sin reglas de negocio: el estado y las notas los decide
+   Cursada. */
 import { BookOpenCheck, ChartPie } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { filtersFrom } from '@/components/grades/filters'
+import { filtersFrom, groupingFrom } from '@/components/grades/filters'
 import { GradesBoard } from '@/components/grades/grades-board'
 import { gradeText } from '@/components/grades/status'
 import { PageHeader } from '@/components/shell/page-header'
@@ -43,12 +45,12 @@ export default async function NotasPage({
             className='inline-flex min-h-10 items-center gap-1.5 rounded-full bg-white/12 px-3.5 text-[0.8125rem] font-semibold text-white ring-1 ring-white/20 transition-colors ring-inset hover:bg-white/20 focus-ring'
           >
             <ChartPie aria-hidden='true' className='size-4' strokeWidth={2} />
-            Promedio {gradeText(career.average)} · ver el estado de tu carrera
+            Promedio {gradeText(career.average)} · ver el plan de estudios
           </Link>
         )}
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+      <main className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         {!result.ok ? (
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus notas.'}</ErrorNotice>
         ) : (
@@ -63,6 +65,8 @@ export default async function NotasPage({
                 subjects={taken}
                 careerYears={career?.program?.years ?? Math.max(1, ...taken.map((s) => s.year ?? 1))}
                 initialFilters={filtersFrom(params)}
+                initialGrouping={groupingFrom(params)}
+                initialOpen={typeof params.materia === 'string' ? params.materia : undefined}
               />
             )}
           </>

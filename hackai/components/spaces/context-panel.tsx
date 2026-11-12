@@ -51,7 +51,7 @@ export function ContextPanel({ recent, sections, space, contacts }: Props) {
   const teachers = teachersOf(shown)
   const writable = new Set(contacts.map((c) => c.personId))
   return (
-    <aside aria-label='Sobre la materia' className='hidden flex-col gap-4 lg:sticky lg:top-4 lg:flex'>
+    <aside aria-label='Sobre la materia' className='hidden flex-col gap-4 2xl:sticky 2xl:top-4 2xl:flex'>
       <ContextCard id='ctx-material' title='Material reciente'>
         {recent.length ? (
           <ul className='divide-y divide-border pb-1'>

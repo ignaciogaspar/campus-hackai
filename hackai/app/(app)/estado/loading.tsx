@@ -1,5 +1,5 @@
 import { ScreenSkeleton } from '@/components/shell/screen-skeleton'
 
 export default function Loading() {
-  return <ScreenSkeleton title='Estado de la carrera' />
+  return <ScreenSkeleton title='Plan de estudios' />
 }

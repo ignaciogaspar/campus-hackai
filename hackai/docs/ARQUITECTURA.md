@@ -146,6 +146,8 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
 
+**Caché de lecturas** (`adapters/cache/`): con el SIU y Moodle simulados, y con el almacén de Personas en Supabase, `composition` envuelve a cada adaptador con una caché en memoria, porque cada lectura es una consulta a la base y una pantalla hace muchas. Lo que no cambia con lo que hace el alumno (personas, materias, comisiones, planes, cronogramas, vínculos) se guarda `HACKAI_CACHE_SEGUNDOS` (300 por defecto); lo del aula, un minuto como mucho; lo que cambia al inscribirse (inscripciones, historia, cupos, actuación provisoria, inasistencias) solo se comparte mientras la consulta está en vuelo, así nunca se ve una inscripción vieja aunque otra instancia atienda el pedido siguiente. Un error no se guarda e inscribir pasa directo. El núcleo no se entera.
+
 **Caídas de la demo** (`adapters/caida/`): con `HACKAI_CAIDAS=si`, `composition` envuelve al adaptador del SIU y al del aula con un interruptor que, prendido, hace que toda consulta devuelva `falla-externa`. Así se muestra en vivo la tolerancia a caídas sin tocar el núcleo, que ve un puerto que falla como uno real. Sin la variable el interruptor no existe, que es lo de producción. Con el interruptor levantado, los dos pasan la batería de contrato de su puerto.
 
 Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales: [research del SIU](../../docs/research/2026-11-10-siu-guarani-integracion.md) y [research de Moodle](../../docs/research/2026-11-10-moodle-web-services.md). Inscribir y el cronograma no existen en la API real del SIU: solo los provee el simulado. El adaptador de Discord sigue la [research de canales externos](../../docs/research/2026-11-10-canales-externos-apis.md): lee por REST desde un cursor, necesita el intent Message Content y ante un 429 espera `retry_after`. Si Discord pide esperar más de 30 segundos o sigue limitando después de 3 reintentos, el adaptador devuelve `falla-externa` en vez de bloquear la request, y la próxima sincronización reintenta. Es una desviación aceptada del issue #11, que pedía esperar siempre.
@@ -161,7 +163,7 @@ hackai/
 ├── lib/
 │   ├── core/            people/, studies/, spaces/, today/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
-│   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/, caida/
+│   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/, caida/, cache/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
 │   └── demo-base/       preparar, verificar y probar la base de la demo (npm run demo:*); no lo usa la app
 ├── app/                 pantallas y server actions

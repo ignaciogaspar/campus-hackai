@@ -17,7 +17,12 @@
 
    `simulado` es el SIU simulado sobre las tablas siu_* de Supabase, o el Moodle
    simulado sobre las moodle_*: necesita NEXT_PUBLIC_SUPABASE_URL y
-   SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas (hackai/README.md).
+   SUPABASE_SERVICE_ROLE_KEY, y las tablas cargadas (hackai/README.md). Los dos
+   van envueltos en la caché de lecturas (lib/adapters/cache/): cada lectura es
+   una consulta a la base y una pantalla hace muchas. También el almacén de
+   Personas en Supabase. Los de memoria no la necesitan. `HACKAI_CACHE_SEGUNDOS`
+   dice cuánto se guarda lo que no cambia con lo que hace el alumno (300 si no
+   está); con 0 no se guarda nada, por ejemplo para editar el seed en vivo.
 
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
@@ -40,6 +45,7 @@
    desconocido o una variable que falta corta el arranque: es un error de
    configuración, no algo que el núcleo pueda resolver. */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
@@ -78,6 +84,9 @@ export {
   type OutageSwitch,
   type OutageSystem
 } from '@/lib/adapters/caida'
+
+/** El PDF de una página del set sintético: lo sirve el Moodle simulado de la demo (app/simulado/moodle/). */
+export { syntheticPdf } from '@/lib/adapters/synthetic-files'
 
 const ADAPTERS = {
   identity: { variable: 'HACKAI_IDENTITY', values: ['memoria'] },
@@ -136,6 +145,15 @@ function required(env: Env, variable: string, neededBy: string): string {
   return value
 }
 
+/** Cuánto guarda la caché de lecturas lo fijo, en milisegundos, según `HACKAI_CACHE_SEGUNDOS`. */
+function cacheTtlFrom(env: Env): number {
+  const value = env.HACKAI_CACHE_SEGUNDOS?.trim()
+  if (!value) return STATIC_TTL_MS
+  if (!/^\d{1,5}$/.test(value))
+    throw new Error('HACKAI_CACHE_SEGUNDOS tiene que ser una cantidad de segundos, como 300 o 0')
+  return Number(value) * 1000
+}
+
 /** El interruptor de caídas, solo si `HACKAI_CAIDAS=si`. */
 function outagesFrom(env: Env): OutageSwitch | null {
   const value = env.HACKAI_CAIDAS?.trim() || 'no'
@@ -163,13 +181,17 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
   const supabase = () => (client ??= supabaseFromEnv(env))
 
   const outages = outagesFrom(env)
+  const cache = { staticTtlMs: cacheTtlFrom(env) }
   const siu =
     adapters.siu === 'simulado'
-      ? createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl })
+      ? withSiuCache(
+          createSimulatedSiu({ client: supabase(), clock, selfServiceBaseUrl: data.siu.selfServiceBaseUrl }),
+          cache
+        )
       : createMemorySiu(data, clock)
   const classroom =
     adapters.classroom === 'simulado'
-      ? createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl })
+      ? withClassroomCache(createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl }), cache)
       : createMemoryClassroom(data)
 
   const ports: Ports = {
@@ -188,7 +210,9 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     identity: ports.identity,
     siu: ports.siu,
     store:
-      adapters.store === 'supabase' ? createSupabasePeopleStore({ client: supabase() }) : createMemoryPeopleStore(data)
+      adapters.store === 'supabase'
+        ? withPeopleStoreCache(createSupabasePeopleStore({ client: supabase() }), cache)
+        : createMemoryPeopleStore(data)
   })
   const studies = createStudies({ people, siu: ports.siu, classroom: ports.classroom, clock })
   const spaces = createSpaces({

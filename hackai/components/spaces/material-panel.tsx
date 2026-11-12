@@ -136,7 +136,7 @@ function MaterialSections({ material }: { material: MaterialView }) {
             open={i === 0}
             className='group overflow-hidden rounded-[22px] bg-card shadow-card'
           >
-            <summary className='flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 font-bold focus-ring-inset [&::-webkit-details-marker]:hidden'>
+            <summary className='flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 font-bold focus-ring-inset lg:min-h-14 lg:px-5 lg:text-[1.0625rem] [&::-webkit-details-marker]:hidden'>
               <ChevronRight
                 aria-hidden='true'
                 className='size-4 flex-none text-muted-foreground transition-transform group-open:rotate-90 motion-reduce:transition-none'

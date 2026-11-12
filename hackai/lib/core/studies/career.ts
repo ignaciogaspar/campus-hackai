@@ -12,7 +12,11 @@
      actuación provisoria. Sin cronograma (la API real), salen las notas
      cargadas con el nombre genérico.
    - El avance cuenta las obligatorias aprobadas y, hasta lo que pide el plan,
-     las optativas y las actividades de vida universitaria. */
+     las optativas y las actividades de vida universitaria.
+   - Además, lo que pide la carrera en otras unidades (requirements.ts): los
+     créditos de las actividades de vida universitaria aprobadas y las horas de
+     las optativas aprobadas. */
+import { requirementsOf } from '@/lib/core/studies/requirements'
 import type { SiuAssessment, SiuHistoryEntry, SiuPlanSubjectKind, SiuStudyPlan } from '@/lib/ports/siu'
 
 /** Cómo cuenta una materia: obligatoria, optativa, de vida universitaria o, si no está en su plan, fuera del plan. */
@@ -68,6 +72,10 @@ export type Career = {
   required: CareerProgress
   electives: CareerProgress
   universityLife: CareerProgress
+  /** Créditos de vida universitaria: los de las actividades aprobadas, sobre los que pide la carrera. */
+  universityLifeCredits: CareerProgress
+  /** Horas de optativas y seminarios aprobadas, sobre las que pide la carrera. */
+  electiveHours: CareerProgress
   /** Cuánto de la carrera está aprobado, de 0 a 100. */
   percent: number
 }
@@ -79,6 +87,8 @@ export const EMPTY_CAREER: Career = {
   required: { approved: 0, total: 0 },
   electives: { approved: 0, total: 0 },
   universityLife: { approved: 0, total: 0 },
+  universityLifeCredits: { approved: 0, total: 0 },
+  electiveHours: { approved: 0, total: 0 },
   percent: 0
 }
 
@@ -111,7 +121,8 @@ export type CareerInput = {
   now: string
   program: { id: string; name: string } | null
   plan: SiuStudyPlan | null
-  subjects: Map<string, { code: string; name: string }>
+  /** `credits`: los que da una actividad de vida universitaria; `null` o sin dato en una materia. */
+  subjects: Map<string, { code: string; name: string; credits?: number | null }>
   /** Las comisiones de la más importante a la menos: actuales primero y después la más reciente. */
   sections: TakenSection[]
   history: SiuHistoryEntry[]
@@ -222,6 +233,26 @@ function progressOf(subjects: SubjectStanding[], kind: PlanKind, required: numbe
   return { approved: Math.min(ofKind.filter(isApproved).length, total), total }
 }
 
+/** Créditos de las actividades de vida universitaria aprobadas y horas de las optativas aprobadas, sobre lo que
+    pide la carrera. */
+function unitsOf(
+  subjects: SubjectStanding[],
+  input: CareerInput
+): Pick<Career, 'universityLifeCredits' | 'electiveHours'> {
+  const rules = requirementsOf(input.program?.id ?? null)
+  const approvedOf = (kind: PlanKind) => subjects.filter((s) => s.kind === kind && isApproved(s))
+  const credits = approvedOf('vida-universitaria').reduce(
+    (sum, s) => sum + (input.subjects.get(s.subjectId)?.credits ?? 0),
+    0
+  )
+  const hours = approvedOf('optativa').length * rules.hoursPerElective
+  const requiredHours = (input.plan?.electivesRequired ?? 0) * rules.hoursPerElective
+  return {
+    universityLifeCredits: { approved: credits, total: rules.universityLifeCredits },
+    electiveHours: { approved: hours, total: requiredHours }
+  }
+}
+
 const bySubjectOrder = (a: SubjectStanding, b: SubjectStanding) =>
   (a.year ?? 99) - (b.year ?? 99) ||
   KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) ||
@@ -250,6 +281,7 @@ export function buildCareer(input: CareerInput): Career {
     required,
     electives,
     universityLife,
+    ...unitsOf(subjects, input),
     percent: total ? Math.round((done / total) * 100) : 0
   }
 }

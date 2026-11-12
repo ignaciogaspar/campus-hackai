@@ -415,11 +415,19 @@ function Filters({
             aria-pressed={on}
             onClick={() => onToggle(group)}
             className={cn(
-              'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-medium transition-colors focus-ring',
-              on ? 'border-blue/25 bg-accent text-ink' : 'border-border bg-card text-muted-foreground line-through'
+              'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-semibold transition-colors focus-ring',
+              on
+                ? 'border-ink/15 bg-card text-ink shadow-[0_1px_2px_rgb(16_20_44/0.08)] hover:border-blue/30'
+                : 'border-dashed border-border bg-transparent text-muted-foreground hover:text-ink'
             )}
           >
-            <span aria-hidden='true' className={cn('size-2 rounded-full', TONES[tones[0]].dot, !on && 'opacity-40')} />
+            <span
+              aria-hidden='true'
+              className={cn(
+                'size-2.5 rounded-full',
+                on ? TONES[tones[0]].dot : 'border border-gray-light bg-transparent'
+              )}
+            />
             {label}
           </button>
         )

@@ -255,6 +255,7 @@ La demo corre en Vercel con el plan Hobby. Vercel compila Next.js por su cuenta;
    | `HACKAI_CLOCK` | `sistema` |
    | `HACKAI_EXTERNAL_CHANNEL`, `DISCORD_BOT_TOKEN` | `discord` y el token del bot, si la demo muestra Discord |
    | `HACKAI_CAIDAS` | `si` solo si se muestra la caída (ver abajo) |
+   | `HACKAI_CACHE_SEGUNDOS` | Vacía (300) en la demo; `0` si se va a editar el seed o las notas en vivo |
 
    `DATABASE_URL`, `HACKAI_DEMO_SUPABASE_REF` y las `HACKAI_TEST_*` no van: son de los scripts y de los tests, que corren en tu máquina.
 3. **Preparar la base** desde tu máquina con `npm run demo:preparar` («Base de la demo»), desplegar y probar con `npm run demo:probar -- https://<dominio>`.
@@ -343,6 +344,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
 | `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
 | `HACKAI_CAIDAS` | `si` deja tirar el SIU o Moodle desde `/caidas` para mostrarlo en la demo. Vacía o `no` (por defecto): no existe, como en producción. Ver «Mostrar una caída en la demo». |
+| `HACKAI_CACHE_SEGUNDOS` | Cuánto guarda la caché de lecturas (`lib/adapters/cache/`) lo que no cambia con lo que hace el alumno: personas, materias, comisiones, planes y vínculos. Vacía: 300. `0` no guarda nada (solo comparte la consulta en vuelo), por ejemplo para editar el seed o las notas en la base durante la demo; si no, un cambio así tarda hasta 5 minutos en verse en cada instancia de Vercel. Inscripciones, historia, cupos e inasistencias nunca se guardan. |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |
 
 No las imprimas en logs ni en reportes.

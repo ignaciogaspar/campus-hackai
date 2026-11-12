@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  Bell,
   CalendarDays,
   ClipboardList,
   Ellipsis,
@@ -35,28 +36,32 @@ type Section = {
   icon: LucideIcon
   /** En el celular va en la barra de abajo; si no, en «Más». */
   bottom: boolean
+  /** Solo en la barra lateral de compu: en el celular ya está en el encabezado, como la campana. */
+  desktopOnly?: boolean
 }
 
 /* El menú del alumno. Los nombres son los que usa el alumno, no los del SIU:
-   «Notas» y no «Académico» o «Actuación provisoria». */
+   «Notas» y no «Académico» o «Actuación provisoria». Materias va primero y es
+   el inicio: debajo lleva, siempre a la vista, las materias que cursa. */
 const STUDENT: Section[] = [
-  { href: '/hoy', label: 'Hoy', icon: House, bottom: true },
   { href: '/materias', label: 'Materias', icon: LibraryBig, bottom: true },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays, bottom: true },
-  { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList, bottom: false },
-  { href: '/notas', label: 'Notas', icon: NotebookPen, bottom: true }
+  { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList, bottom: true },
+  { href: '/notas', label: 'Notas', icon: NotebookPen, bottom: true },
+  { href: '/novedades', label: 'Novedades', icon: Bell, bottom: false, desktopOnly: true }
 ]
 
 /* Lo que es de la carrera entera y no del día a día. */
 const CAREER: Section[] = [
-  { href: '/estado', label: 'Estado de la carrera', icon: GraduationCap, bottom: false },
-  { href: '/tramites', label: 'Trámites', icon: FileText, bottom: false }
+  { href: '/estado', label: 'Plan de estudios', icon: GraduationCap, bottom: false },
+  { href: '/tramites', label: 'Trámites y reportes', icon: FileText, bottom: false }
 ]
 
 const TEACHER: Section[] = [
-  { href: '/hoy', label: 'Hoy', icon: House, bottom: true },
   { href: '/materias', label: 'Materias', icon: LibraryBig, bottom: true },
-  { href: '/calendario', label: 'Calendario', icon: CalendarDays, bottom: true }
+  { href: '/hoy', label: 'Hoy', icon: House, bottom: true },
+  { href: '/calendario', label: 'Calendario', icon: CalendarDays, bottom: true },
+  { href: '/novedades', label: 'Novedades', icon: Bell, bottom: false, desktopOnly: true }
 ]
 
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
@@ -79,7 +84,7 @@ const ICON = 'size-5 flex-none lg:size-[1.125rem]'
 /* El título de un grupo: «Menú principal», «Tus materias», «Cuenta». */
 function GroupLabel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <p className={cn('hidden px-4 pt-8 pb-2.5 text-[0.8125rem] text-gray-light lg:block', FADES, className)}>
+    <p className={cn('hidden px-4 pt-6 pb-2 text-[0.8125rem] text-gray-light lg:block', FADES, className)}>
       {children}
     </p>
   )
@@ -161,10 +166,21 @@ const SIDEBAR_COUNT =
   'lg:bg-ink lg:text-white lg:group-data-[sidebar=plegada]/nav:absolute lg:group-data-[sidebar=plegada]/nav:top-0.5 lg:group-data-[sidebar=plegada]/nav:left-7 lg:group-data-[sidebar=plegada]/nav:ring-2 lg:group-data-[sidebar=plegada]/nav:ring-white/80'
 
 const LINK =
-  'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:text-foreground focus-ring'
+  'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-steel transition-colors duration-150 hover:text-foreground focus-ring'
 
 /* Una sección del menú. En el celular, las que no van abajo están solo en «Más». */
-function SectionLink({ section, pathname, collapsed }: { section: Section; pathname: string; collapsed: boolean }) {
+function SectionLink({
+  section,
+  pathname,
+  collapsed,
+  count = 0
+}: {
+  section: Section
+  pathname: string
+  collapsed: boolean
+  /** Lo sin leer, como en Novedades. */
+  count?: number
+}) {
   const { href, label, icon: Icon, bottom } = section
   const active = isActive(pathname, href)
   return (
@@ -172,16 +188,62 @@ function SectionLink({ section, pathname, collapsed }: { section: Section; pathn
       href={href}
       title={collapsed ? label : undefined}
       aria-current={active ? 'page' : undefined}
-      className={cn(LINK, ROW, !bottom && 'max-lg:hidden', active && cn('text-blue hover:text-blue', ROW_SELECTED))}
+      className={cn(
+        LINK,
+        ROW,
+        'relative',
+        !bottom && 'max-lg:hidden',
+        active && cn('text-blue hover:text-blue', ROW_SELECTED)
+      )}
     >
       <Icon aria-hidden='true' className={ICON} strokeWidth={active ? 2.1 : 1.8} />
-      <span className={cn('max-lg:max-w-full max-lg:truncate', FADES)}>{label}</span>
+      <span className={cn('max-lg:max-w-full max-lg:truncate lg:min-w-0 lg:flex-1', FADES)}>{label}</span>
+      <UnreadCount count={count} className={cn('max-lg:hidden', SIDEBAR_COUNT)} />
     </Link>
   )
 }
 
+/* Las materias que cursa o dicta, siempre a la vista debajo de «Materias»: una
+   rama con una línea a la izquierda, como un índice. No se pliega; si son
+   muchas, scrollea con el resto de la barra. Plegada la barra, quedan sus íconos. */
+function SubjectBranch({ subjects, pathname }: { subjects: NavSubject[]; pathname: string }) {
+  if (subjects.length === 0) return null
+  return (
+    <ul
+      aria-label='Tus materias'
+      className='hidden lg:my-1 lg:ml-[1.625rem] lg:flex lg:flex-col lg:border-l lg:border-ink/12 lg:pl-1.5 lg:group-data-[sidebar=plegada]/nav:ml-0 lg:group-data-[sidebar=plegada]/nav:border-l-0 lg:group-data-[sidebar=plegada]/nav:pl-0'
+    >
+      {subjects.map((s) => {
+        const active = isActive(pathname, s.href)
+        return (
+          <li key={s.href}>
+            <Link
+              href={s.href}
+              title={s.name}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[0.8125rem] font-medium text-ink/80 transition-colors duration-150 hover:bg-white/55 hover:text-ink focus-ring-inset lg:group-data-[sidebar=plegada]/nav:justify-center lg:group-data-[sidebar=plegada]/nav:px-0 lg:group-data-[sidebar=plegada]/nav:py-2',
+                active && cn(ROW_SELECTED, 'text-ink')
+              )}
+            >
+              <SubjectIcon
+                name={s.name}
+                size='sm'
+                tone={active ? 'solid' : 'soft'}
+                className='size-7 [&_svg]:size-3.5'
+              />
+              <span className={cn('min-w-0 flex-1 truncate', FADES)}>{s.name}</span>
+              <UnreadCount count={s.unread} className={SIDEBAR_COUNT} />
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 /* En el celular, el último lugar de la barra de abajo: abre una hoja con las
-   secciones que no entran (Inscripciones, Estado de la carrera, Trámites). */
+   secciones que no entran (Plan de estudios, Trámites y reportes). */
 function MoreSheet({ sections, pathname }: { sections: Section[]; pathname: string }) {
   const active = sections.some((s) => isActive(pathname, s.href))
   return (
@@ -214,16 +276,20 @@ function MoreSheet({ sections, pathname }: { sections: Section[]; pathname: stri
 
 /* En el celular, barra inferior con lo de todos los días y «Más» para el resto.
    En compu, la barra lateral sobre el marco de vidrio, en grupos como un menú
-   de app: Menú principal, Tu carrera (solo alumnos), Tus materias (que
-   scrollean solas si son muchas) y, al pie, la cuenta con Salir. Se pliega a
-   solo íconos; su ancho sale de --sidebar-w (sidebar-frame.tsx). */
+   de app: el menú principal, con Materias primero y sus materias colgando
+   debajo; Tu carrera (solo alumnos) y, al pie, la cuenta con Salir. Lo del
+   medio scrollea si no entra. Se pliega a solo íconos; su ancho sale de
+   --sidebar-w (sidebar-frame.tsx). */
 export function AppNav({
   subjects,
+  unread = 0,
   person,
   detail
 }: {
   school?: string
   subjects: NavSubject[]
+  /** Lo sin leer de todas las materias, para Novedades. */
+  unread?: number
   person: Person | null
   detail?: string
 }) {
@@ -232,59 +298,40 @@ export function AppNav({
   const student = person?.role !== 'profesor'
   const main = student ? STUDENT : TEACHER
   const career = student ? CAREER : []
-  const more = [...main, ...career].filter((s) => !s.bottom)
+  const more = [...main, ...career].filter((s) => !s.bottom && !s.desktopOnly)
+  const columns = main.filter((s) => s.bottom).length + (more.length > 0 ? 1 : 0)
   return (
     <nav
       aria-label='Navegación principal'
       data-sidebar={collapsed ? 'plegada' : 'abierta'}
-      className={cn(
-        'group/nav fixed inset-x-0 bottom-0 z-10 grid border-t border-border bg-card px-2 pt-1.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:inset-y-0 lg:left-0 lg:right-auto lg:flex lg:w-(--sidebar-w) lg:flex-col lg:overflow-x-hidden lg:border-t-0 lg:bg-transparent lg:px-4 lg:pt-6 lg:pb-6 lg:transition-[width] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
-        student ? 'grid-cols-5' : 'grid-cols-3'
-      )}
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      className='group/nav fixed inset-x-0 bottom-0 z-10 grid border-t border-border bg-card px-2 pt-1.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:inset-y-0 lg:left-0 lg:right-auto lg:flex lg:w-(--sidebar-w) lg:flex-col lg:overflow-x-hidden lg:border-t-0 lg:bg-transparent lg:px-4 lg:pt-6 lg:pb-6 lg:transition-[width] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
     >
       <SidebarTop />
-      <GroupLabel>Menú principal</GroupLabel>
-      {main.map((section) => (
-        <SectionLink key={section.href} section={section} pathname={pathname} collapsed={collapsed} />
-      ))}
-      {career.length > 0 && (
-        <>
-          <GroupLabel>Tu carrera</GroupLabel>
-          {career.map((section) => (
-            <SectionLink key={section.href} section={section} pathname={pathname} collapsed={collapsed} />
-          ))}
-        </>
-      )}
-      {more.length > 0 && <MoreSheet sections={more} pathname={pathname} />}
-      {subjects.length > 0 && (
-        // Al menos el título y dos materias: en una ventana baja, la barra entera
-        // scrollea en vez de que el título se encime con «Cuenta».
-        <div className='hidden min-h-36 flex-1 flex-col lg:flex'>
-          <GroupLabel>Tus materias</GroupLabel>
-          <div className='flex min-h-0 flex-col overflow-y-auto [scrollbar-width:none]'>
-            {subjects.map((s) => {
-              const active = isActive(pathname, s.href)
-              return (
-                <Link
-                  key={s.href}
-                  href={s.href}
-                  title={s.name}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'relative flex items-center transition-colors duration-150 focus-ring-inset',
-                    ROW,
-                    active && ROW_SELECTED
-                  )}
-                >
-                  <SubjectIcon name={s.name} tone='bare' />
-                  <span className={cn('min-w-0 flex-1 truncate', FADES)}>{s.name}</span>
-                  <UnreadCount count={s.unread} className={SIDEBAR_COUNT} />
-                </Link>
-              )
-            })}
+      {/* En el celular, `contents`: los enlaces son celdas de la barra de abajo. */}
+      <div className='max-lg:contents lg:-mx-1 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:px-1 lg:[scrollbar-width:thin]'>
+        <GroupLabel>Menú principal</GroupLabel>
+        {main.map((section) => (
+          <div key={section.href} className='max-lg:contents'>
+            <SectionLink
+              section={section}
+              pathname={pathname}
+              collapsed={collapsed}
+              count={section.href === '/novedades' ? unread : 0}
+            />
+            {section.href === '/materias' && <SubjectBranch subjects={subjects} pathname={pathname} />}
           </div>
-        </div>
-      )}
+        ))}
+        {career.length > 0 && (
+          <>
+            <GroupLabel>Tu carrera</GroupLabel>
+            {career.map((section) => (
+              <SectionLink key={section.href} section={section} pathname={pathname} collapsed={collapsed} />
+            ))}
+          </>
+        )}
+        {more.length > 0 && <MoreSheet sections={more} pathname={pathname} />}
+      </div>
       {person && <SidebarAccount person={person} detail={detail} />}
     </nav>
   )

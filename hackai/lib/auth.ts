@@ -6,6 +6,7 @@ import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 import type { Role } from '@/lib/core/people'
+import { homeFor } from '@/lib/home'
 import {
   createSessionToken,
   SESSION_COOKIE,
@@ -14,10 +15,7 @@ import {
   verifySessionToken
 } from '@/lib/session-token'
 
-/** La pantalla de inicio de cada rol. Por ahora es Hoy para los dos. */
-export function homeFor(_role: Role): string {
-  return '/hoy'
-}
+export { homeFor }
 
 export const getSession = cache(async (): Promise<Session | null> => {
   const jar = await cookies()
