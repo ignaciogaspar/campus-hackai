@@ -61,3 +61,16 @@ export function closingText(closesInDays: number): string {
   if (closesInDays === 1) return 'cierra mañana'
   return `cierra en ${closesInDays} días`
 }
+
+/** «16 semanas»: cuánto dura una cursada, de su primer a su último día. */
+export function durationText(start: string, end: string): string {
+  const weeks = Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / (7 * 24 * 3600 * 1000)))
+  return `${weeks} ${weeks === 1 ? 'semana' : 'semanas'}`
+}
+
+/** «Se puede promocionar» o «Con final»: cómo se aprueba la cursada de una comisión. */
+export function instanceText(instance: OfferItem['instance']): string | null {
+  if (instance === 'promocion') return 'Sí, se puede promocionar'
+  if (instance === 'regularidad') return 'No, se aprueba con final'
+  return null
+}

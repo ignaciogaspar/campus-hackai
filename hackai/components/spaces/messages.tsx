@@ -16,7 +16,7 @@ export function AuthorAvatar({ author, small }: { author: Author; small?: boolea
       aria-hidden='true'
       className={cn(
         'grid flex-none place-items-center rounded-full font-bold',
-        small ? 'size-7 text-[10px]' : 'size-9 text-xs',
+        small ? 'size-7 text-[0.625rem]' : 'size-9 text-xs',
         author.role === 'profesor' && 'bg-blue text-white',
         author.role === 'alumno' && 'bg-accent text-blue',
         author.role === null && 'bg-muted text-muted-foreground'
@@ -33,7 +33,7 @@ function MessageHead({ message }: { message: Message }) {
     <p className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8125rem]'>
       <b className='font-bold'>{author.name}</b>
       {author.role === 'profesor' && (
-        <span className='rounded-full bg-accent px-2 py-px text-[11px] font-bold text-blue'>Docente</span>
+        <span className='rounded-full bg-accent px-2 py-px text-[0.6875rem] font-bold text-blue'>Docente</span>
       )}
       {author.role === null && (
         <span className='text-xs text-muted-foreground'>

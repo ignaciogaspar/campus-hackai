@@ -49,10 +49,12 @@ type EnrolledProps = {
   subjectId: string
   transactionNumber: string
   needsRegularity: boolean
+  /** La semana del calendario donde se ve lo nuevo: la primera clase de la cursada. */
+  calendarHref: string
 }
 
 /** La comisión: quedó en el SIU, en el aula (si se pudo) y en el espacio, adonde lleva. */
-function SectionEnrolled({ inClassroom, subjectId, transactionNumber }: EnrolledProps) {
+function SectionEnrolled({ inClassroom, subjectId, transactionNumber, calendarHref }: EnrolledProps) {
   return (
     <>
       <p>
@@ -61,14 +63,17 @@ function SectionEnrolled({ inClassroom, subjectId, transactionNumber }: Enrolled
           ? 'Ya estás en el SIU y en el aula del Campus Virtual.'
           : 'Ya estás en el SIU. Al aula del Campus Virtual todavía no te pudimos sumar desde HackAI.'}
       </p>
-      <p>Y quedaste en el espacio de la materia, con sus avisos, consultas y material.</p>
+      <p>
+        Tus clases ya están en el calendario y quedaste en el espacio de la materia, con sus avisos, consultas y
+        material.
+      </p>
       <Receipt transactionNumber={transactionNumber} />
       <div className='flex flex-wrap gap-2'>
         <Link href={spaceHref(subjectId)} className={linkButton}>
           Ir al espacio de la materia
         </Link>
-        <Link href='/materias' className={outlineLinkButton}>
-          Ver en Mis materias
+        <Link href={calendarHref} className={outlineLinkButton}>
+          Ver en el calendario
         </Link>
       </div>
     </>
@@ -89,7 +94,11 @@ function BoardEnrolled({ target, transactionNumber, needsRegularity }: EnrolledP
           Ver en Hoy
         </Link>
         {target.kind === 'mesa' && (
-          <a href={`/calendario?mesa=${encodeURIComponent(target.examBoardId)}`} download className={outlineLinkButton}>
+          <a
+            href={`/calendario/exportar?mesa=${encodeURIComponent(target.examBoardId)}`}
+            download
+            className={outlineLinkButton}
+          >
             Agregar a mi calendario
           </a>
         )}
@@ -103,13 +112,14 @@ const ENROLLED: Record<Target['kind'], (props: EnrolledProps) => ReactNode> = {
   mesa: BoardEnrolled
 }
 
-type OutcomeProps = { target: Target; subjectId: string; needsRegularity: boolean }
+type OutcomeProps = { target: Target; subjectId: string; needsRegularity: boolean; calendarHref: string }
 
 function Enrolled({
   state,
   target,
   subjectId,
-  needsRegularity
+  needsRegularity,
+  calendarHref
 }: OutcomeProps & { state: Extract<EnrollmentState, { kind: 'inscripto' }> }) {
   const Done = ENROLLED[target.kind]
   return (
@@ -122,6 +132,7 @@ function Enrolled({
           subjectId={subjectId}
           transactionNumber={state.transactionNumber}
           needsRegularity={needsRegularity}
+          calendarHref={calendarHref}
         />
       </div>
     </div>
@@ -179,6 +190,8 @@ type Props = {
   subjectId: string
   label: string
   status: EnrollmentStatus
+  /** Adónde lleva «Ver en el calendario» al inscribirse a una comisión. Sin esto, a la semana actual. */
+  calendarHref?: string
   /** Las server actions llegan desde la página del servidor: importadas acá
       quedarían en otra capa del bundle, con otra copia del sistema en memoria. */
   enrollAction: EnrollmentAction
@@ -305,7 +318,15 @@ function DropControls({ target, label, pending: dropping, action, onSubmit }: Fo
 /** Los dos estados viven acá porque, al inscribirse, la página se vuelve a
     cargar con `alreadyEnrolled` y el comprobante no se tiene que perder. El de
     una acción anterior, en cambio, no se muestra mientras va la siguiente. */
-export function EnrollmentActions({ target, subjectId, label, status, enrollAction, dropAction }: Props) {
+export function EnrollmentActions({
+  target,
+  subjectId,
+  label,
+  status,
+  calendarHref = '/calendario',
+  enrollAction,
+  dropAction
+}: Props) {
   const { alreadyEnrolled: enrolled, enrolledElsewhere } = status
   const [enrollState, enroll, enrolling] = useActionState(enrollAction, INITIAL_ENROLLMENT_STATE)
   const [dropState, drop, dropping] = useActionState(dropAction, INITIAL_ENROLLMENT_STATE)
@@ -338,7 +359,13 @@ export function EnrollmentActions({ target, subjectId, label, status, enrollActi
         />
       )}
 
-      <Outcome state={shown} target={target} subjectId={subjectId} needsRegularity={status.needsRegularity} />
+      <Outcome
+        state={shown}
+        target={target}
+        subjectId={subjectId}
+        needsRegularity={status.needsRegularity}
+        calendarHref={calendarHref}
+      />
 
       {enrolled && (
         <DropControls

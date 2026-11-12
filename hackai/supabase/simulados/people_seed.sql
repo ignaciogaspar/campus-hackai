@@ -2,7 +2,7 @@
 
 begin;
 
-delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]) and system <> all (array['discord']::text[]);
+delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-rquiroga', 'p-pmolina', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]) and system <> all (array['discord']::text[]);
 
 insert into people_accounts (person_id, system, external_id) values
   ('p-mledesma', 'identity', 'demo:p-mledesma'),
@@ -20,6 +20,12 @@ insert into people_accounts (person_id, system, external_id) values
   ('p-srosales', 'identity', 'demo:p-srosales'),
   ('p-srosales', 'siu', '20105'),
   ('p-srosales', 'moodle', '305'),
+  ('p-rquiroga', 'identity', 'demo:p-rquiroga'),
+  ('p-rquiroga', 'siu', '20106'),
+  ('p-rquiroga', 'moodle', '306'),
+  ('p-pmolina', 'identity', 'demo:p-pmolina'),
+  ('p-pmolina', 'siu', '20107'),
+  ('p-pmolina', 'moodle', '307'),
   ('p-taguirre', 'identity', 'demo:p-taguirre'),
   ('p-taguirre', 'siu', '30101'),
   ('p-taguirre', 'moodle', '401'),

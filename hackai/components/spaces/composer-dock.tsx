@@ -11,7 +11,7 @@ import { KeyboardInset } from '@/components/spaces/keyboard-inset'
 
 export function ComposerDock({ children }: { children: ReactNode }) {
   return (
-    <div className='fixed inset-x-0 bottom-[max(var(--keyboard-inset,0px),calc(67px+env(safe-area-inset-bottom)))] z-10 border-t border-border bg-background px-4 py-2 lg:sticky lg:bottom-0 lg:z-auto lg:mt-auto lg:border-t-0 lg:px-0 lg:py-3'>
+    <div className='fixed inset-x-0 bottom-[max(var(--keyboard-inset,0px),calc(67px+env(safe-area-inset-bottom)))] z-10 border-t border-border bg-background px-4 py-2 lg:sticky lg:bottom-0 lg:z-auto lg:mt-auto lg:border-t-0 lg:bg-card lg:px-0 lg:py-3'>
       <KeyboardInset />
       <div>{children}</div>
     </div>

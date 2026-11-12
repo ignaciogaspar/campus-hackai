@@ -82,11 +82,41 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     assert.ok(summer.ok)
     assert.deepEqual(sorted(summer.value.map((s) => s.id)), [
       'sec-am1-fce-v',
+      'sec-cda-fi-v',
       'sec-fi1-fi-v',
       'sec-fi1-fi-vt',
       'sec-lid-fi-v',
-      'sec-pr1-fi-v'
+      'sec-pr1-fi-v',
+      'sec-pye-fi-va',
+      'sec-pye-fi-vb',
+      'sec-pye-fi-vc',
+      'sec-vol-fi-v'
     ])
+    const pye = summer.value.find((s) => s.id === 'sec-pye-fi-vc')!
+    assert.deepEqual([pye.programIds, pye.notes], [['iinf'], 'Comisión de Ingeniería en Informática.'])
+  })
+
+  it('devuelve el plan de estudios de una propuesta, o «no encontrado»', async (siu) => {
+    const plan = await siu.studyPlan('iind')
+    assert.deepEqual(plan, { ok: true, value: syntheticData.siu.studyPlans.find((p) => p.programId === 'iind') })
+    assert.ok(plan.ok)
+    assert.deepEqual(
+      plan.value.subjects.find((s) => s.subjectId === 'pye'),
+      {
+        subjectId: 'pye',
+        year: 2,
+        kind: 'obligatoria'
+      }
+    )
+    assert.deepEqual(
+      plan.value.subjects.find((s) => s.subjectId === 'tor'),
+      {
+        subjectId: 'tor',
+        year: null,
+        kind: 'vida-universitaria'
+      }
+    )
+    assert.deepEqual(await siu.studyPlan('asp-fi'), { ok: false, error: 'no-encontrado' })
   })
 
   it('devuelve las comisiones que dicta un docente', async (siu) => {
@@ -148,8 +178,15 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     const history = await siu.history(sofia)
     assert.ok(history.ok)
     assert.deepEqual(
-      history.value.map((h) => [h.type, h.sectionId, h.assessmentId, h.grade, h.result]),
+      history.value
+        .filter((h) => h.sectionId === 'sec-pr1-fi-a')
+        .map((h) => [h.type, h.sectionId, h.assessmentId, h.grade, h.result]),
       [['evaluacion', 'sec-pr1-fi-a', tp.id, null, 'ausente']]
+    )
+    // Y Álgebra regular, con el final pendiente.
+    assert.deepEqual(
+      history.value.filter((h) => h.type === 'cursada').map((h) => [h.subjectId, h.grade, h.result]),
+      [['aga', 7, 'regular']]
     )
     const provisional = await siu.provisionalResults(sofia)
     assert.ok(provisional.ok)

@@ -83,6 +83,29 @@ create table if not exists siu_sections (
 
 create index if not exists siu_sections_teacher_ids on siu_sections using gin (teacher_ids);
 
+-- Para una base creada antes de que las comisiones dijeran su carrera y sus observaciones.
+alter table siu_sections add column if not exists program_ids text[] not null default '{}';  -- propuestas
+alter table siu_sections add column if not exists notes text;                                 -- observaciones
+
+-- Planes de estudio (/propuestas/{propuesta}/planes): uno vigente por propuesta.
+create table if not exists siu_study_plans (
+  program_id text primary key references siu_programs (id),  -- propuesta
+  name text not null,                 -- plan
+  years integer not null check (years > 0),                  -- duracion_teorica
+  electives_required integer not null default 0,
+  university_life_required integer not null default 0
+);
+
+-- Materias de cada plan, con el año de la carrera (null: cualquier año).
+create table if not exists siu_plan_subjects (
+  program_id text not null references siu_study_plans (program_id) on delete cascade,
+  subject_id text not null references siu_subjects (id),
+  year integer check (year is null or year > 0),             -- anio_de_cursada
+  kind text not null check (kind in ('obligatoria', 'optativa', 'vida-universitaria')),
+  position integer not null default 0,
+  primary key (program_id, subject_id)
+);
+
 -- Inscripciones a cursada (/inscripciones, esquema Inscripcion).
 create table if not exists siu_course_enrollments (
   id text primary key,                -- inscripcion
@@ -111,6 +134,8 @@ create table if not exists siu_exam_boards (
   enrollment_start timestamptz not null,
   enrollment_end timestamptz not null
 );
+
+alter table siu_exam_boards add column if not exists notes text;  -- observaciones
 
 -- Inscripciones a examen (/inscripciones-mesas, esquema InscripcionMesa).
 create table if not exists siu_exam_enrollments (
@@ -197,11 +222,13 @@ alter table siu_assessments enable row level security;
 alter table siu_history enable row level security;
 alter table siu_provisional_results enable row level security;
 alter table siu_certificates enable row level security;
+alter table siu_study_plans enable row level security;
+alter table siu_plan_subjects enable row level security;
 
 revoke all on table
   siu_schools, siu_programs, siu_persons, siu_person_programs, siu_terms, siu_subjects, siu_sections,
   siu_course_enrollments, siu_exam_boards, siu_exam_enrollments, siu_assessments, siu_history,
-  siu_provisional_results, siu_certificates
+  siu_provisional_results, siu_certificates, siu_study_plans, siu_plan_subjects
 from anon, authenticated;
 
 commit;

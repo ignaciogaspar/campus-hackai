@@ -15,7 +15,7 @@ export function OriginBadge({ origin, className }: { origin: Origin; className?:
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md px-1.5 py-px text-[11px] font-bold whitespace-nowrap',
+        'inline-flex items-center gap-1 rounded-md px-1.5 py-px text-[0.6875rem] font-bold whitespace-nowrap',
         colors,
         className
       )}

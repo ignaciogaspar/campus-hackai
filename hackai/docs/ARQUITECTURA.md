@@ -41,6 +41,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `pendingFinals(persona)` | Materias regulares sin aprobar (un final desaprobado sigue pendiente), cada una con su próxima mesa (en la que está inscripto o la primera cuya inscripción no cerró) y si está inscripto, abierta, sin cupo o todavía no abre |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
 | `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |
+| `career(persona)` | Cada materia de su plan de estudios (y las que cursó fuera de él) con su estado, sus notas de parciales, la nota de cursada, la final y el final al que está inscripto, más el promedio y el avance de la carrera. Las reglas están en `lib/core/studies/career.ts` |
 
 `objetivo` es una comisión (cursada) o una mesa (examen).
 
@@ -52,6 +53,10 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 - **Matricula solo si hace falta.** Si el adaptador del SIU declara que el SIU ya matricula en Moodle (su interfaz oficial activa), Cursada no matricula por su cuenta.
 - **La baja es el camino inverso.** Desmatricula de las aulas y después da de baja en el SIU. Si el SIU la rechaza (fuera de período, caído), vuelve a matricular: lo que se deshace sin riesgo es la matrícula, no la inscripción.
 - **Si el SIU no deja inscribir por API,** el adaptador lo declara y `enroll` devuelve `requiere-autogestion` con el enlace a la comisión en la Autogestión. Es el caso de la API real del SIU hoy. La pantalla lo muestra como un paso más, no como un error.
+
+**Comisiones por carrera:** una comisión puede abrirse solo para algunas propuestas (`programIds` en el puerto del SIU). Las inscripciones abiertas solo cuentan las de sus propuestas activas y las abiertas a todas, e inscribirse a una de otra carrera devuelve `objetivo-desconocido`. La oferta trae todas las de la facultad y marca las de otra carrera (`otherProgram`): Inscripciones no las muestra, y Espacios las usa para juntar el material de toda la materia.
+
+**Carrera:** el plan es el de su primera propuesta activa, que el SIU da con `studyPlan`; una pasiva, como la de aspirante, no cuenta. El estado de cada materia sigue este orden: promocionada o aprobada; si no, en curso; si no, regular (le falta el final); si no, pendiente. El avance cuenta las obligatorias aprobadas y, hasta lo que pide el plan, las optativas y las actividades de vida universitaria.
 
 **Constancias:** si cumple lo dice el SIU (en la API real, solo `cumple_condiciones`). El motivo lo deduce Cursada con lo que la API también da: propuesta activa, inscripción vigente, finales rendidos. Si no lo encuentra, no inventa uno.
 

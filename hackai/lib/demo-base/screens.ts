@@ -16,8 +16,9 @@ export type DemoScreens = {
 }
 
 /** Las pantallas que se prueban, por persona del set sintético: las de su
-    navegación. Al docente no se le piden Inscripciones, que son del alumno y
-    lo redirigen, ni Académico.
+    navegación. Al docente no se le piden Inscripciones, Notas, Estado de la
+    carrera ni Trámites, que son del alumno y lo redirigen. `/academico` y las
+    rutas viejas de Inscripciones no van: redirigen a las nuevas.
 
     Abrir un espacio lo crea, trae lo de Moodle a los canales de la comisión de
     quien lo abre y marca leído el canal que se abre. Por eso la alumna es Lucía
@@ -39,13 +40,21 @@ export const DEMO_SCREENS: DemoScreens[] = [
       '/materias/am1',
       '/materias/am1?vista=directos',
       '/materias/pr1',
-      '/academico',
+      '/materias?ver=final-pendiente',
+      '/calendario',
       '/inscripciones',
-      '/inscripciones/fi1',
-      '/inscripciones/am1/final'
+      '/inscripciones?materia=fi1',
+      '/inscripciones?tab=examenes&materia=am1',
+      '/notas',
+      '/estado',
+      '/tramites'
     ]
   },
-  { personId: 'p-gferreyra', role: 'profesor', paths: ['/hoy', '/novedades', '/materias', '/materias/am1'] }
+  {
+    personId: 'p-gferreyra',
+    role: 'profesor',
+    paths: ['/hoy', '/novedades', '/materias', '/materias/am1', '/calendario']
+  }
 ]
 
 /** Textos con que las pantallas avisan que algo falló. Una pantalla que no

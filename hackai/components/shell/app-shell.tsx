@@ -1,22 +1,32 @@
 import type { ReactNode } from 'react'
-import { AppNav, type NavSubject } from '@/components/shell/app-nav'
+import type { NavSubject } from '@/components/shell/app-nav'
+import { type Shell, ShellProvider } from '@/components/shell/shell-context'
+import { SidebarFrame } from '@/components/shell/sidebar-frame'
 
+/* En compu, la barra lateral va sobre el fondo y cada pantalla en un panel
+   blanco redondeado; la barra se pliega (components/shell/sidebar-frame.tsx). */
 export function AppShell({
   school,
   subjects,
-  teaches = false,
+  shell,
+  sidebarCollapsed = false,
   children
 }: {
   school?: string
   subjects: NavSubject[]
-  /** Docente: la navegación no le ofrece lo que es solo del alumno. */
-  teaches?: boolean
+  shell: Shell
+  /** Si la persona dejó la barra lateral plegada, según la cookie. */
+  sidebarCollapsed?: boolean
   children: ReactNode
 }) {
   return (
-    <>
-      <div className='pb-24 lg:pb-0 lg:pl-62'>{children}</div>
-      <AppNav school={school} subjects={subjects} teaches={teaches} />
-    </>
+    <ShellProvider value={shell}>
+      <SidebarFrame
+        initialCollapsed={sidebarCollapsed}
+        nav={{ school, subjects, person: shell.person, detail: shell.detail }}
+      >
+        {children}
+      </SidebarFrame>
+    </ShellProvider>
   )
 }

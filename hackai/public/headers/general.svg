@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<style>*{vector-effect:non-scaling-stroke}</style>
+<defs><radialGradient id="glow" cx="0.76" cy="0.5" r="0.4"><stop offset="0" stop-color="#1f5cff" stop-opacity="0.5"/><stop offset="1" stop-color="#1f5cff" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="360" fill="url(#glow)" stroke="none"/>
+<path d="M566 132 C 526 112, 470 110, 426 122 L426 252 C 470 240, 526 242, 566 262 Z" stroke="#3ff0ff" stroke-opacity="0.6" fill="#1f5cff" fill-opacity="0.2"/>
+<path d="M566 132 C 606 112, 662 110, 706 122 L706 252 C 662 240, 606 242, 566 262 Z" stroke="#3ff0ff" stroke-opacity="0.6" fill="#1f5cff" fill-opacity="0.3"/>
+<path d="M446 146 C 482 138, 522 140, 548 152" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M584 152 C 610 140, 650 138, 686 146" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M446 166 C 482 158, 522 160, 548 172" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M584 172 C 610 160, 650 158, 686 166" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M446 186 C 482 178, 522 180, 548 192" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M446 206 C 482 198, 522 200, 548 212" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M584 212 C 610 200, 650 198, 686 206" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M446 226 C 482 218, 522 220, 548 232" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M584 232 C 610 220, 650 218, 686 226" stroke="#ffffff" stroke-opacity="0.24" fill="none" fill-opacity="1"/>
+<path d="M584 192 C 610 180, 630 178, 642 180" stroke="#ff7a1a" stroke-opacity="0.95" fill="none" fill-opacity="1"/>
+</svg>

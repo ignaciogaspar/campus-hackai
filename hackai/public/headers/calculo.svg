@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<style>*{vector-effect:non-scaling-stroke}</style>
+<defs><radialGradient id="glow" cx="0.76" cy="0.5" r="0.4"><stop offset="0" stop-color="#1f5cff" stop-opacity="0.5"/><stop offset="1" stop-color="#1f5cff" stop-opacity="0"/></radialGradient></defs>
+<rect width="720" height="360" fill="url(#glow)" stroke="none"/>
+<line x1="330" y1="238" x2="706" y2="238" stroke="#ffffff" stroke-opacity="0.3"/>
+<path d="M698 233 L706 238 L698 243" stroke="#ffffff" stroke-opacity="0.3" fill="none" fill-opacity="1"/>
+<line x1="372" y1="292" x2="372" y2="92" stroke="#ffffff" stroke-opacity="0.3"/>
+<path d="M367 100 L372 92 L377 100" stroke="#ffffff" stroke-opacity="0.3" fill="none" fill-opacity="1"/>
+<path d="M470 238 L470 136.8 L474 140.2 L478 143.6 L482 147 L486 150.5 L490 154 L494 157.4 L498 160.8 L502 164 L506 167.1 L510 170.1 L514 172.9 L518 175.5 L522 177.8 L526 179.9 L530 181.7 L534 183.3 L538 184.5 L542 185.4 L546 186 L550 186.2 L554 186.1 L558 185.6 L560 238 Z" stroke="#3ff0ff" stroke-opacity="0" fill="#1f5cff" fill-opacity="0.4"/>
+<line x1="476" y1="238" x2="476" y2="144.9" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="485" y1="238" x2="485" y2="152.6" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="494" y1="238" x2="494" y2="160.4" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="503" y1="238" x2="503" y2="167.8" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="512" y1="238" x2="512" y2="174.5" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="521" y1="238" x2="521" y2="180.2" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="530" y1="238" x2="530" y2="184.7" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="539" y1="238" x2="539" y2="187.7" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="548" y1="238" x2="548" y2="189.1" stroke="#ffffff" stroke-opacity="0.16"/>
+<line x1="557" y1="238" x2="557" y2="188.8" stroke="#ffffff" stroke-opacity="0.16"/>
+<path d="M340 168 L344 163.5 L348 159 L352 154.6 L356 150.2 L360 146 L364 142 L368 138.1 L372 134.4 L376 130.9 L380 127.7 L384 124.7 L388 122 L392 119.6 L396 117.6 L400 115.8 L404 114.4 L408 113.4 L412 112.6 L416 112.3 L420 112.3 L424 112.6 L428 113.2 L432 114.2 L436 115.5 L440 117.1 L444 119 L448 121.2 L452 123.6 L456 126.2 L460 129 L464 132 L468 135.2 L472 138.5 L476 141.9 L480 145.3 L484 148.8 L488 152.2 L492 155.7 L496 159.1 L500 162.4 L504 165.6 L508 168.6 L512 171.5 L516 174.2 L520 176.7 L524 178.9 L528 180.9 L532 182.5 L536 183.9 L540 185 L544 185.7 L548 186.1 L552 186.2 L556 185.9 L560 185.3 L564 184.3 L568 183 L572 181.3 L576 179.4 L580 177.1 L584 174.5 L588 171.6 L592 168.4 L596 165 L600 161.3 L604 157.5 L608 153.5 L612 149.3 L616 145 L620 140.6 L624 136.1 L628 131.6 L632 127.1 L636 122.6 L640 118.1 L644 113.8 L648 109.5 L652 105.4 L656 101.5 L660 97.7 L664 94.2 L668 90.9 L672 87.9 L676 85.1 L680 82.6 L684 80.5 L688 78.7 L692 77.2 L696 76 L700 75.2" stroke="#3ff0ff" stroke-opacity="0.8" fill="none" fill-opacity="1"/>
+<line x1="566" y1="201.6" x2="694" y2="57" stroke="#ff7a1a" stroke-opacity="0.95"/>
+<line x1="630" y1="129.3" x2="630" y2="238" stroke="#ffffff" stroke-opacity="0.25" stroke-dasharray="3 5"/>
+<circle cx="630" cy="129.3" r="5" stroke="#ff7a1a" stroke-opacity="1" fill="#0b1150" fill-opacity="1"/>
+</svg>

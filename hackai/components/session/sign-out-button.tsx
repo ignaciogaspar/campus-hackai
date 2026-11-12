@@ -1,10 +1,11 @@
 'use client'
 
-/* Botón para salir: cierra la sesión y vuelve al ingreso. Va sobre el navy del
-   encabezado o, en la hoja del perfil, sobre blanco. Es un componente de
-   cliente para avisar mientras sale, y porque `Button` trae a `radix-ui` entero
-   cuando se importa desde un componente de servidor. */
-import { LogOut } from 'lucide-react'
+/* Botón para salir: cierra la sesión y vuelve al ingreso. Va en la hoja del
+   perfil (celular) o sobre el navy cuando
+   no hay perfil que mostrar. Es un componente de cliente para avisar mientras
+   sale, y porque `Button` trae a `radix-ui` entero cuando se importa desde un
+   componente de servidor. */
+import { LoaderCircle, LogOut } from 'lucide-react'
 import { useFormStatus } from 'react-dom'
 import { signOut } from '@/app/actions/session'
 import { Button } from '@/components/ui/button'
@@ -17,15 +18,16 @@ const TONES = {
 
 function Submit({ tone }: { tone: keyof typeof TONES }) {
   const { pending } = useFormStatus()
+  const Icon = pending ? LoaderCircle : LogOut
   return (
     <Button
       type='submit'
-      variant={tone === 'navy' ? 'ghost' : 'outline'}
+      variant={tone === 'light' ? 'outline' : 'ghost'}
       disabled={pending}
       aria-busy={pending}
       className={cn('cursor-pointer gap-1.5 font-semibold', TONES[tone])}
     >
-      <LogOut aria-hidden='true' strokeWidth={1.8} />
+      <Icon aria-hidden='true' strokeWidth={1.8} className={cn(pending && 'motion-safe:animate-spin')} />
       {pending ? 'Saliendo…' : 'Salir'}
     </Button>
   )

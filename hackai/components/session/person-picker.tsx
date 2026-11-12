@@ -103,7 +103,7 @@ export function PersonPicker({ people, returnTo }: { people: Person[]; returnTo?
               className={railItem({ size: 'sm' })}
             >
               {label}
-              <span className='text-[11px] font-bold opacity-70'>{count(value)}</span>
+              <span className='text-[0.6875rem] font-bold opacity-70'>{count(value)}</span>
             </button>
           ))}
         </fieldset>

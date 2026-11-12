@@ -60,6 +60,17 @@ Unidad académica de la universidad (Ingeniería, Ciencias Empresariales, Derech
 Versión del conjunto de materias de una propuesta (por ejemplo, IINF Plan 2023), organizado por año, con optativas y otros requisitos, y con las correlativas de cada materia.
 _Avoid_: «plan» para hablar de un plan de trabajo o de la propuesta.
 
+**Optativa (Elective)**:
+Materia del plan que el alumno elige entre varias. El plan pide una cantidad (`electivesRequired`) y va en el año desde el que se puede cursar.
+
+**Actividad de vida universitaria (UniversityLife)**:
+Materia del plan que no es de la carrera en sí (voluntariado, oratoria, coro) y suma créditos. Se hace en cualquier año y suele aprobarse sin nota. El plan pide una cantidad (`universityLifeRequired`).
+_Avoid_: «crédito» para la actividad; el crédito es lo que suma.
+
+**Estado de la materia (SubjectStatus)**:
+Cómo viene el alumno en una materia: promocionada, aprobada (por final o equivalencia), en curso, regular (cursada aprobada, falta el final) o pendiente. Lo calcula Cursada en `career`.
+_Avoid_: «disponible» o «archivada» para el estado: esas palabras son de Materias y hablan del período, no de la aprobación.
+
 **Materia (Subject)**:
 Unidad del plan que se cursa y se aprueba. El SIU la llama «actividad» y usa la misma palabra para extracurriculares (ayudantías, viajes, Vida Universitaria).
 _Avoid_: «actividad» en nuestra UI; «curso» (es de Moodle y de Campus Austral).

@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next'
-import { Montserrat } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import './globals.css'
 
-const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-sans' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
   title: 'Campus HackAI',
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang='es-AR' className={cn('font-sans', montserrat.variable)}>
+    <html lang='es-AR' className={cn('font-sans', inter.variable)}>
       <body>{children}</body>
     </html>
   )

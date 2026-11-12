@@ -39,6 +39,23 @@
   --origin-moodle-background: #fff1e3;
   --origin-siu: #0f6a41;
   --origin-siu-background: #e3f5ec;
+  /* Qué es cada fecha del calendario de Hoy: pastel con borde un poco más oscuro y
+     texto del mismo tono (AA sobre su fondo). */
+  --kind-parcial: #4a3fc0;
+  --kind-parcial-background: #eeecfd;
+  --kind-parcial-border: #dcd8fa;
+  --kind-final: #a8323f;
+  --kind-final-background: #fdebed;
+  --kind-final-border: #f6d3d8;
+  --kind-recuperatorio: #9a4f0e;
+  --kind-recuperatorio-background: #fdf1e4;
+  --kind-recuperatorio-border: #f5dcc0;
+  --kind-tp: #1f7346;
+  --kind-tp-background: #e6f6ed;
+  --kind-tp-border: #c9ebd7;
+  --kind-entrega: #1d6797;
+  --kind-entrega-background: #e5f3fb;
+  --kind-entrega-border: #c8e4f5;
   --background: #f2f4fb;
   --foreground: var(--tinta);
   --card: oklch(1 0 0);
@@ -81,9 +98,31 @@ body {
 }
 
 @layer base {
-  a { color: var(--azul); }
+  /* En compu todo se veía chico: la escala crece con la pantalla. Los tamaños van en rem, así que acompaña todo. */
+  @media (min-width: 1024px) { html { font-size: 106.25%; } }
+  @media (min-width: 1440px) { html { font-size: 112.5%; } }
+  a { color: var(--azul); text-underline-offset: 0.2em; }
   html { scrollbar-width: none; }
   html::-webkit-scrollbar { display: none; }
+  /* Lo que dibuja el navegador también va con la paleta: la selección y el cursor de texto. */
+  ::selection { background: color-mix(in oklch, var(--blue-light) 24%, white); color: var(--tinta); }
+  body { caret-color: var(--blue-light); }
+}
+
+/* Compu: el marco de la app, de borde a borde, es un vidrio esmerilado claro con
+   un tinte celeste agua: más intenso en el tercio de arriba, sobre todo contra el
+   borde izquierdo, y casi blanco abajo. La barra lateral no tiene fondo propio: es
+   este marco (su ancho, --sidebar-w, lo pone sidebar-frame.tsx). */
+@utility bg-sidebar-glass {
+  background-color: #f3f7f8;
+  background-image:
+    radial-gradient(
+      calc(var(--sidebar-w, 15.5rem) * 0.9) 45% at 0% 28%,
+      rgb(212 241 245 / 0.7),
+      rgb(212 241 245 / 0.28) 55%,
+      transparent 100%
+    ),
+    linear-gradient(180deg, #ecf4f6 0%, #e8f2f4 25%, #ecf4f5 45%, #f1f6f7 60%, #f5f8f8 75%, #f9fafa 88%, #fbfcfc 100%);
 }
 
 /* Foco visible de todo control: afuera del borde, o adentro si el contenedor recorta. */
@@ -101,7 +140,6 @@ body {
 .card { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.kicker { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--azul); }
 .muted { color: var(--gris); }
 .chico { font-size: 0.875rem; }
 .vacio { padding: 24px; text-align: center; color: var(--gris); border: 1px dashed var(--borde); border-radius: 12px; }
@@ -172,7 +210,25 @@ body {
   --color-origin-moodle-background: var(--origin-moodle-background);
   --color-origin-siu: var(--origin-siu);
   --color-origin-siu-background: var(--origin-siu-background);
-  --shadow-card: 0 1px 2px rgb(11 17 80 / 0.06), 0 6px 18px rgb(11 17 80 / 0.08);
+  --color-kind-parcial: var(--kind-parcial);
+  --color-kind-parcial-background: var(--kind-parcial-background);
+  --color-kind-parcial-border: var(--kind-parcial-border);
+  --color-kind-final: var(--kind-final);
+  --color-kind-final-background: var(--kind-final-background);
+  --color-kind-final-border: var(--kind-final-border);
+  --color-kind-recuperatorio: var(--kind-recuperatorio);
+  --color-kind-recuperatorio-background: var(--kind-recuperatorio-background);
+  --color-kind-recuperatorio-border: var(--kind-recuperatorio-border);
+  --color-kind-tp: var(--kind-tp);
+  --color-kind-tp-background: var(--kind-tp-background);
+  --color-kind-tp-border: var(--kind-tp-border);
+  --color-kind-entrega: var(--kind-entrega);
+  --color-kind-entrega-background: var(--kind-entrega-background);
+  --color-kind-entrega-border: var(--kind-entrega-border);
+  /* Un filo de 1 px para que la tarjeta se recorte también sobre el panel blanco de compu. */
+  --shadow-card: 0 0 0 1px rgb(11 17 80 / 0.05), 0 1px 2px rgb(11 17 80 / 0.06), 0 6px 18px rgb(11 17 80 / 0.07);
+  /* El panel blanco de las pantallas en compu, apoyado sobre el vidrio del marco. */
+  --shadow-panel: 0 0 0 1px rgb(11 17 80 / 0.06), 0 1px 3px rgb(11 17 80 / 0.05), 0 12px 32px rgb(11 17 80 / 0.06);
   /* La opción elegida de un riel, en relieve sobre el carril gris. */
   --shadow-raised: 0 1px 2px rgb(11 17 80 / 0.08), 0 4px 10px rgb(11 17 80 / 0.1);
   --color-accent-foreground: var(--accent-foreground);

@@ -140,6 +140,11 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return ok(copy(db.history.filter((h) => h.personId === personId)))
     },
 
+    async studyPlan(programId) {
+      const plan = db.studyPlans.find((p) => p.programId === programId)
+      return plan ? ok(copy(plan)) : fail('no-encontrado')
+    },
+
     async provisionalResults(personId) {
       if (!hasPerson(personId)) return fail('no-encontrado')
       return ok(copy(db.provisionalResults.filter((r) => r.personId === personId)))

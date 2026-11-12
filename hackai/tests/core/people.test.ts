@@ -142,7 +142,7 @@ test('demoPeople lista las personas sintéticas con su rol, facultad y propuesta
     syntheticData.people.map((p) => p.id)
   )
   assert.equal(listed.value.filter((p) => p.role === 'alumno').length, 10)
-  assert.equal(listed.value.filter((p) => p.role === 'profesor').length, 5)
+  assert.equal(listed.value.filter((p) => p.role === 'profesor').length, 7)
   assert.deepEqual(
     listed.value.find((p) => p.id === 'p-agimenez'),
     {

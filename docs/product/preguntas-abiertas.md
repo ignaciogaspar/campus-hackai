@@ -161,6 +161,22 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 20. ¿Qué materias muestra Notas y con qué filtros?
+
+- **Por qué importa:** la encuesta pide encontrar las notas sin buscar entre historia académica y actuación provisoria. El pedido del equipo dice «solo tus materias en curso» y, a la vez, que cada materia muestre si está promocionada o aprobada y que se filtre por año.
+- **Hipótesis:** Notas muestra las materias que el alumno cursó o está cursando (todas menos las pendientes del plan), agrupadas por año de la carrera, con filtros por estado (en curso, aprobadas, final pendiente), año lectivo, tipo (obligatoria, optativa, vida universitaria) y año de la carrera. Las del plan que nunca cursó van solo en Estado de la carrera.
+- **Opciones:** como está; abrir Notas con el filtro «En curso» elegido; mostrar también las pendientes.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 21. ¿La API del SIU da el plan de estudios y para qué carrera es cada comisión?
+
+- **Por qué importa:** Inscripciones muestra solo las comisiones de la carrera del alumno, y Notas y Estado de la carrera usan el año de cada materia, las optativas y las actividades de vida universitaria. En el SIU simulado todo eso existe (`studyPlan` y `programIds` en el puerto); en la API real no lo confirmamos.
+- **Lo que sabemos (#61):** la API pública v2.1 casi no lo trae: `/planes-versiones/{id}/actividades` da solo código, nombre y si es optativa. No hay año de la carrera, vida universitaria, porcentaje de avance ni correlativas.
+- **Hipótesis:** en producción hace falta otro canal, o un adaptador que devuelva el plan sin años y las comisiones abiertas a todas, y entonces las pantallas se ven sin filtrar. El porcentaje de Estado de la carrera lo calcula HackAI mientras tanto; #61 propone mostrar el oficial del SIU y no uno propio.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
