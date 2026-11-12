@@ -2253,8 +2253,12 @@ test('la búsqueda encuentra el material por nombre o por unidad, sin distinguir
     return found.value.material.map((m) => m.name)
   }
 
-  // Por unidad, como frase: «unidad 2» no trae la Guía 2 de la Unidad 1.
-  assert.deepEqual(await names('  UNIDAD   2 '), ['Práctica derivadas.pdf'])
+  // Por unidad: lo que tiene «unidad 2» tal cual va primero, y después lo que tiene las dos palabras.
+  assert.deepEqual(await names('  UNIDAD   2 '), ['Práctica derivadas.pdf', 'Guía 2.pdf'])
+  // Por palabras, en cualquier orden y repartidas entre el nombre y la unidad.
+  assert.deepEqual(await names('limites guia'), ['Guía 2.pdf', 'Guía de límites.pdf'])
+  assert.deepEqual(await names('derivadas practica'), ['Práctica derivadas.pdf'])
+  assert.deepEqual(await names('guia integrales'), [])
   // Por nombre, sin tildes ni mayúsculas, el más nuevo primero.
   assert.deepEqual(await names('guia'), ['Guía 2.pdf', 'Guía de límites.pdf'])
   assert.deepEqual(await names('limites'), ['Guía 2.pdf', 'Guía de límites.pdf'])

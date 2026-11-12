@@ -1,7 +1,9 @@
 /* Buscar en el espacio: el material por nombre del archivo y por unidad o tema,
    y las consultas de los `#consultas` que la persona ve por su texto o el de
-   sus respuestas. Sin distinguir mayúsculas ni tildes, y con lo buscado como
-   frase: «unidad 2» encuentra «Unidad 2: Derivadas» y no «Unidad 1 · Guía 2».
+   sus respuestas. Sin distinguir mayúsculas ni tildes, y por palabras: alcanza
+   con que estén todas, en cualquier orden, así «guia limites» encuentra «Guía
+   de límites.pdf». En el material, lo que tiene lo buscado tal cual va primero:
+   con «unidad 2», «Unidad 2: Derivadas» antes que la «Guía 2» de la Unidad 1.
 
    Quién ve qué es la misma regla que al abrir un canal (`sees`): el material es
    de toda la materia y lo ve cualquiera del espacio, y las consultas son de una
@@ -25,20 +27,40 @@ import { sectionNameOf, visibleChannels } from '@/lib/core/spaces/channels'
 import { materialItems } from '@/lib/core/spaces/material'
 import { ok, type Result } from '@/lib/result'
 
-/** En minúsculas, sin tildes y con un solo espacio entre palabras. */
-export function searchable(text: string): string {
+/** En minúsculas y sin tildes. */
+function folded(text: string): string {
   return text
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
-const has = (text: string | null, needle: string) => text !== null && searchable(text).includes(needle)
+/** Lo buscado, listo para comparar: entero y palabra por palabra. */
+type Needle = { phrase: string; words: string[] }
 
-function matchingMaterial(items: MaterialItem[], needle: string): MaterialItem[] {
-  return items.filter((i) => has(i.name, needle) || has(i.section, needle))
+function needleOf(shown: string): Needle {
+  const phrase = folded(shown)
+  return { phrase, words: phrase.split(' ').filter(Boolean) }
+}
+
+const haystack = (texts: Array<string | null>) => folded(texts.filter((t) => t !== null).join(' '))
+
+/** Si todas las palabras de lo buscado están en alguno de los textos. */
+const hasWords = (texts: Array<string | null>, needle: Needle) => {
+  const hay = haystack(texts)
+  return needle.words.every((w) => hay.includes(w))
+}
+
+/** Si alguno de los textos tiene lo buscado tal cual. */
+const hasPhrase = (texts: Array<string | null>, needle: Needle) =>
+  texts.some((t) => t !== null && folded(t).replace(/\s+/g, ' ').includes(needle.phrase))
+
+/** Los archivos que coinciden: los que tienen lo buscado tal cual primero y, adentro, el más nuevo primero. */
+function matchingMaterial(items: MaterialItem[], needle: Needle): MaterialItem[] {
+  const found = items.filter((i) => hasWords([i.name, i.section], needle))
+  const exact = (i: MaterialItem) => Number(hasPhrase([i.name, i.section], needle))
+  // El orden de `items` ya es el más nuevo primero, y `sort` lo respeta entre iguales.
+  return found.sort((a, b) => exact(b) - exact(a))
 }
 
 /** Las consultas de esos canales con sus respuestas, en una sola pasada. */
@@ -60,14 +82,12 @@ async function matchingQuestions(
   member: Membership,
   channels: StoredChannel[],
   messages: StoredMessage[],
-  needle: string
+  needle: Needle
 ): Promise<QuestionMatch[]> {
   const byId = new Map<ChannelId, StoredChannel>(channels.map((c) => [c.id, c]))
   const { questions, replies } = questionsWithReplies(messages)
   const authors = authorsFrom(people)
-  const found = questions.filter(
-    (q) => has(q.text, needle) || (replies.get(q.id) ?? []).some((r) => has(r.text, needle))
-  )
+  const found = questions.filter((q) => hasWords([q.text, ...(replies.get(q.id) ?? []).map((r) => r.text)], needle))
   const matches = await Promise.all(
     found.map(async (q): Promise<QuestionMatch> => {
       const channel = byId.get(q.channelId)
@@ -94,8 +114,8 @@ export async function searchSpace(
 ): Promise<Result<SpaceSearch, SpacesStoreError>> {
   const { people, store } = deps
   const shown = query.replace(/\s+/g, ' ').trim()
-  const needle = searchable(shown)
-  if (needle === '') return ok({ query: shown, material: [], questions: [] })
+  const needle = needleOf(shown)
+  if (needle.words.length === 0) return ok({ query: shown, material: [], questions: [] })
 
   const channels = await store.channels([space.id])
   if (!channels.ok) return channels

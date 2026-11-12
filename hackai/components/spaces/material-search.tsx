@@ -8,14 +8,25 @@ import Form from 'next/form'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { shortDate, spaceHref } from '@/components/spaces/format'
-import { MaterialRow } from '@/components/spaces/material-panel'
+import { MaterialRow } from '@/components/spaces/material-row'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
-import type { QuestionMatch, SpaceSearch } from '@/lib/core/spaces'
+import type { QuestionMatch, Spaces } from '@/lib/core/spaces'
+import type { Fail } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
-/** Lo que devolvió la búsqueda: lo encontrado, o que no se pudo buscar. */
-export type MaterialSearchResult = { ok: true; value: SpaceSearch } | { ok: false; query: string }
+type SearchResult = Awaited<ReturnType<Spaces['search']>>
+type SearchError = Extract<SearchResult, Fail<string>>['error']
+
+/** Lo buscado en `?buscar=` y lo que devolvió `search` de Espacios, tal cual. */
+export type MaterialSearchResult = { query: string; result: SearchResult }
+
+const SEARCH_ERRORS: Record<SearchError, string> = {
+  'sin-acceso': 'No podés buscar en este espacio porque no sos parte de la materia.',
+  'espacio-desconocido': 'Este espacio no existe o ya no está.',
+  'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
+  'falla-externa': 'No pudimos buscar porque el SIU no responde. Probá de nuevo en un rato.'
+}
 
 export function MaterialSearchForm({
   subjectId,
@@ -123,16 +134,25 @@ function count(n: number, one: string, many: string) {
 export function MaterialSearchResults({
   subjectId,
   channelId,
-  result
+  search
 }: {
   subjectId: string
   channelId: string
-  result: MaterialSearchResult
+  search: MaterialSearchResult
 }) {
+  const { result } = search
   if (!result.ok) {
     return (
       <ErrorNotice>
-        <p>No pudimos buscar «{result.query}». Probá de nuevo en un rato.</p>
+        <p>{SEARCH_ERRORS[result.error]}</p>
+        {result.error === 'falla-externa' && (
+          <Link
+            href={spaceHref(subjectId, { canal: channelId, buscar: search.query })}
+            className='inline-flex min-h-11 items-center font-bold underline'
+          >
+            Reintentar
+          </Link>
+        )}
         <ClearLink subjectId={subjectId} channelId={channelId} />
       </ErrorNotice>
     )

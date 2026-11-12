@@ -259,9 +259,10 @@ export type QuestionMatch = {
 export type SpaceSearch = {
   /** Lo que se buscó, sin espacios de más. */
   query: string
-  /** Archivos del material cuyo nombre o unidad tiene lo buscado, el más nuevo primero. */
+  /** Archivos del material cuyo nombre y unidad tienen todas las palabras buscadas: los que las tienen
+      tal cual, juntas y en orden, primero; adentro, el más nuevo primero. */
   material: MaterialItem[]
-  /** Consultas de los canales que la persona ve cuyo texto o alguna respuesta tiene lo buscado:
+  /** Consultas de los canales que la persona ve cuyo texto y respuestas tienen todas las palabras buscadas:
       las resueltas primero y, adentro, la más nueva primero. */
   questions: QuestionMatch[]
 }
@@ -319,7 +320,7 @@ export type Spaces = {
     material: NewMaterial
   ): Promise<Result<MaterialItem, 'espacio-desconocido' | 'solo-docentes' | 'archivo-vacio' | FilesError | AccessError>>
   /** Busca en el material del espacio por nombre del archivo y por unidad o tema, y en las consultas de los
-      canales que la persona ve, sin distinguir mayúsculas ni tildes. Nunca trae nada de otra comisión.
+      canales que la persona ve, por palabras y sin distinguir mayúsculas ni tildes. Nunca trae nada de otra comisión.
       Lo buscado vacío no encuentra nada. No marca nada leído. */
   search(
     personId: PersonId,

@@ -4,7 +4,7 @@
    va: el material tiene su pestaña y los contactos están en Directos. */
 import type { ReactNode } from 'react'
 import { initialsOf, type SpaceRef } from '@/components/spaces/format'
-import { MaterialRow } from '@/components/spaces/material-panel'
+import { MaterialRow } from '@/components/spaces/material-row'
 import { StartDirect } from '@/components/spaces/start-direct'
 import type { DirectContact, MaterialItem, SpaceSection } from '@/lib/core/spaces'
 

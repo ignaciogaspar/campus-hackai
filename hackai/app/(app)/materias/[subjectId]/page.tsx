@@ -259,8 +259,7 @@ async function searchIn(
   buscar: string | undefined
 ): Promise<MaterialSearchResult | null> {
   if (!buscar || !opened?.ok || opened.value.channel.kind !== 'material') return null
-  const found = await system().spaces.search(personId, view.space.id, buscar)
-  return found.ok ? found : { ok: false, query: buscar }
+  return { query: buscar, result: await system().spaces.search(personId, view.space.id, buscar) }
 }
 
 /** Con el formulario de canal nuevo o la lista de directos a la vista no se abre ningún canal, así no se
