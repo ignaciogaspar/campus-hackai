@@ -116,7 +116,12 @@ El espacio y sus canales se crean la primera vez que alguien los abre. Sin confi
 psql "$DATABASE_URL" -f supabase/migrations/0002_spaces.sql -f supabase/migrations/0003_files.sql
 ```
 
-Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/route.ts`), que pide sesión y le pide el archivo a Espacios. Espacios chequea que la persona vea el espacio del material o el canal del adjunto; si no, la ruta responde 404, igual que a un archivo que no existe. Solo se abren en el navegador PDF, imágenes y texto plano; el resto se descarga.
+Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/route.ts`); qué responde, en `lib/file-delivery.ts`, con sus tests en `tests/file-delivery.test.ts`:
+
+- **Sin sesión** lleva al ingreso con `?next=<ruta del archivo>`, y al entrar vuelve al archivo. `lib/return-to.ts` deja volver solo a rutas de la app, nunca a otro sitio.
+- **Con sesión** le pide el archivo a Espacios, que chequea que la persona vea el espacio del material o el canal del adjunto. Si no lo ve, o el archivo no existe, muestra la misma página corta («Este archivo no está disponible», 404), así no se sabe si existe. Si el almacenamiento no responde, otra página propone probar de nuevo (502).
+- **Se muestran** PDF, imágenes y texto plano; el resto se descarga, con el nombre original aunque tenga tildes. PDF e imágenes van sin CSP, porque los abre el visor del navegador y una CSP cerrada se lo arruina (en Chrome, la imagen pierde los estilos del visor). Todo lo demás va con `default-src 'none'; sandbox`, que no deja correr nada. Todo va con `nosniff`.
+- **Caché:** cada archivo lleva su id como `ETag` y `Cache-Control: private, no-cache`. El navegador lo guarda y, al volver a abrirlo, pregunta: si la persona lo sigue viendo recibe un 304 sin cuerpo, no el archivo entero. Como cada pregunta pasa por la sesión y por Espacios, después de «Salir» la copia guardada no se vuelve a mostrar. El 304 le ahorra la bajada al navegador, no al servidor: `file` de Espacios igual trae los bytes de Storage en cada pregunta.
 
 Las baterías de contrato del almacén (`tests/contracts/spaces-store.test.ts`) y de Archivos (`tests/contracts/files.test.ts`) corren siempre contra memoria y contra Supabase con un PostgREST o un Storage de mentira, sin red, y contra una base de prueba solo con `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -246,7 +251,7 @@ No las imprimas en logs ni en reportes.
 | `lib/result.ts` | `Result`, `ok()`, `fail()` y `notImplemented()`: los errores como valores. |
 | `lib/ports/` | Los seis puertos (identidad, SIU, aula virtual, canal externo, archivos, reloj) con sus capacidades. |
 | `lib/core/` | Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
-| `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. |
+| `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. Los adjuntos PDF son PDF que abre el visor del navegador (`synthetic-files.ts`). |
 | `lib/adapters/memoria/` | Un adaptador en memoria por puerto, cargado con ese set. |
 | `lib/adapters/discord/` | El canal externo real: API REST v10 de Discord, sin gateway. Bot y prueba manual (`npm run discord:probar`): [docs/discord.md](docs/discord.md). |
 | `tests/contracts/` | La batería de contrato de cada puerto y de los almacenes de Personas y Espacios, que corre contra el adaptador en memoria y el real. `fake-discord.ts` es un `fetch` con la forma de la API de Discord, y `fake-postgrest.ts`, uno con la de PostgREST, los dos sin red. |
