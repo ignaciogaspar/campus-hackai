@@ -18,6 +18,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { unreadBySubject, unreadTotal } from '@/components/news/format'
+import { newGradesFor } from '@/components/shell/notifications-bell'
 import { PageHeader } from '@/components/shell/page-header'
 import { ArchivedCard, CourseCard, PendingFinalCard, SubjectGrid } from '@/components/subjects/subject-grid'
 import { Pagination } from '@/components/ui/pagination'
@@ -146,12 +147,13 @@ export default async function MateriasPage({
 }) {
   const session = await requireSession()
   const student = session.role === 'alumno'
-  const [params, person, result, reads, unread] = await Promise.all([
+  const [params, person, result, reads, unread, grades] = await Promise.all([
     searchParams,
     system().people.get(session.personId),
     system().studies.subjectsOf(session.personId),
     studentReads(session.personId, student),
-    system().spaces.unreadFor(session.personId)
+    system().spaces.unreadFor(session.personId),
+    newGradesFor(session)
   ])
   // Si Espacios no responde, las tarjetas van sin no leídos y la campana lo vuelve a pedir.
   const news = unread.ok ? unread.value : []
@@ -163,7 +165,7 @@ export default async function MateriasPage({
         title='Mis materias'
         school={person.ok ? person.value.school.name : undefined}
         art='materias'
-        unread={unread.ok ? unreadTotal(news) : undefined}
+        unread={unread.ok ? unreadTotal(news) + grades.length : undefined}
       >
         {student && (
           <Link

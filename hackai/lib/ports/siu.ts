@@ -159,6 +159,8 @@ export type SiuHistoryEntry = {
   /** Comisión y evaluación del cronograma. Solo en los renglones `evaluacion`; en los demás, `null`. */
   sectionId: string | null
   assessmentId: string | null
+  /** Cuándo se cargó la nota, si el SIU lo dice. Solo en los renglones `evaluacion`; en los demás, `null`. */
+  loadedAt: string | null
 }
 
 /** Nota cargada en un acta todavía abierta. */
@@ -169,6 +171,8 @@ export type SiuProvisionalResult = {
   assessmentId: string
   grade: number | null
   date: string
+  /** Cuándo se cargó la nota, si el SIU lo dice; `date` es la fecha de la evaluación. */
+  loadedAt: string | null
 }
 
 /** Falta a una clase, como la lista Reportes > Inasistencias: por comisión, con fecha y si está justificada. */

@@ -16,6 +16,7 @@ import { activeProgram } from '@/components/session/person-text'
 import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { NavigationProgress } from '@/components/shell/navigation-progress'
+import { newGradesFor } from '@/components/shell/notifications-bell'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
 import { spaceHref } from '@/components/spaces/format'
 import { UnreadRefresh } from '@/components/spaces/unread-refresh'
@@ -31,10 +32,11 @@ function profileDetail(person: Person): string {
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await requireSession()
-  const [person, subjects, unread, jar] = await Promise.all([
+  const [person, subjects, unread, grades, jar] = await Promise.all([
     system().people.get(session.personId),
     system().studies.subjectsOf(session.personId),
     system().spaces.unreadFor(session.personId),
+    newGradesFor(session),
     cookies()
   ])
   if (!person.ok && person.error === 'persona-desconocida') redirect('/salir')
@@ -55,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppShell
       school={found?.school.name}
       subjects={[...nav.values()]}
-      unread={unread.ok ? unreadTotal(unread.value) : 0}
+      unread={(unread.ok ? unreadTotal(unread.value) : 0) + grades.length}
       shell={{ person: found, detail: found ? profileDetail(found) : undefined }}
       sidebarCollapsed={jar.get(SIDEBAR_COOKIE)?.value === 'plegada'}
     >

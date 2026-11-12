@@ -833,6 +833,19 @@ const subjectRows: HistoryRow[] = [
   ['p-taguirre', 'sre', 'examen', '2026-02-23', 2, 'desaprobado', 'E-2026-0045']
 ]
 
+// Cuándo se cargaron las notas de una evaluación: [comisión, evaluación, cargada].
+// Son las más nuevas, para que Hoy las muestre como nuevas en el ensayo del
+// 12/11 y en la demo del 13/11. Las demás no dicen cuándo se cargaron, como
+// puede pasar con la API real, y cuentan desde la fecha de la evaluación.
+
+const loadedRows: [string, string, string][] = [
+  ['sec-pr1-fi-a', 'TP integrador', at('2026-11-09', '18:00')],
+  ['sec-am1-fi-a', 'Primer parcial', at('2026-11-10', '09:00')]
+]
+
+const loadedAt = (sectionId: string, name: string) =>
+  loadedRows.find(([section, assessment]) => section === sectionId && assessment === name)?.[2] ?? null
+
 // Notas de evaluaciones cargadas en la historia: [persona, comisión, evaluación, nota, resultado, registro]
 
 const evaluationRows: [string, string, string, number | null, SiuHistoryResult, string][] = [
@@ -858,7 +871,8 @@ const history: SiuHistoryEntry[] = [
       result,
       gradeRecord,
       sectionId: null,
-      assessmentId: null
+      assessmentId: null,
+      loadedAt: null
     })
   ),
   ...evaluationRows.map(([personId, sectionId, name, grade, result, gradeRecord]): Omit<SiuHistoryEntry, 'id'> => {
@@ -872,7 +886,8 @@ const history: SiuHistoryEntry[] = [
       result,
       gradeRecord,
       sectionId,
-      assessmentId: id
+      assessmentId: id,
+      loadedAt: loadedAt(sectionId, name)
     }
   })
 ].map((entry, i) => ({ id: `ha-${i + 1}`, ...entry }))
@@ -902,7 +917,8 @@ const provisionalResults: SiuProvisionalResult[] = provisionalRows.map(([personI
     sectionId,
     assessmentId: id,
     grade,
-    date: assessments.find((a) => a.id === id)!.date
+    date: assessments.find((a) => a.id === id)!.date,
+    loadedAt: loadedAt(sectionId, name)
   }
 })
 
