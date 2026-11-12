@@ -106,13 +106,23 @@ function SectionChips({ view }: { view: SpaceView }) {
   ))
 }
 
-function SpaceError({ error }: { error: AccessError }) {
+function RetryLink({ href }: { href: string }) {
+  return (
+    <Link href={href} className='inline-flex min-h-11 items-center gap-1 font-bold underline'>
+      Reintentar
+      <ChevronRight aria-hidden='true' className='size-4' />
+    </Link>
+  )
+}
+
+function SpaceError({ error, retryHref }: { error: AccessError; retryHref: string }) {
   return (
     <>
       <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{OPEN_ERRORS[error]}</p>
+          {error === 'falla-externa' && <RetryLink href={retryHref} />}
           {error === 'sin-acceso' && (
             <Link href='/materias' className='inline-flex min-h-10 items-center gap-1 font-bold underline'>
               Ir a Mis materias
@@ -143,6 +153,7 @@ function ChannelArea({
     return (
       <ErrorNotice>
         <p>{CHANNEL_ERRORS[opened.error]}</p>
+        {opened.error === 'falla-externa' && <RetryLink href={spaceHref(subjectId, query)} />}
         <Link href={spaceHref(subjectId)} className='inline-flex min-h-10 items-center gap-1 font-bold underline'>
           Volver al espacio
           <ChevronRight aria-hidden='true' className='size-4' />
@@ -281,7 +292,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const query = readQuery(await searchParams)
 
   const opened = await openSpace(session.personId, subjectId)
-  if (!opened.ok) return <SpaceError error={opened.error} />
+  if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} />
   const view = opened.value
   const pane = await paneFor(session.personId, view, query)
 

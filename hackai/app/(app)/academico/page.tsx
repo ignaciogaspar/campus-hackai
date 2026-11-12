@@ -13,6 +13,7 @@ import type { ReactNode } from 'react'
 import { AcademicHistory } from '@/components/academic/academic-history'
 import { CertificateCard, certificateTitle } from '@/components/academic/certificate-card'
 import { GradeList } from '@/components/academic/grade-list'
+import { PendingFinals } from '@/components/academic/pending-finals'
 import { activeProgram } from '@/components/session/person-text'
 import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'
@@ -21,7 +22,14 @@ import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { PeopleError } from '@/lib/core/people'
-import type { AcademicRecord, CertificateStatus, CertificateType, Fresh, StudiesReadError } from '@/lib/core/studies'
+import type {
+  AcademicRecord,
+  CertificateStatus,
+  CertificateType,
+  Fresh,
+  PendingFinal,
+  StudiesReadError
+} from '@/lib/core/studies'
 import type { Result } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -78,9 +86,11 @@ function Block({
 /** Lo del alumno: notas, constancias e historia, cada bloque con su error. */
 function StudentAcademic({
   record,
+  finals,
   certificates
 }: {
   record: Result<Fresh<AcademicRecord>, StudiesReadError>
+  finals: Result<Fresh<PendingFinal[]>, StudiesReadError>
   certificates: Result<CertificateStatus, StudiesReadError>[]
 }) {
   const recordError = record.ok ? null : (RECORD_ERRORS[record.error] ?? 'Algo salió mal al traer tus notas.')
@@ -106,7 +116,7 @@ function StudentAcademic({
           id='constancias'
           title='Constancias'
           hint='Se piden en la Autogestión del SIU: te la abrimos en otra pestaña.'
-          className='lg:sticky lg:top-8 lg:col-start-2 lg:row-span-2 lg:row-start-1'
+          className='lg:sticky lg:top-8 lg:col-start-2 lg:row-span-3 lg:row-start-1'
         >
           {certificates.map((result, i) =>
             result.ok ? (
@@ -117,6 +127,22 @@ function StudentAcademic({
                 un rato.
               </ErrorNotice>
             )
+          )}
+        </Block>
+
+        <Block
+          id='finales'
+          title='Finales pendientes'
+          hint='Lo que tenés regular y te falta rendir, con la próxima mesa.'
+          className='lg:col-start-1'
+        >
+          {finals.ok && finals.value.stale && (
+            <StaleNotice>El SIU no responde. Así estaban el {readTime(finals.value.readAt)}.</StaleNotice>
+          )}
+          {finals.ok ? (
+            <PendingFinals items={finals.value.data} />
+          ) : (
+            <ErrorNotice>No pudimos traer tus finales pendientes del SIU. Probá de nuevo en un rato.</ErrorNotice>
           )}
         </Block>
 
@@ -131,9 +157,10 @@ function StudentAcademic({
 export default async function AcademicoPage() {
   const session = await requireSession()
   const studies = system().studies
-  const [found, record, ...certificates] = await Promise.all([
+  const [found, record, finals, ...certificates] = await Promise.all([
     system().people.get(session.personId),
     studies.record(session.personId),
+    studies.pendingFinals(session.personId),
     ...CERTIFICATES.map((type) => studies.certificate(session.personId, type))
   ])
   const person = found.ok ? found.value : null
@@ -165,7 +192,7 @@ export default async function AcademicoPage() {
             Acá cada alumno ve sus notas, su historia académica y sus constancias. Tus comisiones están en Materias.
           </EmptyState>
         ) : (
-          <StudentAcademic record={record} certificates={certificates} />
+          <StudentAcademic record={record} finals={finals} certificates={certificates} />
         )}
       </main>
     </>

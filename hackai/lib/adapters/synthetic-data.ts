@@ -22,6 +22,9 @@
    - Inscripciones a cursada del cuatrimestre actual, del anterior y de verano
      (con la inscripción abierta; la comisión de la mañana de Física I de
      verano está sin cupo y la de la tarde tiene lugar).
+   - Dos actividades de vida universitaria de Ingeniería que dan créditos, con
+     la inscripción abierta: el Taller de Oratoria cierra el lunes 16/11 y el
+     de Liderazgo, con el verano.
    - Mesas de examen con cupo en el turno de diciembre, con la inscripción
      abierta. A las de Álgebra y Sistemas de Representación les queda un lugar.
    - Cronograma de parciales. Las notas de parciales están repartidas como en
@@ -208,22 +211,33 @@ const terms: SiuTerm[] = [
     end: at('2027-02-26', '23:59'),
     enrollmentStart: at('2026-11-02'),
     enrollmentEnd: at('2026-12-18', '23:59')
+  },
+  {
+    id: 'act-2c-2026',
+    name: 'Actividades de Vida Universitaria 2do Cuatrimestre 2026',
+    start: at('2026-11-17'),
+    end: at('2026-11-28', '23:59'),
+    enrollmentStart: at('2026-11-09'),
+    enrollmentEnd: at('2026-11-16', '23:59')
   }
 ]
 
 const subjects: SiuSubject[] = [
-  { id: 'am1', code: 'AM1', name: 'Análisis Matemático I' },
-  { id: 'aga', code: 'AGA', name: 'Álgebra y Geometría Analítica' },
-  { id: 'pr1', code: 'PR1', name: 'Programación I' },
-  { id: 'fi1', code: 'FI1', name: 'Física I' },
-  { id: 'iec', code: 'IEC', name: 'Introducción a la Economía' },
-  { id: 'co1', code: 'CO1', name: 'Contabilidad I' },
+  { id: 'am1', code: 'AM1', name: 'Análisis Matemático I', credits: null },
+  { id: 'aga', code: 'AGA', name: 'Álgebra y Geometría Analítica', credits: null },
+  { id: 'pr1', code: 'PR1', name: 'Programación I', credits: null },
+  { id: 'fi1', code: 'FI1', name: 'Física I', credits: null },
+  { id: 'iec', code: 'IEC', name: 'Introducción a la Economía', credits: null },
+  { id: 'co1', code: 'CO1', name: 'Contabilidad I', credits: null },
   // Solo en la historia académica: se cursaron antes de los períodos del set.
-  { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería' },
-  { id: 'qui', code: 'QUI', name: 'Química General' },
-  { id: 'an1', code: 'AN1', name: 'Antropología I' },
-  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración' },
-  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación' }
+  { id: 'iin', code: 'IIN', name: 'Introducción a la Ingeniería', credits: null },
+  { id: 'qui', code: 'QUI', name: 'Química General', credits: null },
+  { id: 'an1', code: 'AN1', name: 'Antropología I', credits: null },
+  { id: 'iad', code: 'IAD', name: 'Introducción a la Administración', credits: null },
+  { id: 'sre', code: 'SRE', name: 'Sistemas de Representación', credits: null },
+  // Actividades de vida universitaria: dan créditos.
+  { id: 'tor', code: 'TOR', name: 'Taller de Oratoria', credits: 2 },
+  { id: 'lid', code: 'LID', name: 'Taller de Liderazgo', credits: 3 }
 ]
 
 // Comisiones
@@ -373,6 +387,32 @@ const sections: SiuSection[] = [
     modality: 'virtual',
     instance: 'regularidad',
     capacity: null
+  },
+  {
+    id: 'sec-tor-fi-a',
+    name: 'Única',
+    subjectId: 'tor',
+    schoolId: 'fi',
+    termId: 'act-2c-2026',
+    teacherIds: [siu('p-darrieta')],
+    schedule: [{ day: 'jueves', start: '18:00', end: '20:00' }],
+    location: 'Campus Pilar, aula 3',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 30
+  },
+  {
+    id: 'sec-lid-fi-v',
+    name: 'Verano',
+    subjectId: 'lid',
+    schoolId: 'fi',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-darrieta')],
+    schedule: [{ day: 'miercoles', start: '10:00', end: '12:00' }],
+    location: 'Virtual',
+    modality: 'virtual',
+    instance: 'promocion',
+    capacity: 40
   },
   {
     id: 'sec-am1-fce-v',

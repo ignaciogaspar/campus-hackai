@@ -38,6 +38,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
 | `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
 | `openEnrollments(persona)` | Inscripciones abiertas que le sirven, con los días que faltan para que cierren (contados con el reloj de cada llamada, aunque sea lo último que se leyó) y los lugares que quedan entre todas las comisiones o mesas abiertas de la materia |
+| `pendingFinals(persona)` | Materias regulares sin aprobar (un final desaprobado sigue pendiente), cada una con su próxima mesa (en la que está inscripto o la primera cuya inscripción no cerró) y si está inscripto, abierta, sin cupo o todavía no abre |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
 | `certificate(persona, tipo)` | Si cumple las condiciones de la constancia, por qué no si no cumple, y el enlace a la Autogestión del SIU |
 

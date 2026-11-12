@@ -58,22 +58,25 @@ on conflict (person_id, program_id) do update set status = excluded.status, posi
 insert into siu_terms (id, name, start_at, end_at, enrollment_start, enrollment_end) values
   ('1c-2026', 'Grado 1er Cuatrimestre 2026', '2026-03-09T03:00:00.000Z', '2026-07-11T02:59:00.000Z', '2026-02-16T03:00:00.000Z', '2026-03-14T02:59:00.000Z'),
   ('2c-2026', 'Grado 2do Cuatrimestre 2026', '2026-08-10T03:00:00.000Z', '2026-11-29T02:59:00.000Z', '2026-07-27T03:00:00.000Z', '2026-08-15T02:59:00.000Z'),
-  ('verano-2027', 'Curso de Verano 2027', '2027-01-11T03:00:00.000Z', '2027-02-27T02:59:00.000Z', '2026-11-02T03:00:00.000Z', '2026-12-19T02:59:00.000Z')
+  ('verano-2027', 'Curso de Verano 2027', '2027-01-11T03:00:00.000Z', '2027-02-27T02:59:00.000Z', '2026-11-02T03:00:00.000Z', '2026-12-19T02:59:00.000Z'),
+  ('act-2c-2026', 'Actividades de Vida Universitaria 2do Cuatrimestre 2026', '2026-11-17T03:00:00.000Z', '2026-11-29T02:59:00.000Z', '2026-11-09T03:00:00.000Z', '2026-11-17T02:59:00.000Z')
 on conflict (id) do update set name = excluded.name, start_at = excluded.start_at, end_at = excluded.end_at, enrollment_start = excluded.enrollment_start, enrollment_end = excluded.enrollment_end;
 
-insert into siu_subjects (id, code, name) values
-  ('am1', 'AM1', 'Análisis Matemático I'),
-  ('aga', 'AGA', 'Álgebra y Geometría Analítica'),
-  ('pr1', 'PR1', 'Programación I'),
-  ('fi1', 'FI1', 'Física I'),
-  ('iec', 'IEC', 'Introducción a la Economía'),
-  ('co1', 'CO1', 'Contabilidad I'),
-  ('iin', 'IIN', 'Introducción a la Ingeniería'),
-  ('qui', 'QUI', 'Química General'),
-  ('an1', 'AN1', 'Antropología I'),
-  ('iad', 'IAD', 'Introducción a la Administración'),
-  ('sre', 'SRE', 'Sistemas de Representación')
-on conflict (id) do update set code = excluded.code, name = excluded.name;
+insert into siu_subjects (id, code, name, credits) values
+  ('am1', 'AM1', 'Análisis Matemático I', null),
+  ('aga', 'AGA', 'Álgebra y Geometría Analítica', null),
+  ('pr1', 'PR1', 'Programación I', null),
+  ('fi1', 'FI1', 'Física I', null),
+  ('iec', 'IEC', 'Introducción a la Economía', null),
+  ('co1', 'CO1', 'Contabilidad I', null),
+  ('iin', 'IIN', 'Introducción a la Ingeniería', null),
+  ('qui', 'QUI', 'Química General', null),
+  ('an1', 'AN1', 'Antropología I', null),
+  ('iad', 'IAD', 'Introducción a la Administración', null),
+  ('sre', 'SRE', 'Sistemas de Representación', null),
+  ('tor', 'TOR', 'Taller de Oratoria', 2),
+  ('lid', 'LID', 'Taller de Liderazgo', 3)
+on conflict (id) do update set code = excluded.code, name = excluded.name, credits = excluded.credits;
 
 insert into siu_sections (id, name, subject_id, school_id, term_id, teacher_ids, schedule, location, modality, instance, capacity) values
   ('sec-am1-fi-a', 'A', 'am1', 'fi', '2c-2026', array['20101']::text[], '[{"day":"lunes","start":"08:00","end":"10:00"},{"day":"miercoles","start":"08:00","end":"10:00"}]'::jsonb, 'Campus Pilar, aula 12', 'presencial', 'regularidad', 40),
@@ -86,6 +89,8 @@ insert into siu_sections (id, name, subject_id, school_id, term_id, teacher_ids,
   ('sec-fi1-fi-v', 'Verano', 'fi1', 'fi', 'verano-2027', array['20102']::text[], '[{"day":"lunes","start":"09:00","end":"13:00"},{"day":"jueves","start":"09:00","end":"13:00"}]'::jsonb, 'Campus Pilar, aula 20', 'presencial', 'regularidad', 2),
   ('sec-fi1-fi-vt', 'Verano tarde', 'fi1', 'fi', 'verano-2027', array['20102']::text[], '[{"day":"martes","start":"14:00","end":"18:00"},{"day":"viernes","start":"14:00","end":"18:00"}]'::jsonb, 'Campus Pilar, aula 20', 'presencial', 'regularidad', 25),
   ('sec-pr1-fi-v', 'Verano', 'pr1', 'fi', 'verano-2027', array['20104']::text[], '[{"day":"martes","start":"09:00","end":"13:00"}]'::jsonb, 'Virtual', 'virtual', 'regularidad', null),
+  ('sec-tor-fi-a', 'Única', 'tor', 'fi', 'act-2c-2026', array['20104']::text[], '[{"day":"jueves","start":"18:00","end":"20:00"}]'::jsonb, 'Campus Pilar, aula 3', 'presencial', 'promocion', 30),
+  ('sec-lid-fi-v', 'Verano', 'lid', 'fi', 'verano-2027', array['20104']::text[], '[{"day":"miercoles","start":"10:00","end":"12:00"}]'::jsonb, 'Virtual', 'virtual', 'promocion', 40),
   ('sec-am1-fce-v', 'Verano', 'am1', 'fce', 'verano-2027', array['20103']::text[], '[{"day":"miercoles","start":"18:00","end":"21:00"}]'::jsonb, 'Sede Buenos Aires, aula 3', 'presencial', 'regularidad', 25)
 on conflict (id) do update set name = excluded.name, subject_id = excluded.subject_id, school_id = excluded.school_id, term_id = excluded.term_id, teacher_ids = excluded.teacher_ids, schedule = excluded.schedule, location = excluded.location, modality = excluded.modality, instance = excluded.instance, capacity = excluded.capacity;
 

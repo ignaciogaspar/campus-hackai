@@ -48,6 +48,11 @@ export function spotsLeftText(spotsLeft: number | null): { text: string; full: b
   return { text: leftText(spotsLeft), full: false }
 }
 
+/** «1 crédito», «3 créditos»: lo que da una actividad. */
+export function creditsText(credits: number): string {
+  return credits === 1 ? '1 crédito' : `${credits} créditos`
+}
+
 /** Cuándo cierra una inscripción, con los días que cuenta Cursada: «cierra hoy»,
     «cierra mañana», «cierra en 24 días». Una lectura vieja puede traer una que ya cerró. */
 export function closingText(closesInDays: number): string {

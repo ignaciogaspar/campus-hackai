@@ -7,6 +7,7 @@
    cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta.
    Sí lo vuelve a ejecutar `router.refresh()`, que es como UnreadRefresh baja
    estos no leídos al leer un canal. */
+import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
 import { unreadBySubject } from '@/components/news/format'
 import type { NavSubject } from '@/components/shell/app-nav'
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     system().studies.subjectsOf(session.personId),
     system().spaces.unreadFor(session.personId)
   ])
+  if (!person.ok && person.error === 'persona-desconocida') redirect('/salir')
 
   // Espacios da los no leídos por canal: la barra muestra la suma de cada materia.
   const bySubject = unreadBySubject(unread.ok ? unread.value : [])

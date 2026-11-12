@@ -30,7 +30,8 @@ const SIGN_IN_ERRORS: Record<SignInError, string> = {
   'persona-desconocida': UNKNOWN_PERSON,
   'sin-cuenta': UNKNOWN_PERSON,
   'falla-externa': 'No pudimos abrir la sesión porque el SIU no responde. Probá de nuevo en un rato.',
-  'sin-secreto': 'Falta configurar SESSION_SECRET en el entorno para poder abrir sesiones (hackai/README.md).'
+  'sin-secreto': 'Falta configurar SESSION_SECRET en el entorno para poder abrir sesiones (hackai/README.md).',
+  'sesion-vencida': 'Tu sesión era de una persona que ya no está en la demo. Elegí con quién entrar de nuevo.'
 }
 
 /** El mensaje de un `?error`. Lo escribe quien arma la URL, así que un valor
