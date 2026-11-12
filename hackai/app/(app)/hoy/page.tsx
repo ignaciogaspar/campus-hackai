@@ -1,16 +1,14 @@
-/* Hoy: la pantalla de inicio de quien entra. Al alumno le muestra, en una sola
-   llamada a Hoy, el próximo parcial o final, las fechas de las próximas
-   semanas, las inscripciones que cierran pronto y el acceso a Mis materias
-   (components/today/). Si el SIU o Moodle no responden, cada parte muestra lo
-   último leído o su error y el resto se ve igual. Las novedades sin leer van a
-   la campana del encabezado y llegan con Espacios (#12).
+/* Hoy: la pantalla de inicio de quien entra, armada con una sola llamada a
+   Hoy según el rol de la sesión. Al alumno le muestra el próximo parcial o
+   final, las fechas de las próximas semanas, las inscripciones que cierran
+   pronto y el acceso a Mis materias (components/today/today-screen.tsx). Al
+   docente, sus comisiones, las consultas sin resolver, lo que no leyó y sus
+   parciales y mesas (components/today/teaching-screen.tsx). Si el SIU o Moodle
+   no responden, cada parte muestra lo último leído o su error y el resto se ve
+   igual. La campana suma los no leídos que da Hoy; si Hoy no responde, se los
+   pide a Espacios.
 
-   Al docente, por ahora, lo saluda, dice dónde dicta y lo lleva a Mis materias:
-   su Hoy no está diseñado todavía, así que la página elige la vista según el
-   rol de la sesión y al docente no le pide Hoy: su campana pide los no leídos
-   a Espacios, como los mensajes directos de sus alumnos. Más allá de eso, no
-   decide nada: qué hay en cada parte lo dicen Personas, Hoy y Espacios. */
-import { CalendarDays } from 'lucide-react'
+   No decide nada: qué hay en cada parte lo dicen Personas y Hoy. */
 import type { Metadata } from 'next'
 import { longDay } from '@/components/dates'
 import { unreadTotal } from '@/components/news/format'
@@ -18,13 +16,13 @@ import { activeProgram, firstName } from '@/components/session/person-text'
 import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'
 import { PageHeader } from '@/components/shell/page-header'
-import { SubjectsShortcut } from '@/components/subjects/subjects-shortcut'
+import { TeachingScreen } from '@/components/today/teaching-screen'
 import { TodayScreen } from '@/components/today/today-screen'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { PeopleError, Person } from '@/lib/core/people'
-import type { TodayView } from '@/lib/core/today'
+import type { TeachingView, TodayView } from '@/lib/core/today'
 
 export const metadata: Metadata = { title: 'Hoy · Campus HackAI' }
 
@@ -40,34 +38,33 @@ function belonging(person: Person): string {
   return program ? `Cursás ${program.name}` : `Cursás en la ${person.school.name}`
 }
 
-function TeacherHome() {
-  return (
-    <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] lg:items-start'>
-      <SubjectsShortcut teaches />
-      <EmptyState icon={CalendarDays} title='Acá va a estar tu día'>
-        Tus próximos parciales y finales y las inscripciones abiertas. Todavía lo estamos armando.
-      </EmptyState>
-    </div>
-  )
+/** El Hoy que le toca a la sesión: el del alumno o el del docente. */
+async function todayFor(personId: string, student: boolean) {
+  const { today } = system()
+  if (student) {
+    const read = await today.today(personId)
+    return read.ok ? ({ ok: true, student: true, view: read.value } as const) : read
+  }
+  const read = await today.teaching(personId)
+  return read.ok ? ({ ok: true, student: false, view: read.value } as const) : read
+}
+
+function Content({ today }: { today: Awaited<ReturnType<typeof todayFor>> }) {
+  if (!today.ok) return <ErrorNotice>{ERRORS[today.error]}</ErrorNotice>
+  return today.student ? <TodayScreen view={today.view} /> : <TeachingScreen view={today.view} />
 }
 
 export default async function HoyPage() {
   const session = await requireSession()
-  const student = session.role === 'alumno'
   // Hoy no depende de que Personas responda: con el SIU caído, muestra lo último que leyó.
   const [found, today] = await Promise.all([
     system().people.get(session.personId),
-    student ? system().today.today(session.personId) : null
+    todayFor(session.personId, session.role === 'alumno')
   ])
   const person = found.ok ? found.value : null
-  const view: TodayView | null = today?.ok ? today.value : null
-  // Hoy ya trae los no leídos del alumno; sin Hoy, la campana se los pide a Espacios.
+  const view: TodayView | TeachingView | null = today.ok ? today.view : null
+  // Hoy ya trae los no leídos; si no respondió, la campana se los pide a Espacios.
   const unread = view ? unreadTotal(view.unread) : undefined
-
-  let content = <TeacherHome />
-  if (view) content = <TodayScreen view={view} />
-  else if (today && !today.ok) content = <ErrorNotice>{ERRORS[today.error]}</ErrorNotice>
-  else if (!found.ok) content = <ErrorNotice>{ERRORS[found.error]}</ErrorNotice>
 
   return (
     <>
@@ -88,7 +85,9 @@ export default async function HoyPage() {
         }
       />
 
-      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>{content}</main>
+      <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+        <Content today={today} />
+      </main>
     </>
   )
 }

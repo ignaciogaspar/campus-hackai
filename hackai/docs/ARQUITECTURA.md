@@ -36,7 +36,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró. En una mesa, si para rendir le falta regularizar la cursada |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
-| `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados |
+| `upcoming(persona)` | Parciales y finales de todas sus materias, ordenados por fecha, con los pasados marcados. Cada final lleva su turno de examen y, si el SIU lo da, dónde se rinde. Cada próximo dice si la persona tiene (o tuvo) comisión de la materia (`hasSection`): un final que rinde libre no tiene espacio al que llevar. Al docente, los parciales de sus comisiones y las mesas que integra |
 | `openEnrollments(persona)` | Inscripciones abiertas que le sirven, con los días que faltan para que cierren (contados con el reloj de cada llamada, aunque sea lo último que se leyó) y los lugares que quedan entre todas las comisiones o mesas abiertas de la materia |
 | `pendingFinals(persona)` | Materias regulares sin aprobar (un final desaprobado sigue pendiente), cada una con su próxima mesa (en la que está inscripto o la primera cuya inscripción no cerró) y si está inscripto, abierta, sin cupo o todavía no abre |
 | `record(persona)` | Notas de parciales unificadas, vengan de la historia académica o de actuación provisoria, cada una con su origen; materias aprobadas (promoción, final o equivalencia) y su promedio |
@@ -76,7 +76,8 @@ El espacio de la materia, con la sincronización con canales externos adentro.
 | `openDirect(persona, espacio, otraPersona)` | Canal directo entre alumno y docente de una misma comisión del espacio. Hay uno por par y por espacio, así se archiva con el espacio. Lo puede abrir cualquiera de los dos, pero `open` solo le ofrece contactos al alumno: Cursada no le da al docente los alumnos de su comisión |
 | `link(persona, canal, canalExterno)` | Vincula un canal con uno del canal externo de la cátedra y trae lo que ya tenía. Devuelve `canal-externo-inexistente` si no lo encuentra y `canal-externo-en-uso` si ya está vinculado con otro canal |
 | `syncAll()` | Sincroniza todos los canales vinculados; es la corrida periódica |
-| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Novedades, Hoy y la navegación: por canal, cuántas y la más nueva, con quién la publicó (y su texto o, si solo trae un adjunto, el nombre del archivo); en un directo, de quién es; y si todo es de un mismo hilo, cuál. No crea espacios |
+| `unreadFor(persona)` | Novedades sin leer de todos sus espacios, para Novedades, Hoy y la navegación: por canal, cuántas y la más nueva, con quién la publicó (y su texto o, si solo trae un adjunto, el nombre del archivo); en un directo, de quién es; si todo es de un mismo hilo, cuál; y la comisión del canal. No crea espacios |
+| `openQuestions(persona)` | Las consultas sin resolver que le tocan responder, de todos sus espacios, la más vieja primero, con cuántas respuestas tienen: las de los canales de sus comisiones actuales en los que puede marcarlas resueltas. A un alumno no le toca ninguna. Como `unreadFor`, no crea espacios |
 | `file(persona, archivo)` | Los bytes de un archivo guardado, si la persona ve el espacio de su material o el canal de su adjunto |
 
 **Reglas que hace cumplir:**
@@ -108,7 +109,8 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 | Operación | Qué hace |
 | --- | --- |
-| `today(persona)` | Todo lo de la pantalla en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle. Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
+| `today(persona)` | Todo lo de la pantalla del alumno en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle. Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
+| `teaching(persona)` | El Hoy del docente en una llamada: sus comisiones actuales, cada una con sus no leídos (los de la materia y los directos van en la primera comisión de cada materia, para no contarlos dos veces); las consultas sin resolver que le tocan (`openQuestions` de Espacios); los parciales de sus comisiones y las mesas que integra que no pasaron, por fecha; todo lo que no leyó, y `staleSince` y `unavailable` como en `today` |
 
 Compone Cursada y Espacios, y usa el reloj para el próximo parcial. No tiene almacén propio. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 

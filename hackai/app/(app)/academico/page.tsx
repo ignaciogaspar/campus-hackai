@@ -6,8 +6,10 @@
 
    En el celular es una columna: notas, constancias e historia, en el orden de
    lo que más se busca. En compu, notas e historia a la izquierda y las
-   constancias a la derecha. Cada bloque muestra su propio error. */
-import { GraduationCap } from 'lucide-react'
+   constancias a la derecha. Cada bloque muestra su propio error.
+
+   Es solo del alumno: al docente la navegación no le ofrece la pestaña, y si
+   entra igual por la ruta vuelve a su inicio sin que se lea nada del SIU. */
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { AcademicHistory } from '@/components/academic/academic-history'
@@ -18,7 +20,7 @@ import { activeProgram } from '@/components/session/person-text'
 import { ProfileMenu } from '@/components/session/profile-menu'
 import { SignOutButton } from '@/components/session/sign-out-button'
 import { PageHeader } from '@/components/shell/page-header'
-import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
+import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { PeopleError } from '@/lib/core/people'
@@ -155,7 +157,7 @@ function StudentAcademic({
 }
 
 export default async function AcademicoPage() {
-  const session = await requireSession()
+  const session = await requireSession('alumno')
   const studies = system().studies
   const [found, record, finals, ...certificates] = await Promise.all([
     system().people.get(session.personId),
@@ -187,10 +189,6 @@ export default async function AcademicoPage() {
       <main className='flex w-full flex-col gap-6 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         {!found.ok ? (
           <ErrorNotice>{PERSON_ERRORS[found.error]}</ErrorNotice>
-        ) : found.value.role === 'profesor' ? (
-          <EmptyState icon={GraduationCap} title='Académico es la vida académica del alumno'>
-            Acá cada alumno ve sus notas, su historia académica y sus constancias. Tus comisiones están en Materias.
-          </EmptyState>
         ) : (
           <StudentAcademic record={record} finals={finals} certificates={certificates} />
         )}

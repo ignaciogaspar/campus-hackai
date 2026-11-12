@@ -13,6 +13,9 @@ const item = (over: Partial<UpcomingItem>): UpcomingItem => ({
   name: 'Segundo parcial',
   date: '2026-11-16T11:00:00.000Z',
   past: false,
+  examPeriod: null,
+  location: null,
+  hasSection: true,
   ...over
 })
 

@@ -38,7 +38,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppShell school={person.ok ? person.value.school.name : undefined} subjects={[...nav.values()]}>
+    <AppShell
+      school={person.ok ? person.value.school.name : undefined}
+      subjects={[...nav.values()]}
+      teaches={session.role === 'profesor'}
+    >
       {children}
       {/* Lee la URL con useSearchParams: sin Suspense, Next.js no podría armar las pantallas estáticas. */}
       <Suspense fallback={null}>

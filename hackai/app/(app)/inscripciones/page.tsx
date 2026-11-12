@@ -17,8 +17,10 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, readTime, shortDate, timeOf } from '@/components/dates'
 import { closingText, creditsText, REGULARITY_NOTE, spotsLeftText } from '@/components/enrollment/format'
+import { offerHref } from '@/components/enrollment/offer-href'
 import { readErrorText } from '@/components/enrollment/read-error'
 import { PageHeader } from '@/components/shell/page-header'
+import { examDetail } from '@/components/today/upcoming'
 import { Card } from '@/components/ui/card'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -40,12 +42,6 @@ const KIND_NAME: Record<OpenEnrollment['kind'], string> = {
 
 /** Faltan pocos días para que cierre: se resalta. */
 const CLOSING_SOON_DAYS = 3
-
-/** La oferta de una materia: sus comisiones o sus mesas de examen. */
-function offerHref(subjectId: string, kind: OpenEnrollment['kind']): string {
-  const subject = `/inscripciones/${encodeURIComponent(subjectId)}`
-  return kind === 'examen' ? `${subject}/final` : subject
-}
 
 /** Una fila que lleva a la oferta: la materia y, debajo, de qué se trata. */
 function OfferLink({ href, title, children }: { href: string; title: string; children: ReactNode }) {
@@ -84,6 +80,21 @@ function EnrollmentLink({ item }: { item: OpenEnrollment }) {
         <span className='mt-1 block text-[0.8125rem] text-warning-foreground'>{REGULARITY_NOTE}</span>
       )}
     </OfferLink>
+  )
+}
+
+/** Un final al que ya se inscribió: la materia, cuándo y, si los hay, su turno y su lugar. Lleva a su mesa. */
+function FinalLink({ final: f }: { final: UpcomingItem }) {
+  const detail = examDetail(f)
+  return (
+    <li>
+      <OfferLink href={offerHref(f.subjectId, 'examen')} title={f.subjectName}>
+        <span className={detailClass}>
+          Final · <time dateTime={f.date}>{`${longDay(f.date)} · ${timeOf(f.date)}`}</time>
+        </span>
+        {detail && <span className={detailClass}>{detail}</span>}
+      </OfferLink>
+    </li>
   )
 }
 
@@ -171,13 +182,7 @@ function MyFinals({ read }: { read: Read<UpcomingItem[]> }) {
         <Card>
           <ul className='divide-y divide-border'>
             {finals.map((f) => (
-              <li key={f.id}>
-                <OfferLink href={offerHref(f.subjectId, 'examen')} title={f.subjectName}>
-                  <span className={detailClass}>
-                    Final · <time dateTime={f.date}>{`${longDay(f.date)} · ${timeOf(f.date)}`}</time>
-                  </span>
-                </OfferLink>
-              </li>
+              <FinalLink key={f.id} final={f} />
             ))}
           </ul>
         </Card>

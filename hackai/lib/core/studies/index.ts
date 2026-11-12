@@ -27,8 +27,9 @@
 
    - Próximos (`upcoming`): parciales, recuperatorios y TP del cronograma de sus
      materias actuales y los finales de las mesas de su facultad a las que está
-     inscripto, desde que empezó su período lectivo actual, todo por fecha y con
-     los pasados marcados según el reloj. Salen solo del SIU, así que una caída
+     inscripto (el docente: las que integra), desde que empezó su período
+     lectivo actual, todo por fecha y con los pasados marcados según el reloj.
+     Cada final lleva su turno de examen y, si el SIU lo da, dónde se rinde. Salen solo del SIU, así que una caída
      de Moodle no los toca: las tareas con fecha vienen con `subjectsOf` y las
      suma Hoy. Sin cronograma en el SIU (la API real) salen solo los finales.
    - Oferta (`offer`): comisiones o mesas con cupo, horario y docentes, y si
@@ -231,6 +232,13 @@ export type UpcomingItem = {
   name: string
   date: string
   past: boolean
+  /** Final: el turno de examen. El resto, `null`. */
+  examPeriod: string | null
+  /** Dónde se rinde, si el SIU lo da (hoy, solo en las mesas). Si no, `null`. */
+  location: string | null
+  /** Si la persona tiene (o tuvo) una comisión de la materia, y por eso su espacio. Un final de una
+      materia que rinde libre o que nunca cursó en HackAI, no. */
+  hasSection: boolean
 }
 
 /** El orden de los próximos: por fecha; el mismo día, por materia y por nombre. Lo usa también Hoy al sumarles las entregas. */
@@ -1258,7 +1266,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           ...subjectRef(sections[i].subject),
           name: a.name,
           date: a.date,
-          past: a.date < at
+          past: a.date < at,
+          examPeriod: null,
+          location: null,
+          hasSection: true
         })
       }
     }
@@ -1282,11 +1293,27 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
-  /** Finales: las mesas de su facultad a las que está inscripto, desde `since` (el inicio de su período actual). */
-  async function finalsOf(who: SiuPersonRef, since: string, at: string): Promise<Result<UpcomingItem[], ReadError>> {
+  /** Las mesas de su facultad que le tocan: las que integra el docente, o aquellas a las que el alumno está inscripto. */
+  async function boardsFor(who: SiuPersonRef): Promise<Result<SiuExamBoard[], ReadError>> {
+    if (who.person.role === 'profesor') {
+      const boards = await siu.examBoards({ schoolId: who.schoolId })
+      return boards.ok ? ok(boards.value.filter((b) => b.teacherIds.includes(who.siuId))) : boards
+    }
     const exams = await examBoardsOf(who, true)
     if (!exams.ok) return exams
-    const mine = exams.value.boards.filter((b) => exams.value.enrolledIn.has(b.id) && b.date >= since)
+    return ok(exams.value.boards.filter((b) => exams.value.enrolledIn.has(b.id)))
+  }
+
+  /** Finales: las mesas que le tocan, desde `since` (el inicio de su período actual), con su turno y su lugar. */
+  async function finalsOf(
+    who: SiuPersonRef,
+    since: string,
+    at: string,
+    withSection: Set<string>
+  ): Promise<Result<UpcomingItem[], ReadError>> {
+    const boards = await boardsFor(who)
+    if (!boards.ok) return boards
+    const mine = boards.value.filter((b) => b.date >= since)
     const subjects = await subjectsById(mine.map((b) => b.subjectId))
     if (!subjects.ok) return subjects
     return ok(
@@ -1301,7 +1328,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
             ...subjectRef(subject),
             name: 'Final',
             date: board.date,
-            past: board.date < at
+            past: board.date < at,
+            examPeriod: board.examPeriod,
+            location: board.location.trim() || null,
+            hasSection: withSection.has(board.subjectId)
           }
         ]
       })
@@ -1318,7 +1348,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     // Lo que ya pasó cuenta desde que empezó su período actual. Un período que todavía
     // no empezó (el de verano) o no tener materias actuales no esconde nada de lo que viene.
     const since = [at, ...current.map((s) => s.term.start)].sort()[0]
-    const [assessments, finals] = await Promise.all([assessmentsOf(current, at), finalsOf(who.value, since, at)])
+    const [assessments, finals] = await Promise.all([
+      assessmentsOf(current, at),
+      finalsOf(who.value, since, at, new Set(mine.value.sections.map((s) => s.subject.id)))
+    ])
     if (!assessments.ok) return assessments
     if (!finals.ok) return finals
     return ok([...assessments.value, ...finals.value].sort(compareUpcoming))

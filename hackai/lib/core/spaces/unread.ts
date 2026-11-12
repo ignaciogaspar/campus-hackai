@@ -4,40 +4,13 @@
    hilo, cuál. Solo cuentan las comisiones actuales y los espacios que ya
    existen: pedir novedades no crea espacios. */
 import type { People, PersonId } from '@/lib/core/people'
-import type {
-  MessageId,
-  SpacesStore,
-  StoredChannel,
-  StoredMessage,
-  StoredSpace,
-  UnreadItem,
-  UnreadLatest
-} from '@/lib/core/spaces'
-import { type Membership, membershipFrom, sectionsOf } from '@/lib/core/spaces/access'
+import type { MessageId, SpacesStore, StoredChannel, StoredMessage, UnreadItem, UnreadLatest } from '@/lib/core/spaces'
 import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
-import { visibleChannels } from '@/lib/core/spaces/channels'
+import { type CurrentSpace, currentSpaces } from '@/lib/core/spaces/current-spaces'
 import { counterpartOf } from '@/lib/core/spaces/direct'
 import { loadSnapshot, type Snapshot, type UnreadIn, unreadIn } from '@/lib/core/spaces/reading'
-import type { MySection, Studies } from '@/lib/core/studies'
+import type { Studies } from '@/lib/core/studies'
 import { type ExternalFailure, ok, type Result } from '@/lib/result'
-
-/** Una membresía por materia, con la facultad de su primera comisión actual. */
-function membershipsOf(personId: PersonId, sections: MySection[]): Membership[] {
-  const current = sections.filter((s) => s.current)
-  const subjectIds = [...new Set(current.map((s) => s.subjectId))]
-  return subjectIds.map((subjectId) => {
-    const ofSubject = current.filter((s) => s.subjectId === subjectId)
-    const school = ofSubject[0].schoolId
-    return membershipFrom(
-      personId,
-      ofSubject.filter((s) => s.schoolId === school),
-      null
-    )
-  })
-}
-
-/** Los canales que la persona ve en un espacio, con su membresía. */
-type Visible = { space: StoredSpace; member: Membership; channels: StoredChannel[] }
 
 const newest = <T extends { seq: number }>(items: T[]): T => items.reduce((a, b) => (b.seq > a.seq ? b : a))
 
@@ -73,7 +46,7 @@ function threadOf(messages: StoredMessage[]): MessageId | null {
 /** La novedad de un canal, o `null` si no hay nada sin leer. */
 async function itemOf(
   authors: Authors,
-  { space, member }: Visible,
+  { space, member }: CurrentSpace,
   channel: StoredChannel,
   snapshot: Snapshot
 ): Promise<UnreadItem | null> {
@@ -87,6 +60,7 @@ async function itemOf(
     channelId: channel.id,
     channelName: channel.name,
     kind: channel.kind,
+    sectionId: channel.scope.kind === 'comision' ? channel.scope.sectionId : null,
     count: unread.count,
     latest,
     counterpart,
@@ -101,27 +75,15 @@ export async function unreadFor(
   { studies, people, store }: { studies: Studies; people: People; store: SpacesStore },
   personId: PersonId
 ): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>> {
-  const read = await sectionsOf(studies, personId)
-  if (!read.ok) return read
-  const members = membershipsOf(personId, read.value.sections)
-  if (members.length === 0) return ok([])
-  const spaces = await store.spacesFor(members.map((m) => ({ subjectId: m.subjectId, schoolId: m.schoolId })))
-  if (!spaces.ok) return spaces
-  if (spaces.value.length === 0) return ok([])
-  const spaceIds = spaces.value.map((s) => s.id)
-  const channels = await store.channels(spaceIds)
-  if (!channels.ok) return channels
-
-  const visible = spaces.value.flatMap((space): Visible[] => {
-    const member = members.find((m) => m.subjectId === space.subjectId && m.schoolId === space.schoolId)
-    const ofSpace = channels.value.filter((c) => c.spaceId === space.id)
-    return member ? [{ space, member, channels: visibleChannels(member, ofSpace) }] : []
-  })
+  const found = await currentSpaces(studies, store, personId)
+  if (!found.ok) return found
+  const visible = found.value
+  if (visible.length === 0) return ok([])
   const snapshot = await loadSnapshot(
     store,
     personId,
     visible.flatMap((v) => v.channels),
-    spaceIds
+    visible.map((v) => v.space.id)
   )
   if (!snapshot.ok) return snapshot
   const authors = authorsFrom(people)

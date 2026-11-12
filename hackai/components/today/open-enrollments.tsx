@@ -1,9 +1,11 @@
 /* Inscripciones abiertas que le sirven al alumno, las que cierran antes
-   primero. Cuáles le sirven, y si a un final le falta la regularidad, lo decide
-   Cursada; acá solo se muestran. */
+   primero. Cada una lleva a su oferta: la de comisiones o la de mesas. Cuáles
+   le sirven, y si a un final le falta la regularidad, lo decide Cursada; acá
+   solo se muestran. */
 import { CalendarClock, CalendarX } from 'lucide-react'
 import { shortDate } from '@/components/dates'
 import { creditsText } from '@/components/enrollment/format'
+import { offerHref } from '@/components/enrollment/offer-href'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
@@ -30,6 +32,7 @@ export function OpenEnrollmentList({ items }: { items: OpenEnrollment[] }) {
         {items.map((item) => (
           <ListItem
             key={`${item.kind}-${item.subjectId}`}
+            href={offerHref(item.subjectId, item.kind)}
             className='items-center'
             start={
               <span className='grid size-10 flex-none place-items-center rounded-full bg-accent text-blue-light'>

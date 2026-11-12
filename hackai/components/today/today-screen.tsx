@@ -5,11 +5,14 @@
 
    En el celular es una columna: el próximo parcial, las próximas 2 semanas, las
    inscripciones y el acceso a Mis materias. En compu, a la izquierda el
-   calendario de esta semana y la próxima, y a la derecha lo demás. */
+   calendario de esta semana y la próxima, y a la derecha lo demás.
+
+   Todo lleva a algún lado: una inscripción, a su oferta de comisiones o de
+   mesas; un parcial, un final o una entrega, al espacio de su materia. */
 import type { ReactNode } from 'react'
 import { longDay, timeOf } from '@/components/dates'
 import { SubjectsShortcut } from '@/components/subjects/subjects-shortcut'
-import { agendaOf, calendarOf } from '@/components/today/agenda'
+import { agendaOf, calendarOf, dateHref } from '@/components/today/agenda'
 import { OpenEnrollmentList } from '@/components/today/open-enrollments'
 import { TwoWeekCalendar, UpcomingAgenda } from '@/components/today/upcoming'
 import { CalendarLegend } from '@/components/ui/calendar-day'
@@ -74,14 +77,19 @@ function Dates({ view, children }: { view: TodayView; children: ReactNode }) {
   )
 }
 
+const nextLabel = (next: NextExam) => (next.kind === 'final' ? 'Próximo final' : 'Próximo parcial')
+
+/** El próximo parcial o final: lleva al espacio de su materia y, si es un final, dice su turno y dónde se rinde. */
 function NextExamBlock({ next }: { next: NextExam }) {
   return (
     <NextExamCard
-      label={next.kind === 'final' ? 'Próximo final' : 'Próximo parcial'}
+      label={nextLabel(next)}
       title={next.name}
       subject={next.subjectName}
-      when={`${longDay(next.date)} · ${timeOf(next.date)}`}
+      detail={next.examPeriod ?? undefined}
+      when={[longDay(next.date), timeOf(next.date), next.location].filter(Boolean).join(' · ')}
       daysLeft={next.daysLeft}
+      href={dateHref(next, 'alumno')}
     />
   )
 }
@@ -89,6 +97,8 @@ function NextExamBlock({ next }: { next: NextExam }) {
 export function TodayScreen({ view }: { view: TodayView }) {
   const agenda = agendaOf(view.upcoming, view.now, view.next)
   const calendar = calendarOf(view.upcoming, view.now, view.next)
+  // El color del próximo va en la leyenda solo si el próximo cae en el calendario.
+  const inCalendar = calendar.days.some((d) => d.events.some((e) => e.next))
 
   return (
     <div className='flex flex-col gap-6'>
@@ -98,7 +108,7 @@ export function TodayScreen({ view }: { view: TodayView }) {
         <Section
           id='calendario'
           title='Esta semana y la próxima'
-          aside={<CalendarLegend />}
+          aside={<CalendarLegend next={view.next && inCalendar ? nextLabel(view.next) : undefined} />}
           className='hidden lg:col-start-1 lg:row-span-4 lg:row-start-1 lg:flex'
         >
           <Dates view={view}>
