@@ -226,6 +226,46 @@ Las variables se leen de `.env.local` al arrancar el contenedor, nunca se copian
 
 `GET /api/health` responde `{ "status": "ok" }` si el sistema se arma con los adaptadores que piden las variables, sin tocar la base. Si no se puede armar, por ejemplo por un adaptador desconocido o una variable que falta, responde 503 con `{ "status": "error", "reason": "configuracion" }`, y el log del servidor nombra la variable (`lib/health.ts`). Sin variables arma todo en memoria y responde ok. El `HEALTHCHECK` de la imagen lo consulta, y `docker compose ps` muestra el estado (`healthy` o `unhealthy`).
 
+## App instalable
+
+HackAI se instala en el celular como una app: abre desde su ícono, a pantalla completa y sin la barra del navegador. Necesita HTTPS, así que se prueba en el deploy, no en `localhost` desde el celular.
+
+- **Manifest** (`app/manifest.ts`): nombre, colores, `start_url` en `/hoy` y los íconos de `public/icons/`. Los metadatos de iOS (`appleWebApp`, `apple-touch-icon`) están en `app/layout.tsx`.
+- **Botón «Instalar»** (`components/shell/install-button.tsx`): en Android abre el aviso del navegador; en el iPhone, una hoja con los pasos para «Agregar a inicio».
+- **Service worker** (`public/sw.js`, escrito a mano y sin dependencias): sin red, cualquier pantalla muestra `/sin-conexion`, que se recarga sola cuando vuelve la conexión. Lo estático (`/_next/static`, íconos, ilustraciones, logo) se sirve de la caché. El HTML de las pantallas y `/api` van siempre a la red: son datos de una persona con sesión. `components/shell/service-worker.tsx` lo registra solo en producción, así que para probarlo en la compu va `npm run build && npm start`. Si cambia lo que guarda, se sube `VERSION` en `sw.js`.
+
+Para ver la pantalla sin conexión: en Chrome, DevTools → Application → Service workers → «Offline», y recargá cualquier pantalla.
+
+## Deploy en Vercel
+
+La demo corre en Vercel con el plan Hobby. Vercel compila Next.js por su cuenta; `output: 'standalone'` queda para Docker y Vercel lo ignora.
+
+1. **Importar el repo** en Vercel (Add New → Project → `ignaciogaspar/campus-hackai`) con **Root Directory `hackai`**. El framework (Next.js) y Node 22 (`engines` de `package.json`) los detecta solo.
+2. **Cargar las variables** en Settings → Environment Variables, para Production y Preview:
+
+   | Variable | Valor para la demo |
+   | --- | --- |
+   | `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Los del proyecto de Supabase de la demo |
+   | `SESSION_SECRET` | El mismo que en tu `.env.local`, para poder correr `demo:probar` contra el deploy |
+   | `CRON_SECRET` | Cualquier secreto largo; Vercel lo manda solo al llamar al cron |
+   | `HACKAI_STORE`, `HACKAI_FILES` | `supabase` |
+   | `HACKAI_SIU`, `HACKAI_CLASSROOM` | `simulado` |
+   | `HACKAI_CLOCK` | `sistema` |
+   | `HACKAI_EXTERNAL_CHANNEL`, `DISCORD_BOT_TOKEN` | `discord` y el token del bot, si la demo muestra Discord |
+   | `HACKAI_CAIDAS` | `si` solo si se muestra la caída (ver abajo) |
+
+   `DATABASE_URL`, `HACKAI_DEMO_SUPABASE_REF` y las `HACKAI_TEST_*` no van: son de los scripts y de los tests, que corren en tu máquina.
+3. **Preparar la base** desde tu máquina con `npm run demo:preparar` («Base de la demo»), desplegar y probar con `npm run demo:probar -- https://<dominio>`.
+4. **Región.** Las funciones corren por defecto en Washington (`iad1`). Si la base de Supabase está en otra región, conviene elegir la más cercana en Settings → Functions → Function Region (por ejemplo `gru1`, São Paulo, para `sa-east-1`): cada pantalla hace varias consultas y la distancia se suma en cada una.
+
+`vercel.json` trae el cron diario de la sincronización («Corrida periódica»).
+
+**Lo que cambia en Vercel.** Cada pedido puede caer en una instancia distinta del servidor, y ninguna guarda nada entre pedidos:
+
+- **Nada en memoria.** Con los adaptadores en memoria, una inscripción, un mensaje o un archivo subido aparecen en una pantalla y desaparecen en la siguiente. Por eso la tabla de arriba pone todo en Supabase.
+- **El interruptor de `/caidas` vive en la memoria del proceso** (`lib/adapters/caida/`): tirar el SIU puede no verse en la pantalla siguiente si la atiende otra instancia. Para mostrar la caída, ensayala antes en el deploy, o mostrala desde `npm run dev` o Docker, donde hay un solo proceso.
+- **Pedidos de hasta 4,5 MB.** Vercel corta con un 413 cualquier pedido más grande antes de que llegue a la app, así que el material de más de 4,5 MB no se puede subir aunque la app acepte hasta 10 MB (`bodySizeLimit` en `next.config.ts`). En la demo, subí archivos más livianos.
+
 ## Corrida periódica
 
 Los espacios se sincronizan con sus canales externos aunque nadie los abra: un cron del hosting pide `/api/cron/sync`, que llama a `syncAll` de Espacios. La ruta acepta `GET` y `POST`, y solo deja pasar el pedido que trae `Authorization: Bearer <valor de CRON_SECRET>`. Compara el secreto en tiempo constante, y ni el secreto ni lo que trajo el pedido van a la respuesta o al log. El log de cada corrida lleva solo el resultado y los números del resumen.
@@ -243,13 +283,9 @@ Para probarla a mano, con el servidor andando y `CRON_SECRET` en `.env.local`:
 curl -i -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/sync
 ```
 
-**Con Vercel Cron.** Cargá `CRON_SECRET` en las variables del proyecto, en Production: Vercel la manda sola en el header `Authorization` al llamar al cron. Después sumá el cron al `vercel.json` del proyecto y desplegá:
+**Con Vercel Cron.** `vercel.json` ya trae el cron: pide `/api/cron/sync` todos los días a las 9 UTC (las 6 en Argentina). Cargá `CRON_SECRET` en las variables del proyecto, en Production: Vercel la manda sola en el header `Authorization` al llamar al cron.
 
-```json
-{ "crons": [{ "path": "/api/cron/sync", "schedule": "*/5 * * * *" }] }
-```
-
-Según la [documentación de Vercel](https://vercel.com/docs/cron-jobs/usage-and-pricing), consultada el 11/11/2026, el cron corre solo en el deployment de producción, y en el plan Hobby corre una vez por día como mucho, en algún momento de la hora indicada. Una expresión más frecuente, como la de arriba, hace fallar el deploy, así que en Hobby va una diaria, por ejemplo `0 9 * * *`. El repo no trae `vercel.json` porque el hosting no está decidido y la sincronización todavía no existe.
+Según la [documentación de Vercel](https://vercel.com/docs/cron-jobs/usage-and-pricing), consultada el 11/11/2026, el cron corre solo en el deployment de producción, y en el plan Hobby corre una vez por día como mucho, en algún momento de la hora indicada. Una expresión más frecuente, como `*/5 * * * *`, hace fallar el deploy en Hobby. Con el plan Pro se puede cambiar por esa; si no, un cron de afuera (abajo) puede pedirla más seguido.
 
 **Con otro hosting o con Docker.** Sirve cualquier cron que pida la ruta con el header, por ejemplo una línea de crontab en una máquina que tenga `CRON_SECRET` en su entorno:
 
@@ -342,6 +378,8 @@ No las imprimas en logs ni en reportes.
 | `app/simulado/`, `components/simulated/` | La página a la que llevan los enlaces al SIU y a Moodle simulados: dice que es una demo y qué abriría el enlace en producción. |
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, vincularlos con Discord, subir y organizar el material y escribirle en privado a un docente de la comisión. |
 | `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
+| `app/manifest.ts`, `public/sw.js`, `app/sin-conexion/`, `components/shell/service-worker.tsx` | La app instalable y su pantalla sin conexión. Ver «App instalable». |
+| `vercel.json` | El cron diario del deploy en Vercel. Ver «Deploy en Vercel». |
 | `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |
 | `lib/demo-base/`, `scripts/demo-*.ts` | Preparar, verificar y probar la base de la demo. Ver «Base de la demo». |
 | `lib/adapters/caida/`, `app/caidas/`, `app/actions/outages.ts` | Las caídas de la demo: el interruptor que tira el SIU o Moodle y la página para usarlo. Ver «Mostrar una caída en la demo». |
