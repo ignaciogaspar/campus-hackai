@@ -5,6 +5,7 @@ import { ok } from '@/lib/result'
 
 export function createMemoryStudiesStore(): StudiesStore {
   const classes = new Map<string, StoredClass>()
+  const zoom = new Map<string, string>()
   const keyOf = (sectionId: string, classAt: string) => `${sectionId}\u0000${classAt}`
   const copy = <T>(value: T): T => structuredClone(value)
   const byClassAt = (a: StoredClass, b: StoredClass) => a.classAt.localeCompare(b.classAt)
@@ -39,6 +40,20 @@ export function createMemoryStudiesStore(): StudiesStore {
         found.pase = pase
         found.paseAt = paseAt
       }
+      return ok(null)
+    },
+
+    async zoomLinks(sectionIds) {
+      const found = sectionIds.flatMap((id) => {
+        const url = zoom.get(id)
+        return url ? [[id, url] as const] : []
+      })
+      return ok(Object.fromEntries(found))
+    },
+
+    async setZoomLink(sectionId, url) {
+      if (url === null) zoom.delete(sectionId)
+      else zoom.set(sectionId, url)
       return ok(null)
     }
   }

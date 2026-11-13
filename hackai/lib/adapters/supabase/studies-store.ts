@@ -1,5 +1,6 @@
 /* Almacén de Cursada sobre Supabase: las clases con la lista tomada, en la
-   tabla propia `section_classes` (supabase/migrations/0007_studies_classes.sql).
+   tabla propia `section_classes` (supabase/migrations/0007_studies_classes.sql) y los enlaces de Zoom de cada comisión, en
+   `section_zoom_links` (0011_studies_zoom_links.sql).
    Se porta como el almacén en memoria y pasa la misma batería de contrato
    (tests/contracts/studies-store.test.ts).
 
@@ -159,6 +160,33 @@ export function createSupabaseStudiesStore({
           .abortSignal(s)
       )
       return updated.ok ? ok(null) : fail('falla-externa')
+    },
+
+    async zoomLinks(sectionIds) {
+      if (!sectionIds.length) return ok({})
+      const found = await run<{ section_id: string; url: string | null }[]>('enlaces de Zoom', (s) =>
+        client
+          .from('section_zoom_links')
+          .select('section_id, url')
+          .in('section_id', [...new Set(sectionIds)])
+          .abortSignal(s)
+      )
+      if (!found.ok) return fail('falla-externa')
+      const withLink = (found.value ?? []).flatMap((r) => (r.url === null ? [] : [[r.section_id, r.url] as const]))
+      return ok(Object.fromEntries(withLink))
+    },
+
+    // Borrar el enlace es dejarlo en null: una sola escritura sobre una fila, sin DELETE.
+    async setZoomLink(sectionId, url) {
+      const created = await run('enlace de Zoom', (s) =>
+        client.from('section_zoom_links').insert({ section_id: sectionId, url }).abortSignal(s)
+      )
+      if (created.ok) return ok(null)
+      if (created.error !== 'duplicado') return fail('falla-externa')
+      const replaced = await run('reemplazar enlace de Zoom', (s) =>
+        client.from('section_zoom_links').update({ url }).eq('section_id', sectionId).abortSignal(s)
+      )
+      return replaced.ok ? ok(null) : fail('falla-externa')
     }
   }
 }

@@ -33,3 +33,39 @@ export function classesThrough(
   }
   return classes.sort((a, b) => a.classAt.localeCompare(b.classAt))
 }
+
+/** Los datos de una comisión que alcanzan para saber cuándo tiene clase. */
+export type ClassSchedule = { schedule: SiuSchedule[]; termStart: string; termEnd: string }
+
+/** Las clases de la comisión que caen en un día `AAAA-MM-DD`, vacío si el día está fuera de su período. */
+function classesOn(section: ClassSchedule, day: string): SectionClass[] {
+  if (day < dayKey(section.termStart) || day > dayKey(section.termEnd)) return []
+  return section.schedule
+    .filter((slot) => WEEKDAYS.indexOf(slot.day) === weekdayIndex(day))
+    .map((slot) => ({ classAt: at(day, slot.start), endAt: at(day, slot.end) }))
+}
+
+/** Si la comisión tiene clase un día `AAAA-MM-DD`. */
+export const hasClassOn = (section: ClassSchedule, day: string) => classesOn(section, day).length > 0
+
+/** Cuántos días hacia adelante se busca la próxima clase: más allá es otro período, no «la próxima». */
+const LOOKAHEAD_DAYS = 14
+
+/** La clase de ahora (`ahora`: empezó y no terminó) o, si no hay, la próxima (`proxima`), entre las de estas
+    comisiones, y de cuál es (su posición en `sections`). Con dos a la vez gana la que empezó antes. `null` si no
+    hay ninguna en los próximos días. El reloj entra como argumento: no lee la hora. */
+export function currentClass(
+  sections: ClassSchedule[],
+  nowIso: string
+): { index: number; classAt: string; endAt: string; state: 'ahora' | 'proxima' } | null {
+  const first = dayKey(nowIso)
+  for (let offset = 0; offset <= LOOKAHEAD_DAYS; offset += 1) {
+    const day = addDays(first, offset)
+    const candidates = sections
+      .flatMap((section, index) => classesOn(section, day).map((c) => ({ ...c, index })))
+      .filter((c) => c.endAt > nowIso)
+      .sort((a, b) => a.classAt.localeCompare(b.classAt))
+    if (candidates[0]) return { ...candidates[0], state: candidates[0].classAt <= nowIso ? 'ahora' : 'proxima' }
+  }
+  return null
+}
