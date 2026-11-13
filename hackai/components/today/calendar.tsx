@@ -110,9 +110,11 @@ function kindLabel(e: CalendarEvent): string | null {
 }
 
 function BlockContent({ e, short }: { e: CalendarEvent; short: boolean }) {
-  const label = kindLabel(e)
   // Un final se llama «Final»: su nombre es la materia, y debajo va el turno.
   const title = e.tone === 'final' ? e.subjectName : e.title
+  // Si el nombre ya dice el tipo («Parcial»), el tipo no se repite arriba.
+  const kind = kindLabel(e)
+  const label = kind === title ? null : kind
   const detail = e.tone === 'final' ? e.subject.slice(e.subjectName.length).replace(/^ · /, '') : e.subject
   const time = e.tone === 'entrega' ? null : e.time
   return (
@@ -126,8 +128,9 @@ function BlockContent({ e, short }: { e: CalendarEvent; short: boolean }) {
       {!short && detail && detail !== title && (
         <span className='text-[0.8125rem] leading-snug break-words text-ink/75'>{detail}</span>
       )}
-      <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8125rem] text-ink/70 tabular-nums'>
-        {e.code && (
+      <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.75rem] text-ink/70 tabular-nums'>
+        {/* En una clase el título ya es la materia: la sigla sobra. */}
+        {e.code && e.tone !== 'clase' && (
           <span className='rounded bg-white/80 px-1 text-[0.75rem] leading-[1.125rem] font-semibold text-ink/75'>
             {e.code}
           </span>
@@ -137,8 +140,8 @@ function BlockContent({ e, short }: { e: CalendarEvent; short: boolean }) {
         {e.next && <span className='font-semibold text-ink'>Próximo</span>}
       </span>
       {e.place && !short && (
-        <span className='flex items-start gap-1 text-[0.8125rem] leading-snug text-ink/70'>
-          <MapPin aria-hidden='true' className='mt-0.5 size-3.5 flex-none' strokeWidth={2} />
+        <span className='flex items-start gap-1 text-[0.75rem] leading-snug text-ink/70'>
+          <MapPin aria-hidden='true' className='mt-px size-3.5 flex-none' strokeWidth={2} />
           <span className='break-words'>{e.place}</span>
         </span>
       )}
