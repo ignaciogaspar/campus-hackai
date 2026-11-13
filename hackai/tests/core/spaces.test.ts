@@ -965,6 +965,27 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
   assert.deepEqual(await spaces.unreadFor('p-jescobar'), { ok: false, error: 'falla-externa' })
 })
 
+test('marcar todo como leído deja sin novedades a quien lo pide, sin tocar las de los demás', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+  await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf'))
+  await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Entra límites?' })
+
+  assert.deepEqual(await spaces.markAllRead('p-taguirre'), { ok: true, value: 3 })
+
+  assert.deepEqual(await spaces.unreadFor('p-taguirre'), { ok: true, value: [] })
+  const theirs = await spaces.unreadFor('p-lbenitez')
+  assert.ok(theirs.ok)
+  assert.deepEqual(theirs.value.map((u) => [u.kind, u.count]).sort(), [
+    ['avisos', 1],
+    ['material', 1]
+  ])
+  assert.deepEqual(await spaces.markAllRead('p-taguirre'), { ok: true, value: 0 }, 'sin novedades, no marca nada')
+  assert.deepEqual(await spaces.markAllRead('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
 test('cada novedad dice quién la publicó, y un mensaje con solo un adjunto se muestra con el nombre del archivo', async () => {
   const { spaces, setNow } = build()
   const ids = await am1(spaces)

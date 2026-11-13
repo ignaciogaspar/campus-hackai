@@ -418,6 +418,9 @@ export type Spaces = {
   syncAll(): Promise<Result<SyncReport, ExternalFailure>>
   /** Novedades sin leer de todos sus espacios, por canal, para Novedades, Hoy y la navegación. No crea espacios. */
   unreadFor(personId: PersonId): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>>
+  /** Marca leído todo lo que no leyó en sus espacios actuales: Novedades queda vacía. Devuelve cuántas novedades
+      marcó. No crea espacios. */
+  markAllRead(personId: PersonId): Promise<Result<number, 'persona-desconocida' | ExternalFailure>>
   /** Las consultas sin resolver que le tocan responder: las de los canales de sus comisiones actuales
       en los que puede marcarlas resueltas. La más vieja primero. A un alumno no le toca ninguna.
       No crea espacios. */

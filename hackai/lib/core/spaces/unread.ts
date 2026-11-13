@@ -2,7 +2,8 @@
    Novedades, Hoy y la navegación: por canal, cuánto no leyó y lo más nuevo,
    con quién lo publicó; en un directo, de quién es; y si todo es de un mismo
    hilo, cuál. Solo cuentan las comisiones actuales y los espacios que ya
-   existen: pedir novedades no crea espacios. */
+   existen: pedir novedades no crea espacios. También marcarlas todas como
+   leídas de una vez. */
 import type { People, PersonId } from '@/lib/core/people'
 import type { MessageId, SpacesStore, StoredChannel, StoredMessage, UnreadItem, UnreadLatest } from '@/lib/core/spaces'
 import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
@@ -71,14 +72,17 @@ async function itemOf(
 const newestFirst = (a: UnreadItem, b: UnreadItem) =>
   b.latest.createdAt.localeCompare(a.latest.createdAt) || a.subjectName.localeCompare(b.subjectName, 'es')
 
-export async function unreadFor(
-  { studies, people, store }: { studies: Studies; people: People; store: SpacesStore },
+type UnreadDeps = { studies: Studies; people: People; store: SpacesStore }
+
+/** Sus espacios actuales y qué leyó de cada canal. */
+async function visibleWithSnapshot(
+  { studies, store }: UnreadDeps,
   personId: PersonId
-): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>> {
+): Promise<Result<{ visible: CurrentSpace[]; snapshot: Snapshot | null }, 'persona-desconocida' | ExternalFailure>> {
   const found = await currentSpaces(studies, store, personId)
   if (!found.ok) return found
   const visible = found.value
-  if (visible.length === 0) return ok([])
+  if (visible.length === 0) return ok({ visible, snapshot: null })
   const snapshot = await loadSnapshot(
     store,
     personId,
@@ -86,9 +90,51 @@ export async function unreadFor(
     visible.map((v) => v.space.id)
   )
   if (!snapshot.ok) return snapshot
+  return ok({ visible, snapshot: snapshot.value })
+}
+
+/** Hasta qué `seq` llega un canal: su último mensaje o, en el de material, el último archivo del espacio. */
+function lastSeqIn(snapshot: Snapshot, channel: StoredChannel): number {
+  const seqs =
+    channel.kind === 'material'
+      ? snapshot.material.filter((m) => m.spaceId === channel.spaceId).map((m) => m.seq)
+      : snapshot.messages.filter((m) => m.channelId === channel.id).map((m) => m.seq)
+  return Math.max(0, ...seqs)
+}
+
+/** Marca leído todo lo que no leyó en sus espacios actuales. Devuelve cuántas novedades marcó. */
+export async function markAllRead(
+  deps: UnreadDeps,
+  personId: PersonId
+): Promise<Result<number, 'persona-desconocida' | ExternalFailure>> {
+  const read = await visibleWithSnapshot(deps, personId)
+  if (!read.ok) return read
+  const { visible, snapshot } = read.value
+  if (!snapshot) return ok(0)
+  const pending = visible
+    .flatMap((v) => v.channels)
+    .map((channel) => ({ channel, count: unreadIn(snapshot, channel).count }))
+    .filter((p) => p.count > 0)
+  const marked = await Promise.all(
+    pending.map((p) => deps.store.markRead(personId, p.channel.id, lastSeqIn(snapshot, p.channel)))
+  )
+  const failed = marked.find((m) => !m.ok)
+  if (failed && !failed.ok) return failed
+  return ok(pending.reduce((n, p) => n + p.count, 0))
+}
+
+export async function unreadFor(
+  deps: UnreadDeps,
+  personId: PersonId
+): Promise<Result<UnreadItem[], 'persona-desconocida' | ExternalFailure>> {
+  const { people } = deps
+  const read = await visibleWithSnapshot(deps, personId)
+  if (!read.ok) return read
+  const { visible, snapshot } = read.value
+  if (!snapshot) return ok([])
   const authors = authorsFrom(people)
   const items = await Promise.all(
-    visible.flatMap((v) => v.channels.map((channel) => itemOf(authors, v, channel, snapshot.value)))
+    visible.flatMap((v) => v.channels.map((channel) => itemOf(authors, v, channel, snapshot)))
   )
   return ok(items.filter((item) => item !== null).sort(newestFirst))
 }
