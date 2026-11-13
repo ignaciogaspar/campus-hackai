@@ -126,10 +126,15 @@ function EntryRow({ entry }: { entry: PlanningEntry }) {
   )
 }
 
-export default async function CargarPlanningPage({ searchParams }: { searchParams: Promise<{ guardadas?: string }> }) {
+export default async function CargarPlanningPage({
+  searchParams
+}: {
+  searchParams: Promise<{ guardadas?: string; repetidas?: string }>
+}) {
   await requireSession('secretaria')
-  const [{ guardadas }, entries] = await Promise.all([searchParams, system().planning.entries()])
+  const [{ guardadas, repetidas }, entries] = await Promise.all([searchParams, system().planning.entries()])
   const saved = guardadas && /^\d+$/.test(guardadas) ? Number(guardadas) : null
+  const skipped = repetidas && /^\d+$/.test(repetidas) ? Number(repetidas) : 0
 
   return (
     <>
@@ -143,6 +148,8 @@ export default async function CargarPlanningPage({ searchParams }: { searchParam
         {saved !== null && (
           <p role='status' className='rounded-xl bg-success/10 px-4 py-3 text-[0.875rem] font-semibold text-success'>
             Listo, guardamos {saved === 1 ? '1 clase' : `${saved} clases`}. Ya se ven en el Planning.
+            {skipped > 0 &&
+              ` ${skipped === 1 ? 'Una venía repetida y se cargó' : `${skipped} venían repetidas y se cargaron`} una sola vez.`}
           </p>
         )}
         <PlanningUpload />

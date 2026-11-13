@@ -1305,7 +1305,7 @@ const otherClasses: PlanningSlot[] = [
   ['Bases de Datos', 'A', 'FI', PILAR, 'Laboratorio 2', 'miercoles', '14:00', '17:00'],
   ['Estructuras de Datos', 'A', 'FI', PILAR, 'Laboratorio 1', 'jueves', '08:00', '11:00'],
   ['Termodinámica', 'A', 'FI', PILAR, 'Aula A9', 'viernes', '09:00', '13:00'],
-  ['Marketing', 'A', 'FCE', BUENOS_AIRES, 'Aula 3', 'lunes', '18:00', '21:00'],
+  ['Marketing', 'A', 'FCE', BUENOS_AIRES, 'Aula 4', 'lunes', '18:00', '21:00'],
   ['Finanzas', 'B', 'FCE', BUENOS_AIRES, 'Aula 6', 'martes', '18:30', '21:30'],
   ['Logística', 'A', 'FCE', BUENOS_AIRES, 'Aula 5', 'miercoles', '18:00', '21:00'],
   ['Contabilidad II', 'A', 'FCE', PILAR, 'Aula B2', 'jueves', '14:30', '17:30'],

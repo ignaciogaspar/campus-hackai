@@ -3,14 +3,21 @@
    la misma materia, comisión y facultad (otra aula, otro horario o suspendida). Una fila
    con fecha sin clase semanal que pisar es una clase extra. */
 
-import type { PlanningClass, PlanningEntry, Weekday } from '@/lib/core/planning'
+import type { PlanningClass, PlanningEntry, PlanningEntryInput, Weekday } from '@/lib/core/planning'
 import { addDays, weekdayIndex } from '@/lib/dates'
 import { plainText as plain } from '@/lib/plain-text'
 
-const WEEKDAY_INDEX: Record<Weekday, number> = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4, sabado: 5 }
+export const WEEKDAY_INDEX: Record<Weekday, number> = {
+  lunes: 0,
+  martes: 1,
+  miercoles: 2,
+  jueves: 3,
+  viernes: 4,
+  sabado: 5
+}
 
-/** Misma materia, comisión y facultad, sin importar tildes ni mayúsculas. */
-const keyOf = (e: PlanningEntry) => [e.subject, e.section ?? '', e.school].map(plain).join('\u0000')
+/** Misma materia, comisión y facultad, sin importar tildes ni mayúsculas: la misma clase. */
+export const keyOf = (e: PlanningEntryInput) => [e.subject, e.section ?? '', e.school].map(plain).join('\u0000')
 
 const toClass = (e: PlanningEntry, day: string, change: PlanningClass['change']): PlanningClass => ({
   id: `${e.id}:${day}`,

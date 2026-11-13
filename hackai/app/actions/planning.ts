@@ -10,7 +10,7 @@ import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { Planning, PlanningCell, PlanningPreview } from '@/lib/core/planning'
+import type { Planning, PlanningCell, PlanningMode, PlanningPreview } from '@/lib/core/planning'
 import { rowsFromText } from '@/lib/delimited-text'
 import { formText } from '@/lib/form-data'
 import type { ErrorOf } from '@/lib/result'
@@ -20,7 +20,9 @@ type LoadError = ErrorOf<ReturnType<Planning['load']>> | ErrorOf<ReturnType<Plan
 
 const ERRORS: Record<LoadError, string> = {
   'solo-secretaria': 'Solo secretaría carga el planning.',
-  'sin-clases': 'No entendimos ninguna fila. Revisá la vista previa: cada fila dice qué le falta.',
+  'con-errores':
+    'No se guardó nada: hay filas con problemas. Cada una dice qué le pasa; corregilas y volvé a ver la vista previa.',
+  'sin-clases': 'No hay clases nuevas para guardar: las de la planilla ya estaban cargadas.',
   'clase-desconocida': 'Esa clase ya no está en el planning.',
   'persona-desconocida': 'No encontramos tus datos. Salí y volvé a entrar.',
   'falla-externa': 'No pudimos guardarlo porque la base no responde. Probá de nuevo en un rato.'
@@ -34,9 +36,11 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024
 export type PlanningPreviewState =
   | { status: 'idle' }
   | { status: 'error'; message: string; at: number }
-  | { status: 'preview'; preview: PlanningPreview; rows: string; source: string; at: number }
+  | { status: 'preview'; preview: PlanningPreview; rows: string; source: string; mode: PlanningMode; at: number }
 
 const failed = (message: string) => ({ status: 'error' as const, message, at: Date.now() })
+
+const modeOf = (form: FormData): PlanningMode => (formText(form, 'mode') === 'reemplazar' ? 'reemplazar' : 'agregar')
 
 const isSheet = (name: string) => /\.xlsx$/i.test(name)
 const isText = (name: string) => /\.(csv|tsv|txt)$/i.test(name)
@@ -66,9 +70,12 @@ export async function previewPlanning(_prev: PlanningPreviewState, form: FormDat
   await requireSession('secretaria')
   const read = await rowsOf(form)
   if (typeof read === 'string') return failed(read)
-  const preview = system().planning.preview(read.rows)
-  if (preview.rows.length === 0) return failed('La planilla está vacía.')
-  return { status: 'preview', preview, rows: JSON.stringify(read.rows), source: read.source, at: Date.now() }
+  const mode = modeOf(form)
+  const preview = await system().planning.preview(read.rows, mode)
+  if (!preview.ok) return failed(ERRORS[preview.error])
+  if (preview.value.rows.length === 0) return failed('La planilla está vacía.')
+  const rows = JSON.stringify(read.rows)
+  return { status: 'preview', preview: preview.value, rows, source: read.source, mode, at: Date.now() }
 }
 
 /** Las filas que volvieron de la vista previa, si tienen la forma de una planilla. */
@@ -88,12 +95,11 @@ function parsedRows(raw: string): PlanningCell[][] | null {
 export async function savePlanning(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession('secretaria')
   const rows = parsedRows(formText(form, 'rows'))
-  const mode = formText(form, 'mode') === 'reemplazar' ? 'reemplazar' : 'agregar'
   if (!rows) return failed(UNEXPECTED)
-  const result = await system().planning.load(session.personId, rows, mode)
+  const result = await system().planning.load(session.personId, rows, modeOf(form))
   if (!result.ok) return failed(ERRORS[result.error])
   revalidatePath('/planning')
-  redirect(`/cargar-clases?guardadas=${result.value.saved}`)
+  redirect(`/cargar-clases?guardadas=${result.value.saved}&repetidas=${result.value.duplicates}`)
 }
 
 /** Carga una clase a mano: semanal con el día o, con fecha, un cambio de ese día. */
@@ -103,14 +109,20 @@ export async function addPlanningClass(_prev: SpaceActionState, form: FormData):
   const { planning } = system()
   const row: PlanningCell[] = planning.columns.map(({ column }) => formText(form, column))
   const header = planning.columns.map((c) => c.header)
-  const preview = planning.preview([header, row])
-  const first = preview.rows[0]
-  if (first && 'error' in first) return failed(first.error)
+  const preview = await planning.preview([header, row], 'agregar')
+  if (!preview.ok) return failed(ERRORS[preview.error])
+  const first = preview.value.rows[0]
+  if (!first) return failed('Completá la materia, el aula, el día o la fecha, y el horario.')
+  if (first.status === 'error') return failed(first.error)
+  if (first.status === 'repetida') return failed('Esa clase ya estaba cargada: no se volvió a cargar.')
   const result = await planning.load(session.personId, [header, row], 'agregar')
   if (!result.ok) return failed(ERRORS[result.error])
   revalidatePath('/planning')
   revalidatePath('/cargar-clases')
-  return { status: 'ok', message: 'Listo, la clase ya está en el planning.', at: Date.now() }
+  const message = first.note
+    ? `Listo, la clase ya está en el planning. Ojo: ${first.note}`
+    : 'Listo, la clase ya está en el planning.'
+  return { status: 'ok', message, at: Date.now() }
 }
 
 /** Borra una clase cargada. */

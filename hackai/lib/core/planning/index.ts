@@ -8,8 +8,9 @@
 
    Usa Personas para saber si quien carga es de secretaría, y su almacén. */
 import type { People, PeopleError, PersonId } from '@/lib/core/people'
+import { checkRows } from '@/lib/core/planning/checks'
 import { classesBetween } from '@/lib/core/planning/schedule'
-import { COLUMNS, type PlanningColumn, previewRows } from '@/lib/core/planning/sheet'
+import { COLUMNS, type PlanningColumn, parseRows } from '@/lib/core/planning/sheet'
 import type { PlanningStore } from '@/lib/core/planning/store'
 import { type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 
@@ -57,16 +58,25 @@ export type PlanningClass = {
   change: 'cambio' | 'suspendida' | 'extra' | null
 }
 
-export type PlanningPreviewRow = { line: number; entry: PlanningEntryInput } | { line: number; error: string }
+/** Cómo quedó cada fila: `ok` se guarda (con un aviso si es una clase extra); `repetida` es igual a otra fila o a
+    una clase ya cargada y se guarda una sola vez; `error` no se entendió o choca con otra clase, y mientras haya
+    alguna no se guarda nada. */
+export type PlanningPreviewRow =
+  | { line: number; status: 'ok'; entry: PlanningEntryInput; note: string | null }
+  | { line: number; status: 'repetida'; entry: PlanningEntryInput; note: string }
+  | { line: number; status: 'error'; error: string }
 
 export type PlanningPreview = {
   rows: PlanningPreviewRow[]
-  counts: { ok: number; errors: number }
+  counts: { ok: number; duplicates: number; errors: number }
   /** Si la primera fila se leyó como encabezado. */
   header: boolean
 }
 
-export type PlanningLoadError = 'solo-secretaria' | 'sin-clases' | PeopleError
+/** `reemplazar` cambia todo el planning por la planilla; `agregar` la suma a lo cargado. */
+export type PlanningMode = 'reemplazar' | 'agregar'
+
+export type PlanningLoadError = 'solo-secretaria' | 'con-errores' | 'sin-clases' | PeopleError
 
 export type { PlanningColumn }
 
@@ -79,15 +89,17 @@ export type Planning = {
   classes(from: string, to: string): Promise<Result<PlanningClass[], ExternalFailure>>
   /** Lo cargado, para la pantalla de secretaría: primero las semanales por día y hora, después las de fecha. */
   entries(): Promise<Result<PlanningEntry[], ExternalFailure>>
-  /** Qué se entendió de cada fila de la planilla, sin guardar nada. */
-  preview(rows: PlanningCell[][]): PlanningPreview
-  /** Guarda las filas que se entendieron: `reemplazar` cambia todo el planning por estas; `agregar` las suma, como
-      un cambio de último momento o una clase cargada a mano. Solo secretaría. */
+  /** Qué se entendió de cada fila y si choca con otra, sin guardar nada. Con `agregar` también se compara con lo
+      cargado; con `reemplazar`, solo entre las filas (lib/core/planning/checks.ts). */
+  preview(rows: PlanningCell[][], mode: PlanningMode): Promise<Result<PlanningPreview, ExternalFailure>>
+  /** Guarda la planilla si no tiene errores: `reemplazar` cambia todo el planning, `agregar` suma las clases (un
+      cambio de último momento o una clase cargada a mano). Las repetidas se guardan una sola vez. Con alguna fila
+      con error no guarda nada (`con-errores`); sin clases nuevas, `sin-clases`. Solo secretaría. */
   load(
     personId: PersonId,
     rows: PlanningCell[][],
-    mode: 'reemplazar' | 'agregar'
-  ): Promise<Result<{ saved: number; skipped: number }, PlanningLoadError>>
+    mode: PlanningMode
+  ): Promise<Result<{ saved: number; duplicates: number }, PlanningLoadError>>
   /** Borra una clase cargada. Solo secretaría. */
   remove(
     personId: PersonId,
@@ -110,6 +122,22 @@ export function createPlanning({ people, store }: { people: People; store: Plann
     return person.value.role === 'secretaria' ? ok(true) : fail('solo-secretaria')
   }
 
+  async function preview(
+    rows: PlanningCell[][],
+    mode: PlanningMode
+  ): Promise<Result<PlanningPreview, ExternalFailure>> {
+    const parsed = parseRows(rows)
+    const existing = mode === 'agregar' ? await store.entries() : ok([])
+    if (!existing.ok) return existing
+    const checked = checkRows(parsed.rows, existing.value)
+    const count = (status: PlanningPreviewRow['status']) => checked.filter((r) => r.status === status).length
+    return ok({
+      rows: checked,
+      counts: { ok: count('ok'), duplicates: count('repetida'), errors: count('error') },
+      header: parsed.header
+    })
+  }
+
   return {
     async classes(from, to) {
       const entries = await store.entries()
@@ -123,16 +151,18 @@ export function createPlanning({ people, store }: { people: People; store: Plann
 
     columns: COLUMNS,
 
-    preview: previewRows,
+    preview,
 
     async load(personId, rows, mode) {
       const allowed = await secretary(personId)
       if (!allowed.ok) return allowed
-      const preview = previewRows(rows)
-      const entries = preview.rows.flatMap((r) => ('entry' in r ? [r.entry] : []))
+      const checked = await preview(rows, mode)
+      if (!checked.ok) return checked
+      if (checked.value.counts.errors > 0) return fail('con-errores')
+      const entries = checked.value.rows.flatMap((r) => (r.status === 'ok' ? [r.entry] : []))
       if (entries.length === 0) return fail('sin-clases')
       const saved = mode === 'reemplazar' ? await store.replace(entries) : await store.add(entries)
-      return saved.ok ? ok({ saved: saved.value, skipped: preview.counts.errors }) : saved
+      return saved.ok ? ok({ saved: saved.value, duplicates: checked.value.counts.duplicates }) : saved
     },
 
     async remove(personId, entryId) {

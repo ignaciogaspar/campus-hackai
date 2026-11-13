@@ -7,13 +7,7 @@
    clase suspendida o una clase extra. Las columnas se reconocen por el
    encabezado, en cualquier orden; sin encabezado van en el orden de `COLUMNS`. */
 
-import type {
-  PlanningCell,
-  PlanningEntryInput,
-  PlanningPreview,
-  PlanningPreviewRow,
-  Weekday
-} from '@/lib/core/planning'
+import type { PlanningCell, PlanningEntryInput, Weekday } from '@/lib/core/planning'
 import { plainText as plain } from '@/lib/plain-text'
 
 export type PlanningColumn =
@@ -102,7 +96,8 @@ export function minutesFrom(cell: PlanningCell | undefined): number | null {
   if (!match) return null
   const hours = Number(match[1])
   const minutes = Number(match[2] ?? 0)
-  return hours <= 24 && minutes < 60 ? hours * 60 + minutes : null
+  const total = hours * 60 + minutes
+  return minutes < 60 && total <= 24 * 60 ? total : null
 }
 
 /** Un día del calendario de Excel (días desde el 30/12/1899) como `AAAA-MM-DD`. */
@@ -173,12 +168,15 @@ function entryOf(cells: Cells): PlanningEntryInput | string {
   }
 }
 
-/** Lo que se entendió de cada fila con algo escrito. Las vacías no cuentan. */
-export function previewRows(rows: PlanningCell[][]): PlanningPreview {
+/** Una fila de la planilla leída: la clase o por qué no se entendió. Todavía sin mirar las otras filas. */
+export type ParsedRow = { line: number; entry: PlanningEntryInput } | { line: number; error: string }
+
+/** Lo que se entendió de cada fila con algo escrito, por separado. Las vacías no cuentan. */
+export function parseRows(rows: PlanningCell[][]): { rows: ParsedRow[]; header: boolean } {
   const header = rows.length > 0 ? headerOf(rows[0]) : null
   const columns = header ?? COLUMNS.map((c) => c.column)
   const first = header ? 1 : 0
-  const result: PlanningPreviewRow[] = []
+  const result: ParsedRow[] = []
   for (let i = first; i < rows.length && result.length < MAX_ROWS; i++) {
     if (rows[i].every((cell) => textOf(cell) === '')) continue
     const cells: Cells = {}
@@ -188,6 +186,5 @@ export function previewRows(rows: PlanningCell[][]): PlanningPreview {
     const entry = entryOf(cells)
     result.push(typeof entry === 'string' ? { line: i + 1, error: entry } : { line: i + 1, entry })
   }
-  const ok = result.filter((r) => 'entry' in r).length
-  return { rows: result, counts: { ok, errors: result.length - ok }, header: header !== null }
+  return { rows: result, header: header !== null }
 }

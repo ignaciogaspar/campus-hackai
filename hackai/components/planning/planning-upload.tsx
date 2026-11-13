@@ -1,10 +1,12 @@
 'use client'
 
-/* Cargar el planning, para secretaría: se sube la planilla (.xlsx o .csv) o se
-   pegan las filas copiadas de Excel o Google Sheets, se ve qué se entendió de
-   cada fila y recién después se guarda, reemplazando todo el planning o
-   sumando las clases. Nada se guarda hasta confirmar. Qué se entiende de cada
-   fila lo decide Planning. */
+/* Cargar el planning, para secretaría: se elige si la planilla reemplaza todo
+   o se suma a lo cargado, se sube (.xlsx o .csv) o se pegan las filas copiadas
+   de Excel o Google Sheets, y se ve qué pasó con cada fila antes de guardar.
+   Las filas con problemas van primero y dicen qué les pasa (un aula ocupada,
+   la misma clase dos veces, algo que no se entendió); mientras haya alguna no
+   se guarda nada. Las repetidas se cargan una sola vez. Qué se entiende y qué
+   choca lo decide Planning. */
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { useActionState } from 'react'
 import { type PlanningPreviewState, previewPlanning, savePlanning } from '@/app/actions/planning'
@@ -15,7 +17,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { PlanningPreviewRow } from '@/lib/core/planning'
+import type { PlanningEntryInput, PlanningMode, PlanningPreviewRow } from '@/lib/core/planning'
 import { cn } from '@/lib/utils'
 
 const LABEL = 'flex flex-col gap-1 text-[0.8125rem] font-semibold'
@@ -24,46 +26,77 @@ const BOX =
 const HELP = 'font-normal text-muted-foreground'
 const PRIMARY = cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')
 const SECONDARY = cn(buttonVariants({ variant: 'outline' }), 'rounded-[10px] px-4 text-[0.9375rem] font-semibold')
+const CHOICE =
+  'flex min-h-11 cursor-pointer items-start gap-3 rounded-[10px] px-2 py-2 text-[0.9375rem] hover:bg-muted has-[:checked]:bg-accent'
+const RADIO =
+  'mt-1 size-4 accent-blue focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring'
+
+const MODES: { value: PlanningMode; label: string; help: string }[] = [
+  {
+    value: 'agregar',
+    label: 'Sumar a lo cargado',
+    help: 'Para cambios de último momento o clases nuevas. Se controla que no choquen con lo que ya está.'
+  },
+  {
+    value: 'reemplazar',
+    label: 'Reemplazar todo el planning',
+    help: 'Para la planilla del cuatrimestre entero: lo cargado antes se borra.'
+  }
+]
+
+const classTitle = (e: PlanningEntryInput) => (e.section ? `${e.subject} · Comisión ${e.section}` : e.subject)
+
+function EntryMeta({ line, e }: { line: number; e: PlanningEntryInput }) {
+  return (
+    <>
+      <span>Línea {line}</span>
+      <span>
+        · {whenLabel(e)}, {hhmm(e.start)} a {hhmm(e.end)}
+      </span>
+      <span>· {[e.room, e.building, e.school].filter(Boolean).join(' · ')}</span>
+    </>
+  )
+}
+
+function kindPill(e: PlanningEntryInput) {
+  if (e.cancelled) return <StatusPill tone='warning'>Suspendida</StatusPill>
+  return e.date ? <StatusPill tone='info'>Ese día</StatusPill> : <StatusPill tone='success'>Semanal</StatusPill>
+}
 
 function PreviewRow({ row }: { row: PlanningPreviewRow }) {
-  if ('error' in row) {
+  if (row.status === 'error') {
     return (
       <ListItem
         title={`Línea ${row.line}`}
-        description={row.error}
-        end={<StatusPill tone='danger'>No se guarda</StatusPill>}
+        description={<span className='text-destructive'>{row.error}</span>}
+        end={<StatusPill tone='danger'>Con problemas</StatusPill>}
       />
     )
   }
-  const e = row.entry
   return (
     <ListItem
-      title={<span className='break-words'>{e.section ? `${e.subject} · Comisión ${e.section}` : e.subject}</span>}
-      meta={
-        <>
-          <span>Línea {row.line}</span>
-          <span>
-            · {whenLabel(e)}, {hhmm(e.start)} a {hhmm(e.end)}
-          </span>
-          <span>· {[e.room, e.building, e.school].filter(Boolean).join(' · ')}</span>
-        </>
-      }
+      title={<span className='break-words'>{classTitle(row.entry)}</span>}
+      description={row.note ?? undefined}
+      meta={<EntryMeta line={row.line} e={row.entry} />}
       end={
-        e.cancelled ? (
-          <StatusPill tone='warning'>Suspendida</StatusPill>
-        ) : e.date ? (
-          <StatusPill tone='info'>Ese día</StatusPill>
+        row.status === 'repetida' ? (
+          <StatusPill tone='neutral'>Repetida</StatusPill>
+        ) : row.note ? (
+          <StatusPill tone='warning'>Clase extra</StatusPill>
         ) : (
-          <StatusPill tone='success'>Semanal</StatusPill>
+          kindPill(row.entry)
         )
       }
     />
   )
 }
 
+const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`)
+
 function Preview({ state }: { state: Extract<PlanningPreviewState, { status: 'preview' }> }) {
-  const { ok, errors } = state.preview.counts
-  const rows = [...state.preview.rows.filter((r) => 'error' in r), ...state.preview.rows.filter((r) => !('error' in r))]
+  const { ok, duplicates, errors } = state.preview.counts
+  const order: PlanningPreviewRow['status'][] = ['error', 'repetida', 'ok']
+  const rows = order.flatMap((status) => state.preview.rows.filter((r) => r.status === status))
   return (
     <section aria-labelledby='vista-previa' className='flex flex-col gap-3'>
       <Card className='flex flex-col gap-3 p-4'>
@@ -71,30 +104,33 @@ function Preview({ state }: { state: Extract<PlanningPreviewState, { status: 'pr
           Vista previa de {state.source}
         </h2>
         <div className='flex flex-wrap gap-2'>
-          <StatusPill tone='success'>{ok === 1 ? '1 clase' : `${ok} clases`}</StatusPill>
+          <StatusPill tone='success'>{plural(ok, 'clase para guardar', 'clases para guardar')}</StatusPill>
+          {duplicates > 0 && <StatusPill tone='neutral'>{plural(duplicates, 'repetida', 'repetidas')}</StatusPill>}
           {errors > 0 && (
-            <StatusPill tone='danger'>
-              {errors === 1 ? '1 fila con problemas' : `${errors} filas con problemas`}
-            </StatusPill>
+            <StatusPill tone='danger'>{plural(errors, 'fila con problemas', 'filas con problemas')}</StatusPill>
           )}
         </div>
-        <p className='text-[0.8125rem] text-muted-foreground'>
-          Todavía no se guardó nada. Las filas con problemas quedan afuera; si querés, corregí la planilla y volvé a ver
-          la vista previa.
-        </p>
+        {errors > 0 ? (
+          <p
+            role='alert'
+            className='rounded-xl bg-destructive/10 px-3 py-2 text-[0.8125rem] font-semibold text-destructive'
+          >
+            No se puede guardar todavía: {plural(errors, 'fila tiene', 'filas tienen')} problemas. Cada una dice qué le
+            pasa; corregilas en la planilla y volvé a ver la vista previa.
+          </p>
+        ) : (
+          <p className='text-[0.8125rem] text-muted-foreground'>
+            Todavía no se guardó nada.
+            {duplicates > 0 && ' Las repetidas se cargan una sola vez.'}
+            {state.mode === 'reemplazar' && ' Al guardar, lo cargado antes se reemplaza por esta planilla.'}
+          </p>
+        )}
         <ActionForm action={savePlanning} className='flex flex-col gap-2'>
           <input type='hidden' name='rows' value={state.rows} />
-          <div className='flex flex-wrap gap-2'>
-            <SubmitButton name='mode' value='reemplazar' disabled={ok === 0} className={PRIMARY}>
-              Reemplazar el planning
-            </SubmitButton>
-            <SubmitButton name='mode' value='agregar' disabled={ok === 0} className={SECONDARY}>
-              Sumar al planning
-            </SubmitButton>
-          </div>
-          <p className={cn('text-[0.8125rem]', HELP)}>
-            «Reemplazar» es para la planilla del cuatrimestre entero; «Sumar», para cambios de último momento.
-          </p>
+          <input type='hidden' name='mode' value={state.mode} />
+          <SubmitButton disabled={errors > 0 || ok === 0} className={cn(PRIMARY, 'self-start')}>
+            {state.mode === 'reemplazar' ? 'Reemplazar el planning' : 'Sumar al planning'}
+          </SubmitButton>
         </ActionForm>
       </Card>
       <List>
@@ -122,6 +158,18 @@ export function PlanningUpload() {
           </a>
         </div>
         <form action={preview} className='mt-3 flex flex-col gap-4'>
+          <fieldset className='flex flex-col'>
+            <legend className='mb-1 text-[0.8125rem] font-semibold'>Qué hacer con la planilla</legend>
+            {MODES.map((m, i) => (
+              <label key={m.value} className={CHOICE}>
+                <input type='radio' name='mode' value={m.value} defaultChecked={i === 0} className={RADIO} />
+                <span className='flex flex-col'>
+                  <span className='font-semibold'>{m.label}</span>
+                  <span className='text-[0.8125rem] text-muted-foreground'>{m.help}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
           <label className={LABEL}>
             Archivo
             <span className={cn(BOX, 'px-3')}>
@@ -151,8 +199,8 @@ export function PlanningUpload() {
             </span>
             <span id='planning-ayuda' className={HELP}>
               Una fila por clase. Con «Día» se repite cada semana; con «Fecha» es de ese día solo, como un cambio de
-              aula. Para suspender la clase de un día, escribí «suspendida» en «Estado». Si elegiste un archivo, se usa
-              el archivo.
+              aula. Para suspender la clase de un día, poné la fecha y escribí «suspendida» en «Estado». Si elegiste un
+              archivo, se usa el archivo.
             </span>
           </label>
           <div className='flex flex-wrap gap-2'>
