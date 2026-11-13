@@ -2,10 +2,13 @@
 /* Notas, por materia: los filtros arriba y las materias agrupadas por año
    lectivo (el más reciente primero) o por año de la carrera. Tocar una abre el
    panel con su detalle (a la derecha en compu, desde abajo en el celular). Los
-   filtros, el agrupamiento y la materia abierta se guardan en la URL. */
-import { ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
+   filtros, el agrupamiento y la materia abierta se guardan en la URL. Abrir una
+   materia con notas nuevas las marca como vistas (app/actions/grades.ts). */
+import { CalendarCheck2, ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { markSubjectGradesSeen } from '@/app/actions/grades'
+import { gradeDate, termLabel } from '@/components/academic/format'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import {
   applyFilters,
@@ -16,6 +19,7 @@ import {
   groupsOf,
   STATES
 } from '@/components/grades/filters'
+import { assessmentsProgress } from '@/components/grades/format'
 import { gradeText, isApproved, KIND, StatusChip } from '@/components/grades/status'
 import { SubjectDetail } from '@/components/grades/subject-detail'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
@@ -36,8 +40,8 @@ const STATE_LABELS: Record<GradeFilters['estado'], string> = {
 /* Los filtros, como píldoras del alto del riel de estado. */
 const FILTER = 'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-10 sm:w-48'
 
-/* Un filtro: la opción «todos» lleva el nombre del filtro, así los tres entran en una fila sin etiquetas
-   encima. El nombre completo queda para el lector de pantalla. */
+/* Un filtro: la opción «todos» lleva el nombre corto del filtro («Estado», «Tipo»), así entran sin cortarse y sin
+   etiquetas encima. El nombre completo queda para el lector de pantalla. */
 function Filter({
   label,
   value,
@@ -60,7 +64,8 @@ function Filter({
   )
 }
 
-/* A la derecha de cada materia, lo más importante de su estado: la nota final, la de cursada o cuántos parciales tienen nota. */
+/* A la derecha de cada materia, lo más importante de su estado: la nota final o la de cursada. En curso, cuántas
+   evaluaciones tienen nota, como texto secundario: las notas van en la fila. */
 function Summary({ subject }: { subject: SubjectStanding }) {
   if (isApproved(subject.status)) {
     return subject.finalGrade !== null ? (
@@ -79,37 +84,58 @@ function Summary({ subject }: { subject: SubjectStanding }) {
       </span>
     )
   }
-  const graded = subject.assessments.filter((a) => a.grade !== null).length
-  if (!subject.assessments.length) return null
+  return null
+}
+
+/* Las notas de una materia en curso, sin abrir la hoja: «Primer parcial 7 · Segundo parcial —», y cuántas tienen
+   nota. */
+function Progress({ subject }: { subject: SubjectStanding }) {
+  const progress = subject.status === 'en-curso' ? assessmentsProgress(subject.assessments) : null
+  if (!progress) return null
   return (
-    <span className='flex flex-none flex-col items-end text-right'>
-      <span className='text-[0.6875rem] text-muted-foreground'>Con nota</span>
-      <span className='text-lg leading-tight font-extrabold text-ink tabular-nums'>
-        {graded}/{subject.assessments.length}
+    <span className='flex min-w-0 flex-col gap-0.5 text-[0.75rem] text-muted-foreground'>
+      <span className='text-pretty'>
+        {progress.items.map((item, i) => (
+          <span key={item.name}>
+            {i > 0 && ' · '}
+            <span className='whitespace-nowrap'>
+              {item.name} <b className='font-bold text-ink tabular-nums'>{item.result}</b>
+            </span>
+          </span>
+        ))}
       </span>
+      <span>{progress.count}</span>
     </span>
   )
 }
 
-/* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea. */
-function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: () => void }) {
+/* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea; en curso,
+   sus notas, y con el final pendiente, la mesa a la que está inscripto. */
+function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: (from: HTMLElement) => void }) {
   return (
-    <li>
+    <li className='min-w-0'>
       <button
         type='button'
-        onClick={onOpen}
+        onClick={(e) => onOpen(e.currentTarget)}
         aria-haspopup='dialog'
-        className='flex h-full w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
+        className='flex h-full w-full min-w-0 cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
       >
         <SubjectIcon name={subject.name} size='sm' tone={subject.status === 'en-curso' ? 'solid' : 'soft'} />
         <span className='flex min-w-0 flex-1 flex-col gap-1'>
           <span className='line-clamp-2 text-[0.9375rem] leading-snug font-semibold text-ink'>{subject.name}</span>
           <span className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
             <StatusChip status={subject.status} />
-            <span className='min-w-0 truncate text-[0.75rem] text-muted-foreground'>
-              {subject.code} · {subject.termName ?? KIND[subject.kind]}
+            <span className='min-w-0 text-[0.75rem] text-muted-foreground'>
+              {subject.code} · {subject.termName ? termLabel(subject.termName) : KIND[subject.kind]}
             </span>
           </span>
+          <Progress subject={subject} />
+          {subject.status === 'regular' && subject.examDate && (
+            <span className='inline-flex items-center gap-1.5 text-[0.75rem] font-semibold text-ink'>
+              <CalendarCheck2 aria-hidden='true' className='size-3.5 flex-none text-blue' strokeWidth={2} />
+              Inscripto al final del {gradeDate(subject.examDate)}
+            </span>
+          )}
         </span>
         <Summary subject={subject} />
       </button>
@@ -129,7 +155,8 @@ function Group({
   items: SubjectStanding[]
   open: boolean
   onToggle: () => void
-  onOpen: (subjectId: string) => void
+  /** Con la tarjeta que se tocó, para devolverle el foco al cerrar el panel. */
+  onOpen: (subjectId: string, from: HTMLElement) => void
 }) {
   const id = `grupo-${name.replace(/\W+/g, '-')}`
   return (
@@ -157,9 +184,9 @@ function Group({
         </button>
       </h2>
       {open && (
-        <ul id={id} className='grid gap-2.5 lg:grid-cols-2 2xl:grid-cols-3'>
+        <ul id={id} className='grid grid-cols-1 gap-2.5 lg:grid-cols-2 2xl:grid-cols-3'>
           {items.map((s) => (
-            <SubjectCard key={s.subjectId} subject={s} onOpen={() => onOpen(s.subjectId)} />
+            <SubjectCard key={s.subjectId} subject={s} onOpen={(from) => onOpen(s.subjectId, from)} />
           ))}
         </ul>
       )}
@@ -174,7 +201,9 @@ const GROUPINGS: { grouping: Grouping; label: string }[] = [
 
 /* Los filtros en una sola tarjeta: el estado, el tipo y cómo se agrupan. El año no se filtra: agrupando por año
    lectivo o por año de la carrera, cada año es una sección que se pliega. En compu el estado va en un riel; en el
-   celular, en un desplegable al lado del tipo, y debajo, a todo el ancho, cómo se agrupan. */
+   celular, en un desplegable al lado del tipo, y debajo, a todo el ancho, cómo se agrupan. Lo que no entra en una
+   fila baja a la siguiente, dentro de la tarjeta: nada se sale por la derecha, tampoco con letra grande. Con letra
+   grande, los dos desplegables del celular se apilan (la columna mínima va en rem). */
 function Filters({
   filters,
   set,
@@ -187,8 +216,8 @@ function Filters({
   onGrouping: (grouping: Grouping) => void
 }) {
   return (
-    <div className='flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4 xl:flex-row xl:items-center xl:justify-between'>
-      <div className='grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3'>
+    <div className='flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-4'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3'>
         <div className='min-w-0 sm:hidden'>
           <Filter
             label='Estado de la materia'
@@ -196,7 +225,7 @@ function Filters({
             onChange={(estado) => set({ estado: estado as GradeFilters['estado'] })}
             options={STATES.map((state) => ({
               value: state,
-              label: state === 'todos' ? 'Todos los estados' : STATE_LABELS[state]
+              label: state === 'todos' ? 'Estado' : STATE_LABELS[state]
             }))}
           />
         </div>
@@ -221,7 +250,7 @@ function Filters({
             value={filters.tipo}
             onChange={(tipo) => set({ tipo: tipo as GradeFilters['tipo'] })}
             options={[
-              { value: 'todas', label: 'Todos los tipos' },
+              { value: 'todas', label: 'Tipo' },
               { value: 'obligatoria', label: 'Obligatorias' },
               { value: 'optativa', label: 'Optativas' },
               { value: 'vida-universitaria', label: 'Vida universitaria' }
@@ -234,7 +263,8 @@ function Filters({
   )
 }
 
-/* Cómo se agrupan: «Agrupar» y un riel chico. En el celular, a todo el ancho. */
+/* Cómo se agrupan: «Agrupar» y un riel chico. En el celular, a todo el ancho, y con letra grande cada opción baja a
+   dos líneas en vez de cortarse. */
 function GroupingSwitch({ current, onChange }: { current: Grouping; onChange: (grouping: Grouping) => void }) {
   return (
     <div className='flex items-center gap-3'>
@@ -249,7 +279,11 @@ function GroupingSwitch({ current, onChange }: { current: Grouping; onChange: (g
             type='button'
             aria-pressed={current === grouping}
             onClick={() => onChange(grouping)}
-            className={railItem({ size: 'sm', className: 'px-4 text-[0.8125rem] sm:flex-auto' })}
+            className={railItem({
+              size: 'sm',
+              className:
+                'px-4 text-[0.8125rem] max-sm:px-2 max-sm:py-1 max-sm:leading-tight max-sm:text-center max-sm:whitespace-normal sm:flex-auto'
+            })}
           >
             {label}
           </button>
@@ -263,7 +297,9 @@ export function GradesBoard({
   subjects,
   initialFilters,
   initialGrouping,
-  initialOpen
+  initialOpen,
+  highlight,
+  withNewGrades = []
 }: {
   /** Las materias que cursó o está cursando. */
   subjects: SubjectStanding[]
@@ -271,11 +307,21 @@ export function GradesBoard({
   initialGrouping: Grouping
   /** La materia que se abre al entrar, como la de «Ver notas» de una materia archivada. */
   initialOpen?: string
+  /** La evaluación que se resalta en la materia que se abre al entrar: la nota nueva que tocó en Novedades. */
+  highlight?: string
+  /** Las materias con notas nuevas: abrirlas las marca como vistas. */
+  withNewGrades?: string[]
 }) {
   const pathname = usePathname()
   const [filters, setFilters] = useState(initialFilters)
   const [grouping, setGrouping] = useState(initialGrouping)
   const [openId, setOpenId] = useState<string | null>(initialOpen ?? null)
+  // La tarjeta que abrió el panel: al cerrarlo, el foco vuelve ahí y no al principio de la página.
+  const opener = useRef<HTMLElement | null>(null)
+  const openFrom = (subjectId: string, from: HTMLElement) => {
+    opener.current = from
+    setOpenId(subjectId)
+  }
   // Los grupos plegados, por nombre: al cambiar de agrupamiento cambian los nombres y todo vuelve a verse.
   const [folded, setFolded] = useState<Set<string>>(new Set())
   const set = (patch: Partial<GradeFilters>) => setFilters((f) => ({ ...f, ...patch }))
@@ -295,6 +341,14 @@ export function GradesBoard({
     window.history.replaceState(null, '', `${pathname}${search ? `?${search}` : ''}`)
   }, [filters, grouping, openId, pathname])
 
+  // Cada materia se marca una vez: al marcarla, la página se vuelve a armar con la campana al día.
+  const marked = useRef(new Set<string>())
+  useEffect(() => {
+    if (!openId || !withNewGrades.includes(openId) || marked.current.has(openId)) return
+    marked.current.add(openId)
+    void markSubjectGradesSeen(openId)
+  }, [openId, withNewGrades])
+
   const shown = applyFilters(subjects, filters)
   const open = subjects.find((s) => s.subjectId === openId) ?? null
   const filtered = filtersQuery(filters) !== ''
@@ -305,9 +359,16 @@ export function GradesBoard({
 
       {shown.length === 0 ? (
         <div className='flex flex-col items-center gap-3'>
-          <EmptyState icon={SearchX} title='Ninguna materia coincide'>
-            Probá con otro estado o con otro tipo.
-          </EmptyState>
+          {/* Sin finales pendientes y sin otro filtro, es una buena noticia, no una búsqueda fallida. */}
+          {filters.estado === 'final-pendiente' && filtersQuery({ ...filters, estado: 'todos' }) === '' ? (
+            <EmptyState icon={CircleCheck} title='No debés ningún final'>
+              Ninguna de tus cursadas regulares espera el final.
+            </EmptyState>
+          ) : (
+            <EmptyState icon={SearchX} title='Ninguna materia coincide'>
+              Probá con otro estado o con otro tipo.
+            </EmptyState>
+          )}
           {filtered && (
             <button
               type='button'
@@ -343,7 +404,7 @@ export function GradesBoard({
               items={group.items}
               open={!folded.has(group.name)}
               onToggle={() => fold(group.name)}
-              onOpen={setOpenId}
+              onOpen={openFrom}
             />
           ))}
         </div>
@@ -351,8 +412,17 @@ export function GradesBoard({
 
       <Sheet open={open !== null} onOpenChange={(next) => !next && setOpenId(null)}>
         {open && (
-          <SheetContent side='right' title={open.name} description={open.termName ?? undefined}>
-            <SubjectDetail subject={open} />
+          <SheetContent
+            side='right'
+            title={open.name}
+            description={open.termName ? termLabel(open.termName) : undefined}
+            onCloseAutoFocus={(e) => {
+              if (!opener.current?.isConnected) return
+              e.preventDefault()
+              opener.current.focus()
+            }}
+          >
+            <SubjectDetail subject={open} highlight={open.subjectId === initialOpen ? highlight : undefined} />
           </SheetContent>
         )}
       </Sheet>

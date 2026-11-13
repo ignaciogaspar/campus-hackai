@@ -1,8 +1,8 @@
 'use client'
 
-/* Botón para salir: cierra la sesión y vuelve al ingreso. Va en la hoja del
-   perfil (celular) o sobre el navy cuando
-   no hay perfil que mostrar. Es un componente de cliente para avisar mientras
+/* «Cerrar sesión»: cierra la sesión y vuelve al ingreso, que avisa que se
+   cerró. Va en la hoja del perfil (celular), en el menú de la cuenta al pie de
+   la barra lateral (compu) o sobre el navy cuando no hay perfil que mostrar. Es un componente de cliente para avisar mientras
    sale, y porque `Button` trae a `radix-ui` entero cuando se importa desde un
    componente de servidor. */
 import { LoaderCircle, LogOut } from 'lucide-react'
@@ -28,7 +28,7 @@ function Submit({ tone }: { tone: keyof typeof TONES }) {
       className={cn('cursor-pointer gap-1.5 font-semibold', TONES[tone])}
     >
       <Icon aria-hidden='true' strokeWidth={1.8} className={cn(pending && 'motion-safe:animate-spin')} />
-      {pending ? 'Saliendo…' : 'Salir'}
+      {pending ? 'Cerrando sesión…' : 'Cerrar sesión'}
     </Button>
   )
 }

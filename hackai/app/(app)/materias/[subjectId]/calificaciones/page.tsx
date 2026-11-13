@@ -35,6 +35,7 @@ import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-tool
 import { StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { backFor } from '@/lib/home'
 import { cn } from '@/lib/utils'
 
 type Params = Promise<{ subjectId: string }>
@@ -74,6 +75,8 @@ export default async function GradebookPage({ params, searchParams }: { params: 
   }
   const book = result.value
   const { selectedSection, several, showCourse, column, gradable, editing, page } = viewOf(book, raw)
+  const shownColumn = showCourse ? COURSE_COLUMN : column?.id
+  const evaluation = evaluationHref(subjectId, several ? book.sectionId : undefined, { columna: shownColumn })
 
   return (
     <>
@@ -81,7 +84,7 @@ export default async function GradebookPage({ params, searchParams }: { params: 
         subject={book.subject}
         role={session.role}
         sections={selectedSection && !several ? [selectedSection] : []}
-        backHref='/materias'
+        back={backFor(session.role, raw.desde)}
         toolbarBell
       />
       <main className={SUBJECT_MAIN}>
@@ -106,14 +109,16 @@ export default async function GradebookPage({ params, searchParams }: { params: 
               comision={several ? book.sectionId : undefined}
               columns={book.columns}
               selectedId={showCourse ? COURSE_COLUMN : column.id}
+              students={book.students.length}
+              course={book.course}
             />
           ) : (
             <span />
           )}
-          <div className='flex flex-none gap-2'>
-            <Link href={evaluationHref(subjectId, several ? book.sectionId : undefined)} className={SECONDARY}>
+          <div className='flex flex-none flex-wrap gap-2'>
+            <Link href={evaluation} className={SECONDARY}>
               <Settings2 aria-hidden='true' className='size-4' strokeWidth={2} />
-              Evaluación
+              Parciales y pesos
             </Link>
             <a href={gradesExcelHref(subjectId)} download className={SECONDARY}>
               <FileSpreadsheet aria-hidden='true' className='size-4' strokeWidth={2} />
@@ -122,7 +127,7 @@ export default async function GradebookPage({ params, searchParams }: { params: 
           </div>
         </div>
         {!column ? (
-          <NoColumns evaluationHref={evaluationHref(subjectId, several ? book.sectionId : undefined)} />
+          <NoColumns evaluationHref={evaluation} />
         ) : showCourse ? (
           <CourseView subjectId={subjectId} book={book} gradable={gradable} editing={editing} page={page} />
         ) : (
@@ -190,6 +195,7 @@ function CourseView({
         editing.personId
       )}
       position={{ index: gradable.indexOf(editing) + 1, total: gradable.length }}
+      weightTotal={book.course.weightTotal}
     />
   ) : (
     <CourseSummary

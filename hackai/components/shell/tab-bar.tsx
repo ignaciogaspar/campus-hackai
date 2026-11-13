@@ -10,10 +10,19 @@ import { Ellipsis, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { type PointerEvent, useRef, useState } from 'react'
-import { Sheet, SheetClose, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
-export type Tab = { href: string; label: string; icon: LucideIcon }
+export type Tab = {
+  href: string
+  label: string
+  icon: LucideIcon
+  /** El nombre en la barra de abajo, si el de la sección no entra en su celda (Inscripciones). */
+  short?: string
+}
+
+/** Un grupo de la hoja «Más», con su título: «Día a día», «Tu carrera». */
+export type TabGroup = { label: string; tabs: Tab[] }
 
 export const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -42,8 +51,8 @@ function Cell({ tab, on }: { tab: Tab; on: boolean }) {
         )}
         strokeWidth={on ? 2.1 : 1.8}
       />
-      <span className='max-w-full truncate px-0.5 text-[0.625rem] leading-tight font-semibold min-[390px]:text-[0.6875rem]'>
-        {tab.label}
+      <span className='max-w-full truncate px-0.5 text-[0.6875rem] leading-tight font-semibold min-[375px]:text-xs'>
+        {tab.short ?? tab.label}
       </span>
     </>
   )
@@ -52,7 +61,34 @@ function Cell({ tab, on }: { tab: Tab; on: boolean }) {
 const CELL =
   'relative z-[1] flex min-w-0 flex-col items-center justify-center gap-1 rounded-full transition-colors duration-200 focus-ring-inset'
 
-export function TabBar({ tabs, more }: { tabs: Tab[]; more: Tab[] }) {
+function MoreGroup({ group, pathname }: { group: TabGroup; pathname: string }) {
+  const id = `mas-${group.label.toLowerCase().replace(/\W+/g, '-')}`
+  return (
+    <section aria-labelledby={id} className='flex flex-col gap-1'>
+      <h3 id={id} className='px-3 pt-1 text-[0.75rem] font-semibold text-muted-foreground'>
+        {group.label}
+      </h3>
+      <ul className='flex flex-col gap-1'>
+        {group.tabs.map(({ href, label, icon: Icon }) => (
+          <li key={href}>
+            <SheetClose asChild>
+              <Link
+                href={href}
+                aria-current={isActive(pathname, href) ? 'page' : undefined}
+                className='flex min-h-12 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-accent focus-ring aria-[current=page]:bg-accent aria-[current=page]:text-blue'
+              >
+                <Icon aria-hidden='true' className='size-5' strokeWidth={1.8} />
+                {label}
+              </Link>
+            </SheetClose>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+export function TabBar({ tabs, more }: { tabs: Tab[]; more: TabGroup[] }) {
   const pathname = usePathname()
   const router = useRouter()
   const track = useRef<HTMLDivElement>(null)
@@ -66,7 +102,7 @@ export function TabBar({ tabs, more }: { tabs: Tab[]; more: Tab[] }) {
   const cells = moreTab ? [...tabs, moreTab] : tabs
   const n = cells.length
   const tabIndex = tabs.findIndex((t) => isActive(pathname, t.href))
-  const moreActive = more.some((t) => isActive(pathname, t.href))
+  const moreActive = more.some((g) => g.tabs.some((t) => isActive(pathname, t.href)))
   const active = tabIndex >= 0 ? tabIndex : moreActive ? n - 1 : -1
   const shown = scrub ?? active
 
@@ -120,95 +156,85 @@ export function TabBar({ tabs, more }: { tabs: Tab[]; more: Tab[] }) {
 
   return (
     <nav aria-label='Navegación principal' className='fixed inset-x-2 bottom-(--tabbar-bottom) z-10 lg:hidden'>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: el recorrido es un gesto táctil sobre la barra; con teclado y lector de pantalla se usan los enlaces de adentro. */}
-      <div
-        ref={track}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={(e) => end(e, true)}
-        onPointerCancel={(e) => end(e, false)}
-        onContextMenu={(e) => e.preventDefault()}
-        onClickCapture={(e) => {
-          if (performance.now() < swallowUntil.current) {
-            e.preventDefault()
-            e.stopPropagation()
-          }
-        }}
-        style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}
-        className='relative mx-auto grid h-16 max-w-md touch-none rounded-full bg-white/50 p-[3px] shadow-[0_0_0_1px_rgb(14_21_72/0.06),0_12px_32px_-8px_rgb(14_21_72/0.28),0_2px_6px_-2px_rgb(14_21_72/0.1)] backdrop-blur-2xl backdrop-saturate-[1.8] select-none [-webkit-touch-callout:none]'
-      >
-        {/* El vidrio: un brillo que cae desde el borde de arriba y un filo claro por dentro, como una lámina curva. */}
-        <span
-          aria-hidden='true'
-          className='pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(180deg,rgb(255_255_255/0.75)_0%,rgb(255_255_255/0.2)_42%,rgb(255_255_255/0)_58%,rgb(255_255_255/0.3)_100%)] shadow-[inset_0_1px_0_rgb(255_255_255/0.95),inset_0_0_0_1px_rgb(255_255_255/0.55),inset_0_-1px_1px_rgb(14_21_72/0.05)]'
-        />
-        {/* La pastilla de la sección elegida: casi del alto de la barra, se desliza de una a otra y, al recorrerla,
-            crece un poco como una lupa. */}
-        {shown >= 0 && (
+      {/* «Más» es el disparador de la hoja: al cerrarla, el foco vuelve a él. */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: el recorrido es un gesto táctil sobre la barra; con teclado y lector de pantalla se usan los enlaces de adentro. */}
+        <div
+          ref={track}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={(e) => end(e, true)}
+          onPointerCancel={(e) => end(e, false)}
+          onContextMenu={(e) => e.preventDefault()}
+          onClickCapture={(e) => {
+            if (performance.now() < swallowUntil.current) {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+          }}
+          style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}
+          className='relative mx-auto grid h-16 max-w-md touch-none rounded-full bg-white/50 p-[3px] shadow-[0_0_0_1px_rgb(14_21_72/0.06),0_12px_32px_-8px_rgb(14_21_72/0.28),0_2px_6px_-2px_rgb(14_21_72/0.1)] backdrop-blur-2xl backdrop-saturate-[1.8] select-none [-webkit-touch-callout:none]'
+        >
+          {/* El vidrio: un brillo que cae desde el borde de arriba y un filo claro por dentro, como una lámina curva. */}
           <span
             aria-hidden='true'
-            className='absolute inset-y-[3px] left-[3px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
-            style={{
-              width: `calc((100% - 6px) / ${n})`,
-              transform: `translateX(${shown * 100}%) scale(${scrub !== null ? 1.1 : 1})`
-            }}
-          >
+            className='pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(180deg,rgb(255_255_255/0.75)_0%,rgb(255_255_255/0.2)_42%,rgb(255_255_255/0)_58%,rgb(255_255_255/0.3)_100%)] shadow-[inset_0_1px_0_rgb(255_255_255/0.95),inset_0_0_0_1px_rgb(255_255_255/0.55),inset_0_-1px_1px_rgb(14_21_72/0.05)]'
+          />
+          {/* La pastilla de la sección elegida: casi del alto de la barra, se desliza de una a otra y, al recorrerla,
+              crece un poco como una lupa. */}
+          {shown >= 0 && (
             <span
-              className={cn(
-                'block size-full rounded-full bg-[linear-gradient(180deg,rgb(255_255_255/0.95),rgb(229_239_255/0.85))] shadow-[0_4px_14px_-4px_rgb(14_21_72/0.25),inset_0_1px_0_rgb(255_255_255),inset_0_-1px_1px_rgb(44_78_153/0.12)] ring-1 ring-blue/10',
-                scrub !== null &&
-                  'bg-[linear-gradient(180deg,rgb(255_255_255/0.8),rgb(229_239_255/0.7))] shadow-[0_8px_20px_-6px_rgb(14_21_72/0.3),inset_0_1px_0_rgb(255_255_255),inset_0_-1px_1px_rgb(44_78_153/0.16)]'
-              )}
-            />
-          </span>
-        )}
-        {tabs.map((tab, i) => {
-          const on = i === shown
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              draggable={false}
-              aria-current={i === active ? 'page' : undefined}
-              className={cn(CELL, on ? 'text-blue' : 'text-steel')}
+              aria-hidden='true'
+              className='absolute inset-y-[3px] left-[3px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
+              style={{
+                width: `calc((100% - 6px) / ${n})`,
+                transform: `translateX(${shown * 100}%) scale(${scrub !== null ? 1.1 : 1})`
+              }}
             >
-              <Cell tab={tab} on={on} />
-            </Link>
-          )
-        })}
+              <span
+                className={cn(
+                  'block size-full rounded-full bg-[linear-gradient(180deg,rgb(255_255_255/0.95),rgb(229_239_255/0.85))] shadow-[0_4px_14px_-4px_rgb(14_21_72/0.25),inset_0_1px_0_rgb(255_255_255),inset_0_-1px_1px_rgb(44_78_153/0.12)] ring-1 ring-blue/10',
+                  scrub !== null &&
+                    'bg-[linear-gradient(180deg,rgb(255_255_255/0.8),rgb(229_239_255/0.7))] shadow-[0_8px_20px_-6px_rgb(14_21_72/0.3),inset_0_1px_0_rgb(255_255_255),inset_0_-1px_1px_rgb(44_78_153/0.16)]'
+                )}
+              />
+            </span>
+          )}
+          {tabs.map((tab, i) => {
+            const on = i === shown
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                draggable={false}
+                aria-current={i === active ? 'page' : undefined}
+                className={cn(CELL, on ? 'text-blue' : 'text-steel')}
+              >
+                <Cell tab={tab} on={on} />
+              </Link>
+            )
+          })}
+          {moreTab && (
+            <SheetTrigger asChild>
+              <button
+                type='button'
+                className={cn(CELL, 'cursor-pointer', n - 1 === shown ? 'text-blue' : 'text-steel')}
+              >
+                <Cell tab={moreTab} on={n - 1 === shown} />
+              </button>
+            </SheetTrigger>
+          )}
+        </div>
         {moreTab && (
-          <button
-            type='button'
-            onClick={() => setMoreOpen(true)}
-            aria-haspopup='dialog'
-            className={cn(CELL, 'cursor-pointer', n - 1 === shown ? 'text-blue' : 'text-steel')}
-          >
-            <Cell tab={moreTab} on={n - 1 === shown} />
-          </button>
-        )}
-      </div>
-      {moreTab && (
-        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-          <SheetContent title='Más secciones'>
-            <ul className='flex flex-col gap-1'>
-              {more.map(({ href, label, icon: Icon }) => (
-                <li key={href}>
-                  <SheetClose asChild>
-                    <Link
-                      href={href}
-                      aria-current={isActive(pathname, href) ? 'page' : undefined}
-                      className='flex min-h-12 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-accent focus-ring aria-[current=page]:bg-accent aria-[current=page]:text-blue'
-                    >
-                      <Icon aria-hidden='true' className='size-5' strokeWidth={1.8} />
-                      {label}
-                    </Link>
-                  </SheetClose>
-                </li>
+          <SheetContent title='Otras secciones' description='Las que no entran en la barra de abajo.'>
+            <div className='flex flex-col gap-4'>
+              {more.map((group) => (
+                <MoreGroup key={group.label} group={group} pathname={pathname} />
               ))}
-            </ul>
+            </div>
           </SheetContent>
-        </Sheet>
-      )}
+        )}
+      </Sheet>
     </nav>
   )
 }

@@ -84,9 +84,17 @@
   --ring: var(--blue-light);
   --radius: 0.875rem;
   /* La barra de vidrio de abajo del celular (components/shell/tab-bar.tsx): a qué
-     distancia del borde flota y cuánto lugar ocupa con esa distancia. */
+     distancia del borde flota y cuánto lugar ocupa con esa distancia. Los 4rem son
+     su alto (h-16): si cambia uno, cambia el otro. */
   --tabbar-bottom: max(0.75rem, env(safe-area-inset-bottom));
   --tabbar-space: calc(4rem + var(--tabbar-bottom));
+  /* El campo para escribir del espacio (ComposerDock) va pegado al borde de abajo, con su fondo opaco detrás de la
+     barra, y mide su alto en --dock-height. --dock-space es lo que tapan abajo los dos juntos: el margen con que
+     LatestMark deja el último mensaje por encima, con lugar de más para la línea «Publicado para…», que agranda el
+     campo justo después de dejar a la vista lo recién enviado. --dock-extra es lo que el campo tapa por encima de la barra: el
+     marco ya deja lugar para la barra (sidebar-frame.tsx), y la página suma esto. */
+  --dock-space: calc(max(var(--dock-height, 0px), var(--tabbar-space)) + 1.75rem);
+  --dock-extra: max(0px, calc(var(--dock-height, 0px) - var(--tabbar-space)));
 }
 
 @layer base {
@@ -95,6 +103,9 @@
   @media (min-width: 1440px) { html { font-size: 112.5%; } }
   a { color: var(--azul); text-underline-offset: 0.2em; }
   html { scrollbar-width: none; }
+  /* En el celular, lo que recibe el foco o se lleva a la vista (con Tab, con scrollIntoView) se frena antes de
+     la barra de vidrio de abajo: si no, un botón como «Entregar» queda tapado por la barra (WCAG 2.4.11). */
+  @media (max-width: 1023px) { html { scroll-padding-bottom: calc(var(--tabbar-space) + 1rem); } }
   html::-webkit-scrollbar { display: none; }
   /* Lo que dibuja el navegador también va con la paleta: la selección y el cursor de texto. */
   ::selection { background: color-mix(in oklch, var(--blue-light) 24%, white); color: var(--tinta); }
@@ -116,6 +127,11 @@
     ),
     linear-gradient(180deg, #ecf4f6 0%, #e8f2f4 25%, #ecf4f5 45%, #f1f6f7 60%, #f5f8f8 75%, #f9fafa 88%, #fbfcfc 100%);
 }
+
+/* «Nuevos» (components/spaces/unread-memory.tsx): el separador va solo antes del primer renglón de la lista con
+   algo sin leer. */
+.new-divider { display: none; }
+[data-new]:not([data-new] ~ [data-new]) > .new-divider { display: flex; }
 
 /* Foco visible de todo control: afuera del borde, o adentro si el contenedor recorta. */
 @utility focus-ring {

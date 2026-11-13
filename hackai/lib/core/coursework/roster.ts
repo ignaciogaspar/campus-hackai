@@ -4,13 +4,16 @@
    que llegan del navegador. */
 import type {
   AccessError,
+  StoredGrade,
   StoredSubmission,
   StoredTask,
   SubmissionCounts,
   SubmissionRow,
-  SubmissionStudent
+  SubmissionStudent,
+  TaskGrade,
+  TaskProgress
 } from '@/lib/core/coursework'
-import { submissionFor } from '@/lib/core/coursework/tasks'
+import { submissionFor, taskGradeOf } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection, Studies } from '@/lib/core/studies'
 import { fail, ok, type Result } from '@/lib/result'
@@ -30,22 +33,44 @@ export async function studentsOf(
   return ok({ students: read.value.data, staleSince: read.value.stale ? read.value.readAt : null })
 }
 
-/** El alumno, con su entrega a la tarea si la hizo: a tiempo, atrasada (con cuánto) o sin entregar. */
+/** El alumno, con su entrega a la tarea si la hizo (a tiempo, atrasada con cuánto, o sin entregar) y la nota que le
+    cargó el docente. */
 export function rowOf(
   student: SubmissionStudent,
   stored: StoredSubmission | undefined,
-  task: StoredTask
+  task: StoredTask,
+  grade: TaskGrade | null = null
 ): SubmissionRow {
-  if (!stored) return { student, state: 'sin-entrega', submission: null }
-  const submission = submissionFor(stored, task)
-  return { student, state: submission.late ? 'atrasada' : 'entregada', submission }
+  if (!stored) return { student, state: 'sin-entrega', submission: null, grade }
+  const submission = submissionFor(stored, task, grade)
+  return { student, state: submission.late ? 'atrasada' : 'entregada', submission, grade }
 }
 
-/** Todos los alumnos de la comisión, en el orden de Cursada. Una entrega de alguien que ya no está en la comisión
-    no cuenta. */
-export function rowsOf(students: SubmissionStudent[], stored: StoredSubmission[], task: StoredTask): SubmissionRow[] {
+/** Todos los alumnos de la comisión, en el orden de Cursada, con las notas de la comisión en la tarea. Una entrega
+    de alguien que ya no está en la comisión no cuenta. */
+export function rowsOf(
+  students: SubmissionStudent[],
+  stored: StoredSubmission[],
+  task: StoredTask,
+  grades: StoredGrade[] = []
+): SubmissionRow[] {
   const byPerson = new Map(stored.map((s) => [s.personId, s]))
-  return students.map((student) => rowOf(student, student.personId ? byPerson.get(student.personId) : undefined, task))
+  return students.map((student) => {
+    const { personId } = student
+    if (!personId) return rowOf(student, undefined, task)
+    return rowOf(student, byPerson.get(personId), task, taskGradeOf(grades, task.id, personId, false))
+  })
+}
+
+/** Cómo va la tarea en la comisión: cuántos entregaron, cuántos de ellos todavía no tienen nota (si la tarea lleva) y
+    cuántos no entregaron. */
+export function progressOf(rows: SubmissionRow[], task: StoredTask): TaskProgress {
+  const delivered = rows.filter((r) => r.submission !== null)
+  return {
+    delivered: delivered.length,
+    ungraded: task.graded ? delivered.filter((r) => r.grade === null).length : 0,
+    missing: rows.length - delivered.length
+  }
 }
 
 export function countsOf(rows: SubmissionRow[]): SubmissionCounts {

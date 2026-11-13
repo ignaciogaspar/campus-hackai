@@ -28,11 +28,13 @@ export function HeaderBrand({ school }: { school?: string }) {
   return <Brand school={school ?? shell?.person?.school.name} />
 }
 
-/* Lo que solo ve el alumno, donde no se puede leer la sesión: los loading.tsx,
-   que se arman antes de saber quién entra. */
-export function ForStudents({ children }: { children: ReactNode }) {
-  const shell = useContext(ShellContext)
-  return shell?.person?.role === 'alumno' ? children : null
+/* Lo que cambia según el rol, donde no se puede leer la sesión: los loading.tsx,
+   que se arman antes de saber quién entra. Lo que no se pasa, no se muestra. */
+export function ByRole({ alumno = null, profesor = null }: { alumno?: ReactNode; profesor?: ReactNode }) {
+  const role = useContext(ShellContext)?.person?.role
+  if (role === 'alumno') return alumno
+  if (role === 'profesor') return profesor
+  return null
 }
 
 /* Arriba a la derecha del encabezado, en el celular: el avatar que abre el

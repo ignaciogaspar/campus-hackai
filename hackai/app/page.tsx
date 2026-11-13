@@ -2,16 +2,17 @@
    clave. En producción se entra con la cuenta de Microsoft de la Austral
    (docs/product/alcance.md). Sin reglas de negocio: quiénes son las personas
    y quién entra lo decide Personas. */
-import { ChevronRight, KeyRound, UsersRound } from 'lucide-react'
+import { ChevronRight, CornerDownRight, KeyRound, UsersRound } from 'lucide-react'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { SignInError } from '@/app/actions/session'
 import { PersonPicker } from '@/components/session/person-picker'
+import { returnNotice } from '@/components/session/return-notice'
 import { signInQr } from '@/components/session/sign-in-qr'
 import { PageHeader } from '@/components/shell/page-header'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, SuccessNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
@@ -46,10 +47,11 @@ function signInErrorMessage(error: string | string[]): string {
     : UNKNOWN_PERSON
 }
 
-type SignInParams = { error?: string | string[]; next?: string | string[] }
+/** `salida`: se llega de «Cerrar sesión» (app/actions/session.ts). */
+type SignInParams = { error?: string | string[]; next?: string | string[]; salida?: string | string[] }
 
 export default async function IngresoPage({ searchParams }: { searchParams: Promise<SignInParams> }) {
-  const [session, { error, next }] = await Promise.all([getSession(), searchParams])
+  const [session, { error, next, salida }] = await Promise.all([getSession(), searchParams])
   // `next`: la ruta a la que se quiso entrar sin sesión, como el enlace a un archivo.
   const returnTo = safeReturnTo(next)
   if (session) redirect(returnTo ?? homeFor(session.role))
@@ -63,8 +65,8 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader
-        title='¿Quién sos?'
-        subtitle='Elegí una persona para entrar. No hace falta clave.'
+        title='HackAI'
+        subtitle='Un solo lugar que te dice qué te toca y te avisa a tiempo: tus materias, notas, inscripciones y avisos del SIU y del Campus Virtual.'
         art='ingreso'
         signedOut
       >
@@ -73,48 +75,83 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         </span>
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
+      {/* Primero la lista de personas: el QR va debajo y, desde 1440 px, en una columna al costado que queda a la vista
+          (más angosta, el buscador no entraría entero). */}
+      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:gap-3 lg:px-6 lg:pt-5 min-[90rem]:grid min-[90rem]:grid-cols-[minmax(0,1fr)_15rem] min-[90rem]:items-start min-[90rem]:gap-x-10'>
+        <div className='flex min-w-0 flex-col gap-5 lg:gap-3'>
+          {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
+
+          {error === undefined && salida !== undefined && (
+            <SuccessNotice>
+              <p>
+                <b>Cerraste sesión.</b> Para volver a entrar, elegí con quién.
+              </p>
+            </SuccessNotice>
+          )}
+
+          {returnTo && returnTo !== '/' && (
+            <p
+              role='status'
+              className='flex items-start gap-3 rounded-[14px] bg-accent px-4 py-3 text-[0.875rem] font-semibold text-accent-foreground'
+            >
+              <CornerDownRight aria-hidden='true' className='mt-px size-5 flex-none' strokeWidth={1.9} />
+              {returnNotice(returnTo)}
+            </p>
+          )}
+
+          {/* En compu, «¿Quién sos?» y la cuenta del SIU van en la misma fila: así la lista arranca más arriba. */}
+          <div className='flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:items-center lg:gap-6'>
+            {system().siuLive?.canConnect && !mobile && (
+              <Link
+                href='/entrar-con-siu'
+                className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring lg:order-last lg:py-2.5'
+              >
+                <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
+                  <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
+                </span>
+                <span className='min-w-0 flex-1'>
+                  <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
+                  <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
+                    Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
+                  </span>
+                </span>
+                <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
+              </Link>
+            )}
+
+            <div>
+              <h2 className='text-lg font-extrabold text-ink'>¿Quién sos?</h2>
+              <p className='text-sm text-pretty text-muted-foreground'>
+                Elegí un alumno o un docente inventado para entrar. No hace falta clave.
+              </p>
+            </div>
+          </div>
+
+          {!listed.ok ? (
+            <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
+          ) : listed.value.length ? (
+            <PersonPicker people={listed.value} returnTo={returnTo} />
+          ) : (
+            <EmptyState icon={UsersRound} title='No hay personas cargadas para la demo'>
+              La lista sale de las personas sintéticas. Si usás la base, cargá el seed de vínculos (hackai/README.md).
+            </EmptyState>
+          )}
+        </div>
+
         {qr && <PhoneQr qr={qr.image} url={qr.url} />}
-
-        {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
-
-        {system().siuLive?.canConnect && !mobile && (
-          <Link
-            href='/entrar-con-siu'
-            className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring'
-          >
-            <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
-              <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
-            </span>
-            <span className='min-w-0 flex-1'>
-              <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
-              <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
-                Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
-              </span>
-            </span>
-            <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
-          </Link>
-        )}
-
-        {!listed.ok ? (
-          <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
-        ) : listed.value.length ? (
-          <PersonPicker people={listed.value} returnTo={returnTo} />
-        ) : (
-          <EmptyState icon={UsersRound} title='No hay personas cargadas para la demo'>
-            La lista sale de las personas sintéticas. Si usás la base, cargá el seed de vínculos (hackai/README.md).
-          </EmptyState>
-        )}
       </main>
     </>
   )
 }
 
 /** En la compu, el QR para seguir en el celular. En el celular no aparece: se ve desde 768 px de ancho
-    (`md`), para que no se esconda en un proyector con zoom o una ventana a media pantalla. */
+    (`md`), para que no se esconda en un proyector con zoom o una ventana a media pantalla. Debajo de la lista,
+    y desde 1440 px al costado, con el código arriba del texto. La dirección va sin «https://», que no hace falta
+    para escribirla. */
 function PhoneQr({ qr, url }: { qr: string; url: string }) {
+  const shown = url.replace(/^https?:\/\//, '').replace(/\/$/, '')
   return (
-    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 md:flex'>
+    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 md:flex min-[90rem]:sticky min-[90rem]:top-6 min-[90rem]:flex-col min-[90rem]:items-start'>
       {/* biome-ignore lint/performance/noImgElement: es un SVG en data:, no hay nada que optimizar */}
       <img
         src={qr}
@@ -126,7 +163,7 @@ function PhoneQr({ qr, url }: { qr: string; url: string }) {
       <div className='flex max-w-64 flex-col gap-1'>
         <p className='text-[0.9375rem] font-bold text-foreground'>Probala en tu celular</p>
         <p className='text-[0.8125rem] text-muted-foreground'>Escaneá el código con la cámara y entrá desde ahí.</p>
-        <p className='mt-1 font-mono text-[0.8125rem] break-all text-foreground'>{url}</p>
+        <p className='mt-1 font-mono text-[0.8125rem] break-words text-foreground'>{shown}</p>
       </div>
     </aside>
   )

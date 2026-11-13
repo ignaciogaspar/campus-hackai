@@ -2,8 +2,7 @@
    docente, con sus alumnos y sus calificaciones. Va en `/calificaciones/excel`
    porque `/calificaciones` es la pantalla. Quién lo puede bajar lo decide
    Seguimiento: un alumno o alguien de otra materia no recibe nada. */
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { gradesWorkbook } from '@/lib/grades-workbook'
 import { XLSX_CONTENT_TYPE } from '@/lib/xlsx'
@@ -12,8 +11,7 @@ const plain = (text: string, status: number) =>
   new Response(text, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } })
 
 export async function GET(_request: Request, { params }: { params: Promise<{ subjectId: string }> }) {
-  const session = await getSession()
-  if (!session) redirect('/')
+  const session = await requireSession()
   const { subjectId } = await params
   const result = await gradesWorkbook(system().coursework, session.personId, subjectId)
   if (!result.ok) {

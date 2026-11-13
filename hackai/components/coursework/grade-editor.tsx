@@ -68,7 +68,7 @@ export function GradeEditor({
               enterKeyHint='next'
               defaultValue={gradeInputValue(cell?.value ?? null)}
               aria-describedby='nota-ayuda'
-              placeholder='8,5'
+              placeholder='Ej.: 8,5'
               className='min-h-11 w-full bg-transparent px-3 text-[0.9375rem] font-normal outline-none'
             />
           </span>

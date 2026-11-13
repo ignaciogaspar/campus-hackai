@@ -13,7 +13,7 @@ import { shortDate } from '@/components/dates'
 import { INITIAL_REQUEST_STATE } from '@/components/procedures/request-state'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { StatusPill, type StatusTone } from '@/components/ui/status-pill'
 import type { SiuCertificateRequest } from '@/lib/ports/siu'
 
@@ -88,11 +88,6 @@ function Requested({ message }: { message: string }) {
           <b>El SIU recibió tu solicitud.</b> {message}
         </span>
       </p>
-      <SheetClose asChild>
-        <Button variant='outline' size='lg' className='min-h-11 self-start'>
-          Listo
-        </Button>
-      </SheetClose>
     </div>
   )
 }

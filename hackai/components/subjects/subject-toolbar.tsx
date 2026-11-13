@@ -1,13 +1,14 @@
 /* La barra de arriba de las pantallas de la materia: las pestañas y, si el
-   docente dicta más de una comisión, el selector. En la compu van en la misma
-   fila con la campana de Novedades a la derecha, para el docente y para el
-   alumno (en el celular la campana queda en el encabezado). Así todas las
+   docente dicta más de una comisión, el selector. En la compu ancha van en la
+   misma fila con la campana de Novedades a la derecha, para el docente y para
+   el alumno (en el celular la campana queda en el encabezado). Así todas las
    pantallas de la materia arrancan igual. */
 import { Suspense } from 'react'
 import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
 import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import type { Role } from '@/lib/core/people'
+import { cn } from '@/lib/utils'
 
 /** El ancho de todas las pantallas de la materia, Espacio incluido: centrado y el mismo en todas las pestañas, para
     que nada salte al cambiar de una a otra. */
@@ -34,14 +35,28 @@ export function SubjectToolbar({
 }) {
   const teacher = viewer === 'profesor'
   const several = teacher && sections.length > 1
-  // En la compu, tres columnas: el selector a la izquierda, las pestañas en el centro y la campana a la derecha. En el
-  // celular, las pestañas primero y el selector debajo.
+  // En la compu ancha, tres columnas: el selector a la izquierda, las pestañas en el centro y la campana a la derecha.
+  // Más angosta (o con el navegador al 125 %) no entran las tres: el selector va en su propia fila, arriba de las
+  // pestañas, para que nunca quede debajo de «Espacio». En el celular, las pestañas primero y el selector debajo.
   return (
-    <div className='flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6'>
-      <div className='min-w-0 lg:justify-self-start'>
+    <div
+      className={cn(
+        'flex flex-col gap-3 lg:grid lg:items-center lg:gap-x-6 lg:gap-y-3',
+        several
+          ? 'lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'
+          : 'lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]'
+      )}
+    >
+      {/* Sin justify-self: con el ancho de su contenido, la celda se metía en la columna de las pestañas. */}
+      <div className={cn('min-w-0', several && 'lg:col-start-1 lg:row-start-1')}>
         {several && <SectionPicker sections={sections} selectedId={selectedId} hrefFor={hrefFor} />}
       </div>
-      <div className='min-w-0 max-lg:order-first lg:w-[30rem]'>
+      <div
+        className={cn(
+          'min-w-0 max-lg:order-first lg:w-[30rem]',
+          several && 'lg:col-span-2 lg:row-start-2 lg:justify-self-center xl:col-span-1 xl:col-start-2 xl:row-start-1'
+        )}
+      >
         <SubjectTabs
           subjectId={subjectId}
           current={current}
@@ -49,7 +64,9 @@ export function SubjectToolbar({
           role={viewer}
         />
       </div>
-      <div className='hidden lg:block lg:justify-self-end'>
+      <div
+        className={cn('hidden lg:block lg:justify-self-end', several && 'lg:col-start-2 lg:row-start-1 xl:col-start-3')}
+      >
         <Suspense fallback={<NotificationsBell unread={0} tone='light' />}>
           <SessionBell tone='light' />
         </Suspense>

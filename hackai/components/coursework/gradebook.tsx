@@ -6,15 +6,21 @@ import { ClipboardList, ClipboardPaste } from 'lucide-react'
 import Link from 'next/link'
 import { publishColumn, retryGradePass } from '@/app/actions/coursework'
 import { GHOST, PRIMARY, SECONDARY } from '@/components/coursework/fields'
-import { COURSE_COLUMN, dueTime, gradeInputValue, gradesHref, pasteGradesHref } from '@/components/coursework/format'
+import {
+  COURSE_COLUMN,
+  columnStatus,
+  gradeInputValue,
+  gradesHref,
+  pasteGradesHref
+} from '@/components/coursework/format'
+import { dueTime } from '@/components/dates'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { Card } from '@/components/ui/card'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { railItem, railTrack } from '@/components/ui/rail'
-import { RailScroller } from '@/components/ui/rail-scroller'
 import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { GradeColumn, PassCounts, PassStatus } from '@/lib/core/coursework'
+import type { CourseGradeSummary, GradeColumn, PassCounts, PassStatus } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
 export function NoColumns({ evaluationHref }: { evaluationHref: string }) {
@@ -29,44 +35,61 @@ export function NoColumns({ evaluationHref }: { evaluationHref: string }) {
   )
 }
 
-/** Las columnas de la comisión como enlaces: la elegida va en `?columna=`. */
+const PICKER_ITEM = cn(
+  railItem({ size: 'sm' }),
+  'min-h-11 max-w-full flex-none flex-col items-start justify-center gap-0 rounded-[14px] px-3 py-1 text-left whitespace-normal'
+)
+
+/** Una pestaña de la tira de columnas: el nombre entero y, abajo, cuántos tienen nota y si está publicada. */
+function ColumnTab({ href, current, name, status }: { href: string; current: boolean; name: string; status: string }) {
+  return (
+    <Link href={href} aria-current={current ? 'page' : undefined} className={PICKER_ITEM}>
+      <span className='break-words'>{name}</span>
+      <span className='text-[0.6875rem] font-normal text-muted-foreground tabular-nums'>{status}</span>
+    </Link>
+  )
+}
+
+/** Las columnas de la comisión como enlaces: la elegida va en `?columna=`. Las pestañas bajan de línea en vez de
+    correrse de costado: así se ven todas, también al 125 % y sin gestos, y la elegida siempre entera. */
 export function ColumnPicker({
   subjectId,
   comision,
   columns,
-  selectedId
+  selectedId,
+  students,
+  course
 }: {
   subjectId: string
   comision?: string
   columns: GradeColumn[]
   selectedId: string
+  /** Cuántos alumnos tiene la comisión, para el «3/3» de cada pestaña. */
+  students: number
+  course: Pick<CourseGradeSummary, 'graded' | 'unpublished'>
 }) {
   return (
-    <nav aria-label='Columna' className='flex min-w-0 flex-col gap-2'>
+    <nav aria-label='Columna' className='flex min-w-0 flex-col gap-2 lg:flex-1'>
       <span aria-hidden='true' className='px-1 text-xs font-semibold text-muted-foreground'>
         Columna
       </span>
-      <RailScroller
-        className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto [scrollbar-width:none] lg:max-w-3xl')}
-      >
+      <div className={cn(railTrack({ size: 'sm' }), 'flex-wrap rounded-[18px]')}>
         {columns.map((c) => (
-          <Link
+          <ColumnTab
             key={c.id}
             href={gradesHref(subjectId, { comision, columna: c.id })}
-            aria-current={c.id === selectedId ? 'page' : undefined}
-            className={cn(railItem({ size: 'sm' }), 'min-h-11 max-w-[11rem] flex-none px-3 max-sm:px-2.5')}
-          >
-            <span className='truncate'>{c.name}</span>
-          </Link>
+            current={c.id === selectedId}
+            name={c.name}
+            status={columnStatus({ ...c, published: c.publishedAt !== null }, students)}
+          />
         ))}
-        <Link
+        <ColumnTab
           href={gradesHref(subjectId, { comision, columna: COURSE_COLUMN })}
-          aria-current={selectedId === COURSE_COLUMN ? 'page' : undefined}
-          className={cn(railItem({ size: 'sm' }), 'min-h-11 max-w-[11rem] flex-none px-3 max-sm:px-2.5')}
-        >
-          <span className='truncate'>Nota de cursada</span>
-        </Link>
-      </RailScroller>
+          current={selectedId === COURSE_COLUMN}
+          name='Nota de cursada'
+          status={columnStatus({ ...course, published: course.graded > 0 && course.unpublished === 0 }, students)}
+        />
+      </div>
     </nav>
   )
 }

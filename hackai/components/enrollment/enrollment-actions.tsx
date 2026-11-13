@@ -192,6 +192,9 @@ type Props = {
   status: EnrollmentStatus
   /** Adónde lleva «Ver en el calendario» al inscribirse a una comisión. Sin esto, a la semana actual. */
   calendarHref?: string
+  /** Por qué no se puede inscribir si ya está en otra comisión de la materia (`elsewhereText`). Sin esto, solo en
+      cuál está. */
+  elsewhereNote?: string
   /** Las server actions llegan desde la página del servidor: importadas acá
       quedarían en otra capa del bundle, con otra copia del sistema en memoria. */
   enrollAction: EnrollmentAction
@@ -317,6 +320,7 @@ export function EnrollmentActions({
   label,
   status,
   calendarHref = '/calendario',
+  elsewhereNote,
   enrollAction,
   dropAction
 }: Props) {
@@ -337,7 +341,7 @@ export function EnrollmentActions({
     <div className='flex flex-col gap-3'>
       {!enrolled && enrolledElsewhere && shown.kind !== 'baja' && (
         <p className='text-sm text-muted-foreground'>
-          Ya estás inscripto en la comisión {enrolledElsewhere}. Para cambiarte, primero date de baja de esa.
+          {elsewhereNote ?? `Ya estás inscripto en la comisión ${enrolledElsewhere}.`}
         </p>
       )}
 

@@ -5,6 +5,7 @@ import { InstallButton } from '@/components/shell/install-button'
 import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
 import { HeaderBrand, HeaderSessionActions } from '@/components/shell/shell-context'
 import type { SubjectArt } from '@/components/subjects/subject-icon'
+import type { Back } from '@/lib/home'
 import { cn } from '@/lib/utils'
 
 /** Las ilustraciones de public/headers/: una por pantalla y una por disciplina para el espacio de cada materia. */
@@ -14,7 +15,8 @@ type Props = {
   title: string
   /** Arriba del título, chico: de dónde es la pantalla («De todas tus materias»). */
   kicker?: string
-  /** Debajo del título, en una línea: la fecha, la carrera o la comisión. Mientras carga, un `HeaderLine`. */
+  /** Debajo del título, en una línea: la fecha, la carrera o la comisión. Puede ser un componente que cambie con la
+      URL, como el de Inscripciones, o un `HeaderLine` mientras carga. */
   subtitle?: ReactNode
   /** A la izquierda del título, como el ícono de la materia en su espacio. */
   icon?: ReactNode
@@ -24,6 +26,9 @@ type Props = {
   school?: string
   /** Pantallas que no son de primer nivel: en la app instalada no hay atrás del navegador. */
   backHref?: string
+  /** Como `backHref`, para las pantallas a las que se llega desde varios lados: a dónde vuelve y su nombre, que
+      se ve al lado de la flecha («‹ Novedades»). Sale de `backFor` (lib/home.ts). */
+  back?: Back
   /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
   hideBackOnDesktop?: boolean
   /** Lo sin leer de todas las materias, para la campana, si la pantalla ya lo leyó de Espacios.
@@ -62,7 +67,8 @@ export function PageHeader({
   icon,
   art,
   school,
-  backHref,
+  backHref: backPath,
+  back,
   hideBackOnDesktop,
   unread,
   signedOut = false,
@@ -70,26 +76,34 @@ export function PageHeader({
   actions,
   children
 }: Props) {
+  const backHref = back?.href ?? backPath
   return (
     <header className='relative isolate overflow-hidden bg-navy text-white'>
       {art && <HeaderArtLayer art={art} />}
       <div className='relative grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:min-h-32 lg:content-center lg:px-6 lg:pt-6'>
         <div
-          className={cn('flex min-h-10 items-center', !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden')}
+          className={cn(
+            'flex min-h-11 min-w-0 items-center',
+            !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden'
+          )}
         >
           {backHref ? (
             <Link
               href={backHref}
-              aria-label='Volver'
-              className='-ml-2 grid size-10 place-items-center rounded-full text-white hover:bg-white/10 focus-ring'
+              aria-label={back?.label ?? 'Volver'}
+              className={cn(
+                '-ml-2 flex min-h-11 min-w-11 items-center justify-center rounded-full text-white hover:bg-white/10 focus-ring',
+                back && 'min-w-0 gap-0.5 pr-3 pl-1'
+              )}
             >
-              <ChevronLeft aria-hidden='true' className='size-5' />
+              <ChevronLeft aria-hidden='true' className='size-5 flex-none' />
+              {back && <span className='truncate text-sm font-semibold'>{back.short}</span>}
             </Link>
           ) : (
             <HeaderBrand school={school} />
           )}
         </div>
-        <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
+        <div className='col-start-2 row-start-1 flex flex-none items-center gap-1 lg:row-span-3'>
           <InstallButton />
           {!signedOut && (
             <span className={cn('contents', !desktopBell && 'lg:hidden')}>
@@ -113,7 +127,7 @@ export function PageHeader({
             {subtitle && <p className='mt-1 text-sm text-pretty text-white/75'>{subtitle}</p>}
           </div>
         </div>
-        {/* `empty:hidden`: si lo de adentro decide no mostrarse (`ForStudents` con un docente), no queda el margen. */}
+        {/* `empty:hidden`: si lo de adentro decide no mostrarse (`ByRole` sin nada para ese rol), no queda el margen. */}
         {children && (
           <div className='col-span-2 mt-4 flex flex-wrap items-center gap-2 empty:hidden lg:col-span-1 lg:col-start-1'>
             {children}

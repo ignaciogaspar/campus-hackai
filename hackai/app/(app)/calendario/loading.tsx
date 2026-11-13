@@ -1,10 +1,12 @@
+import { TEXTS } from '@/app/(app)/calendario/texts'
 import { ScreenSkeleton } from '@/components/shell/screen-skeleton'
+import { ByRole } from '@/components/shell/shell-context'
 
 export default function Loading() {
   return (
     <ScreenSkeleton
       title='Calendario'
-      subtitle='Tus clases, parciales, finales y entregas en un solo lugar.'
+      subtitle={<ByRole alumno={TEXTS.alumno.subtitle} profesor={TEXTS.profesor.subtitle} />}
       art='hoy'
       hideBackOnDesktop
     />

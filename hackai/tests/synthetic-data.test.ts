@@ -166,6 +166,8 @@ test('cada inasistencia es de una comisión que la persona cursa, dentro del per
 
 /** El alumno de la demo: Tomás Aguirre, con Discord vinculado. */
 const DEMO_STUDENT = 'p-taguirre'
+/** Un alumno de Ciencias Empresariales, para que el jurado de esa facultad no vea Inscripciones vacío. */
+const FCE_STUDENT = 'p-nherrera'
 /** Cada día, con los días que faltan hasta el segundo parcial de Análisis Matemático I (lunes 16/11). */
 const DEMO_DAYS = [
   { day: 'jueves 12/11', now: '2026-11-12T12:00:00-03:00', daysToExam: 4 },
@@ -298,6 +300,35 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
       if (hasAnnouncements && hasContents && subject.assignments.length > 0) complete.push(subject.code)
     }
     assert.ok(complete.length >= 2, `solo ${complete.join(', ') || 'ninguna'} tiene avisos, material y tareas`)
+  })
+
+  test(`el ${day} el alumno de Ciencias Empresariales tiene a qué inscribirse: una obligatoria con lugar, otra comisión sin cupo, una optativa y una actividad`, async () => {
+    const { studies } = systemAt(now)
+
+    const open = await studies.openEnrollments(FCE_STUDENT)
+    assert.ok(open.ok)
+    const courses = open.value.data.filter((o) => o.kind === 'cursada')
+    const offers = await Promise.all(
+      courses.map((o) => studies.offer(FCE_STUDENT, { kind: 'cursada', subjectId: o.subjectId }))
+    )
+    const sections = offers.flatMap((o) => (o.ok ? o.value.data : [])).filter((s) => s.enrollmentWindow === 'abierta')
+    assert.ok(
+      sections.some((s) => !s.alreadyEnrolled && !s.enrolledElsewhere && s.spotsLeft !== 0),
+      'falta una comisión abierta con lugar a la que se pueda inscribir'
+    )
+    assert.ok(
+      sections.some((s) => s.spotsLeft === 0),
+      'falta una comisión sin cupo'
+    )
+    // Negocios Digitales es la optativa de su plan.
+    assert.ok(
+      courses.some((o) => o.subjectId === 'ndg'),
+      'falta una optativa abierta'
+    )
+    assert.ok(
+      open.value.data.some((o) => o.kind === 'actividad'),
+      'falta una actividad con créditos abierta'
+    )
   })
 }
 

@@ -8,6 +8,7 @@ export default function Loading() {
       art='novedades'
       backHref='/materias'
       hideBackOnDesktop
+      desktopBell={false}
     />
   )
 }

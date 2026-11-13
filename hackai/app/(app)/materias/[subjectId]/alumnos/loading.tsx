@@ -5,6 +5,7 @@ export default function Loading() {
     <ScreenSkeleton
       title='Alumnos'
       subtitle={<HeaderLine />}
+      art='general'
       backHref='/materias'
       hideBackOnDesktop
       desktopBell={false}

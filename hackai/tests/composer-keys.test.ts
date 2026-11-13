@@ -36,3 +36,10 @@ test('otras teclas no envían', () => {
   assert.equal(sendsOnKey({ ...enter, key: 'a' }, compu), false)
   assert.equal(sendsOnKey({ ...enter, key: 'a', ctrlKey: true }, compu), false)
 })
+
+test('en Avisos, Enter salta de línea también en la compu y el aviso se publica con Ctrl o ⌘ + Enter', () => {
+  const avisos = { ...compu, announcement: true }
+  assert.equal(sendsOnKey({ ...enter }, avisos), false)
+  assert.equal(sendsOnKey({ ...enter, ctrlKey: true }, avisos), true)
+  assert.equal(sendsOnKey({ ...enter, metaKey: true }, avisos), true)
+})
