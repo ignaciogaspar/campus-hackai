@@ -339,6 +339,28 @@ La salida muestra ruta, total de consultas, lecturas de `siu_persons` y `space_r
 tiempo total y estado. Para medir cada pantalla en frío, reiniciá el servidor antes de cada ruta
 y pasala como tercer argumento después del log y la URL local.
 
+## Recorrer la app como una persona
+
+`npm run recorrer` maneja un Chrome headless propio por CDP. Entra con la sesión de una persona
+sintética sin pasar por el ingreso y emula el celular, el escritorio, el navegador al 125 % o la
+letra del sistema agrandada. Lo usan los agentes del workflow `recorrer-ux`
+(`docs/agents/workflows.md`) y sirve para sacar las capturas de los PRs. Solo entra a `localhost`.
+
+```bash
+SESSION_SECRET=<descartable> npx next build
+SESSION_SECRET=<descartable> HACKAI_SIU_REAL_PUBLICO=no npx next start -p 3014   # adaptadores en memoria
+
+SESSION_SECRET=<descartable> npm run recorrer -- iniciar --puerto 9300 --base http://localhost:3014 --persona p-taguirre --rol alumno
+npm run recorrer -- ir /inscripciones --puerto 9300 --vista mobile
+npm run recorrer -- captura /tmp/inscripciones.png --puerto 9300 --completa
+npm run recorrer -- auditar --puerto 9300
+npm run recorrer -- cerrar --puerto 9300
+```
+
+Si hay un `.env.local` con adaptadores reales, poné las `HACKAI_*` de los adaptadores en
+`memoria` al levantar el servidor. Los comandos y las vistas están en el encabezado de
+`scripts/recorrer.ts`. Chrome se busca en la ruta de macOS; en otro sistema, pasala en `CHROME_PATH`.
+
 ## Si el SIU o Moodle no responden
 
 Todas las lecturas de Cursada toleran caídas, también la oferta (`offer`) y las constancias (`certificate`). El SIU y el Moodle simulados cortan cada consulta a los 5 segundos (`lib/adapters/supabase/query.ts`) y devuelven `falla-externa`. Entonces Cursada devuelve lo último que leyó para esa persona, con su hora en `readAt` y `stale: true`, y Hoy, Calendario, Mis materias, Inscripciones, Notas, Estado de la carrera y Trámites lo muestran con el aviso de `components/ui/stale-banner.tsx`: «actualizado hace 20 min» y la hora. El «hace…» se cuenta con el reloj de la app (`system().now()`), el mismo que marcó la lectura, así que también tiene sentido con el reloj fijo. Si no había nada leído antes, la pantalla muestra el error solo en la parte que falló. Lo que pasó, las inscripciones que cerraron y si una comisión ya abrió su inscripción se miran contra el reloj al armar la pantalla, aunque la lectura sea vieja.

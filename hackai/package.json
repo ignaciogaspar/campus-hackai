@@ -20,7 +20,8 @@
     "demo:preparar": "node --env-file-if-exists=.env.local --import tsx scripts/demo-preparar.ts",
     "demo:verificar": "node --env-file-if-exists=.env.local --import tsx scripts/demo-verificar.ts",
     "demo:probar": "node --env-file-if-exists=.env.local --import tsx scripts/demo-probar.ts",
-    "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\""
+    "prepare": "node -e \"try{require('child_process').execSync('git config core.hooksPath .githooks',{stdio:'ignore'})}catch{}\"",
+    "recorrer": "node --import tsx scripts/recorrer.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
