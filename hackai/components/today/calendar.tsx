@@ -7,18 +7,24 @@
    saltar de semana. Las entregas (de Moodle y de HackAI) y los cierres de inscripción no
    ocupan una hora: van en la fila de todo el día. Con `filters`, arriba de la
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
-   y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
+   (no para el docente, que no se inscribe) y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
-import { Fragment, type ReactNode, useState } from 'react'
+import Link from 'next/link'
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react'
 import { ZoomLink } from '@/components/subjects/zoom-link'
+import { CalendarSummary, NextDates } from '@/components/today/calendar-dates'
 import {
+  agendaRows,
+  CALENDAR_GROUPS,
   type CalendarEvent,
+  type CalendarFilters,
   type CalendarTone,
   type ClassSlot,
   type Cluster,
   classesIn,
   clustersOf,
+  groupOf,
   lanesOf,
   minutesOf,
   mondayOf,
@@ -27,9 +33,14 @@ import {
   SLOT_MINUTES,
   shiftMonth,
   weekOf,
+  withCalendarFilters,
   withClasses
 } from '@/components/today/calendar-layout'
+import { buttonVariants } from '@/components/ui/button'
+import { railItem, railTrack } from '@/components/ui/rail'
 import { Select } from '@/components/ui/select'
+import type { Role } from '@/lib/core/people'
+import type { UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 
@@ -47,19 +58,6 @@ const TONES: Record<CalendarTone, { label: string; block: string; dot: string }>
   clase: { label: 'Clase', block: 'bg-accent border-blue', dot: 'bg-blue' },
   suspendida: { label: 'Suspendida', block: 'bg-muted border-gray-light', dot: 'bg-gray-light' }
 }
-
-/** Qué se puede mostrar u ocultar en Calendario: los parciales, recuperatorios y TP van juntos. */
-type Group = 'clases' | 'evaluaciones' | 'finales' | 'entregas' | 'inscripciones'
-
-const GROUPS: { group: Group; label: string; tones: CalendarTone[] }[] = [
-  { group: 'clases', label: 'Clases', tones: ['clase', 'suspendida'] },
-  { group: 'evaluaciones', label: 'Parciales y TP', tones: ['parcial', 'recuperatorio', 'tp'] },
-  { group: 'finales', label: 'Finales', tones: ['final'] },
-  { group: 'entregas', label: 'Entregas', tones: ['entrega'] },
-  { group: 'inscripciones', label: 'Inscripciones', tones: ['inscripcion'] }
-]
-
-const groupOf = (tone: CalendarTone) => GROUPS.find((g) => g.tones.includes(tone))!.group
 
 function format(day: string, options: Intl.DateTimeFormatOptions): string {
   return new Date(`${day}T12:00:00-03:00`).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, ...options })
@@ -81,39 +79,77 @@ const describe = (e: CalendarEvent) =>
     .filter(Boolean)
     .join(' · ')
 
-/* Un evento: pastel, con el borde de arriba del color de lo que es. Se ve
-   entero: el nombre baja de línea en vez de cortarse, y nada se pisa. */
+/* Un evento: pastel, con el borde de arriba del color de lo que es y, salvo
+   en las clases, su tipo escrito arriba. Se ve entero: el nombre baja de línea
+   en vez de cortarse, y nada se pisa. Lo que ya pasó va en gris y lo dice. Si
+   tiene destino (la tarea, el espacio de la materia, la mesa), es un enlace. */
 export function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
+  const className = cn(
+    'flex min-w-0 flex-1 flex-col gap-0.5 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
+    fill && 'overflow-hidden',
+    e.past ? 'border-ink/25 bg-muted text-ink/75' : TONES[e.tone].block,
+    e.next && 'shadow-[0_4px_12px_-4px_rgb(16_20_44/0.2)]',
+    e.href && 'transition-[filter] hover:brightness-[0.97] focus-ring'
+  )
+  const content = <BlockContent e={e} short={short} />
+  return e.href ? (
+    <Link href={e.href} title={describe(e)} className={className}>
+      {content}
+    </Link>
+  ) : (
+    <span title={describe(e)} className={className}>
+      {content}
+    </span>
+  )
+}
+
+/** Qué es, escrito: «Parcial», «Entrega · vence 23:59». Las clases no lo dicen: son lo de siempre. */
+function kindLabel(e: CalendarEvent): string | null {
+  if (e.tone === 'clase') return null
+  if (e.tone === 'entrega' && e.time) return `Entrega · vence ${e.time}`
+  // El nombre de un final dice qué es: «Final» o, para el docente, «Mesa de final».
+  if (e.tone === 'final') return e.title
+  return TONES[e.tone].label
+}
+
+function BlockContent({ e, short }: { e: CalendarEvent; short: boolean }) {
+  // Un final se llama «Final»: su nombre es la materia, y debajo va el turno.
+  const title = e.tone === 'final' ? e.subjectName : e.title
+  // Si el nombre ya dice el tipo («Parcial»), el tipo no se repite arriba.
+  const kind = kindLabel(e)
+  const label = kind === title ? null : kind
+  const detail = e.tone === 'final' ? e.subject.slice(e.subjectName.length).replace(/^ · /, '') : e.subject
+  const time = e.tone === 'entrega' ? null : e.time
   return (
-    <span
-      title={describe(e)}
-      className={cn(
-        'flex min-w-0 flex-1 flex-col gap-1 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
-        fill && 'overflow-hidden',
-        TONES[e.tone].block,
-        e.past && 'opacity-50',
-        e.next && 'shadow-[0_4px_12px_-4px_rgb(16_20_44/0.2)]'
+    <>
+      {(label || e.past) && !short && (
+        <span className='text-[0.75rem] leading-snug font-semibold text-ink/70'>
+          {[label, e.past ? 'Ya pasó' : null].filter(Boolean).join(' · ')}
+        </span>
       )}
-    >
-      <b className='text-[0.75rem] leading-snug font-semibold break-words hyphens-auto'>{e.title}</b>
-      {!short && (!e.code || e.tone === 'clase' || e.tone === 'suspendida') && (
-        <span className='text-[0.6875rem] leading-snug break-words text-ink/70'>{e.subject}</span>
+      <b className='text-[0.8125rem] leading-snug font-semibold break-words'>{title}</b>
+      {!short && detail && detail !== title && (
+        <span className='text-[0.8125rem] leading-snug break-words text-ink/75'>{detail}</span>
       )}
-      <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.6875rem] text-ink/60 tabular-nums'>
-        {e.code && (
-          <span className='rounded bg-white/80 px-1 text-[0.625rem] leading-4 font-semibold text-ink/70'>{e.code}</span>
+      <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.75rem] text-ink/70 tabular-nums'>
+        {/* En una clase el título ya es la materia: la sigla sobra. */}
+        {e.code && e.tone !== 'clase' && (
+          <span className='rounded bg-white/80 px-1 text-[0.75rem] leading-[1.125rem] font-semibold text-ink/75'>
+            {e.code}
+          </span>
         )}
-        {e.time}
-        {e.next && <span className='font-semibold text-ink/80'>Próximo</span>}
+        {short && label && <span className='font-semibold'>{label}</span>}
+        {time}
+        {e.next && <span className='font-semibold text-ink'>Próximo</span>}
       </span>
       {e.place && !short && (
-        <span className='flex items-start gap-1 text-[0.6875rem] leading-snug text-ink/60'>
-          <MapPin aria-hidden='true' className='mt-px size-3 flex-none' strokeWidth={2} />
+        <span className='flex items-start gap-1 text-[0.75rem] leading-snug text-ink/70'>
+          <MapPin aria-hidden='true' className='mt-px size-3.5 flex-none' strokeWidth={2} />
           <span className='break-words'>{e.place}</span>
         </span>
       )}
       <span className='sr-only'>, {describe(e)}</span>
-    </span>
+    </>
   )
 }
 
@@ -148,7 +184,7 @@ function NowLine({ minutes, from }: { minutes: number; from: number }) {
       className='pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 items-center'
       style={{ top: remAt(minutes - from) }}
     >
-      <span className='w-[3.75rem] pr-2.5 text-right text-[0.6875rem] font-semibold text-blue tabular-nums'>
+      <span className='w-[3.75rem] pr-2.5 text-right text-[0.75rem] font-semibold text-blue tabular-nums'>
         {Math.floor(minutes / 60)}:{String(minutes % 60).padStart(2, '0')}
       </span>
       <span className='h-px flex-1 bg-blue' />
@@ -248,7 +284,7 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
 
       {allDay.length > 0 && (
         <div className={cn(GRID, 'border-b border-border')}>
-          <span className='self-center pr-2 text-right text-[0.625rem] leading-tight text-muted-foreground'>
+          <span className='self-center pr-2 text-right text-[0.75rem] leading-tight text-muted-foreground'>
             Todo el día
           </span>
           {days.map((d) => (
@@ -265,15 +301,18 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
 
       <div className={cn(GRID, 'relative')} style={{ height: remAt(to - from) }}>
         <div aria-hidden='true' className='relative'>
-          {starts.map((start) => (
-            <span
-              key={start}
-              className='absolute right-0 pt-1.5 pr-2.5 text-[0.6875rem] text-muted-foreground tabular-nums'
-              style={{ top: remAt(start - from) }}
-            >
-              {start / 60}:00
-            </span>
-          ))}
+          {/* La hora de la fila se esconde si la de la línea de ahora cae encima: no van dos horas apiladas. */}
+          {starts
+            .filter((start) => !showNow || nowMinutes - start < -10 || nowMinutes - start > 30)
+            .map((start) => (
+              <span
+                key={start}
+                className='absolute right-0 pt-1.5 pr-2.5 text-[0.75rem] text-muted-foreground tabular-nums'
+                style={{ top: remAt(start - from) }}
+              >
+                {start / 60}:00
+              </span>
+            ))}
         </div>
         {days.map((d) => (
           <DayColumn key={d} day={d} clusters={clusters} from={from} starts={starts} today={d === today} />
@@ -289,9 +328,11 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
    entra. Los días sin nada se dicen en una línea. */
 function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent[]; today: string }) {
   const byTime = (a: CalendarEvent, b: CalendarEvent) => (a.minutes ?? -1) - (b.minutes ?? -1)
+  const rows = agendaRows(days, (d) => events.some((e) => e.day === d), today)
   return (
     <ol className='flex flex-col divide-y divide-border'>
-      {days.map((d) => {
+      {rows.map(({ days: [d, ...more] }) => {
+        if (more.length > 0) return <EmptyDays key={d} from={d} to={more.at(-1)!} />
         const ofDay = events.filter((e) => e.day === d).sort(byTime)
         const isToday = d === today
         return (
@@ -328,6 +369,21 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
   )
 }
 
+/* Varios días seguidos sin nada, en una sola línea: «Mié 18 a vie 20: nada estos días». */
+function EmptyDays({ from, to }: { from: string; to: string }) {
+  const short = (d: string) => `${format(d, { weekday: 'short' }).replace('.', '')} ${Number(d.slice(8))}`
+  return (
+    <li className='flex items-center gap-3 px-3 py-2.5'>
+      <span className='w-11 flex-none text-center text-[0.75rem] font-semibold text-muted-foreground tabular-nums'>
+        {Number(from.slice(8))}–{Number(to.slice(8))}
+      </span>
+      <p className='text-[0.8125rem] text-muted-foreground'>
+        {capitalize(short(from))} a {short(to)}: nada estos días
+      </p>
+    </li>
+  )
+}
+
 /* El mes chico de la derecha: el día de hoy en azul, la semana que se ve con
    fondo celeste y un puntito en los días con algo. Tocar un día lleva a su semana. */
 export function MiniMonth({
@@ -346,7 +402,7 @@ export function MiniMonth({
   onDay: (day: string) => void
 }) {
   const arrow =
-    'grid size-7 cursor-pointer place-items-center rounded-lg bg-accent text-blue transition-colors hover:bg-blue/10 focus-ring'
+    'grid size-11 cursor-pointer place-items-center rounded-xl bg-accent text-blue transition-colors hover:bg-blue/10 focus-ring'
   return (
     <section aria-labelledby='mes' className='rounded-2xl border border-border bg-card p-4'>
       <div className='flex items-center justify-between gap-2 pb-3'>
@@ -355,10 +411,10 @@ export function MiniMonth({
         </h2>
         <span className='flex gap-1.5'>
           <button type='button' aria-label='Mes anterior' onClick={() => onMonth(-1)} className={arrow}>
-            <ChevronLeft aria-hidden='true' className='size-4' strokeWidth={2} />
+            <ChevronLeft aria-hidden='true' className='size-5' strokeWidth={2} />
           </button>
           <button type='button' aria-label='Mes siguiente' onClick={() => onMonth(1)} className={arrow}>
-            <ChevronRight aria-hidden='true' className='size-4' strokeWidth={2} />
+            <ChevronRight aria-hidden='true' className='size-5' strokeWidth={2} />
           </button>
         </span>
       </div>
@@ -370,26 +426,31 @@ export function MiniMonth({
         ))}
         {monthOf(month).map((d, i) => {
           const inWeek = week.includes(d)
-          const dot = events.find((e) => e.day === d && !e.past)
+          const ofDay = events.filter((e) => e.day === d)
+          const dot = ofDay.find((e) => !e.past)
+          const said = ofDay.map((e) => `${TONES[e.tone].label} de ${e.code ?? e.subjectName}`).join(', ')
           return (
             <button
               key={d}
               type='button'
               onClick={() => onDay(d)}
-              aria-label={capitalize(format(d, { weekday: 'long', day: 'numeric', month: 'long' }))}
+              aria-label={`${capitalize(format(d, { weekday: 'long', day: 'numeric', month: 'long' }))}${said ? `: ${said}` : ''}`}
               aria-current={d === today ? 'date' : undefined}
               className={cn(
-                'relative grid h-8 cursor-pointer place-items-center text-[0.75rem] tabular-nums transition-colors focus-ring',
+                'relative grid h-11 cursor-pointer place-items-center text-[0.8125rem] tabular-nums transition-colors focus-ring',
                 inWeek ? 'bg-accent' : 'rounded-lg hover:bg-ink/5',
                 inWeek && i % 7 === 0 && 'rounded-l-lg',
                 inWeek && i % 7 === 6 && 'rounded-r-lg',
-                d.slice(0, 7) === month.slice(0, 7) ? 'text-ink' : 'text-gray-light',
+                d.slice(0, 7) === month.slice(0, 7) ? 'text-ink' : 'text-muted-foreground',
                 d === today && 'font-bold text-blue'
               )}
             >
               {Number(d.slice(8))}
               {dot && (
-                <span aria-hidden='true' className={cn('absolute bottom-1 size-1 rounded-full', TONES[dot.tone].dot)} />
+                <span
+                  aria-hidden='true'
+                  className={cn('absolute bottom-1.5 size-1.5 rounded-full', TONES[dot.tone].dot)}
+                />
               )}
             </button>
           )
@@ -403,23 +464,23 @@ function WeekToolbar({
   week,
   onDay,
   onToday,
-  legend
+  legend,
+  rangeRef
 }: {
   week: string[]
   onDay: (day: string) => void
   onToday: () => void
   legend: boolean
+  /** El rango de la semana: al elegir un día en el mes chico, el foco va ahí. */
+  rangeRef: RefObject<HTMLParagraphElement | null>
 }) {
   const arrow =
-    'grid size-8 cursor-pointer place-items-center rounded-lg text-ink transition-colors hover:bg-ink/5 focus-ring'
+    'grid size-11 cursor-pointer place-items-center rounded-xl text-ink transition-colors hover:bg-ink/5 focus-ring'
   return (
-    <div className='flex items-center gap-1 border-b border-border px-3 py-2'>
-      <button
-        type='button'
-        onClick={onToday}
-        className='h-8 cursor-pointer rounded-lg px-3 text-[0.8125rem] font-semibold text-blue transition-colors hover:bg-accent focus-ring'
-      >
-        Hoy
+    <div className='flex items-center gap-1 border-b border-border px-3 py-1.5'>
+      <button type='button' onClick={onToday} className={cn(buttonVariants({ variant: 'outline' }), 'h-11 px-4')}>
+        {/* No solo «Hoy»: así se llama la sección del docente, y este botón hace otra cosa. */}
+        Ir a hoy
       </button>
       <button type='button' aria-label='Semana anterior' onClick={() => onDay(addDays(week[0], -7))} className={arrow}>
         <ChevronLeft aria-hidden='true' className='size-4.5' strokeWidth={1.8} />
@@ -427,7 +488,12 @@ function WeekToolbar({
       <button type='button' aria-label='Semana siguiente' onClick={() => onDay(addDays(week[0], 7))} className={arrow}>
         <ChevronRight aria-hidden='true' className='size-4.5' strokeWidth={1.8} />
       </button>
-      <p aria-live='polite' className='ml-1 text-[0.8125rem] font-medium text-muted-foreground'>
+      <p
+        ref={rangeRef}
+        tabIndex={-1}
+        aria-live='polite'
+        className='ml-1 rounded-md px-1 text-[0.8125rem] font-medium text-muted-foreground focus-ring'
+      >
         {format(week[0], { day: 'numeric', month: 'short' })} – {format(week[6], { day: 'numeric', month: 'short' })}
       </p>
       <p className={cn('ml-auto hidden flex-wrap gap-x-3 text-[0.6875rem] text-muted-foreground', legend && 'xl:flex')}>
@@ -442,62 +508,50 @@ function WeekToolbar({
   )
 }
 
-/* Los filtros de Calendario: qué tipo de cosas y de qué materia. Cada tipo es
-   un botón que se prende y se apaga. */
+/* Los filtros de Calendario: qué tipo de cosas y de qué materia. Se elige un
+   tipo (o «Todo») en un riel de una fila que, en el celular, se desliza de costado. */
 function Filters({
-  hidden,
-  onToggle,
-  subjects,
-  subject,
-  onSubject
+  groups,
+  value,
+  onChange,
+  subjects
 }: {
-  hidden: Set<Group>
-  onToggle: (group: Group) => void
+  /** Los tipos que se pueden elegir: el docente no se inscribe, así que no tiene el de inscripciones. */
+  groups: typeof CALENDAR_GROUPS
+  value: CalendarFilters
+  onChange: (next: CalendarFilters) => void
   subjects: { code: string; name: string }[]
-  subject: string
-  onSubject: (code: string) => void
 }) {
+  const kinds = [{ group: 'todo' as const, label: 'Todo', tones: [] as CalendarTone[] }, ...groups]
   return (
-    <div className='flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5'>
-      <span className='sr-only'>Mostrar</span>
-      {GROUPS.map(({ group, label, tones }) => {
-        const on = !hidden.has(group)
-        return (
+    <div className='flex flex-col gap-2 border-b border-border px-3 py-2.5 lg:flex-row lg:items-center'>
+      <fieldset className={cn(railTrack({ size: 'sm' }), 'min-w-0 overflow-x-auto [scrollbar-width:none] lg:flex-1')}>
+        <legend className='sr-only'>Mostrar</legend>
+        {kinds.map(({ group, label, tones }) => (
           <button
             key={group}
             type='button'
-            aria-pressed={on}
-            onClick={() => onToggle(group)}
-            className={cn(
-              'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-semibold transition-colors focus-ring',
-              on
-                ? 'border-ink/15 bg-card text-ink shadow-[0_1px_2px_rgb(16_20_44/0.08)] hover:border-blue/30'
-                : 'border-dashed border-border bg-transparent text-muted-foreground hover:text-ink'
-            )}
+            aria-pressed={value.kind === group}
+            onClick={() => onChange({ ...value, kind: group })}
+            className={railItem({ size: 'sm', className: 'flex-none' })}
           >
-            <span
-              aria-hidden='true'
-              className={cn(
-                'size-2.5 rounded-full',
-                on ? TONES[tones[0]].dot : 'border border-gray-light bg-transparent'
-              )}
-            />
+            {tones[0] && <span aria-hidden='true' className={cn('size-2.5 rounded-full', TONES[tones[0]].dot)} />}
             {label}
           </button>
-        )
-      })}
-      <div className='min-w-0 max-sm:w-full sm:ml-auto sm:w-60'>
+        ))}
+      </fieldset>
+      <div className='min-w-0 lg:w-60 lg:flex-none'>
         <Select
           aria-label='Materia'
-          value={subject}
-          onValueChange={onSubject}
+          value={value.subject}
+          onValueChange={(subject) => onChange({ ...value, subject })}
           options={[
             { value: '', label: 'Todas las materias' },
             ...subjects.map((s) => ({ value: s.code, label: s.name }))
           ]}
           className={cn(
-            'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-9',
-            subject && 'border-blue/40 text-blue'
+            'h-11 rounded-full pl-4 text-[0.8125rem] font-medium',
+            value.subject && 'border-blue/40 text-blue'
           )}
         />
       </div>
@@ -505,11 +559,27 @@ function Filters({
   )
 }
 
+/* Lo que el filtro deja afuera de la semana, dicho, con cómo volver a verlo. */
+function HiddenNotice({ count, onShowAll }: { count: number; onShowAll: () => void }) {
+  return (
+    <p className='flex flex-wrap items-center gap-x-2 border-b border-border bg-background px-4 py-1.5 text-[0.8125rem] text-muted-foreground'>
+      {count === 1 ? '1 evento oculto' : `${count} eventos ocultos`} por el filtro esta semana
+      <button
+        type='button'
+        onClick={onShowAll}
+        className='inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 font-semibold text-blue hover:underline focus-ring'
+      >
+        Mostrar todo
+      </button>
+    </p>
+  )
+}
+
 /** Las materias que aparecen en el calendario, para el filtro: por sigla, sin repetir. */
 function subjectsIn(events: CalendarEvent[], classes: ClassSlot[]) {
   const found = new Map<string, string>()
   for (const c of classes) found.set(c.code, c.subject)
-  for (const e of events) if (e.code && !found.has(e.code)) found.set(e.code, e.subject)
+  for (const e of events) if (e.code && !found.has(e.code)) found.set(e.code, e.subjectName)
   return [...found].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name, 'es'))
 }
 
@@ -519,6 +589,9 @@ export function TodayCalendar({
   now,
   initialDay,
   filters = false,
+  initialFilters = { kind: 'todo', subject: '' },
+  upcoming,
+  viewer = 'alumno',
   top,
   below,
   aside
@@ -531,6 +604,12 @@ export function TodayCalendar({
   initialDay?: string
   /** Muestra los filtros por tipo y por materia. */
   filters?: boolean
+  /** Los filtros con que abre, de `?ver=` y `?materia=`: al cambiarlos, se guardan ahí. */
+  initialFilters?: CalendarFilters
+  /** Las fechas de Hoy: con ellas, arriba va lo próximo y al costado, las próximas fechas en lista. */
+  upcoming?: UpcomingItem[]
+  /** Quién mira, para saber a dónde lleva cada fecha. */
+  viewer?: Role
   top?: ReactNode
   /** Debajo de la semana, en su misma columna. */
   below?: ReactNode
@@ -540,24 +619,51 @@ export function TodayCalendar({
   const start = initialDay ?? today
   const [monday, setMonday] = useState(mondayOf(start))
   const [month, setMonth] = useState(start)
-  const [hidden, setHidden] = useState<Set<Group>>(new Set())
-  const [subject, setSubject] = useState('')
+  const [shownKinds, setShownKinds] = useState<CalendarFilters>(initialFilters)
   const week = weekOf(monday)
+  const { kind, subject } = shownKinds
 
-  const visible = (e: CalendarEvent) => !hidden.has(groupOf(e.tone)) && (!subject || e.code === subject)
-  const shown = withClasses(events, classesIn(week, classes, today)).filter(visible)
+  const visible = (e: CalendarEvent) =>
+    (kind === 'todo' || groupOf(e.tone) === kind) && (!subject || e.code === subject)
+  const inWeek = withClasses(events, classesIn(week, classes, today))
+  const shown = inWeek.filter(visible)
+  // Las próximas fechas siguen a la materia y, si es un tipo de fecha, al tipo.
+  const datesKind = kind === 'clases' || kind === 'inscripciones' ? 'todo' : kind
+  const dates = upcoming?.filter(
+    (i) => (datesKind === 'todo' || groupOf(i.kind) === datesKind) && (!subject || i.subjectCode === subject)
+  )
+  const setFilters = (next: CalendarFilters) => {
+    setShownKinds(next)
+    try {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${withCalendarFilters(window.location.search, next)}`
+      )
+    } catch {
+      // Sin historial (una vista previa), el filtro vale igual hasta recargar.
+    }
+  }
 
   const goTo = (day: string) => {
     setMonday(mondayOf(day))
     setMonth(day)
   }
-  const toggle = (group: Group) =>
-    setHidden((current) => {
-      const next = new Set(current)
-      if (next.has(group)) next.delete(group)
-      else next.add(group)
-      return next
-    })
+  // Al elegir un día en el mes chico, que está debajo de la semana, se sube a la semana elegida y el foco va a su
+  // rango: si no, la semana cambia fuera de la pantalla.
+  const weekRef = useRef<HTMLElement>(null)
+  const rangeRef = useRef<HTMLParagraphElement>(null)
+  const [reveal, setReveal] = useState(0)
+  useEffect(() => {
+    if (reveal === 0) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    weekRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+    rangeRef.current?.focus({ preventScroll: true })
+  }, [reveal])
+  const pickDay = (day: string) => {
+    goTo(day)
+    setReveal((n) => n + 1)
+  }
 
   return (
     <div
@@ -570,15 +676,27 @@ export function TodayCalendar({
     >
       <div className='flex min-w-0 flex-col gap-5'>
         {top}
-        <section aria-label='Semana' className='overflow-hidden rounded-2xl border border-border bg-card'>
-          <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} />
+        {upcoming && <CalendarSummary items={upcoming} now={now} viewer={viewer} />}
+        <section
+          ref={weekRef}
+          aria-label='Semana'
+          className='scroll-mt-4 overflow-hidden rounded-2xl border border-border bg-card'
+        >
+          <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} rangeRef={rangeRef} />
           {filters && (
             <Filters
-              hidden={hidden}
-              onToggle={toggle}
+              groups={
+                viewer === 'profesor' ? CALENDAR_GROUPS.filter((g) => g.group !== 'inscripciones') : CALENDAR_GROUPS
+              }
+              value={shownKinds}
+              onChange={setFilters}
               subjects={subjectsIn(events, classes)}
-              subject={subject}
-              onSubject={setSubject}
+            />
+          )}
+          {filters && shown.length < inWeek.length && (
+            <HiddenNotice
+              count={inWeek.length - shown.length}
+              onShowAll={() => setFilters({ kind: 'todo', subject: '' })}
             />
           )}
           <div className='overflow-x-auto max-md:hidden'>
@@ -599,9 +717,14 @@ export function TodayCalendar({
           today={today}
           events={events.filter(visible)}
           onMonth={(step) => setMonth((m) => shiftMonth(m, step))}
-          onDay={goTo}
+          onDay={pickDay}
         />
-        {aside}
+        {(aside || upcoming) && (
+          <div className='flex flex-col gap-3'>
+            {aside}
+            {dates && <NextDates items={dates} viewer={viewer} />}
+          </div>
+        )}
       </aside>
     </div>
   )

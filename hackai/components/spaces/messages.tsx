@@ -9,6 +9,7 @@ import type { ReactNode } from 'react'
 import { FilePreview } from '@/components/spaces/file-preview'
 import { fileSize, initialsOf, messageTime } from '@/components/spaces/format'
 import { previewKind } from '@/components/spaces/preview-kind'
+import { UnreadDot } from '@/components/spaces/unread-memory'
 import type { Attachment, Author, Message } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
@@ -110,11 +111,7 @@ export function MessageCard({ message, children }: { message: Message; children?
         <Attachments attachments={message.attachments} />
         {children}
       </div>
-      {message.unread && (
-        <span className='mt-1.5 size-2 flex-none rounded-full bg-blue-light'>
-          <span className='sr-only'>Sin leer</span>
-        </span>
-      )}
+      <UnreadDot id={message.id} unread={message.unread} />
     </article>
   )
 }
@@ -129,11 +126,7 @@ export function ReplyBlock({ message }: { message: Message }) {
         <MessageText text={message.text} className='text-[0.875rem]' />
         <Attachments attachments={message.attachments} />
       </div>
-      {message.unread && (
-        <span className='mt-1.5 size-2 flex-none rounded-full bg-blue-light'>
-          <span className='sr-only'>Sin leer</span>
-        </span>
-      )}
+      <UnreadDot id={message.id} unread={message.unread} />
     </div>
   )
 }

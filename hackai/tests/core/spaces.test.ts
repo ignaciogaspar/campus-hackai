@@ -944,10 +944,13 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
       channelName: 'avisos',
       kind: 'avisos',
       sectionId: 'sec-am1-fi-a',
+      sectionName: 'A',
       count: 2,
       latest: undefined,
       counterpart: null,
-      thread: null
+      thread: null,
+      repliedToMine: false,
+      unanswered: 0
     }
   )
 
@@ -963,6 +966,54 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
   assert.deepEqual(await spaces.unreadFor('p-nadie'), { ok: false, error: 'persona-desconocida' })
   siuState.down = true
   assert.deepEqual(await spaces.unreadFor('p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('una novedad dice de qué comisión es, si respondieron tu consulta y cuántas consultas siguen sin respuesta', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  const mine = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  assert.ok(mine.ok)
+  // Responder deja leído lo de antes para la docente; lo que sigue, no.
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'Sí, entra.', replyTo: mine.value.id })
+  const derivadas = await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Y derivadas?' })
+  assert.ok(derivadas.ok)
+  await spaces.post('p-jescobar', ids.consultasA, { text: 'Creo que sí.', replyTo: derivadas.value.id })
+  await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Hay que llevar calculadora?' })
+
+  const student = await spaces.unreadFor('p-taguirre')
+  const teacher = await spaces.unreadFor('p-mledesma')
+
+  assert.ok(student.ok && teacher.ok)
+  const asked = student.value.find((u) => u.channelId === ids.consultasA)
+  assert.deepEqual([asked?.sectionName, asked?.repliedToMine], ['A', true])
+  const other = teacher.value.find((u) => u.channelId === ids.consultasA)
+  assert.deepEqual(
+    [other?.repliedToMine, other?.unanswered],
+    [false, 1],
+    'la de la calculadora sigue sin respuesta; la de derivadas ya tiene una'
+  )
+})
+
+test('marcar todo como leído deja sin novedades a quien lo pide, sin tocar las de los demás', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  await spaces.post('p-mledesma', ids.avisosA, { text: 'Parcial el 16.' })
+  await spaces.addMaterial('p-mledesma', ids.spaceId, pdf('Guía 4.pdf'))
+  await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Entra límites?' })
+
+  assert.deepEqual(await spaces.markAllRead('p-taguirre'), { ok: true, value: 3 })
+
+  assert.deepEqual(await spaces.unreadFor('p-taguirre'), { ok: true, value: [] })
+  const theirs = await spaces.unreadFor('p-lbenitez')
+  assert.ok(theirs.ok)
+  assert.deepEqual(theirs.value.map((u) => [u.kind, u.count]).sort(), [
+    ['avisos', 1],
+    ['material', 1]
+  ])
+  assert.deepEqual(await spaces.markAllRead('p-taguirre'), { ok: true, value: 0 }, 'sin novedades, no marca nada')
+  assert.deepEqual(await spaces.markAllRead('p-nadie'), { ok: false, error: 'persona-desconocida' })
 })
 
 test('cada novedad dice quién la publicó, y un mensaje con solo un adjunto se muestra con el nombre del archivo', async () => {
@@ -2193,7 +2244,7 @@ test('los mensajes directos sin leer aparecen como novedad solo para quien los r
   )
 })
 
-test('si todo lo sin leer de un canal es respuesta de una misma consulta, la novedad lleva a ese hilo', async () => {
+test('si todo lo sin leer de un canal es de una misma consulta, la novedad lleva a ese hilo', async () => {
   const { spaces } = build()
   const { consultasA } = await am1(spaces)
   const threadOf = async () => {
@@ -2208,12 +2259,44 @@ test('si todo lo sin leer de un canal es respuesta de una misma consulta, la nov
 
   assert.equal(await threadOf(), question.value.id)
 
-  // Una consulta nueva va al canal, igual que lo sin leer de más de un hilo.
+  // Una consulta nueva sin respuestas también es un hilo: la novedad lleva a ella, con «Responder» a la vista.
   await spaces.channel('p-taguirre', consultasA)
-  await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
-  assert.equal(await threadOf(), null)
+  const recovery = await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
+  assert.ok(recovery.ok)
+  assert.equal(await threadOf(), recovery.value.id)
+  // Lo sin leer de más de un hilo va al canal.
   await spaces.post('p-mledesma', consultasA, { text: 'Derivadas no.', replyTo: question.value.id })
   assert.equal(await threadOf(), null)
+})
+
+test('un aviso nuevo sin respuestas lleva al canal, no a un hilo', async () => {
+  const { spaces } = build()
+  const { avisosA } = await am1(spaces)
+  await spaces.post('p-mledesma', avisosA, { text: 'Parcial el 16.' })
+
+  const unread = await spaces.unreadFor('p-taguirre')
+
+  assert.ok(unread.ok)
+  assert.equal(unread.value.find((u) => u.channelId === avisosA)?.thread, null)
+})
+
+test('abrir un canal dos veces seguidas: la primera vista muestra lo no leído y la segunda ya no', async () => {
+  const { spaces } = build()
+  const { consultasA } = await am1(spaces)
+  await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
+
+  const first = await spaces.channel('p-taguirre', consultasA)
+  const second = await spaces.channel('p-taguirre', consultasA)
+
+  assert.ok(first.ok && second.ok)
+  assert.deepEqual(
+    first.value.threads.map((t) => t.message.unread),
+    [true]
+  )
+  assert.deepEqual(
+    second.value.threads.map((t) => t.message.unread),
+    [false]
+  )
 })
 
 test('un mensaje directo sin leer dice de quién es; en el resto de los canales no hay otra persona', async () => {
@@ -2304,18 +2387,50 @@ test('al docente le tocan las consultas sin resolver de sus comisiones actuales,
       spaceId: ids.spaceId,
       subjectId: 'am1',
       subjectName: 'Análisis Matemático I',
+      sectionId: 'sec-am1-fi-a',
       sectionName: 'A',
       text: '¿Entra límites?',
       author: undefined,
       origin: 'hackai',
       createdAt: '2026-11-09T12:00:00.000Z',
-      replies: 2
+      replies: 2,
+      // La última respuesta es de Lucía, una alumna.
+      answeredByTeacher: false
     }
   )
   assert.ok(ferreyra.ok)
   assert.deepEqual(
     ferreyra.value.map((q) => q.text),
     ['¿Puedo rendir en la A?']
+  )
+})
+
+test('una consulta cuenta como respondida cuando la última respuesta es de un docente', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  const unanswered = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  const onlyStudents = await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Hay clase el jueves?' })
+  const answered = await spaces.post('p-jescobar', ids.consultasA, { text: '¿Y derivadas?' })
+  const askedAgain = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Se puede usar calculadora?' })
+  assert.ok(unanswered.ok && onlyStudents.ok && answered.ok && askedAgain.ok)
+  await spaces.post('p-jescobar', ids.consultasA, { text: 'Creo que sí.', replyTo: onlyStudents.value.id })
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'Sí, entra.', replyTo: answered.value.id })
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'No.', replyTo: askedAgain.value.id })
+  // El alumno repregunta después de la docente: le vuelve a tocar responder.
+  await spaces.post('p-taguirre', ids.consultasA, { text: '¿Ni la científica?', replyTo: askedAgain.value.id })
+
+  const ledesma = await spaces.openQuestions('p-mledesma')
+
+  assert.ok(ledesma.ok)
+  assert.deepEqual(
+    ledesma.value.map((q) => [q.text, q.replies, q.answeredByTeacher]),
+    [
+      ['¿Entra límites?', 0, false],
+      ['¿Hay clase el jueves?', 1, false],
+      ['¿Y derivadas?', 1, true],
+      ['¿Se puede usar calculadora?', 2, false]
+    ]
   )
 })
 

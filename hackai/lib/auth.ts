@@ -8,6 +8,7 @@ import { cache } from 'react'
 import { system } from '@/lib/composition'
 import type { Role } from '@/lib/core/people'
 import { homeFor } from '@/lib/home'
+import { REQUESTED_PATH_HEADER, signInFor } from '@/lib/return-to'
 import {
   createSessionToken,
   SESSION_COOKIE,
@@ -33,10 +34,11 @@ export const getSession = cache(async (): Promise<Session | null> => {
   return session
 })
 
-/** Redirige a `/` si no hay sesión y a la home del rol si el rol no coincide. */
+/** Redirige al ingreso si no hay sesión, con la ruta pedida en `?next=` para volver ahí después de entrar
+    (middleware.ts), y a la home del rol si el rol no coincide. */
 export async function requireSession(role?: Role): Promise<Session> {
   const session = await getSession()
-  if (!session) redirect('/')
+  if (!session) redirect(signInFor((await headers()).get(REQUESTED_PATH_HEADER)))
   if (role && session.role !== role) redirect(homeFor(session.role))
   return session
 }

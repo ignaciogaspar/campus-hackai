@@ -16,3 +16,12 @@ test('el enlace al espacio, sin query, es una ruta de espacio', () => {
   assert.equal(isSpacePath(spaceHref('am1')), true)
   assert.equal(isSpacePath(spaceHref('física 1')), true)
 })
+
+test('el enlace al espacio lleva la comisión elegida, sola o con el canal', () => {
+  assert.equal(spaceHref('pr1', { comision: 'sec-pr1-fi-v' }), '/materias/pr1?comision=sec-pr1-fi-v')
+  assert.equal(
+    spaceHref('pr1', { canal: 'ch-7', comision: 'sec-pr1-fi-v' }),
+    '/materias/pr1?canal=ch-7&comision=sec-pr1-fi-v'
+  )
+  assert.equal(spaceHref('pr1', { canal: 'ch-7', comision: undefined }), '/materias/pr1?canal=ch-7')
+})

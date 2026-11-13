@@ -5,9 +5,17 @@
 import { ArrowRight, CalendarCheck2 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { approvalDate, gradeDate } from '@/components/academic/format'
+import { approvalDate, gradeDate, termLabel } from '@/components/academic/format'
 import { GradeBadge } from '@/components/academic/grade-badge'
-import { APPROVAL, ASSESSMENT_KIND, gradeText, groupName, KIND, StatusChip } from '@/components/grades/status'
+import {
+  APPROVAL,
+  ASSESSMENT_KIND,
+  gradeText,
+  groupName,
+  isApproved,
+  KIND,
+  StatusChip
+} from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { buttonVariants } from '@/components/ui/button'
 import { OriginBadge } from '@/components/ui/origin-badge'
@@ -27,15 +35,18 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function assessmentResult(a: SubjectAssessment): { text: string; tone: string } {
   if (a.grade !== null) return { text: gradeText(a.grade), tone: 'text-ink' }
   if (a.graded) return { text: 'Ausente', tone: 'text-destructive' }
-  if (!a.past) return { text: 'Todavía no se tomó', tone: 'text-blue' }
+  if (!a.past) return { text: 'Todavía no se tomó', tone: 'text-muted-foreground' }
   return { text: 'Sin nota todavía', tone: 'text-muted-foreground' }
 }
 
-function AssessmentRow({ a }: { a: SubjectAssessment }) {
+function AssessmentRow({ a, highlighted }: { a: SubjectAssessment; highlighted: boolean }) {
   const kind = a.kind ? ASSESSMENT_KIND[a.kind] : null
   const result = assessmentResult(a)
   return (
-    <li className='flex items-center gap-3 py-3'>
+    <li
+      aria-current={highlighted ? 'true' : undefined}
+      className={cn('flex items-center gap-3 py-3', highlighted && '-mx-2 rounded-xl bg-accent px-2')}
+    >
       <div className='flex min-w-0 flex-1 flex-col gap-1'>
         <p className='flex flex-wrap items-center gap-2 text-[0.875rem] font-semibold text-ink'>
           {a.name}
@@ -50,10 +61,11 @@ function AssessmentRow({ a }: { a: SubjectAssessment }) {
             </span>
           )}
           {a.source === 'hackai' && <OriginBadge origin='hackai' />}
+          {highlighted && <span className='text-[0.75rem] font-semibold text-blue'>Nueva</span>}
         </p>
         <p className='text-[0.75rem] text-muted-foreground'>
           <time dateTime={a.date}>{gradeDate(a.date)}</time>
-          {!a.past && ' · próximamente'}
+          {!a.past && !a.graded && a.grade === null && ' · próximamente'}
         </p>
         {a.comment && (
           <p className='mt-0.5 text-[0.8125rem] whitespace-pre-line text-ink'>
@@ -78,7 +90,68 @@ function finalText(subject: SubjectStanding): string {
   return 'Todavía no'
 }
 
-export function SubjectDetail({ subject }: { subject: SubjectStanding }) {
+/** Por qué no hay parciales, según el estado de la materia: nunca dice que la aprobó si no la aprobó. */
+function noAssessmentsText(subject: SubjectStanding): string {
+  if (subject.approval === 'equivalencia') return 'La aprobaste por equivalencia, así que no tiene parciales.'
+  if (subject.sectionName) {
+    return subject.status === 'en-curso'
+      ? 'Tu comisión todavía no cargó parciales.'
+      : 'Tu comisión no cargó parciales en el SIU.'
+  }
+  if (isApproved(subject.status)) return 'El SIU no tiene la cursada de esta materia, así que no hay parciales.'
+  if (subject.status === 'regular') return 'El SIU no tiene los parciales de tu cursada.'
+  return 'Todavía no la cursaste.'
+}
+
+function Section({ subject }: { subject: SubjectStanding }) {
+  return (
+    <>
+      {subject.sectionName ? `Comisión ${subject.sectionName}` : '—'}
+      {subject.termName && (
+        <span className='block text-[0.75rem] font-normal text-muted-foreground'>{termLabel(subject.termName)}</span>
+      )}
+    </>
+  )
+}
+
+/** En curso no hay nota de cursada ni final todavía: una línea en lugar de cuatro tarjetas vacías. */
+function InProgress({ subject }: { subject: SubjectStanding }) {
+  return (
+    <div className='flex flex-col gap-0.5 rounded-xl bg-ice/70 px-3 py-2.5 text-[0.8125rem] text-ink'>
+      <p>
+        <b>Cursando</b> · la nota de cursada sale al cerrar
+      </p>
+      {(subject.sectionName || subject.termName) && (
+        <p className='text-[0.75rem] text-muted-foreground'>
+          {[subject.sectionName && `Comisión ${subject.sectionName}`, subject.termName && termLabel(subject.termName)]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Standing({ subject }: { subject: SubjectStanding }) {
+  if (subject.status === 'en-curso') return <InProgress subject={subject} />
+  return (
+    <dl className='grid grid-cols-2 gap-2'>
+      <Field label='Nota de cursada'>
+        {subject.courseGrade !== null ? gradeText(subject.courseGrade) : 'Sin nota'}
+      </Field>
+      <Field label='Nota final'>{finalText(subject)}</Field>
+      {subject.approvedAt && <Field label='Fecha de aprobación'>{approvalDate(subject.approvedAt)}</Field>}
+      {(subject.sectionName || subject.termName) && (
+        <Field label='Cursada'>
+          <Section subject={subject} />
+        </Field>
+      )}
+    </dl>
+  )
+}
+
+/** `highlight`: la evaluación que se resalta, la nota nueva que tocó en Novedades. */
+export function SubjectDetail({ subject, highlight }: { subject: SubjectStanding; highlight?: string }) {
   return (
     <div className='flex flex-col gap-5'>
       <div className='flex flex-wrap items-center gap-2'>
@@ -88,23 +161,11 @@ export function SubjectDetail({ subject }: { subject: SubjectStanding }) {
         </span>
       </div>
 
-      <dl className='grid grid-cols-2 gap-2'>
-        <Field label='Nota de cursada'>
-          {subject.courseGrade !== null ? gradeText(subject.courseGrade) : 'Sin nota'}
-        </Field>
-        <Field label='Nota final'>{finalText(subject)}</Field>
-        <Field label='Aprobada'>{subject.approvedAt ? approvalDate(subject.approvedAt) : '—'}</Field>
-        <Field label='Cursada'>
-          {subject.sectionName ? `Comisión ${subject.sectionName}` : '—'}
-          {subject.termName && (
-            <span className='block text-[0.75rem] font-normal text-muted-foreground'>{subject.termName}</span>
-          )}
-        </Field>
-      </dl>
+      <Standing subject={subject} />
 
       {subject.examDate && (
-        <p className='flex items-start gap-2.5 rounded-xl bg-kind-final-background px-3 py-2.5 text-[0.8125rem] text-ink'>
-          <CalendarCheck2 aria-hidden='true' className='mt-px size-4.5 flex-none text-kind-final' strokeWidth={2} />
+        <p className='flex items-start gap-2.5 rounded-xl bg-accent px-3 py-2.5 text-[0.8125rem] text-ink'>
+          <CalendarCheck2 aria-hidden='true' className='mt-px size-4.5 flex-none text-blue' strokeWidth={2} />
           <span>
             Estás inscripto al final del <b>{gradeDate(subject.examDate)}</b>.
           </span>
@@ -118,15 +179,11 @@ export function SubjectDetail({ subject }: { subject: SubjectStanding }) {
         {subject.assessments.length ? (
           <ul className='divide-y divide-border'>
             {subject.assessments.map((a) => (
-              <AssessmentRow key={`${a.date}-${a.name}`} a={a} />
+              <AssessmentRow key={`${a.date}-${a.name}`} a={a} highlighted={a.name === highlight} />
             ))}
           </ul>
         ) : (
-          <p className='pt-2 text-[0.8125rem] text-muted-foreground'>
-            {subject.sectionName
-              ? 'Esta comisión no tiene parciales cargados en el SIU.'
-              : 'La aprobaste sin una cursada en el SIU (antes de los períodos que vemos o por equivalencia).'}
-          </p>
+          <p className='pt-2 text-[0.8125rem] text-muted-foreground'>{noAssessmentsText(subject)}</p>
         )}
       </section>
 

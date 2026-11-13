@@ -1,6 +1,7 @@
 /* Cómo se muestran las novedades sin leer que da Espacios: agrupadas por
    materia y, dentro de cada una, una fila por canal con quién publicó lo
-   último, el texto, cuándo y a dónde lleva. También los totales de la campana
+   último, el texto, cuándo y a dónde lleva (con `?desde=novedades`, para que
+   «Volver» traiga de vuelta acá). También los totales de la campana
    (con las notas nuevas) y de cada materia. Sin reglas de negocio: qué está sin leer, de quién es un
    directo y si todo es de un mismo hilo lo dice Espacios. */
 import { channelTitle, messageTime, spaceHref } from '@/components/spaces/format'
@@ -10,8 +11,13 @@ import type { Author, ChannelKind, Origin, UnreadItem } from '@/lib/core/spaces'
 export type NewsRow = {
   channelId: string
   kind: ChannelKind
-  /** «Avisos», «#parciales-viejos» o «Mensaje directo de Mariana Ledesma». */
+  /** Qué pasó: «Avisos · Comisión A», «#parciales-viejos», «Mensaje directo de Mariana Ledesma» o, si le
+      respondieron a quien mira, «Respondieron tu consulta». */
   title: string
+  /** De qué canal es, cuando el título no lo dice: «Consultas · Comisión A», «Otros canales». Si no, `null`. */
+  chip: string | null
+  /** En `#consultas`, cuántas de las sin leer siguen sin respuesta. */
+  unanswered: number
   /** Quién publicó o subió lo último; `null` en un directo, porque lo dice el título, o si no se sabe. */
   author: Author | null
   /** El texto del mensaje, o el nombre del archivo si solo trae un adjunto o es material. */
@@ -27,22 +33,40 @@ export type NewsRow = {
 
 export type SubjectNews = { subjectId: string; subjectName: string; count: number; rows: NewsRow[] }
 
-function rowOf(item: UnreadItem): NewsRow {
+/** El canal y, si es de una comisión, cuál: «Avisos · Comisión A». */
+function channelOf(item: UnreadItem): string {
+  const base = channelTitle(item.kind, item.channelName)
+  return item.sectionName ? `${base} · Comisión ${item.sectionName}` : base
+}
+
+/** El título y el chip de una fila: el chip solo va si dice algo que el título no. */
+function titleOf(item: UnreadItem): { title: string; chip: string | null } {
+  if (item.kind === 'directo') {
+    return { title: `Mensaje directo de ${item.counterpart?.name ?? 'Persona sin datos'}`, chip: null }
+  }
+  if (item.repliedToMine) {
+    const what = item.kind === 'consultas' ? 'tu consulta' : 'tu mensaje'
+    return { title: `Respondieron ${what}`, chip: channelOf(item) }
+  }
+  return { title: channelOf(item), chip: item.kind === 'libre' ? LABELS.canales : null }
+}
+
+/** La fila de un canal con novedades: también la usa el Hoy del docente, para que se lea igual que en Novedades. */
+export function newsRow(item: UnreadItem): NewsRow {
   const direct = item.kind === 'directo'
   const thread = direct ? undefined : (item.thread ?? undefined)
   return {
     channelId: item.channelId,
     kind: item.kind,
-    title: direct
-      ? `Mensaje directo de ${item.counterpart?.name ?? 'Persona sin datos'}`
-      : channelTitle(item.kind, item.channelName),
+    ...titleOf(item),
+    unanswered: item.unanswered,
     author: direct ? null : item.latest.author,
     text: item.latest.text,
     when: messageTime(item.latest.createdAt),
     createdAt: item.latest.createdAt,
     origin: item.latest.origin,
     count: item.count,
-    href: spaceHref(item.subjectId, { canal: item.channelId, hilo: thread })
+    href: spaceHref(item.subjectId, { canal: item.channelId, hilo: thread, desde: 'novedades' })
   }
 }
 
@@ -56,6 +80,8 @@ export const NEWS_KINDS: { kind: NewsKind; label: string }[] = [
   { kind: 'directos', label: 'Directos' },
   { kind: 'canales', label: 'Otros canales' }
 ]
+
+const LABELS = Object.fromEntries(NEWS_KINDS.map((k) => [k.kind, k.label])) as Record<NewsKind, string>
 
 const KIND_OF: Record<ChannelKind, NewsKind> = {
   avisos: 'avisos',
@@ -78,10 +104,18 @@ export function newsBySubject(items: UnreadItem[]): SubjectNews[] {
       rows: []
     }
     group.count += item.count
-    group.rows.push(rowOf(item))
+    group.rows.push(newsRow(item))
     groups.set(item.subjectId, group)
   }
   return [...groups.values()]
+}
+
+/** A dónde lleva la campana desde `pathname`: Novedades, con la pantalla de la que sale en `?desde=` para que
+    «Volver» lleve ahí (lib/home.ts). Desde Novedades misma, o desde algo que no es una pantalla, sin `desde`. */
+export function newsHref(pathname: string): string {
+  const from = pathname.replace(/^\/+/, '')
+  if (from === '' || from === 'novedades') return '/novedades'
+  return `/novedades?${new URLSearchParams({ desde: from })}`
 }
 
 /** Todo lo sin leer, para la campana. */

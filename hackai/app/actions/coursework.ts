@@ -9,11 +9,15 @@ import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import {
   COURSE_COLUMN,
-  dueAtFromInput,
+  createdTaskHref,
+  dueAtFromParts,
   durationLabel,
   evaluationHref,
   gradeFromInput,
   gradesHref,
+  notesLabel,
+  pastedText,
+  sheetChange,
   taskHref,
   tasksHref
 } from '@/components/coursework/format'
@@ -33,9 +37,21 @@ const ERRORS: Record<TaskError, string> = {
   'nombre-invalido': 'Ponele un nombre a la tarea, de hasta 120 caracteres.',
   'consigna-invalida': 'La consigna es demasiado larga: usá hasta 5.000 caracteres o subí un archivo.',
   'fecha-invalida': 'Elegí la fecha y la hora límite.',
+  'fecha-pasada': 'La fecha límite ya pasó. Elegí una fecha y hora de acá en adelante.',
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
   'falla-externa': 'No pudimos guardarlo porque un sistema no responde. Probá de nuevo en un rato.'
+}
+
+/** El campo del formulario de la tarea al que corresponde cada error, para mostrarlo debajo de él. */
+const TASK_FIELDS: Partial<Record<TaskError, string>> = {
+  'nombre-invalido': 'name',
+  'consigna-invalida': 'instructions',
+  'fecha-invalida': 'dueDate',
+  'fecha-pasada': 'dueDate',
+  'sin-comisiones': 'sectionIds',
+  'demasiado-grande': 'file',
+  'archivo-vacio': 'file'
 }
 
 type SubmitError = ErrorOf<ReturnType<Coursework['submit']>>
@@ -51,6 +67,14 @@ const SUBMIT_ERRORS: Record<SubmitError, string> = {
   'demasiado-grande': 'Los archivos pasan los 10 MB en total. Subí unos más livianos.',
   'ya-calificada': 'Tu docente ya calificó esta entrega, así que no se puede reemplazar.',
   'falla-externa': 'No pudimos guardar tu entrega porque un sistema no responde. Probá de nuevo en un rato.'
+}
+
+/** Los errores de la entrega que son de los archivos elegidos. */
+const SUBMIT_FIELDS: Partial<Record<SubmitError, string>> = {
+  'sin-archivos': 'files',
+  'demasiados-archivos': 'files',
+  'archivo-vacio': 'files',
+  'demasiado-grande': 'files'
 }
 
 type GradeActionError = ErrorOf<ReturnType<Coursework['grade']>> | ErrorOf<ReturnType<Coursework['publish']>>
@@ -86,8 +110,8 @@ const SCALES: GradeScale[] = ['1-10', '0-100']
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
 
-function failed(message: string): { status: 'error'; message: string; at: number } {
-  return { status: 'error', message, at: Date.now() }
+function failed(message: string, field?: string): { status: 'error'; message: string; at: number; field?: string } {
+  return field ? { status: 'error', message, at: Date.now(), field } : { status: 'error', message, at: Date.now() }
 }
 
 // Lo que llega a una server action viene del navegador: el tipo no lo garantiza.
@@ -114,13 +138,24 @@ function chosenFiles(form: FormData, key: string): File[] {
   })
 }
 
-/** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera. */
+/** La fecha límite de los campos de día y hora de la tarea, o `null` si falta alguno. */
+const dueAtFrom = (form: FormData) => dueAtFromParts(text(form, 'dueDate') ?? '', text(form, 'dueTime') ?? '')
+
+/** El campo de un error de la tarea. Si la fecha no sirve y el día está, lo que falta es la hora. */
+function taskField(error: TaskError, form: FormData): string | undefined {
+  if (error === 'fecha-invalida' && text(form, 'dueDate')) return 'dueTime'
+  return TASK_FIELDS[error]
+}
+
+/** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera, que avisa
+    que se publicó. */
 export async function createTask(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
   if (!subjectId) return failed(UNEXPECTED)
-  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '')
-  if (!dueAt) return failed(ERRORS['fecha-invalida'])
+  // Una fecha que no se entiende llega vacía: Seguimiento la rechaza después de mirar el nombre y la consigna, así el
+  // error que se ve primero es el del primer campo.
+  const dueAt = dueAtFrom(form) ?? ''
   const sectionIds = form.getAll('sectionIds').filter((id): id is string => typeof id === 'string' && id !== '')
   const file = chosenFile(form, 'file')
 
@@ -139,9 +174,9 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
         }
       : undefined
   })
-  if (!result.ok) return failed(ERRORS[result.error])
+  if (!result.ok) return failed(ERRORS[result.error], taskField(result.error, form))
   revalidatePath(tasksHref(subjectId))
-  redirect(tasksHref(subjectId, sectionIds[0]))
+  redirect(createdTaskHref(subjectId, sectionIds[0], result.value.id))
 }
 
 /** Cambia el nombre, la consigna y la fecha límite de una tarea. */
@@ -149,15 +184,14 @@ export async function updateTask(_prev: SpaceActionState, form: FormData): Promi
   const session = await requireSession()
   const taskId = text(form, 'taskId')
   if (!taskId) return failed(UNEXPECTED)
-  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '')
-  if (!dueAt) return failed(ERRORS['fecha-invalida'])
+  const dueAt = dueAtFrom(form) ?? ''
 
   const result = await system().coursework.updateTask(session.personId, taskId, {
     name: text(form, 'name') ?? '',
     instructions: text(form, 'instructions') ?? '',
     dueAt
   })
-  if (!result.ok) return failed(ERRORS[result.error])
+  if (!result.ok) return failed(ERRORS[result.error], taskField(result.error, form))
   revalidatePath(tasksHref(result.value.subjectId))
   revalidatePath(taskHref(result.value.subjectId, taskId))
   return { status: 'ok', message: 'Guardamos los cambios.', at: Date.now() }
@@ -351,7 +385,7 @@ export async function submitTask(_prev: SpaceActionState, form: FormData): Promi
   )
 
   const result = await system().coursework.submit(session.personId, taskId, files)
-  if (!result.ok) return failed(SUBMIT_ERRORS[result.error])
+  if (!result.ok) return failed(SUBMIT_ERRORS[result.error], SUBMIT_FIELDS[result.error])
   const task = await system().coursework.task(session.personId, taskId)
   if (task.ok) {
     revalidatePath(tasksHref(task.value.subjectId))
@@ -378,7 +412,7 @@ export async function previewPastedGrades(_prev: PasteState, form: FormData): Pr
 
   const result = await system().coursework.previewPaste(session.personId, sectionId, columnId, pasted, scale)
   if (!result.ok) return failed(PASTE_ERRORS[result.error])
-  return { status: 'preview', preview: result.value, text: pasted, scale, at: Date.now() }
+  return { status: 'preview', preview: result.value, text: pastedText(pasted), scale, at: Date.now() }
 }
 
 /** Guarda las notas pegadas, ya vistas en la vista previa, y vuelve a Calificaciones. */
@@ -397,8 +431,47 @@ export async function savePastedGrades(_prev: SpaceActionState, form: FormData):
   redirect(gradesHref(subjectId, { comision: sectionId, columna: columnId, pegadas: result.value.saved }))
 }
 
-/** Guarda de una vez las notas que el docente escribió en la planilla de una columna. Solo toca las filas que cambió:
-    un número de 1 a 10 o «A» de ausente, y conserva el comentario de cada alumno. Una nota que se borra no se guarda. */
+type RemoveActionError = ErrorOf<ReturnType<Coursework['removeGrade']>>
+
+const REMOVE_ERRORS: Record<RemoveActionError, string> = {
+  'persona-desconocida': GRADE_ERRORS['persona-desconocida'],
+  'sin-acceso': GRADE_ERRORS['sin-acceso'],
+  'solo-docentes': 'Solo los docentes de la comisión quitan notas.',
+  'columna-desconocida': GRADE_ERRORS['columna-desconocida'],
+  'alumno-desconocido': GRADE_ERRORS['alumno-desconocido'],
+  'nota-publicada': 'Esa nota ya la ven los alumnos, así que no se puede quitar. Escribí la nota corregida.',
+  'falla-externa': GRADE_ERRORS['falla-externa']
+}
+
+/** Lo que se guardó, en una frase: «Guardamos 2 notas.», «Quitamos 1 nota.», «Guardamos 2 notas y quitamos 1.». */
+function sheetSaved(saved: number, removed: number): string {
+  if (removed === 0) return `Guardamos ${notesLabel(saved)}.`
+  if (saved === 0) return `Quitamos ${notesLabel(removed)}.`
+  return `Guardamos ${notesLabel(saved)} y quitamos ${removed}.`
+}
+
+/** Lo que pide guardar la planilla, ya revisado, o el mensaje de por qué no se guarda nada. */
+function sheetPlan(rows: SheetRow[]): { write: SheetRow[]; remove: SheetRow[] } | { error: string } {
+  const change = (r: SheetRow) => sheetChange({ before: r.before, value: r.value })
+  const wrong = rows.find((r) => change(r) === 'invalida')
+  if (wrong) {
+    return {
+      error: `No guardamos ninguna nota: la de ${wrong.name} tiene que ir de 1 a 10, con coma o punto, o ser «A» si faltó.`
+    }
+  }
+  const remove = rows.filter((r) => change(r) === 'quitar')
+  const seen = remove.find((r) => r.published)
+  if (seen) {
+    return {
+      error: `No guardamos ninguna nota: la de ${seen.name} ya la ven los alumnos, así que no se puede quitar. Escribí la nota corregida.`
+    }
+  }
+  return { write: rows.filter((r) => change(r) === 'nota'), remove }
+}
+
+/** Guarda de una vez lo que el docente cambió en la planilla de una columna: un número de 1 a 10 o «A» de ausente, y
+    conserva el comentario de cada alumno. Un campo que se vació quita la nota, si los alumnos todavía no la ven. Si
+    algo no sirve, no guarda nada. */
 export async function saveGradeSheet(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
@@ -406,12 +479,13 @@ export async function saveGradeSheet(_prev: SpaceActionState, form: FormData): P
   const columnId = text(form, 'columnId')
   const rows = sheetRows(form)
   if (!subjectId || !sectionId || !columnId || !rows) return failed(UNEXPECTED)
-  const changed = rows.filter((r) => r.value.trim().toUpperCase() !== r.before.trim().toUpperCase() && r.value.trim())
-  const wrong = changed.find((r) => !isSheetGrade(r.value))
-  if (wrong) return failed(`La nota de ${wrong.name} no sirve: va de 1 a 10, con coma o punto, o «A» si faltó.`)
-  if (changed.length === 0) return { status: 'ok', message: 'No había cambios para guardar.', at: Date.now() }
+  const plan = sheetPlan(rows)
+  if ('error' in plan) return failed(plan.error)
+  if (plan.write.length + plan.remove.length === 0) {
+    return { status: 'ok', message: 'No había cambios para guardar.', at: Date.now() }
+  }
 
-  for (const row of changed) {
+  for (const row of plan.write) {
     const absent = row.value.trim().toUpperCase() === 'A'
     const result = await system().coursework.grade(session.personId, {
       sectionId,
@@ -423,31 +497,48 @@ export async function saveGradeSheet(_prev: SpaceActionState, form: FormData): P
     })
     if (!result.ok) return failed(`${row.name}: ${GRADE_ERRORS[result.error]}`)
   }
+  for (const row of plan.remove) {
+    const result = await system().coursework.removeGrade(session.personId, {
+      sectionId,
+      columnId,
+      studentId: row.studentId
+    })
+    if (!result.ok) return failed(`${row.name}: ${REMOVE_ERRORS[result.error]}`)
+  }
   revalidatePath(gradesHref(subjectId))
-  const saved = changed.length === 1 ? 'Guardamos 1 nota.' : `Guardamos ${changed.length} notas.`
-  return { status: 'ok', message: saved, at: Date.now() }
+  return { status: 'ok', message: sheetSaved(plan.write.length, plan.remove.length), at: Date.now() }
 }
 
-type SheetRow = { studentId: string; name: string; value: string; before: string; comment: string }
+type SheetRow = {
+  studentId: string
+  name: string
+  value: string
+  before: string
+  comment: string
+  /** Si los alumnos ya ven la nota que tenía. */
+  published: boolean
+}
 
 /** Las filas de la planilla, en orden. `null` si llegaron desparejas. */
 function sheetRows(form: FormData): SheetRow[] | null {
   const field = (key: string) => form.getAll(key).map((v) => (typeof v === 'string' ? v : ''))
-  const [ids, names, values, before, comments] = ['alumno', 'nombre', 'nota', 'antes', 'comentario'].map(field)
-  if ([names, values, before, comments].some((list) => list.length !== ids.length)) return null
+  const [ids, names, values, before, comments, published] = [
+    'alumno',
+    'nombre',
+    'nota',
+    'antes',
+    'comentario',
+    'publicada'
+  ].map(field)
+  if ([names, values, before, comments, published].some((list) => list.length !== ids.length)) return null
   return ids.map((studentId, i) => ({
     studentId,
     name: names[i],
     value: values[i],
     before: before[i],
-    comment: comments[i]
+    comment: comments[i],
+    published: published[i] === 'si'
   }))
-}
-
-const isSheetGrade = (value: string) => {
-  if (value.trim().toUpperCase() === 'A') return true
-  const grade = gradeFromInput(value)
-  return grade !== null && grade >= 1 && grade <= 10
 }
 
 type ExamActionError = ErrorOf<ReturnType<Coursework['saveExam']>> | ErrorOf<ReturnType<Coursework['setPromotion']>>
@@ -475,8 +566,9 @@ export async function saveExam(_prev: SpaceActionState, form: FormData): Promise
   const kind = text(form, 'kind') ?? ''
   if (!subjectId || !sectionId) return failed(UNEXPECTED)
   if (!EXAM_KINDS.has(kind)) return failed(EXAM_ERRORS['tipo-invalido'])
-  const date = dueAtFromInput(text(form, 'date') ?? '')
-  if (!date) return failed(EXAM_ERRORS['fecha-invalida'])
+  const day = text(form, 'date') ?? ''
+  const date = dueAtFromParts(day, text(form, 'time') ?? '')
+  if (!date) return failed(EXAM_ERRORS['fecha-invalida'], day ? 'time' : 'date')
   const columnId = text(form, 'columnId') || undefined
 
   const result = await system().coursework.saveExam(session.personId, {
@@ -486,7 +578,7 @@ export async function saveExam(_prev: SpaceActionState, form: FormData): Promise
     name: text(form, 'name') ?? '',
     date
   })
-  if (!result.ok) return failed(EXAM_ERRORS[result.error])
+  if (!result.ok) return failed(EXAM_ERRORS[result.error], result.error === 'nombre-invalido' ? 'name' : undefined)
   revalidatePath(evaluationHref(subjectId))
   revalidatePath(gradesHref(subjectId))
   return { status: 'ok', message: columnId ? 'Guardamos los cambios.' : 'Sumamos la instancia.', at: Date.now() }

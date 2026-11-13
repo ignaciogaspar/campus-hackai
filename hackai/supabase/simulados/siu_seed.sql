@@ -2,7 +2,7 @@
 
 begin;
 
-delete from siu_course_enrollments where id <> all (array['ic-1', 'ic-2', 'ic-3', 'ic-4', 'ic-5', 'ic-6', 'ic-7', 'ic-8', 'ic-9', 'ic-10', 'ic-11', 'ic-12', 'ic-13', 'ic-14', 'ic-15', 'ic-16', 'ic-17', 'ic-18', 'ic-19', 'ic-20', 'ic-21']::text[]);
+delete from siu_course_enrollments where id <> all (array['ic-1', 'ic-2', 'ic-3', 'ic-4', 'ic-5', 'ic-6', 'ic-7', 'ic-8', 'ic-9', 'ic-10', 'ic-11', 'ic-12', 'ic-13', 'ic-14', 'ic-15', 'ic-16', 'ic-17', 'ic-18', 'ic-19', 'ic-20', 'ic-21', 'ic-22', 'ic-23']::text[]);
 
 delete from siu_exam_enrollments where id <> all (array['ie-1', 'ie-2']::text[]);
 
@@ -122,7 +122,11 @@ insert into siu_sections (id, name, subject_id, school_id, term_id, teacher_ids,
   ('sec-pye-fi-vb', 'Verano B', 'pye', 'fi', 'verano-2027', array['20107']::text[], '[{"day":"martes","start":"18:00","end":"21:00"},{"day":"jueves","start":"18:00","end":"21:00"}]'::jsonb, 'Campus Pilar, aula 8', 'hibrida', 'regularidad', 25, array['iind']::text[], 'Los jueves la clase es virtual y queda grabada en el aula del Campus Virtual.'),
   ('sec-pye-fi-vc', 'Verano C', 'pye', 'fi', 'verano-2027', array['20107']::text[], '[{"day":"lunes","start":"14:00","end":"17:00"},{"day":"miercoles","start":"14:00","end":"17:00"}]'::jsonb, 'Campus Pilar, aula 10', 'presencial', 'promocion', 30, array['iinf']::text[], 'Comisión de Ingeniería en Informática.'),
   ('sec-cda-fi-v', 'Verano', 'cda', 'fi', 'verano-2027', array['20107']::text[], '[{"day":"viernes","start":"09:00","end":"13:00"}]'::jsonb, 'Campus Pilar, laboratorio 2', 'hibrida', 'promocion', 20, array['iind', 'iinf']::text[], 'Optativa. Conviene tener Programación I aprobada o en curso.'),
-  ('sec-vol-fi-v', 'Verano', 'vol', 'fi', 'verano-2027', array['20106']::text[], '[{"day":"sabado","start":"09:00","end":"12:00"}]'::jsonb, 'Centro comunitario de Derqui', 'presencial', 'promocion', 15, '{}'::text[], 'Actividad de vida universitaria. Sale una combi desde el Campus Pilar a las 8:30.')
+  ('sec-vol-fi-v', 'Verano', 'vol', 'fi', 'verano-2027', array['20106']::text[], '[{"day":"sabado","start":"09:00","end":"12:00"}]'::jsonb, 'Centro comunitario de Derqui', 'presencial', 'promocion', 15, '{}'::text[], 'Actividad de vida universitaria. Sale una combi desde el Campus Pilar a las 8:30.'),
+  ('sec-fin-fce-vm', 'Verano mañana', 'fin', 'fce', 'verano-2027', array['20105']::text[], '[{"day":"martes","start":"09:00","end":"12:00"},{"day":"jueves","start":"09:00","end":"12:00"}]'::jsonb, 'Sede Buenos Aires, aula 5', 'presencial', 'regularidad', 2, '{}'::text[], 'Cursada intensiva de verano: dos clases por semana durante 7 semanas.'),
+  ('sec-fin-fce-vn', 'Verano noche', 'fin', 'fce', 'verano-2027', array['20105']::text[], '[{"day":"martes","start":"18:30","end":"21:30"},{"day":"jueves","start":"18:30","end":"21:30"}]'::jsonb, 'Sede Buenos Aires, aula 5', 'presencial', 'regularidad', 30, '{}'::text[], 'Cursada intensiva de verano: dos clases por semana durante 7 semanas.'),
+  ('sec-ndg-fce-v', 'Verano', 'ndg', 'fce', 'verano-2027', array['20103']::text[], '[{"day":"lunes","start":"19:00","end":"21:00"}]'::jsonb, 'Virtual', 'virtual', 'promocion', 40, array['ladm', 'cpub']::text[], 'Optativa. Las clases son por Zoom y quedan grabadas en el aula del Campus Virtual.'),
+  ('sec-vol-fce-a', 'Única', 'vol', 'fce', 'act-2c-2026', array['20105']::text[], '[{"day":"sabado","start":"09:00","end":"12:00"}]'::jsonb, 'Sede Buenos Aires, hall central', 'presencial', 'promocion', 20, '{}'::text[], 'Actividad de vida universitaria: apoyo escolar en un comedor comunitario cerca de la sede.')
 on conflict (id) do update set name = excluded.name, subject_id = excluded.subject_id, school_id = excluded.school_id, term_id = excluded.term_id, teacher_ids = excluded.teacher_ids, schedule = excluded.schedule, location = excluded.location, modality = excluded.modality, instance = excluded.instance, capacity = excluded.capacity, program_ids = excluded.program_ids, notes = excluded.notes;
 
 delete from siu_plan_subjects where (program_id || ':' || subject_id) <> all (array['iind:am1', 'iind:aga', 'iind:qui', 'iind:iin', 'iind:an1', 'iind:pr1', 'iind:sre', 'iind:am2', 'iind:fi1', 'iind:fi2', 'iind:pye', 'iind:iop', 'iind:ter', 'iind:iec', 'iind:gca', 'iind:cst', 'iind:etp', 'iind:pfi', 'iind:cda', 'iind:log', 'iind:tor', 'iind:vol', 'iind:cor', 'iind:lid', 'iinf:am1', 'iinf:aga', 'iinf:pr1', 'iinf:iin', 'iinf:qui', 'iinf:an1', 'iinf:sre', 'iinf:am2', 'iinf:fi1', 'iinf:pr2', 'iinf:edd', 'iinf:pye', 'iinf:bdd', 'iinf:sop', 'iinf:fi2', 'iinf:isw', 'iinf:etp', 'iinf:pfi', 'iinf:cda', 'iinf:iar', 'iinf:tor', 'iinf:vol', 'iinf:cor', 'iinf:lid', 'ladm:iad', 'ladm:iec', 'ladm:am1', 'ladm:co1', 'ladm:an1', 'ladm:mkt', 'ladm:fin', 'ladm:co2', 'ladm:etp', 'ladm:ndg', 'ladm:tor', 'ladm:vol', 'cpub:iad', 'cpub:iec', 'cpub:am1', 'cpub:co1', 'cpub:an1', 'cpub:co2', 'cpub:fin', 'cpub:mkt', 'cpub:etp', 'cpub:ndg', 'cpub:tor', 'cpub:vol']::text[]);
@@ -230,7 +234,9 @@ insert into siu_course_enrollments (id, transaction_number, person_id, section_i
   ('ic-18', 'T-100018', '30109', 'sec-am1-fce-a', '2026-08-05T13:00:00.000Z', 'aceptada'),
   ('ic-19', 'T-100019', '30110', 'sec-co1-fce-a', '2026-08-05T13:00:00.000Z', 'aceptada'),
   ('ic-20', 'T-100020', '30103', 'sec-fi1-fi-v', '2026-11-03T13:00:00.000Z', 'aceptada'),
-  ('ic-21', 'T-100021', '30105', 'sec-fi1-fi-v', '2026-11-04T13:00:00.000Z', 'aceptada')
+  ('ic-21', 'T-100021', '30105', 'sec-fi1-fi-v', '2026-11-04T13:00:00.000Z', 'aceptada'),
+  ('ic-22', 'T-100022', '30107', 'sec-fin-fce-vm', '2026-11-03T13:00:00.000Z', 'aceptada'),
+  ('ic-23', 'T-100023', '30109', 'sec-fin-fce-vm', '2026-11-04T13:00:00.000Z', 'aceptada')
 on conflict (id) do update set transaction_number = excluded.transaction_number, person_id = excluded.person_id, section_id = excluded.section_id, enrolled_at = excluded.enrolled_at, status = excluded.status;
 
 insert into siu_exam_boards (id, subject_id, school_id, exam_period, date, location, teacher_ids, capacity, enrollment_start, enrollment_end, notes) values
@@ -336,7 +342,11 @@ insert into siu_absence_limits (section_id, max) values
   ('sec-pye-fi-vb', 3),
   ('sec-pye-fi-vc', 3),
   ('sec-cda-fi-v', 3),
-  ('sec-vol-fi-v', 3)
+  ('sec-vol-fi-v', 3),
+  ('sec-fin-fce-vm', 3),
+  ('sec-fin-fce-vn', 3),
+  ('sec-ndg-fce-v', 3),
+  ('sec-vol-fce-a', 3)
 on conflict (section_id) do update set max = excluded.max;
 
 insert into siu_certificates (person_id, type, meets_conditions) values

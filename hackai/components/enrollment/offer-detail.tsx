@@ -1,12 +1,14 @@
 /* El detalle de una materia en Inscripciones: sus comisiones (cursada) o sus
-   mesas (final), cada una con todo lo que hace falta para elegir —modalidad,
-   fechas y horarios, duración, cupo, si se promociona, sede, docentes y
-   observaciones— y los botones para inscribirse y obtener el certificado.
-   Qué se ofrece, si está abierto y si ya está inscripto lo decide Cursada. */
+   mesas (final), compactas: lo que decide la elección (días y horarios o fecha,
+   y cupo) a la vista, con el botón para inscribirse, y el resto —modalidad,
+   fechas, duración, si se promociona, sede, docentes y observaciones— en «Ver
+   detalle». Ya inscripto, el certificado. Qué se ofrece, si está abierto y si
+   ya está inscripto lo decide Cursada. */
 import {
   Building2,
   CalendarClock,
   CalendarRange,
+  ChevronDown,
   Hourglass,
   type LucideIcon,
   MessageSquareText,
@@ -16,10 +18,18 @@ import {
   Users
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { termLabel } from '@/components/academic/format'
 import { dueTime, shortDate } from '@/components/dates'
 import { CertificateButton } from '@/components/enrollment/certificate-button'
 import { EnrollmentActions } from '@/components/enrollment/enrollment-actions'
-import { capacityText, durationText, instanceText, modalityName, scheduleLine } from '@/components/enrollment/format'
+import {
+  capacityText,
+  durationText,
+  elsewhereText,
+  instanceText,
+  modalityName,
+  scheduleLine
+} from '@/components/enrollment/format'
 import type { EnrollmentAction } from '@/components/enrollment/state'
 import { WindowNote } from '@/components/enrollment/window-note'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -52,22 +62,25 @@ function Fact({
 
 const teachersOf = (item: OfferItem) => item.teachers.map((t) => t.name).join(', ') || 'A confirmar'
 
-/** Lo común a una comisión y una mesa: el marco, el nombre, el estado y los botones. */
+/** Lo común a una comisión y una mesa: el marco, el nombre, el estado, los datos que deciden la elección (`facts`),
+    el resto plegado en «Ver detalle» (`more`) y los botones. */
 function OfferCard({
   item,
   title,
   facts,
+  more,
   actions
 }: {
   item: OfferItem
   title: string
   facts: ReactNode
+  more: ReactNode
   actions: ReactNode
 }) {
   return (
     <li
       className={cn(
-        'flex flex-col gap-4 rounded-2xl border bg-card p-5',
+        'flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:gap-4 sm:p-5',
         item.alreadyEnrolled ? 'border-blue/40 shadow-[0_0_0_3px_var(--accent)]' : 'border-border',
         item.enrollmentWindow !== 'abierta' && 'bg-muted/40'
       )}
@@ -75,15 +88,27 @@ function OfferCard({
       <div className='flex flex-wrap items-start justify-between gap-2'>
         <div className='min-w-0'>
           <h3 className='text-base leading-snug font-semibold text-ink'>{title}</h3>
-          <p className='text-[0.8125rem] text-muted-foreground'>{item.period}</p>
+          <p className='text-[0.8125rem] text-muted-foreground'>{termLabel(item.period)}</p>
         </div>
         {item.alreadyEnrolled && <StatusPill tone='success'>Inscripto</StatusPill>}
       </div>
-      <dl className='grid grid-cols-2 gap-x-4 gap-y-3.5 sm:gap-x-6'>{facts}</dl>
+      <dl className='grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-6'>{facts}</dl>
+      <details className='group/more -my-1'>
+        <summary className='inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-lg text-[0.8125rem] font-semibold text-blue focus-ring [&::-webkit-details-marker]:hidden'>
+          <span className='group-open/more:hidden'>Ver detalle</span>
+          <span className='hidden group-open/more:inline'>Ocultar detalle</span>
+          <ChevronDown
+            aria-hidden='true'
+            className='size-4 transition-transform group-open/more:rotate-180 motion-reduce:transition-none'
+            strokeWidth={2}
+          />
+        </summary>
+        <dl className='grid grid-cols-2 gap-x-4 gap-y-3.5 pt-2 pb-1 sm:gap-x-6'>{more}</dl>
+      </details>
       <p className='text-[0.75rem] text-muted-foreground'>
         <WindowNote item={item} />
       </p>
-      <div className='flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-start'>
+      <div className='flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:flex-wrap sm:items-start sm:pt-4'>
         {actions}
       </div>
     </li>
@@ -92,14 +117,27 @@ function OfferCard({
 
 type Actions = { enrollAction: EnrollmentAction; dropAction: EnrollmentAction }
 
-/* Una comisión: todo lo de la cursada. */
+/** Por qué no se puede inscribir en `item` si ya está en otra comisión de la materia, con lo que la oferta dice de
+    esa otra (`siblings`): si es de otro período y si todavía se puede dar de baja. */
+function elsewhereNote(item: OfferItem, siblings: OfferItem[]): string | undefined {
+  if (!item.enrolledElsewhere) return undefined
+  const other = siblings.find((s) => s.alreadyEnrolled && s.name === item.enrolledElsewhere)
+  return elsewhereText(
+    { name: item.enrolledElsewhere, period: other?.period ?? null, canDrop: other?.enrollmentWindow === 'abierta' },
+    item.period
+  )
+}
+
+/* Una comisión: todo lo de la cursada. `siblings`: las otras comisiones de la materia, para explicar por qué no se
+   puede inscribir si ya está en una. */
 export function SectionCard({
   item,
+  siblings,
   student,
   program,
   enrollAction,
   dropAction
-}: { item: OfferItem; student: string; program: string } & Actions) {
+}: { item: OfferItem; siblings: OfferItem[]; student: string; program: string } & Actions) {
   if (item.target.kind !== 'comision') return null
   const capacity = capacityText(item)
   const modality = modalityName(item.modality)
@@ -111,6 +149,16 @@ export function SectionCard({
       item={item}
       title={`Comisión ${item.name}`}
       facts={
+        <>
+          <Fact icon={CalendarClock} label='Días y horarios' wide>
+            {schedule}
+          </Fact>
+          <Fact icon={Users} label='Cupo' wide>
+            <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
+          </Fact>
+        </>
+      }
+      more={
         <>
           <Fact icon={MonitorSmartphone} label='Modalidad'>
             {modality ?? 'A confirmar'}
@@ -124,13 +172,7 @@ export function SectionCard({
           <Fact icon={Hourglass} label='Duración'>
             {item.start && item.end ? durationText(item.start, item.end) : 'A confirmar'}
           </Fact>
-          <Fact icon={CalendarClock} label='Días y horarios' wide>
-            {schedule}
-          </Fact>
-          <Fact icon={Users} label='Cupo'>
-            <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
-          </Fact>
-          <Fact icon={ScrollText} label='¿Es promocionable?'>
+          <Fact icon={ScrollText} label='¿Es promocionable?' wide>
             {instanceText(item.instance) ?? 'A confirmar'}
           </Fact>
           <Fact icon={UserRound} label='Profesores' wide>
@@ -152,28 +194,28 @@ export function SectionCard({
               label={label}
               status={item}
               calendarHref={item.start ? `/calendario?semana=${dayKey(item.start)}` : '/calendario'}
+              elsewhereNote={elsewhereNote(item, siblings)}
               enrollAction={enrollAction}
               dropAction={dropAction}
             />
           </div>
-          <CertificateButton
-            title='Constancia de inscripción a cursada'
-            fileName={`constancia-cursada-${item.subjectId}.html`}
-            disabled={!item.alreadyEnrolled}
-            hint={
-              item.alreadyEnrolled ? 'Constancia de inscripción a esta comisión.' : 'Disponible cuando te inscribas.'
-            }
-            rows={[
-              ['Alumno', student],
-              ['Carrera', program],
-              ['Materia', item.subjectName],
-              ['Comisión', item.name],
-              ['Período', item.period],
-              ['Fechas de cursada', dates],
-              ['Días y horarios', schedule],
-              ['Sede y aula', item.location]
-            ]}
-          />
+          {item.alreadyEnrolled && (
+            <CertificateButton
+              title='Constancia de inscripción a cursada'
+              fileName={`constancia-cursada-${item.subjectId}.html`}
+              hint='Constancia de inscripción a esta comisión.'
+              rows={[
+                ['Alumno', student],
+                ['Carrera', program],
+                ['Materia', item.subjectName],
+                ['Comisión', item.name],
+                ['Período', item.period],
+                ['Fechas de cursada', dates],
+                ['Días y horarios', schedule],
+                ['Sede y aula', item.location]
+              ]}
+            />
+          )}
         </>
       }
     />
@@ -203,10 +245,14 @@ export function BoardCard({
           <Fact icon={Building2} label='Sede y aula'>
             {item.location}
           </Fact>
-          <Fact icon={Users} label='Cupo'>
+          <Fact icon={Users} label='Cupo' wide>
             <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
           </Fact>
-          <Fact icon={ScrollText} label='Condición'>
+        </>
+      }
+      more={
+        <>
+          <Fact icon={ScrollText} label='Condición' wide>
             {item.needsRegularity ? 'Necesitás regularizar la cursada antes de la mesa' : 'Regular'}
           </Fact>
           <Fact icon={UserRound} label='Tribunal' wide>
@@ -231,21 +277,22 @@ export function BoardCard({
               dropAction={dropAction}
             />
           </div>
-          <CertificateButton
-            title='Constancia de inscripción a examen'
-            fileName={`constancia-examen-${item.subjectId}.html`}
-            disabled={!item.alreadyEnrolled}
-            hint={item.alreadyEnrolled ? 'Constancia de inscripción a esta mesa.' : 'Disponible cuando te inscribas.'}
-            rows={[
-              ['Alumno', student],
-              ['Carrera', program],
-              ['Materia', item.subjectName],
-              ['Turno', item.period],
-              ['Fecha y hora', when],
-              ['Sede y aula', item.location],
-              ['Tribunal', teachersOf(item)]
-            ]}
-          />
+          {item.alreadyEnrolled && (
+            <CertificateButton
+              title='Constancia de inscripción a examen'
+              fileName={`constancia-examen-${item.subjectId}.html`}
+              hint='Constancia de inscripción a esta mesa.'
+              rows={[
+                ['Alumno', student],
+                ['Carrera', program],
+                ['Materia', item.subjectName],
+                ['Turno', item.period],
+                ['Fecha y hora', when],
+                ['Sede y aula', item.location],
+                ['Tribunal', teachersOf(item)]
+              ]}
+            />
+          )}
         </>
       }
     />

@@ -20,13 +20,15 @@ import { Suspense } from 'react'
 import { dropAction, enrollAction } from '@/app/(app)/inscripciones/actions'
 import { shortDate } from '@/components/dates'
 import { EnrollmentLists } from '@/components/enrollment/enrollment-lists'
-import { closingText, creditsText, spotsLeftText } from '@/components/enrollment/format'
+import { byAvailability, closingText, creditsText, spotsLeftText } from '@/components/enrollment/format'
 import type { ListItem, Tab } from '@/components/enrollment/list-filters'
 import { BoardCard, SectionCard } from '@/components/enrollment/offer-detail'
 import { readErrorText } from '@/components/enrollment/read-error'
+import { TabSubtitle } from '@/components/enrollment/tab-subtitle'
 import { KIND, yearName } from '@/components/grades/status'
 import { activeProgram } from '@/components/session/person-text'
 import { PageHeader } from '@/components/shell/page-header'
+import { SkeletonRows } from '@/components/shell/screen-skeleton'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { examDetail } from '@/components/today/upcoming'
 import { StaleBanner } from '@/components/ui/stale-banner'
@@ -128,8 +130,9 @@ function Detail({
   person: Person | null
 }) {
   if (!offer.ok) return <ErrorNotice>{readErrorText(offer.error, 'la oferta de esta materia')}</ErrorNotice>
-  // Las comisiones de otras carreras no se muestran: no se puede inscribir a ellas.
-  const items = offer.value.data.filter((item) => !item.otherProgram)
+  // Las comisiones de otras carreras no se muestran: no se puede inscribir a ellas. La inscripta y las que tienen
+  // lugar van primero.
+  const items = byAvailability(offer.value.data.filter((item) => !item.otherProgram))
   const name = items[0]?.subjectName ?? standing?.name
   if (!name || items.length === 0) {
     return (
@@ -162,6 +165,7 @@ function Detail({
             <SectionCard
               key={item.target.sectionId}
               item={item}
+              siblings={offer.value.data}
               student={student}
               program={program}
               enrollAction={enrollAction}
@@ -214,26 +218,13 @@ export default async function InscripcionesPage({
   const content = <EnrollmentContent personId={session.personId} params={params} />
   return (
     <>
-      <PageHeader
-        desktopBell={false}
-        title='Inscripciones'
-        subtitle='Elegí la materia y la comisión: quedás inscripto en el SIU y en el aula del Campus Virtual a la vez.'
-        art='inscripciones'
-      />
+      <PageHeader desktopBell={false} title='Inscripciones' subtitle={<TabSubtitle />} art='inscripciones' />
 
       <main className='mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8 lg:pb-6'>
         {params.materia ? (
           content
         ) : (
-          <Suspense
-            fallback={
-              <div role='status' className='min-h-[30rem] text-sm text-muted-foreground'>
-                Cargando inscripciones…
-              </div>
-            }
-          >
-            {content}
-          </Suspense>
+          <Suspense fallback={<SkeletonRows label='Cargando inscripciones…' />}>{content}</Suspense>
         )}
       </main>
     </>

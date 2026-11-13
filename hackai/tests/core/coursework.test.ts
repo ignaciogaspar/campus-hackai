@@ -180,6 +180,45 @@ test('no se crea con nombre vacío, fecha inválida, consigna enorme o archivo v
   assert.deepEqual(value(await coursework.tasksOf('p-mledesma', 'am1')).tasks, [])
 })
 
+test('no se crea una tarea con la fecha límite ya pasada', async () => {
+  const { coursework } = build()
+
+  // El «hoy» del set es el martes 10/11/2026 a las 12:00.
+  assert.deepEqual(await coursework.createTask('p-mledesma', taskOf({ dueAt: '2026-01-01T01:00:00-03:00' })), {
+    ok: false,
+    error: 'fecha-pasada'
+  })
+  assert.deepEqual(await coursework.createTask('p-mledesma', taskOf({ dueAt: '2026-11-10T11:59:00-03:00' })), {
+    ok: false,
+    error: 'fecha-pasada'
+  })
+  assert.deepEqual(value(await coursework.tasksOf('p-mledesma', 'am1')).tasks, [])
+})
+
+test('una tarea vencida se edita sin tocar la fecha, pero no se le pone otra fecha pasada', async () => {
+  const { coursework, advance } = build()
+  const created = value(await coursework.createTask('p-mledesma', taskOf()))
+  advance(7 * 24 * 60)
+
+  const renamed = value(
+    await coursework.updateTask('p-mledesma', created.id, {
+      name: 'Práctica 3 (vencida)',
+      instructions: created.instructions,
+      dueAt: DUE
+    })
+  )
+  assert.equal(renamed.name, 'Práctica 3 (vencida)')
+  assert.equal(renamed.past, true)
+  assert.deepEqual(
+    await coursework.updateTask('p-mledesma', created.id, {
+      name: renamed.name,
+      instructions: renamed.instructions,
+      dueAt: '2026-11-15T23:59:00-03:00'
+    }),
+    { ok: false, error: 'fecha-pasada' }
+  )
+})
+
 test('crear una tarea es solo de docentes, y de las comisiones que dictan', async () => {
   const { coursework } = build()
 
@@ -220,9 +259,11 @@ test('una tarea sin nota queda marcada así', async () => {
 
 test('las que vencen primero salen arriba y las vencidas al final, según el reloj', async () => {
   const { coursework, advance } = build()
+  // Una tarea no se crea vencida: esta vence a la hora y el reloj pasa de largo.
+  await coursework.createTask('p-mledesma', taskOf({ name: 'Ya venció', dueAt: '2026-11-10T13:00:00-03:00' }))
+  advance(2 * 60)
   await coursework.createTask('p-mledesma', taskOf({ name: 'Tarde', dueAt: '2026-11-20T10:00:00-03:00' }))
   await coursework.createTask('p-mledesma', taskOf({ name: 'Temprano', dueAt: '2026-11-12T10:00:00-03:00' }))
-  await coursework.createTask('p-mledesma', taskOf({ name: 'Ya venció', dueAt: '2026-11-09T10:00:00-03:00' }))
 
   const before = value(await coursework.tasksOf('p-taguirre', 'am1'))
   assert.deepEqual(
@@ -639,6 +680,41 @@ test('el docente ve todos los alumnos de la comisión: quién entregó, quién n
   )
   assert.deepEqual(result.counts, { onTime: 1, late: 1, missing: 1 })
   assert.equal(result.staleSince, null)
+})
+
+test('en la lista de tareas, el docente ve cuántos entregaron, cuántos falta corregir y cuántos no entregaron', async () => {
+  const { coursework, task } = await withDeliveries()
+  const plain = value(
+    await coursework.createTask(
+      'p-mledesma',
+      taskOf({ name: 'Guía sin nota', graded: false, dueAt: '2026-11-20T23:59:00-03:00' })
+    )
+  )
+  value(await coursework.submit('p-taguirre', plain.id, [upload('guia.txt')]))
+  value(
+    await coursework.grade('p-mledesma', {
+      sectionId: A,
+      columnId: `tarea:${task.id}`,
+      studentId: 'p-taguirre',
+      value: 9,
+      absent: false,
+      comment: ''
+    })
+  )
+
+  const list = value(await coursework.tasksOf('p-mledesma', 'am1'))
+  const progressOf = (id: string) => list.tasks.find((t) => t.id === id)?.progress
+
+  // Coincide con quién entregó en la tarea: Aguirre (corregida) y Benítez entregaron, Escobar no.
+  assert.deepEqual(progressOf(task.id), { delivered: 2, ungraded: 1, missing: 1 })
+  const detail = value(await coursework.submissions('p-mledesma', task.id, A)).counts
+  assert.equal(detail.onTime + detail.late, 2)
+  assert.equal(detail.missing, 1)
+  // Una tarea sin nota no tiene nada que corregir.
+  assert.deepEqual(progressOf(plain.id), { delivered: 1, ungraded: 0, missing: 2 })
+  // El alumno no ve los conteos de la comisión.
+  const asStudent = value(await coursework.tasksOf('p-taguirre', 'am1'))
+  assert.ok(asStudent.tasks.every((t) => t.progress === null))
 })
 
 test('sin entregas, todos los alumnos de la comisión figuran sin entregar', async () => {

@@ -27,6 +27,7 @@ export function eventOf(c: PlanningClass, today: string): CalendarEvent {
     time: `${hhmm(c.start)} – ${hhmm(c.end)}${c.end - c.start < 90 ? ` · ${c.room}` : ''}`,
     code: c.school || null,
     title: c.subject,
+    subjectName: c.subject,
     subject: [c.section && `Comisión ${c.section}`, c.change && CHANGE[c.change]].filter(Boolean).join(' · '),
     place: [c.room, placeOf(c)].filter(Boolean).join(' · '),
     tone: c.change === 'suspendida' ? 'suspendida' : 'clase',

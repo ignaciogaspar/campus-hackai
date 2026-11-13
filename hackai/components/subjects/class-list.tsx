@@ -1,14 +1,23 @@
 /* La clase de hoy de la comisión para el docente, en «Alumnos y clases»: la
    entrada para tomar lista (o corregirla), con cómo quedó su pase al SIU. Las
-   clases anteriores están en el historial (class-history.tsx), no acá. */
+   clases anteriores están en el historial (class-history.tsx), no acá. Si hoy
+   no hay clase, una franja baja dice cuándo es la próxima (la calcula Cursada)
+   y, si todavía no se tomó lista nunca, lo dice ahí mismo en vez de sumar otro
+   vacío. */
 import { ClipboardCheck } from 'lucide-react'
 import { longDay, timeOf } from '@/components/dates'
-import { absentCount, attendanceHref, PASS_TEXT, PASS_TONE } from '@/components/subjects/attendance-format'
+import {
+  absentCount,
+  attendanceHref,
+  nextClassText,
+  PASS_TEXT,
+  PASS_TONE
+} from '@/components/subjects/attendance-format'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { ClassItem } from '@/lib/core/studies'
+import type { ClassItem, NextClass } from '@/lib/core/studies'
 
 function ClassRow({
   item,
@@ -38,7 +47,9 @@ export function ClassList({
   subjectId,
   sectionId,
   sectionName,
-  total
+  total,
+  next,
+  noHistory
 }: {
   classes: ClassItem[]
   subjectId: string
@@ -46,13 +57,29 @@ export function ClassList({
   sectionName: string
   /** Cuántos alumnos tiene la comisión, para decir «2 ausentes de 28». */
   total: number
+  /** La próxima clase, para decir cuándo es si hoy no hay; `undefined` si no se pudo leer. */
+  next: NextClass | null | undefined
+  /** Si todavía no se tomó lista en la comisión: sin clase hoy, se dice en la misma franja. */
+  noHistory: boolean
 }) {
   const today = classes.filter((c) => c.today)
   if (today.length === 0) {
+    const when =
+      next === undefined
+        ? `El día que la comisión ${sectionName} tenga clase, vas a poder tomar lista acá.`
+        : nextClassText(next, sectionName)
+    const notStarted = Boolean(next?.termStartsOn)
     return (
-      <EmptyState icon={ClipboardCheck} title='Hoy no hay clase'>
-        El día que la comisión {sectionName} tenga clase, vas a poder tomar lista acá.
-      </EmptyState>
+      <div className='max-w-3xl'>
+        <EmptyState
+          icon={ClipboardCheck}
+          title={notStarted ? 'La cursada todavía no empezó' : 'Hoy no hay clase'}
+          compact
+        >
+          {when}
+          {noHistory && !notStarted && ' Todavía no tomaste lista en esta comisión.'}
+        </EmptyState>
+      </div>
     )
   }
   return (

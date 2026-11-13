@@ -39,7 +39,13 @@ export default async function NewTaskPage({ params, searchParams }: { params: Pa
           role={list.role}
         />
         <div className='mx-auto w-full max-w-3xl'>
-          <NewTaskForm subjectId={subjectId} sections={list.sections} selectedId={list.sectionId} cancelHref={back} />
+          <NewTaskForm
+            subjectId={subjectId}
+            sections={list.sections}
+            selectedId={list.sectionId}
+            cancelHref={back}
+            now={system().now()}
+          />
         </div>
       </main>
     </>

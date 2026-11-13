@@ -663,6 +663,75 @@ const sections: SiuSection[] = [
     capacity: 15,
     programIds: [],
     notes: 'Actividad de vida universitaria. Sale una combi desde el Campus Pilar a las 8:30.'
+  },
+  // Verano de Ciencias Empresariales: Finanzas con la comisión de la mañana sin cupo y la de la noche con lugar, la
+  // optativa de los dos planes y una actividad de vida universitaria. Así un alumno de FCE también tiene a qué
+  // inscribirse.
+  {
+    id: 'sec-fin-fce-vm',
+    name: 'Verano mañana',
+    subjectId: 'fin',
+    schoolId: 'fce',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-srosales')],
+    schedule: [
+      { day: 'martes', start: '09:00', end: '12:00' },
+      { day: 'jueves', start: '09:00', end: '12:00' }
+    ],
+    location: 'Sede Buenos Aires, aula 5',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 2,
+    programIds: [],
+    notes: 'Cursada intensiva de verano: dos clases por semana durante 7 semanas.'
+  },
+  {
+    id: 'sec-fin-fce-vn',
+    name: 'Verano noche',
+    subjectId: 'fin',
+    schoolId: 'fce',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-srosales')],
+    schedule: [
+      { day: 'martes', start: '18:30', end: '21:30' },
+      { day: 'jueves', start: '18:30', end: '21:30' }
+    ],
+    location: 'Sede Buenos Aires, aula 5',
+    modality: 'presencial',
+    instance: 'regularidad',
+    capacity: 30,
+    programIds: [],
+    notes: 'Cursada intensiva de verano: dos clases por semana durante 7 semanas.'
+  },
+  {
+    id: 'sec-ndg-fce-v',
+    name: 'Verano',
+    subjectId: 'ndg',
+    schoolId: 'fce',
+    termId: 'verano-2027',
+    teacherIds: [siu('p-cbustos')],
+    schedule: [{ day: 'lunes', start: '19:00', end: '21:00' }],
+    location: 'Virtual',
+    modality: 'virtual',
+    instance: 'promocion',
+    capacity: 40,
+    programIds: ['ladm', 'cpub'],
+    notes: 'Optativa. Las clases son por Zoom y quedan grabadas en el aula del Campus Virtual.'
+  },
+  {
+    id: 'sec-vol-fce-a',
+    name: 'Única',
+    subjectId: 'vol',
+    schoolId: 'fce',
+    termId: 'act-2c-2026',
+    teacherIds: [siu('p-srosales')],
+    schedule: [{ day: 'sabado', start: '09:00', end: '12:00' }],
+    location: 'Sede Buenos Aires, hall central',
+    modality: 'presencial',
+    instance: 'promocion',
+    capacity: 20,
+    programIds: [],
+    notes: 'Actividad de vida universitaria: apoyo escolar en un comedor comunitario cerca de la sede.'
   }
 ]
 
@@ -689,7 +758,10 @@ const enrollmentRows: [string, string, string][] = [
   ['p-cibarra', 'sec-am1-fce-a', '2026-08-05'],
   ['p-fjuarez', 'sec-co1-fce-a', '2026-08-05'],
   ['p-mcabrera', 'sec-fi1-fi-v', '2026-11-03'],
-  ['p-jescobar', 'sec-fi1-fi-v', '2026-11-04']
+  ['p-jescobar', 'sec-fi1-fi-v', '2026-11-04'],
+  // Llenan la comisión de la mañana de Finanzas.
+  ['p-agimenez', 'sec-fin-fce-vm', '2026-11-03'],
+  ['p-cibarra', 'sec-fin-fce-vm', '2026-11-04']
 ]
 
 const courseEnrollments: SiuCourseEnrollment[] = enrollmentRows.map(([personId, sectionId, date], i) => ({

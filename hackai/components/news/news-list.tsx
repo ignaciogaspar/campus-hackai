@@ -1,15 +1,15 @@
 /* Lo que no leíste, por materia: una tarjeta por materia y, adentro, una fila
-   por canal con el ícono del canal, quién publicó lo último, el texto, cuándo
-   y cuántas cosas hay sin leer. Cada fila lleva al canal o al hilo, que al
-   abrirse queda leído. En el celular y en compu es la misma columna. */
+   por canal con el ícono del canal, qué pasó (o que te respondieron), de qué
+   comisión es, quién publicó lo último, el texto, cuándo y cuántas cosas hay
+   sin leer. Al docente, cuántas consultas siguen sin respuesta. Cada fila
+   lleva al canal o al hilo, que al abrirse queda leído. En el celular y en
+   compu es la misma columna. */
 import Link from 'next/link'
-import { NEWS_KINDS, type NewsKind, type NewsRow, newsKindOf, type SubjectNews } from '@/components/news/format'
+import type { NewsRow, SubjectNews } from '@/components/news/format'
 import { ChannelIcon } from '@/components/spaces/channel-icon'
 import { Card } from '@/components/ui/card'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { UnreadCount } from '@/components/ui/unread-count'
-
-const LABELS = Object.fromEntries(NEWS_KINDS.map((k) => [k.kind, k.label])) as Record<NewsKind, string>
 
 /** «Mariana Ledesma:» antes del mensaje, o «Mariana Ledesma subió» antes de un archivo del material. */
 function Byline({ row }: { row: NewsRow }) {
@@ -22,7 +22,7 @@ function Byline({ row }: { row: NewsRow }) {
   )
 }
 
-function NewsItem({ row }: { row: NewsRow }) {
+function NewsItem({ row, teacher }: { row: NewsRow; teacher: boolean }) {
   return (
     <li>
       <Link
@@ -39,9 +39,16 @@ function NewsItem({ row }: { row: NewsRow }) {
             {row.text}
           </span>
           <span className='mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
-            <span className='rounded-full px-2 py-px text-[0.6875rem] font-semibold text-ink ring-1 ring-border ring-inset'>
-              {LABELS[newsKindOf(row.kind)]}
-            </span>
+            {row.chip && (
+              <span className='rounded-full px-2 py-px text-[0.6875rem] font-semibold text-ink ring-1 ring-border ring-inset'>
+                {row.chip}
+              </span>
+            )}
+            {teacher && row.unanswered > 0 && (
+              <span className='rounded-full bg-warning-background px-2 py-px text-[0.6875rem] font-semibold text-warning-foreground'>
+                {row.unanswered === 1 ? 'Sin respuesta' : `${row.unanswered} sin respuesta`}
+              </span>
+            )}
             {row.kind === 'material' && <OriginBadge origin={row.origin} />}
             <time dateTime={row.createdAt}>{row.when}</time>
           </span>
@@ -52,7 +59,8 @@ function NewsItem({ row }: { row: NewsRow }) {
   )
 }
 
-export function NewsList({ groups }: { groups: SubjectNews[] }) {
+/** `teacher`: a quien dicta se le marca lo que sigue sin respuesta. */
+export function NewsList({ groups, teacher = false }: { groups: SubjectNews[]; teacher?: boolean }) {
   return groups.map((group) => {
     const id = `materia-${group.subjectId}`
     return (
@@ -66,7 +74,7 @@ export function NewsList({ groups }: { groups: SubjectNews[] }) {
         <Card>
           <ul className='divide-y divide-border'>
             {group.rows.map((row) => (
-              <NewsItem key={row.channelId} row={row} />
+              <NewsItem key={row.channelId} row={row} teacher={teacher} />
             ))}
           </ul>
         </Card>

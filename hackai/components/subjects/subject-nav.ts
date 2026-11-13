@@ -8,6 +8,13 @@ import type { Role } from '@/lib/core/people'
 
 export type SubjectTab = { id: string; label: string; path: string; teachersOnly?: boolean }
 
+/** Por qué no se abre una materia que no es suya: el alumno se inscribe y al docente lo asignan. */
+export function noAccessText(role: Role): string {
+  return role === 'profesor'
+    ? 'No figurás como docente de esta materia. Si te asignaron hace poco, puede tardar un rato en aparecer.'
+    : 'No sos parte de esta materia. Si recién te inscribiste, puede tardar un rato en aparecer.'
+}
+
 /** Las pestañas de la materia, en orden. `path` cuelga de `/materias/<materia>`. El alumno no ve las de
     `teachersOnly`. */
 export const SUBJECT_TABS: SubjectTab[] = [

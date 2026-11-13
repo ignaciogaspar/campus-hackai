@@ -4,7 +4,7 @@
    se le muestra al docente que gestiona el espacio. */
 import { redirect } from 'next/navigation'
 import { backToSpace, redirectUriFor } from '@/app/discord/redirect-uri'
-import { getSession, setServerCookie } from '@/lib/auth'
+import { requireSession, setServerCookie } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { createOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_MAX_AGE } from '@/lib/oauth-state'
 
@@ -12,8 +12,7 @@ import { createOAuthState, OAUTH_STATE_COOKIE, OAUTH_STATE_MAX_AGE } from '@/lib
 const ID = /^[\w-]{1,100}$/
 
 export async function GET(request: Request) {
-  const session = await getSession()
-  if (!session) redirect('/')
+  const session = await requireSession()
   const params = new URL(request.url).searchParams
   const spaceId = params.get('espacio') ?? ''
   const subjectId = params.get('materia') ?? ''

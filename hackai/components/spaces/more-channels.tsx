@@ -34,7 +34,8 @@ export function MoreChannels({ channels, createHref, creating }: Props) {
         ) : (
           <Hash aria-hidden='true' strokeWidth={1.8} />
         )}
-        <span className='max-w-full truncate px-1'>{creating ? 'Canal nuevo' : (selected?.label ?? 'Más')}</span>
+        {/* Con el mismo tope que los nombres del riel (channel-tabs.tsx). */}
+        <span className='max-w-[6.5em] truncate'>{creating ? 'Canal nuevo' : (selected?.label ?? 'Más')}</span>
         {!selected && <UnreadCount count={unread} className='absolute top-1 right-[calc(50%-28px)]' />}
       </SheetTrigger>
       <SheetContent title='Más canales' description='Los canales de la materia y de tu comisión que no entran arriba.'>
