@@ -17,7 +17,7 @@ import {
 } from '@/components/coursework/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { Coursework } from '@/lib/core/coursework'
+import type { Coursework, GradeScale, PastePreview } from '@/lib/core/coursework'
 import type { ErrorOf } from '@/lib/result'
 
 type TaskError = ErrorOf<ReturnType<Coursework['createTask']>> | ErrorOf<ReturnType<Coursework['updateTask']>>
@@ -65,9 +65,26 @@ const GRADE_ERRORS: Record<GradeActionError, string> = {
   'falla-externa': ERRORS['falla-externa']
 }
 
+type PasteActionError = ErrorOf<ReturnType<Coursework['previewPaste']>> | ErrorOf<ReturnType<Coursework['applyPaste']>>
+
+const PASTE_ERRORS: Record<PasteActionError, string> = {
+  ...GRADE_ERRORS,
+  'sin-notas': 'No hay ninguna nota para guardar: ningún alumno de la lista quedó con una nota o un ausente.',
+  'texto-vacio': 'Pegá primero las notas copiadas de la planilla.',
+  'texto-demasiado-largo': 'Pegaste demasiado texto. Copiá solo las columnas del legajo (o el mail) y la nota.'
+}
+
+/** Lo que muestra la pantalla de pegar notas: nada, un error, o la vista previa de lo que se pegó. */
+export type PasteState =
+  | { status: 'idle' }
+  | { status: 'error'; message: string; at: number }
+  | { status: 'preview'; preview: PastePreview; text: string; scale: GradeScale; at: number }
+
+const SCALES: GradeScale[] = ['1-10', '0-100']
+
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
 
-function failed(message: string): SpaceActionState {
+function failed(message: string): { status: 'error'; message: string; at: number } {
   return { status: 'error', message, at: Date.now() }
 }
 
@@ -256,4 +273,34 @@ export async function submitTask(_prev: SpaceActionState, form: FormData): Promi
       : 'Listo, entregaste a tiempo.',
     at: Date.now()
   }
+}
+
+/** Lee las notas pegadas desde una planilla y devuelve la vista previa. No guarda nada. */
+export async function previewPastedGrades(_prev: PasteState, form: FormData): Promise<PasteState> {
+  const session = await requireSession()
+  const sectionId = text(form, 'sectionId')
+  const columnId = text(form, 'columnId')
+  const pasted = text(form, 'text')
+  const scale = SCALES.find((s) => s === text(form, 'scale'))
+  if (!sectionId || !columnId || pasted === null || !scale) return failed(UNEXPECTED)
+
+  const result = await system().coursework.previewPaste(session.personId, sectionId, columnId, pasted, scale)
+  if (!result.ok) return failed(PASTE_ERRORS[result.error])
+  return { status: 'preview', preview: result.value, text: pasted, scale, at: Date.now() }
+}
+
+/** Guarda las notas pegadas, ya vistas en la vista previa, y vuelve a Calificaciones. */
+export async function savePastedGrades(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const columnId = text(form, 'columnId')
+  const pasted = text(form, 'text')
+  const scale = SCALES.find((s) => s === text(form, 'scale'))
+  if (!subjectId || !sectionId || !columnId || pasted === null || !scale) return failed(UNEXPECTED)
+
+  const result = await system().coursework.applyPaste(session.personId, sectionId, columnId, pasted, scale)
+  if (!result.ok) return failed(PASTE_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  redirect(gradesHref(subjectId, { comision: sectionId, columna: columnId, pegadas: result.value.saved }))
 }

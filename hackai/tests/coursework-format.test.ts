@@ -11,6 +11,8 @@ import {
   inputValueOf,
   newTaskHref,
   nextStudent,
+  notesLabel,
+  pasteGradesHref,
   rowStatus,
   sectionsLabel,
   submissionHref,
@@ -134,4 +136,18 @@ test('el resumen de quién entregó cuenta las atrasadas como entregadas y solo 
   assert.equal(countsLabel({ onTime: 2, late: 1, missing: 3 }), '3 entregaron · 1 atrasada · 3 sin entregar')
   assert.equal(countsLabel({ onTime: 1, late: 0, missing: 1 }), '1 entregó · 1 sin entregar')
   assert.equal(countsLabel({ onTime: 0, late: 2, missing: 0 }), '2 entregaron · 2 atrasadas · 0 sin entregar')
+})
+
+test('los enlaces de pegar notas llevan la comisión y la columna, y Calificaciones cuenta las notas pegadas', () => {
+  assert.equal(pasteGradesHref('am1'), '/materias/am1/calificaciones/pegar')
+  assert.equal(
+    pasteGradesHref('am1', { comision: 'sec-a', columna: 'evaluacion:ev-4' }),
+    '/materias/am1/calificaciones/pegar?comision=sec-a&columna=evaluacion%3Aev-4'
+  )
+  assert.equal(
+    gradesHref('am1', { comision: 'sec-a', pegadas: 12 }),
+    '/materias/am1/calificaciones?comision=sec-a&pegadas=12'
+  )
+  assert.equal(notesLabel(1), '1 nota')
+  assert.equal(notesLabel(12), '12 notas')
 })
