@@ -74,7 +74,7 @@ export type SubjectStanding = {
   examDate: string | null
   /** Las correlativas para cursarla, según el plan, y si ya las cumple. Vacío si no tiene o el SIU no las dio. */
   prerequisites: PrerequisiteStanding[]
-  /** Si puede cursarla ya: la tiene pendiente y cumple todas sus correlativas. */
+  /** Si puede cursarla ya: la tiene pendiente, el SIU dio sus correlativas y las cumple todas. */
   canTake: boolean
 }
 
@@ -290,10 +290,12 @@ function withPrerequisites(subjects: SubjectStanding[], plan: SiuStudyPlan | nul
       condition: p.condition,
       met: meets(status.get(p.subjectId), p.condition)
     }))
+    // Sin correlativas leídas (el SIU no las dio, o no está en el plan) no se sabe si puede cursarla: no se marca.
+    const known = entry?.prerequisites !== undefined
     return {
       ...subject,
       prerequisites,
-      canTake: subject.status === 'pendiente' && prerequisites.every((p) => p.met)
+      canTake: known && subject.status === 'pendiente' && prerequisites.every((p) => p.met)
     }
   })
 }

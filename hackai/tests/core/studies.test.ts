@@ -2462,6 +2462,19 @@ test('la carrera dice qué correlativas cumple cada materia y cuáles puede curs
   assert.ok(result.value.data.subjects.every((s) => s.prerequisites.every((p) => subject(p.subjectId))))
 })
 
+test('sin las correlativas de una materia, no dice que la puede cursar', async () => {
+  // El SIU real puede no dar las correlativas de una materia (el pedido de «Ver» falló): no se sabe, no es «no tiene».
+  const data = structuredClone(syntheticData)
+  const plan = data.siu.studyPlans.find((p) => p.programId === 'iind')!
+  const ethics = plan.subjects.find((s) => s.subjectId === 'etp')!
+  delete ethics.prerequisites
+  const result = await build(data).studies.career('p-sdominguez')
+
+  assert.ok(result.ok)
+  const etp = result.value.data.subjects.find((s) => s.subjectId === 'etp')!
+  assert.deepEqual([etp.status, etp.prerequisites, etp.canTake], ['pendiente', [], false])
+})
+
 test('el año lectivo de una cursada es el del nombre del período, y sin año en el nombre, el de su inicio', async () => {
   // El SIU publica el período anual con inicio en diciembre del año anterior.
   const annual = structuredClone(syntheticData)

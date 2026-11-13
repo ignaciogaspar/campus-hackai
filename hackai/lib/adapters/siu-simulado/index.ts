@@ -581,6 +581,7 @@ export function createSimulatedSiu({
             subjectId: p.subject_id,
             year: p.year,
             kind: p.kind,
+            // La columna es `not null default '[]'`: el simulado siempre sabe las correlativas, y vacío es «no tiene».
             prerequisites: p.prerequisites ?? []
           }))
       })

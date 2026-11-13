@@ -151,7 +151,7 @@ function SubjectLink({ subject, onSelect }: { subject: SubjectStanding; onSelect
     <button
       type='button'
       onClick={() => onSelect(subject.subjectId)}
-      className='inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-card px-2.5 text-[0.8125rem] font-semibold text-ink shadow-[0_1px_2px_rgb(11_17_80/0.06)] ring-1 ring-border transition-[box-shadow] hover:ring-blue/30 focus-ring'
+      className='inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-card px-2.5 text-[0.8125rem] font-semibold text-ink shadow-[0_1px_2px_rgb(11_17_80/0.06)] ring-1 ring-border transition-[box-shadow] hover:ring-blue/30 focus-ring'
     >
       <span
         aria-hidden='true'
@@ -214,7 +214,7 @@ function Detail({
           type='button'
           onClick={onClose}
           aria-label='Cerrar el detalle'
-          className='grid size-9 flex-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-ice hover:text-ink focus-ring'
+          className='grid size-11 flex-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-ice hover:text-ink focus-ring'
         >
           <X aria-hidden='true' className='size-4.5' />
         </button>
