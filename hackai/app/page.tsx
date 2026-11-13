@@ -73,55 +73,61 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         </span>
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
-        {qr && <PhoneQr qr={qr.image} url={qr.url} />}
+      {/* Primero la lista de personas: el QR va debajo y, desde xl, en una columna al costado que queda a la vista. */}
+      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8 xl:grid xl:grid-cols-[minmax(0,1fr)_15rem] xl:items-start xl:gap-x-10'>
+        <div className='flex min-w-0 flex-col gap-5'>
+          {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
 
-        {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
-
-        {system().siuLive?.canConnect && !mobile && (
-          <Link
-            href='/entrar-con-siu'
-            className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring'
-          >
-            <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
-              <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
-            </span>
-            <span className='min-w-0 flex-1'>
-              <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
-              <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
-                Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
+          {system().siuLive?.canConnect && !mobile && (
+            <Link
+              href='/entrar-con-siu'
+              className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring'
+            >
+              <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
+                <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
               </span>
-            </span>
-            <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
-          </Link>
-        )}
+              <span className='min-w-0 flex-1'>
+                <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
+                <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
+                  Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
+                </span>
+              </span>
+              <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
+            </Link>
+          )}
 
-        <div>
-          <h2 className='text-lg font-extrabold text-ink'>¿Quién sos?</h2>
-          <p className='text-sm text-pretty text-muted-foreground'>
-            Elegí un alumno o un docente inventado para entrar. No hace falta clave.
-          </p>
+          <div>
+            <h2 className='text-lg font-extrabold text-ink'>¿Quién sos?</h2>
+            <p className='text-sm text-pretty text-muted-foreground'>
+              Elegí un alumno o un docente inventado para entrar. No hace falta clave.
+            </p>
+          </div>
+
+          {!listed.ok ? (
+            <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
+          ) : listed.value.length ? (
+            <PersonPicker people={listed.value} returnTo={returnTo} />
+          ) : (
+            <EmptyState icon={UsersRound} title='No hay personas cargadas para la demo'>
+              La lista sale de las personas sintéticas. Si usás la base, cargá el seed de vínculos (hackai/README.md).
+            </EmptyState>
+          )}
         </div>
 
-        {!listed.ok ? (
-          <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
-        ) : listed.value.length ? (
-          <PersonPicker people={listed.value} returnTo={returnTo} />
-        ) : (
-          <EmptyState icon={UsersRound} title='No hay personas cargadas para la demo'>
-            La lista sale de las personas sintéticas. Si usás la base, cargá el seed de vínculos (hackai/README.md).
-          </EmptyState>
-        )}
+        {qr && <PhoneQr qr={qr.image} url={qr.url} />}
       </main>
     </>
   )
 }
 
 /** En la compu, el QR para seguir en el celular. En el celular no aparece: se ve desde 768 px de ancho
-    (`md`), para que no se esconda en un proyector con zoom o una ventana a media pantalla. */
+    (`md`), para que no se esconda en un proyector con zoom o una ventana a media pantalla. Debajo de la lista,
+    y desde xl al costado, con el código arriba del texto. La dirección va sin «https://», que no hace falta
+    para escribirla. */
 function PhoneQr({ qr, url }: { qr: string; url: string }) {
+  const shown = url.replace(/^https?:\/\//, '').replace(/\/$/, '')
   return (
-    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 md:flex'>
+    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 md:flex xl:sticky xl:top-6 xl:flex-col xl:items-start'>
       {/* biome-ignore lint/performance/noImgElement: es un SVG en data:, no hay nada que optimizar */}
       <img
         src={qr}
@@ -133,7 +139,7 @@ function PhoneQr({ qr, url }: { qr: string; url: string }) {
       <div className='flex max-w-64 flex-col gap-1'>
         <p className='text-[0.9375rem] font-bold text-foreground'>Probala en tu celular</p>
         <p className='text-[0.8125rem] text-muted-foreground'>Escaneá el código con la cámara y entrá desde ahí.</p>
-        <p className='mt-1 font-mono text-[0.8125rem] break-all text-foreground'>{url}</p>
+        <p className='mt-1 font-mono text-[0.8125rem] break-words text-foreground'>{shown}</p>
       </div>
     </aside>
   )

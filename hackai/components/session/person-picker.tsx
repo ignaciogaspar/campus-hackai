@@ -115,7 +115,7 @@ export function PersonPicker({ people, returnTo }: { people: Person[]; returnTo?
             type='search'
             value={filters.query}
             onChange={(e) => set({ query: e.target.value })}
-            placeholder='Buscá por nombre, carrera o facultad'
+            placeholder='Buscá por nombre o carrera'
             className={`${FIELD} pl-10`}
           />
         </label>
