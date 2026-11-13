@@ -16,6 +16,7 @@ import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
 import { latestOf, questionState, spaceHref } from '@/components/spaces/format'
 import { LatestMark } from '@/components/spaces/latest-mark'
 import { MessageCard, ReplyBlock } from '@/components/spaces/messages'
+import { ThreadItem } from '@/components/spaces/unread-memory'
 import { buttonVariants } from '@/components/ui/button'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
@@ -117,7 +118,7 @@ function ResolveButton({ subjectId, channel, thread }: { subjectId: string; chan
 function ThreadCard({ subjectId, channel, thread }: { subjectId: string; channel: Channel; thread: Thread }) {
   const last = thread.replies.at(-1)
   return (
-    <li>
+    <ThreadItem id={thread.message.id} unread={thread.message.unread}>
       <MessageCard message={thread.message}>
         {last && <ReplyBlock message={last} />}
         <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1'>
@@ -126,7 +127,7 @@ function ThreadCard({ subjectId, channel, thread }: { subjectId: string; channel
           <ResolveButton subjectId={subjectId} channel={channel} thread={thread} />
         </div>
       </MessageCard>
-    </li>
+    </ThreadItem>
   )
 }
 
@@ -332,9 +333,9 @@ export function ThreadPanel({
           {thread.replies.length ? (
             <ol className='flex flex-col gap-3'>
               {thread.replies.map((r) => (
-                <li key={r.id}>
+                <ThreadItem key={r.id} id={r.id} unread={r.unread}>
                   <MessageCard message={r} />
-                </li>
+                </ThreadItem>
               ))}
             </ol>
           ) : (

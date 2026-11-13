@@ -121,12 +121,15 @@ function Questions({ view }: { view: TeachingView }) {
   )
 }
 
+/** El hilo al que lleva la novedad, como en Novedades: los directos no tienen hilos. */
+const threadOf = (item: UnreadItem) => (item.kind === 'directo' ? undefined : (item.thread ?? undefined))
+
 function UnreadRow({ item, now }: { item: UnreadItem; now: string }) {
   const label = item.kind === 'libre' ? `#${item.channelName}` : CHANNEL[item.kind]
   const ItemIcon = item.kind === 'directo' ? MessagesSquare : Megaphone
   return (
     <ListItem
-      href={spaceHref(item.subjectId, { canal: item.channelId })}
+      href={spaceHref(item.subjectId, { canal: item.channelId, hilo: threadOf(item) })}
       start={
         <Icon>
           <ItemIcon aria-hidden='true' className='size-5' strokeWidth={1.8} />

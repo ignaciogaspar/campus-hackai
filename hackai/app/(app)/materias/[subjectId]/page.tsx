@@ -19,6 +19,10 @@
    comisión, también el selector: la comisión elegida la llevan las otras
    pestañas; el espacio muestra los canales de todas sus comisiones igual que antes.
 
+   Sin `?canal=` se abre el primer canal con algo sin leer. Lo que no se había
+   leído sigue marcado mientras se mira, con el separador «Nuevos»
+   (UnreadMemory), aunque UnreadRefresh vuelva a leer la página.
+
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
 
@@ -46,6 +50,7 @@ import { DiscordLink, type ServerChoices } from '@/components/spaces/discord-lin
 import { DiscordServer, type DiscordServerProps } from '@/components/spaces/discord-server'
 import {
   channelLabel,
+  defaultChannel,
   hasSeveralSections,
   isDirect,
   messageTime,
@@ -55,6 +60,7 @@ import {
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
+import { UnreadMemory } from '@/components/spaces/unread-memory'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
 import { SUBJECT_WIDTH, SubjectToolbar } from '@/components/subjects/subject-toolbar'
@@ -208,21 +214,23 @@ function ChannelArea({
   const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
   // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
   const updates = <ChannelUpdates channelId={channel.id} version={version} />
+  // Lo que no se había leído sigue marcado aunque UnreadRefresh vuelva a leer la página ya leída.
+  const unread = threads.flatMap((t) => [t.message, ...t.replies]).flatMap((m) => (m.unread ? [m.id] : []))
   if (query.hilo && channel.kind !== 'directo') {
     const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
     return (
-      <>
+      <UnreadMemory scope={channel.id} unread={unread}>
         {updates}
         <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
-      </>
+      </UnreadMemory>
     )
   }
   return (
-    <>
+    <UnreadMemory scope={channel.id} unread={unread}>
       {updates}
       <DiscordLink subjectId={subjectId} channel={channel} choices={discord.choices} />
       <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} search={search} />
-    </>
+    </UnreadMemory>
   )
 }
 
@@ -265,13 +273,14 @@ function ChannelPanel({
   }
 }
 
-/** Abre el canal elegido, o el primero. Un canal de otro espacio es un canal desconocido acá. */
+/** Abre el canal elegido o, si no se eligió, el primero con algo sin leer (o el primero). Un canal de otro espacio
+    es un canal desconocido acá. */
 async function openChannel(
   personId: string,
   view: SpaceView,
   canal: string | undefined
 ): Promise<ChannelResult | null> {
-  const channelId = canal ?? view.channels[0]?.id
+  const channelId = canal ?? defaultChannel(view.channels)?.id
   if (!channelId) return null
   const opened = await system().spaces.channel(personId, channelId)
   if (opened.ok && opened.value.space.id !== view.space.id) return { ok: false, error: 'canal-desconocido' }

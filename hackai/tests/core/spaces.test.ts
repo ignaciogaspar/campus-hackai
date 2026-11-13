@@ -2193,7 +2193,7 @@ test('los mensajes directos sin leer aparecen como novedad solo para quien los r
   )
 })
 
-test('si todo lo sin leer de un canal es respuesta de una misma consulta, la novedad lleva a ese hilo', async () => {
+test('si todo lo sin leer de un canal es de una misma consulta, la novedad lleva a ese hilo', async () => {
   const { spaces } = build()
   const { consultasA } = await am1(spaces)
   const threadOf = async () => {
@@ -2208,12 +2208,44 @@ test('si todo lo sin leer de un canal es respuesta de una misma consulta, la nov
 
   assert.equal(await threadOf(), question.value.id)
 
-  // Una consulta nueva va al canal, igual que lo sin leer de más de un hilo.
+  // Una consulta nueva sin respuestas también es un hilo: la novedad lleva a ella, con «Responder» a la vista.
   await spaces.channel('p-taguirre', consultasA)
-  await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
-  assert.equal(await threadOf(), null)
+  const recovery = await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
+  assert.ok(recovery.ok)
+  assert.equal(await threadOf(), recovery.value.id)
+  // Lo sin leer de más de un hilo va al canal.
   await spaces.post('p-mledesma', consultasA, { text: 'Derivadas no.', replyTo: question.value.id })
   assert.equal(await threadOf(), null)
+})
+
+test('un aviso nuevo sin respuestas lleva al canal, no a un hilo', async () => {
+  const { spaces } = build()
+  const { avisosA } = await am1(spaces)
+  await spaces.post('p-mledesma', avisosA, { text: 'Parcial el 16.' })
+
+  const unread = await spaces.unreadFor('p-taguirre')
+
+  assert.ok(unread.ok)
+  assert.equal(unread.value.find((u) => u.channelId === avisosA)?.thread, null)
+})
+
+test('abrir un canal dos veces seguidas: la primera vista muestra lo no leído y la segunda ya no', async () => {
+  const { spaces } = build()
+  const { consultasA } = await am1(spaces)
+  await spaces.post('p-lbenitez', consultasA, { text: '¿Cuándo es el recuperatorio?' })
+
+  const first = await spaces.channel('p-taguirre', consultasA)
+  const second = await spaces.channel('p-taguirre', consultasA)
+
+  assert.ok(first.ok && second.ok)
+  assert.deepEqual(
+    first.value.threads.map((t) => t.message.unread),
+    [true]
+  )
+  assert.deepEqual(
+    second.value.threads.map((t) => t.message.unread),
+    [false]
+  )
 })
 
 test('un mensaje directo sin leer dice de quién es; en el resto de los canales no hay otra persona', async () => {

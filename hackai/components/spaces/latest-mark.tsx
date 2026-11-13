@@ -4,7 +4,10 @@
    nuevo: al pie en Consultas, los canales libres, los directos y un hilo;
    arriba en Avisos, que va de lo más nuevo a lo más viejo. Deja ese mensaje a
    la vista:
-   - al abrir el canal, el hilo o un filtro (`scope`), sin animación;
+   - al abrir el canal, el hilo o un filtro (`scope`), sin animación; si había
+     algo sin leer, el primero (con el separador «Nuevos», unread-memory.tsx).
+     Se hace en el cuadro siguiente: si no, el scroll al tope con que Next.js
+     abre la página lo deshacía;
    - cuando llega uno propio (recién enviado), siempre;
    - cuando llega uno de otro, solo si ya se estaba mirando el final: si la
      persona subió a leer algo, no se la mueve.
@@ -40,7 +43,13 @@ function reveal(el: HTMLElement) {
   el.scrollIntoView({ block: 'nearest', behavior: 'auto' })
 }
 
+/** El primer renglón con algo sin leer de la lista, si hay. */
+function firstNew(list: HTMLElement | null): HTMLElement | null {
+  return list?.querySelector<HTMLElement>('[data-new]') ?? null
+}
+
 export function LatestMark({ scope, latest, at, children }: Props) {
+  const list = useRef<HTMLDivElement>(null)
   const mark = useRef<HTMLDivElement>(null)
   const near = useRef(true)
   const shown = useRef<{ scope: string; id: string | null } | null>(null)
@@ -66,7 +75,7 @@ export function LatestMark({ scope, latest, at, children }: Props) {
     const before = shown.current
     shown.current = { scope, id }
     if (!el) return
-    if (before?.scope !== scope) reveal(el)
+    if (before?.scope !== scope) requestAnimationFrame(() => reveal(firstNew(list.current) ?? el))
     else if (before.id !== id && (mine || near.current)) reveal(el)
   }, [scope, id, mine])
 
@@ -81,7 +90,7 @@ export function LatestMark({ scope, latest, at, children }: Props) {
     />
   )
   return (
-    <div>
+    <div ref={list}>
       {at === 'top' && marker}
       {children}
       {at === 'bottom' && marker}

@@ -117,6 +117,11 @@
     linear-gradient(180deg, #ecf4f6 0%, #e8f2f4 25%, #ecf4f5 45%, #f1f6f7 60%, #f5f8f8 75%, #f9fafa 88%, #fbfcfc 100%);
 }
 
+/* «Nuevos» (components/spaces/unread-memory.tsx): el separador va solo antes del primer renglón de la lista con
+   algo sin leer. */
+.new-divider { display: none; }
+[data-new]:not([data-new] ~ [data-new]) > .new-divider { display: flex; }
+
 /* Foco visible de todo control: afuera del borde, o adentro si el contenedor recorta. */
 @utility focus-ring {
   &:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }

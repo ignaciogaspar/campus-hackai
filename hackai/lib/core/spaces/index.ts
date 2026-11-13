@@ -237,8 +237,8 @@ export type UnreadItem = {
   latest: UnreadLatest
   /** En un canal directo, la otra persona: de quién es el mensaje. En el resto, `null`. */
   counterpart: Author | null
-  /** Si todo lo sin leer del canal es de un mismo hilo y hay alguna respuesta, el id del mensaje que lo
-      abre: la novedad lleva a ese hilo. Si no, `null` y lleva al canal. */
+  /** Si todo lo sin leer del canal es de un mismo hilo y hay alguna respuesta, o es una consulta nueva sin
+      respuestas, el id del mensaje que lo abre: la novedad lleva a ese hilo. Si no, `null` y lleva al canal. */
   thread: MessageId | null
 }
 
