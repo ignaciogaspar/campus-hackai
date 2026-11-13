@@ -21,8 +21,17 @@ export const metadata: Metadata = { title: 'Planning · Campus HackAI' }
 const WEEKS_BACK = 6
 const WEEKS_AHEAD = 20
 
-export default async function PlanningPage() {
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+export default async function PlanningPage({
+  searchParams
+}: {
+  searchParams: Promise<{ dia?: string; materia?: string }>
+}) {
   const session = await requireSession()
+  const { dia, materia } = await searchParams
+  // `?dia=` y `?materia=`: el aviso de un cambio de clase abre el Planning en esa clase.
+  const focus = dia && DAY.test(dia) && materia ? { day: dia, subject: materia } : undefined
   const { planning, studies, people, now } = system()
   const monday = mondayOf(dayKey(now()))
   const [classes, subjects, person] = await Promise.all([
@@ -59,7 +68,7 @@ export default async function PlanningPage() {
               : 'Secretaría todavía no cargó las aulas de este cuatrimestre.'}
           </EmptyState>
         ) : (
-          <PlanningCalendar classes={classes.value} now={now()} mine={mine} defaultSchool={school} />
+          <PlanningCalendar classes={classes.value} now={now()} mine={mine} defaultSchool={school} focus={focus} />
         )}
       </main>
     </>

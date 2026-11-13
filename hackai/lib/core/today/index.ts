@@ -57,6 +57,7 @@
    Usa Cursada, Espacios, Seguimiento y el reloj. */
 import type { Coursework, DatedTask } from '@/lib/core/coursework'
 import type { PersonId } from '@/lib/core/people'
+import type { Planning, PlanningClass } from '@/lib/core/planning'
 import type { OpenQuestion, Spaces, UnreadItem } from '@/lib/core/spaces'
 import {
   type AssessmentGrade,
@@ -73,7 +74,7 @@ import {
   type UpcomingItem
 } from '@/lib/core/studies'
 import { asNewGrade, newestFirst, withoutPublished, withPublished } from '@/lib/core/today/grades'
-import { daysBetween } from '@/lib/dates'
+import { addDays, dayKey, daysBetween } from '@/lib/dates'
 import { type Fresh, staleSince } from '@/lib/fresh'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
@@ -158,13 +159,22 @@ export type Today = {
   /** Las notas nuevas del alumno, del SIU y de HackAI, después de `seenAt` (cuando vio sus notas por última vez, o
       `null`), la más nueva primero. */
   newGrades(personId: PersonId, seenAt: string | null): Promise<Result<AssessmentGrade[], 'persona-desconocida'>>
+  /** Las clases de sus materias actuales que en los próximos días (hoy incluido, `CLASS_CHANGE_DAYS`) cambiaron de
+      aula u horario o se suspendieron, según el Planning, por día y hora: para la campana y Novedades. Al alumno las
+      de las comisiones que cursa y al docente las que dicta. Si Cursada o el Planning no responden, vacío. */
+  classChanges(personId: PersonId): Promise<Result<PlanningClass[], 'persona-desconocida'>>
 }
+
+/** Cuántos días para adelante se avisa un cambio de clase: la semana que viene. */
+export const CLASS_CHANGE_DAYS = 7
 
 export type TodayDeps = {
   studies: Studies
   spaces: Spaces
   coursework: Coursework
   clock: ClockPort
+  /** Sin Planning, `classChanges` siempre vuelve vacío. */
+  planning?: Planning
 }
 
 const EMPTY_SUBJECTS: MySubjects = {
@@ -280,8 +290,22 @@ function failed<P extends string>(reads: Record<P, Read<unknown>>): P[] {
   return (Object.keys(reads) as P[]).filter((part) => !reads[part].ok)
 }
 
-export function createToday({ studies, spaces, coursework, clock }: TodayDeps): Today {
+export function createToday({ studies, spaces, coursework, clock, planning }: TodayDeps): Today {
   return {
+    async classChanges(personId) {
+      if (!planning) return ok([])
+      const subjects = await studies.subjectsOf(personId)
+      if (!subjects.ok) return subjects.error === 'persona-desconocida' ? fail('persona-desconocida') : ok([])
+      const sections = subjects.value.data.current.map((s) => ({
+        subject: s.name,
+        section: s.sectionName,
+        school: s.schoolId
+      }))
+      if (sections.length === 0) return ok([])
+      const today = dayKey(clock.now().toISOString())
+      const changes = await planning.changesFor(sections, today, addDays(today, CLASS_CHANGE_DAYS - 1))
+      return ok(changes.ok ? changes.value : [])
+    },
     async grades(personId) {
       const [career, published] = await Promise.all([studies.career(personId), coursework.publishedFor(personId)])
       if (!career.ok) return career

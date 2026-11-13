@@ -429,8 +429,8 @@ export function compose(
     clock,
     store: courseworkStoreOf(adapters.store, supabase)
   })
-  const today = createToday({ studies, spaces, coursework, clock })
   const planning = createPlanning({ people, store: planningStoreOf(adapters.store, supabase, data) })
+  const today = createToday({ studies, spaces, coursework, clock, planning })
   const reports = createReports({
     people,
     planning,

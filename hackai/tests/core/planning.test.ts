@@ -497,3 +497,24 @@ test('la misma aula en otro módulo o en otra sede no choca', async () => {
   const preview = await previewOf(planning, [HEADER, otherWing, otherCampus])
   assert.deepEqual(preview.counts, { ok: 2, duplicates: 0, errors: 0 })
 })
+
+test('changesFor trae solo los cambios y suspensiones de esas comisiones, en esos días', async () => {
+  const planning = build([
+    weekly('Física I', 'Aula A9', 'lunes', 540, 780),
+    { ...weekly('Física I', 'Aula B2', null, 540, 780), date: '2026-11-16' },
+    { ...weekly('física i', 'Aula A9', null, 540, 780), section: 'B', date: '2026-11-16', cancelled: true },
+    { ...weekly('Química', 'Aula 3', null, 540, 600), date: '2026-11-17' }
+  ])
+  const sections = [{ subject: 'Fisica I', section: 'a', school: 'fi' }]
+  const changes = value(await planning.changesFor(sections, '2026-11-15', '2026-11-22'))
+  assert.deepEqual(
+    changes.map((c) => [c.day, c.subject, c.section, c.room, c.change]),
+    [['2026-11-16', 'Física I', 'A', 'Aula B2', 'cambio']],
+    'ni la comisión B ni la clase extra de Química'
+  )
+  assert.deepEqual(value(await planning.changesFor(sections, '2026-11-17', '2026-11-22')), [], 'fuera de esos días')
+  assert.deepEqual(
+    value(await planning.changesFor([{ ...sections[0], school: 'fce' }], '2026-11-15', '2026-11-22')),
+    []
+  )
+})
