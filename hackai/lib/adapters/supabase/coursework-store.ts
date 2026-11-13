@@ -1,7 +1,8 @@
 /* Almacén de Seguimiento sobre Supabase: las tareas y las entregas, en las
    tablas propias `coursework_tasks` y `coursework_submissions`
    (supabase/migrations/0006_coursework.sql), y las notas de Calificaciones en
-   `coursework_grades` (supabase/migrations/0007_coursework_grades.sql). Se porta como
+   `coursework_grades` (supabase/migrations/0007_coursework_grades.sql) y sus pesos en
+   `coursework_weights` (supabase/migrations/0009_coursework_course_grade.sql). Se porta como
    el almacén en memoria y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts).
 
@@ -18,12 +19,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createQueryRunner } from '@/lib/adapters/supabase/query'
 import type {
   ColumnKey,
+  ColumnKind,
   CourseworkStore,
   PassStatus,
   StoredGrade,
   StoredSubmission,
   StoredTask,
-  StoredTaskFile
+  StoredTaskFile,
+  StoredWeight
 } from '@/lib/core/coursework'
 import { fail, ok } from '@/lib/result'
 
@@ -62,7 +65,7 @@ type SubmissionRow = {
 type GradeRow = {
   id: string
   section_id: string
-  kind: 'tarea' | 'evaluacion'
+  kind: ColumnKind
   ref_id: string
   person_id: string
   column_name: string
@@ -73,10 +76,13 @@ type GradeRow = {
   published_at: string | null
   pass_status: PassStatus | null
   pass_by: string | null
+  edited: boolean
 }
 
+type WeightRow = { section_id: string; kind: ColumnKind; ref_id: string; weight: number | string | null }
+
 const GRADE_COLUMNS =
-  'id, section_id, kind, ref_id, person_id, column_name, value, absent, comment, graded_at, published_at, pass_status, pass_by'
+  'id, section_id, kind, ref_id, person_id, column_name, value, absent, comment, graded_at, published_at, pass_status, pass_by, edited'
 
 function toGrade(row: GradeRow): StoredGrade {
   return {
@@ -91,7 +97,8 @@ function toGrade(row: GradeRow): StoredGrade {
     comment: row.comment,
     gradedAt: iso(row.graded_at),
     publishedAt: row.published_at ? iso(row.published_at) : null,
-    pass: row.pass_status && row.pass_by ? { status: row.pass_status, by: row.pass_by } : null
+    pass: row.pass_status && row.pass_by ? { status: row.pass_status, by: row.pass_by } : null,
+    edited: row.edited
   }
 }
 
@@ -108,7 +115,8 @@ function gradeRow(grade: Omit<StoredGrade, 'id'>): Omit<GradeRow, 'id'> {
     graded_at: grade.gradedAt,
     published_at: grade.publishedAt,
     pass_status: grade.pass?.status ?? null,
-    pass_by: grade.pass?.by ?? null
+    pass_by: grade.pass?.by ?? null,
+    edited: grade.edited
   }
 }
 
@@ -333,6 +341,17 @@ export function createSupabaseCourseworkStore({
 
     saveGrade: saveGradeOf(run, client),
 
+    saveWeight: saveWeightOf(run, client),
+
+    async weightsOfSection(sectionId) {
+      const rows = await run<WeightRow[]>('pesos de la comisión', (s) =>
+        client.from('coursework_weights').select(WEIGHT_COLUMNS).eq('section_id', sectionId).abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      // Una fila sin peso es una columna a la que se le quitó el peso.
+      return ok((rows.value ?? []).filter((r) => r.weight !== null).map(toWeight))
+    },
+
     async gradesOfSection(sectionId) {
       const rows = await run<GradeRow[]>('notas de la comisión', (s) =>
         client.from('coursework_grades').select(GRADE_COLUMNS).eq('section_id', sectionId).order('seq').abortSignal(s)
@@ -478,5 +497,47 @@ function saveGradeOf(run: Runner, client: SupabaseClient): CourseworkStore['save
     }
     if (!saved.ok || !saved.value) return fail('falla-externa')
     return ok(toGrade(saved.value))
+  }
+}
+
+const WEIGHT_COLUMNS = 'section_id, kind, ref_id, weight'
+
+const toWeight = (row: WeightRow): StoredWeight => ({
+  sectionId: row.section_id,
+  kind: row.kind,
+  refId: row.ref_id,
+  weight: Number(row.weight)
+})
+
+/** Pone el peso de la columna, o lo quita con `null` (la fila queda sin peso). Si otro peso llegó entre la lectura y
+    el alta, este lo reemplaza. */
+function saveWeightOf(run: Runner, client: SupabaseClient): CourseworkStore['saveWeight'] {
+  const update = (column: ColumnKey, weight: number | null) =>
+    run<WeightRow[]>('cambiar peso', (s) =>
+      client
+        .from('coursework_weights')
+        .update({ weight })
+        .eq('section_id', column.sectionId)
+        .eq('kind', column.kind)
+        .eq('ref_id', column.refId)
+        .select(WEIGHT_COLUMNS)
+        .abortSignal(s)
+    )
+  return async (column, weight) => {
+    const changed = await update(column, weight)
+    if (!changed.ok) return fail('falla-externa')
+    if ((changed.value ?? []).length > 0 || weight === null) return ok(undefined)
+    const created = await run<WeightRow>('crear peso', (s) =>
+      client
+        .from('coursework_weights')
+        .insert({ section_id: column.sectionId, kind: column.kind, ref_id: column.refId, weight })
+        .select(WEIGHT_COLUMNS)
+        .abortSignal(s)
+        .single()
+    )
+    if (created.ok) return ok(undefined)
+    if (created.error !== 'duplicado') return fail('falla-externa')
+    const raced = await update(column, weight)
+    return raced.ok ? ok(undefined) : fail('falla-externa')
   }
 }

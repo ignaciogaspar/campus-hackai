@@ -86,8 +86,8 @@ export function columnDefs(tasks: StoredTask[], sectionId: string, assessments: 
 export const inColumn = (g: StoredGrade, column: { kind: ColumnKind; refId: string }) =>
   g.kind === column.kind && g.refId === column.refId
 
-/** La columna con lo cargado y publicado hasta ahora. */
-export function columnWith(def: ColumnDef, grades: StoredGrade[]): GradeColumn {
+/** La columna con lo cargado y publicado hasta ahora, y su peso en la nota de cursada. */
+export function columnWith(def: ColumnDef, grades: StoredGrade[], weight: number | null): GradeColumn {
   const ofColumn = grades.filter((g) => inColumn(g, def) && isGraded(g))
   const published = ofColumn.flatMap((g) => (g.publishedAt ? [g.publishedAt] : [])).sort()[0] ?? null
   return {
@@ -99,7 +99,8 @@ export function columnWith(def: ColumnDef, grades: StoredGrade[]): GradeColumn {
     publishedAt: published,
     graded: ofColumn.length,
     unpublished: ofColumn.filter((g) => g.publishedAt === null).length,
-    pass: def.kind === 'evaluacion' ? passCounts(ofColumn) : null
+    pass: def.kind === 'evaluacion' ? passCounts(ofColumn) : null,
+    weight
   }
 }
 

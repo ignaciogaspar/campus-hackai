@@ -1,13 +1,14 @@
 /* Almacén de Seguimiento en memoria. Arranca vacío: las tareas las crean los
    docentes y las entregas, los alumnos. Se porta como el de Supabase y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts). */
-import type { CourseworkStore, StoredGrade, StoredSubmission, StoredTask } from '@/lib/core/coursework'
+import type { CourseworkStore, StoredGrade, StoredSubmission, StoredTask, StoredWeight } from '@/lib/core/coursework'
 import { ok } from '@/lib/result'
 
 export function createMemoryCourseworkStore(): CourseworkStore {
   const tasks: StoredTask[] = []
   const submissions: StoredSubmission[] = []
   const grades: StoredGrade[] = []
+  const weights: StoredWeight[] = []
   let gradeCounter = 0
   let counter = 0
   let submissionCounter = 0
@@ -87,6 +88,24 @@ export function createMemoryCourseworkStore(): CourseworkStore {
       const created: StoredGrade = { ...copy(grade), id: `nota-${gradeCounter}` }
       grades.push(created)
       return ok(copy(created))
+    },
+
+    async saveWeight(column, weight) {
+      const index = weights.findIndex(
+        (w) => w.sectionId === column.sectionId && w.kind === column.kind && w.refId === column.refId
+      )
+      if (weight === null) {
+        if (index >= 0) weights.splice(index, 1)
+      } else if (index >= 0) {
+        weights[index].weight = weight
+      } else {
+        weights.push({ sectionId: column.sectionId, kind: column.kind, refId: column.refId, weight })
+      }
+      return ok(undefined)
+    },
+
+    async weightsOfSection(sectionId) {
+      return ok(copy(weights.filter((w) => w.sectionId === sectionId)))
     },
 
     async gradesOfSection(sectionId) {

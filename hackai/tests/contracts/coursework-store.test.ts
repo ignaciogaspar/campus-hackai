@@ -2,7 +2,7 @@
    La misma corre contra el almacén en memoria, contra el de Supabase con un
    PostgREST de mentira (sin red), y contra una base de prueba de verdad solo
    si están HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY,
-   con supabase/migrations/0006_coursework.sql aplicada.
+   con las migraciones de supabase/migrations/ de Seguimiento (0006 a 0009) aplicadas.
 
    Contra la base de verdad cada prueba usa materias y personas con un id
    propio de la corrida, para no chocar con datos de corridas anteriores, y al
@@ -82,6 +82,7 @@ const gradeOf = (
   gradedAt: CREATED_AT,
   publishedAt: null,
   pass: null,
+  edited: false,
   ...fields
 })
 
@@ -408,6 +409,54 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     assert.equal(value(await store.gradeSubmission(task.id, ids.person(7), LATER)), null)
     assert.equal(value(await store.gradeSubmission('no-es-un-uuid', ids.person(2), LATER)), null)
   })
+
+  it('guarda el peso de cada columna, lo cambia, lo quita y no mezcla comisiones', async (store, ids) => {
+    const [a, b] = [ids.subject(1), ids.subject(2)]
+    const parcial = { sectionId: a, kind: 'evaluacion' as const, refId: 'ev-1' }
+    const tarea = { sectionId: a, kind: 'tarea' as const, refId: 'tarea-1' }
+    value(await store.saveWeight(parcial, 40))
+    value(await store.saveWeight(tarea, 10))
+    value(await store.saveWeight({ ...parcial, sectionId: b }, 90))
+    value(await store.saveWeight(parcial, 60))
+    value(await store.saveWeight(tarea, null))
+    value(await store.saveWeight({ ...tarea, refId: 'tarea-2' }, null))
+
+    assert.deepEqual(value(await store.weightsOfSection(a)), [{ ...parcial, weight: 60 }])
+    assert.deepEqual(value(await store.weightsOfSection(b)), [{ ...parcial, sectionId: b, weight: 90 }])
+    assert.deepEqual(value(await store.weightsOfSection(ids.subject(3))), [])
+  })
+
+  it('la nota de cursada es una nota más: marca si la pisó el docente, se publica y se pasa como una evaluación', async (store, ids) => {
+    const section = ids.subject(1)
+    const pass = { status: 'pendiente' as const, by: ids.person(1) }
+    const saved = value(
+      await store.saveGrade(
+        gradeOf(ids, section, {
+          kind: 'cursada',
+          refId: section,
+          columnName: 'Nota de cursada',
+          value: 7.5,
+          edited: true
+        })
+      )
+    )
+    assert.equal(saved.edited, true)
+
+    const published = value(
+      await store.publishColumn({ sectionId: section, kind: 'cursada', refId: section }, LATER, pass)
+    )
+
+    assert.deepEqual(
+      published.map((g) => [g.kind, g.value, g.edited, g.pass]),
+      [['cursada', 7.5, true, pass]]
+    )
+    assert.deepEqual(
+      value(await store.pendingPasses())
+        .filter((g) => g.sectionId === section)
+        .map((g) => g.kind),
+      ['cursada']
+    )
+  })
 }
 
 // --- El PostgREST de mentira con la tabla de 0006_coursework.sql -----------
@@ -456,12 +505,17 @@ const TABLES = {
       'graded_at',
       'published_at',
       'pass_status',
-      'pass_by'
+      'pass_by',
+      'edited'
     ],
     uuid: ['id'],
     generated: { id: 'uuid', seq: 'identity' },
-    defaults: { absent: false, comment: '' },
+    defaults: { absent: false, comment: '', edited: false },
     unique: [['id'], ['section_id', 'kind', 'ref_id', 'person_id']]
+  },
+  coursework_weights: {
+    columns: ['section_id', 'kind', 'ref_id', 'weight'],
+    unique: [['section_id', 'kind', 'ref_id']]
   }
 } satisfies Parameters<typeof createFakePostgrest>[0]['tables']
 
@@ -494,5 +548,6 @@ if (url && key) {
   after(async () => {
     await supabaseClient(url, key).from('coursework_tasks').delete().like('subject_id', `prueba-${RUN}-%`)
     await supabaseClient(url, key).from('coursework_grades').delete().like('section_id', `prueba-${RUN}-%`)
+    await supabaseClient(url, key).from('coursework_weights').delete().like('section_id', `prueba-${RUN}-%`)
   })
 }

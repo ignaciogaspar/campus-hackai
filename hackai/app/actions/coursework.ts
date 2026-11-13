@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import {
+  COURSE_COLUMN,
   dueAtFromInput,
   durationLabel,
   gradeFromInput,
@@ -241,6 +242,93 @@ export async function retryGradePass(_prev: SpaceActionState, form: FormData): P
       passed === 0
         ? 'No había notas pendientes de pasar.'
         : `Pasamos ${passed === 1 ? '1 nota' : `${passed} notas`} al SIU.`,
+    at: Date.now()
+  }
+}
+
+type CourseActionError =
+  | ErrorOf<ReturnType<Coursework['setWeights']>>
+  | ErrorOf<ReturnType<Coursework['overrideCourseGrade']>>
+  | ErrorOf<ReturnType<Coursework['publishCourseGrade']>>
+
+const COURSE_ERRORS: Record<CourseActionError, string> = {
+  'persona-desconocida': ERRORS['persona-desconocida'],
+  'sin-acceso': 'No dictás esa comisión.',
+  'solo-docentes': 'Solo los docentes de la comisión ponen pesos y notas de cursada.',
+  'columna-desconocida': 'Esa columna ya no existe en esta comisión. Volvé a Calificaciones.',
+  'alumno-desconocido': 'Ese alumno no está en la comisión o todavía no entró a HackAI.',
+  'peso-invalido':
+    'Cada peso va de 0 a 100, con coma o punto para los decimales. Dejalo vacío si la columna no cuenta.',
+  'nota-invalida': 'La nota de cursada va de 1 a 10, con coma o punto para los decimales.',
+  'sin-nota-calculada': 'Todavía no hay nada para calcular: cargá notas en columnas con peso o escribí la nota a mano.',
+  'sin-notas': 'Todavía no hay ninguna nota de cursada: poné pesos a las columnas con notas o escribí una a mano.',
+  'falla-externa': ERRORS['falla-externa']
+}
+
+/** Guarda el peso de cada columna de la comisión. Un campo vacío quita el peso de esa columna. */
+export async function saveWeights(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const ids = form.getAll('columnId')
+  const raw = form.getAll('weight')
+  if (!subjectId || !sectionId || ids.length !== raw.length) return failed(UNEXPECTED)
+  const weights = ids.map((id, i) => ({
+    columnId: typeof id === 'string' ? id : '',
+    weight: gradeFromInput(typeof raw[i] === 'string' ? raw[i] : '')
+  }))
+
+  const result = await system().coursework.setWeights(session.personId, sectionId, weights)
+  if (!result.ok) return failed(COURSE_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  return { status: 'ok', message: 'Guardamos los pesos. La nota de cursada ya se recalculó.', at: Date.now() }
+}
+
+/** Pisa la nota de cursada de un alumno, o con `reset` vuelve al cálculo, y pasa al siguiente de la lista. */
+export async function saveCourseGrade(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const studentId = text(form, 'studentId')
+  if (!subjectId || !sectionId || !studentId) return failed(UNEXPECTED)
+  const reset = text(form, 'reset') === 'si'
+
+  const result = await system().coursework.overrideCourseGrade(
+    session.personId,
+    sectionId,
+    studentId,
+    reset ? null : gradeFromInput(text(form, 'value') ?? '')
+  )
+  if (!result.ok) return failed(COURSE_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  const next = text(form, 'next')
+  redirect(
+    gradesHref(
+      subjectId,
+      next && !reset
+        ? { comision: sectionId, columna: COURSE_COLUMN, alumno: next }
+        : { comision: sectionId, columna: COURSE_COLUMN, alumno: reset ? studentId : undefined, listo: !reset }
+    )
+  )
+}
+
+/** Publica la nota de cursada: la ven los alumnos, les llega el aviso y pasa al SIU. */
+export async function publishCourse(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  if (!subjectId || !sectionId) return failed(UNEXPECTED)
+
+  const result = await system().coursework.publishCourseGrade(session.personId, sectionId)
+  if (!result.ok) return failed(COURSE_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  const { published } = result.value
+  return {
+    status: 'ok',
+    message:
+      published === 0
+        ? 'No había notas de cursada nuevas para publicar: los alumnos ya ven todas.'
+        : `Publicamos ${published === 1 ? 'la nota de cursada de 1 alumno' : `las notas de cursada de ${published} alumnos`}. Ya las ven y les llegó el aviso.`,
     at: Date.now()
   }
 }

@@ -10,7 +10,8 @@
    a veces no se actualizaba (ver el espacio de la materia). */
 import { CheckCircle2 } from 'lucide-react'
 import type { Metadata } from 'next'
-import { gradesHref, nextStudent, notesLabel } from '@/components/coursework/format'
+import { CourseGradeEditor, CourseStudentList, CourseSummary, WeightsForm } from '@/components/coursework/course-grade'
+import { COURSE_COLUMN, gradesHref, nextStudent, notesLabel } from '@/components/coursework/format'
 import { GradeEditor } from '@/components/coursework/grade-editor'
 import { ColumnPicker, ColumnSummary, NoColumns, StudentList } from '@/components/coursework/gradebook'
 import { TaskError } from '@/components/coursework/task-error'
@@ -43,6 +44,7 @@ export default async function GradebookPage({ params, searchParams }: { params: 
   const book = result.value
   const selectedSection = book.sections.find((s) => s.sectionId === book.sectionId)
   const several = book.sections.length > 1
+  const showCourse = param(raw, 'columna') === COURSE_COLUMN && book.columns.length > 0
   const column = book.columns.find((c) => c.id === param(raw, 'columna')) ?? book.columns[0]
   const gradable = book.students.filter((s): s is typeof s & { personId: string } => s.personId !== null)
   const editing = gradable.find((s) => s.personId === param(raw, 'alumno'))
@@ -80,60 +82,148 @@ export default async function GradebookPage({ params, searchParams }: { params: 
                 subjectId={subjectId}
                 comision={several ? book.sectionId : undefined}
                 columns={book.columns}
-                selectedId={column.id}
+                selectedId={showCourse ? COURSE_COLUMN : column.id}
               />
-              {raw.listo === 'si' && !editing && (
-                <p
-                  role='status'
-                  className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-2.5 text-[0.875rem] font-semibold text-success'
-                >
-                  <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
-                  Terminaste la lista. Cuando quieras, publicá las notas.
-                </p>
-              )}
-              {Number(raw.pegadas) > 0 && !editing && (
-                <p
-                  role='status'
-                  className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-2.5 text-[0.875rem] font-semibold text-success'
-                >
-                  <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
-                  Guardamos {notesLabel(Number(raw.pegadas))} de la planilla. Revisalas y publicalas cuando quieras.
-                </p>
-              )}
-              {editing ? (
-                <GradeEditor
-                  subjectId={subjectId}
-                  sectionId={book.sectionId}
-                  column={column}
-                  student={editing}
-                  cell={editing.cells[column.id]}
-                  nextId={nextStudent(
-                    gradable.map((s) => s.personId),
-                    editing.personId
-                  )}
-                  position={{ index: gradable.indexOf(editing) + 1, total: gradable.length }}
-                />
+              {showCourse ? (
+                <CourseView subjectId={subjectId} book={book} gradable={gradable} editing={editing} />
               ) : (
-                <ColumnSummary
+                <ColumnView
                   subjectId={subjectId}
-                  sectionId={book.sectionId}
+                  book={book}
                   column={column}
-                  students={book.students.length}
+                  gradable={gradable}
+                  editing={editing}
+                  raw={raw}
                 />
               )}
-              <StudentList
-                subjectId={subjectId}
-                sectionId={book.sectionId}
-                columnId={column.id}
-                students={book.students}
-                selectedId={editing?.personId}
-              />
             </>
           ) : (
             <NoColumns />
           )}
         </div>
       </main>
+    </>
+  )
+}
+
+type Book = Extract<Awaited<ReturnType<ReturnType<typeof system>['coursework']['gradebook']>>, { ok: true }>['value']
+type Gradable = (Book['students'][number] & { personId: string })[]
+
+/** Lo que se ve debajo del selector cuando se mira la nota de cursada: el resumen, los pesos y los alumnos. */
+function CourseView({
+  subjectId,
+  book,
+  gradable,
+  editing
+}: {
+  subjectId: string
+  book: Book
+  gradable: Gradable
+  editing: Gradable[number] | undefined
+}) {
+  return (
+    <>
+      {editing ? (
+        <CourseGradeEditor
+          subjectId={subjectId}
+          sectionId={book.sectionId}
+          student={editing}
+          nextId={nextStudent(
+            gradable.map((s) => s.personId),
+            editing.personId
+          )}
+          position={{ index: gradable.indexOf(editing) + 1, total: gradable.length }}
+        />
+      ) : (
+        <>
+          <CourseSummary
+            subjectId={subjectId}
+            sectionId={book.sectionId}
+            course={book.course}
+            students={book.students.length}
+          />
+          <WeightsForm
+            subjectId={subjectId}
+            sectionId={book.sectionId}
+            columns={book.columns}
+            weightTotal={book.course.weightTotal}
+          />
+        </>
+      )}
+      <CourseStudentList
+        subjectId={subjectId}
+        sectionId={book.sectionId}
+        students={book.students}
+        selectedId={editing?.personId}
+      />
+    </>
+  )
+}
+
+/** Lo que se ve debajo del selector cuando se mira una columna: su estado y publicar, y una fila por alumno. */
+function ColumnView({
+  subjectId,
+  book,
+  column,
+  gradable,
+  editing,
+  raw
+}: {
+  subjectId: string
+  book: Book
+  column: Book['columns'][number]
+  gradable: Gradable
+  editing: Gradable[number] | undefined
+  raw: Record<string, string | string[] | undefined>
+}) {
+  return (
+    <>
+      {raw.listo === 'si' && !editing && (
+        <p
+          role='status'
+          className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-2.5 text-[0.875rem] font-semibold text-success'
+        >
+          <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
+          Terminaste la lista. Cuando quieras, publicá las notas.
+        </p>
+      )}
+      {Number(raw.pegadas) > 0 && !editing && (
+        <p
+          role='status'
+          className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-2.5 text-[0.875rem] font-semibold text-success'
+        >
+          <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
+          Guardamos {notesLabel(Number(raw.pegadas))} de la planilla. Revisalas y publicalas cuando quieras.
+        </p>
+      )}
+      {editing ? (
+        <GradeEditor
+          subjectId={subjectId}
+          sectionId={book.sectionId}
+          column={column}
+          student={editing}
+          cell={editing.cells[column.id]}
+          nextId={nextStudent(
+            gradable.map((s) => s.personId),
+            editing.personId
+          )}
+          position={{ index: gradable.indexOf(editing) + 1, total: gradable.length }}
+        />
+      ) : (
+        <ColumnSummary
+          subjectId={subjectId}
+          sectionId={book.sectionId}
+          column={column}
+          students={book.students.length}
+        />
+      )}
+      <StudentList
+        subjectId={subjectId}
+        sectionId={book.sectionId}
+        columnId={column.id}
+        students={book.students}
+        selectedId={editing?.personId}
+      />
     </>
   )
 }

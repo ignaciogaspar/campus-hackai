@@ -624,6 +624,28 @@ test('Notas: una tarea con nota publicada aparece en su materia aunque no exista
   assert.ok(!am1(other.value.data).assessments.some((a) => a.id === task.value.id))
 })
 
+test('Notas: la nota de cursada publicada en HackAI es la de la materia, no una evaluación más, y avisa a la campana', async () => {
+  const { today, coursework } = build()
+  await gradeTomas(coursework, 'evaluacion:ev-4', 9, false)
+  assert.ok((await coursework.setWeights('p-mledesma', A, [{ columnId: 'evaluacion:ev-4', weight: 50 }])).ok)
+  assert.ok((await coursework.overrideCourseGrade('p-mledesma', A, 'p-taguirre', 8.25)).ok)
+  const before = await today.grades('p-taguirre')
+  assert.ok((await coursework.publishCourseGrade('p-mledesma', A)).ok)
+
+  const view = await today.grades('p-taguirre')
+
+  assert.ok(before.ok && view.ok)
+  assert.notEqual(am1(before.value.data).courseGrade, 8.25)
+  assert.equal(am1(view.value.data).courseGrade, 8.25)
+  assert.ok(!am1(view.value.data).assessments.some((a) => a.name === 'Nota de cursada'))
+  const news = await today.newGrades('p-taguirre', null)
+  assert.ok(news.ok)
+  assert.deepEqual(
+    news.value.filter((g) => g.assessmentName === 'Nota de cursada').map((g) => [g.subjectId, g.grade, g.source]),
+    [['am1', 8.25, 'hackai']]
+  )
+})
+
 test('Notas: si Seguimiento no responde, salen las notas del SIU y se avisa que faltan las de HackAI', async () => {
   const store = { ...createMemoryCourseworkStore(), publishedGradesOf: async () => fail('falla-externa' as const) }
   const { today, studies } = build(syntheticData, store)

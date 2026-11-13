@@ -262,8 +262,15 @@ _Avoid_: «actividades», «trabajos prácticos».
 **Tarea de HackAI (Task)**:
 Una tarea con nombre, consigna, archivo opcional, fecha límite y si lleva nota, creada en HackAI por un docente. No es la Tarea (Assignment) de Moodle: esa viene del aula virtual. En el código, `Task` es la de HackAI y `Assignment` la de Moodle. Una tarea que no lleva nota no tiene columna en Calificaciones.
 
+**Peso (Weight)**:
+Cuánto cuenta una columna de Calificaciones en la nota de cursada de su comisión, de 0 a 100. Lo pone el docente por columna; una columna sin peso, o con peso 0, no cuenta. No hace falta que los pesos sumen 100: la nota usa la proporción entre las columnas en las que el alumno tiene nota.
+
+**Nota de cursada (Course grade)**:
+La nota con la que un alumno termina la cursada de una comisión en HackAI: el promedio ponderado de sus columnas con nota y peso, que se calcula sola. El docente la puede pisar y queda marcada como `editada`; después se publica y pasa al SIU como el resto de las notas. Una tarea sin nota, un ausente y una columna en la que el alumno no tiene nota no entran en el promedio. No es la «cursada» del SIU (el intento de cursar una materia): es la nota que lleva ese intento. Recuperatorios y mínimo para regularizar son una hipótesis (`docs/product/preguntas-abiertas.md`, pregunta 25).
+_Avoid_: «promedio de la materia», «nota final» (esa es la del final).
+
 **Pase al SIU (Grade pass)**:
-Escribir en el SIU las notas que el docente publicó en HackAI: la de cada evaluación del cronograma del SIU y, más adelante, la de cursada. Una tarea no existe en el SIU y queda solo en HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó: el SIU falló y se reintenta, sin duplicar), `pasado` o `no-permitido` («Sin pasar al SIU»: el SIU no deja escribir notas). El alumno ve la nota en los tres estados. Se hace por la capacidad `canWriteGrades` del puerto del SIU: el adaptador real declara que no puede, el simulado sí.
+Escribir en el SIU las notas que el docente publicó en HackAI: la de cada evaluación del cronograma del SIU y la nota de cursada. Una tarea no existe en el SIU y queda solo en HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó: el SIU falló y se reintenta, sin duplicar), `pasado` o `no-permitido` («Sin pasar al SIU»: el SIU no deja escribir notas). El alumno ve la nota en los tres estados. Se hace por la capacidad `canWriteGrades` del puerto del SIU: el adaptador real declara que no puede, el simulado sí.
 _Avoid_: «sincronizar notas», «exportar».
 
 **Espacio de la materia (Subject space)**:

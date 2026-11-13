@@ -1,13 +1,14 @@
 /* Calificaciones de una comisión, pensadas primero para el celular: una
    columna a la vez. Arriba se elige la columna (una por tarea con nota y una
-   por parcial del SIU), después se ve su estado y se publica, y debajo hay una
-   fila por alumno con su nota. Tocar un alumno abre su nota y comentario.
+   por parcial del SIU, y al final la nota de cursada), después se ve su estado y
+   se publica, y debajo hay una fila por alumno con su nota. Tocar un alumno abre
+   su nota y comentario.
    Sin tablas anchas: la misma lista sirve en la compu. */
 import { ClipboardList, ClipboardPaste, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
 import { publishColumn, retryGradePass } from '@/app/actions/coursework'
 import { GradeBadge } from '@/components/academic/grade-badge'
-import { dueTime, gradesHref, pasteGradesHref } from '@/components/coursework/format'
+import { COURSE_COLUMN, dueTime, gradeInputValue, gradesHref, pasteGradesHref } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -55,6 +56,13 @@ export function ColumnPicker({
             <span className='truncate'>{c.name}</span>
           </Link>
         ))}
+        <Link
+          href={gradesHref(subjectId, { comision, columna: COURSE_COLUMN })}
+          aria-current={selectedId === COURSE_COLUMN ? 'page' : undefined}
+          className={cn(railItem({ size: 'sm' }), 'min-h-11 max-w-[11rem] flex-none px-3 max-sm:px-2.5')}
+        >
+          <span className='truncate'>Nota de cursada</span>
+        </Link>
       </div>
     </nav>
   )
@@ -90,6 +98,7 @@ export function ColumnSummary({
         <p className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
           <OriginBadge origin={column.kind === 'tarea' ? 'hackai' : 'siu'} />
           <time dateTime={column.date}>{dueTime(column.date)}</time>
+          <span>· {column.weight === null ? 'Sin peso' : `Peso ${gradeInputValue(column.weight)}`}</span>
         </p>
         <p className='text-[0.8125rem] text-ink'>
           {column.graded} de {students} con nota
@@ -131,13 +140,21 @@ const PASS_PILL: Record<PassStatus, { tone: 'success' | 'warning' | 'neutral'; l
 }
 
 /** Si la nota ya pasó al SIU. Una tarea no se pasa: no existe en el SIU, y no lleva estado. */
-function PassPill({ status }: { status: PassStatus }) {
+export function PassPill({ status }: { status: PassStatus }) {
   const { tone, label } = PASS_PILL[status]
   return <StatusPill tone={tone}>{label}</StatusPill>
 }
 
 /** Cómo va el pase al SIU de una evaluación del SIU, con el botón para reintentar lo pendiente. */
-function PassSummary({ subjectId, sectionId, pass }: { subjectId: string; sectionId: string; pass: PassCounts }) {
+export function PassSummary({
+  subjectId,
+  sectionId,
+  pass
+}: {
+  subjectId: string
+  sectionId: string
+  pass: PassCounts
+}) {
   if (pass.passed + pass.pending + pass.refused === 0) return null
   return (
     <ActionForm action={retryGradePass} className='flex flex-col gap-2'>
