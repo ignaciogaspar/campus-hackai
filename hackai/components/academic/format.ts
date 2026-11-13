@@ -23,6 +23,11 @@ export function approvalYear(date: string): string {
   return new Date(date).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, year: 'numeric' })
 }
 
+/** «2do Cuatrimestre 2026»: el período sin el «Grado» con el que lo nombra el SIU, que no le dice nada al alumno. */
+export function termLabel(name: string): string {
+  return name.replace(/^Grado\s+/, '')
+}
+
 /** «8,5»: el promedio con coma decimal y sin ceros de más. */
 export function average(value: number): string {
   return value.toLocaleString('es-AR', { maximumFractionDigits: 2 })

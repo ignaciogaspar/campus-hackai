@@ -28,10 +28,10 @@ function href(view: View, page = 1): string {
   return query ? `/materias?${query}` : '/materias'
 }
 
-/* Las vistas, centradas en un riel: «En curso» siempre; las otras, con cuántas hay, para elegirlas. */
+/* Las vistas, en un riel alineado con la grilla: «En curso» siempre; las otras, con cuántas hay, para elegirlas. */
 function ViewTabs({ current, counts, student }: { current: View; counts: Record<View, number>; student: boolean }) {
   return (
-    <nav aria-label='Qué materias ver' className={cn(railTrack({ size: 'sm' }), 'mx-auto w-full max-w-xl')}>
+    <nav aria-label='Qué materias ver' className={cn(railTrack({ size: 'sm' }), 'w-full max-w-xl')}>
       {VIEWS.filter((v) => student || !v.students).map(({ view, label }) => (
         <Link
           key={view}
