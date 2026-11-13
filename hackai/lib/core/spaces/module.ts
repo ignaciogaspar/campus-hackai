@@ -161,10 +161,22 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!space.ok) return space
     const channels = await ensureChannels(store, space.value, member.value)
     if (!channels.ok) return channels
-    const fromClassroom = syncDue(space.value.id)
+    const spaceId = space.value.id
+    const fromClassroom = syncDue(spaceId)
     await defer(async () => {
       if (fromClassroom) {
-        await importFromClassroom({ classroom, studies, people, store }, member.value, space.value, channels.value)
+        // Si Moodle no respondió todo o algo tiró, la próxima apertura vuelve a intentar sin esperar el intervalo.
+        let complete = false
+        try {
+          complete = await importFromClassroom(
+            { classroom, studies, people, store },
+            member.value,
+            space.value,
+            channels.value
+          )
+        } finally {
+          if (!complete) lastSync.delete(spaceId)
+        }
       }
       // Lo nuevo del canal externo vinculado. Si no responde, queda lo que ya hay.
       await sync.ifDue(space.value.id, channels.value)

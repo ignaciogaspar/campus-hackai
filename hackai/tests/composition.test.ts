@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { MemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
-import { compose } from '@/lib/composition'
+import { afterResponse, compose } from '@/lib/composition'
 
 const NOW = new Date(syntheticData.now)
 
@@ -305,4 +305,22 @@ test('actualiza las materias y las inscripciones abiertas del render tras un alt
   assert.deepEqual(await read(), { enrolled: true, open: false })
   assert.ok((await studies.drop(person, target)).ok)
   assert.deepEqual(await read(), { enrolled: false, open: true })
+})
+
+test('fuera de un pedido de Next, lo diferido corre ahí mismo y se espera', async () => {
+  let done = false
+  await afterResponse(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    done = true
+  })
+  assert.equal(done, true)
+})
+
+test('si lo diferido falla, se registra y no le llega el error a quien abrió el espacio', async (t) => {
+  const logged = t.mock.method(console, 'error', () => {})
+  await afterResponse(async () => {
+    throw new Error('Moodle no respondió')
+  })
+  assert.equal(logged.mock.callCount(), 1)
+  assert.match(String(logged.mock.calls[0].arguments[1]), /Moodle no respondió/)
 })

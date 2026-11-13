@@ -275,16 +275,27 @@ export function compose(
   }
 }
 
+/** El error de `after()` cuando se llama fuera de un pedido de Next, como en los tests y los scripts. */
+function outsideRequest(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('outside a request scope')
+}
+
 /** Corre la tarea después de mandar la página, con `after()` de Next, así abrir un espacio no espera a Moodle
-    ni a Discord. Fuera de un pedido (tests, scripts) `after` falla, y la tarea se espera ahí mismo. */
-async function afterResponse(task: () => Promise<unknown>): Promise<void> {
+    ni a Discord. Fuera de un pedido `after` falla, y la tarea se espera ahí mismo. Si `after` falla por otra
+    cosa, queda registrado y la tarea también se espera: es más lento, pero no se pierde. Un error de la
+    tarea se registra y no llega a quien abrió el espacio. */
+export async function afterResponse(task: () => Promise<unknown>): Promise<void> {
   const run = () =>
-    task().catch((error: unknown) => {
-      console.error('Falló lo que se trae de Moodle o del canal externo después de abrir un espacio', error)
-    })
+    task().then(
+      () => undefined,
+      (error: unknown) => {
+        console.error('Falló lo que se trae de Moodle o del canal externo después de abrir un espacio', error)
+      }
+    )
   try {
     after(run)
-  } catch {
+  } catch (error) {
+    if (!outsideRequest(error)) console.error('after() no anduvo: lo de Moodle y Discord se espera ahora', error)
     await run()
   }
 }

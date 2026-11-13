@@ -14,7 +14,8 @@
      anterior.
    - Se leen los hilos activos y los archivados después del cursor: un hilo que
      recibió mensajes y se archivó entre dos lecturas no los pierde. El canal,
-     la lista de hilos y los hilos con novedades se piden en paralelo.
+     la lista de hilos y los hilos con novedades se piden en paralelo, de a
+     `THREADS_AT_ONCE` hilos para no juntar pedidos y recibir un 429.
    - Ante un 429 espera el `retry_after` que pide Discord y reintenta, hasta
      `maxRetries` veces y `maxRetryAfterMs` de espera. Si pide más, devuelve
      `falla-externa` en vez de bloquear, y la próxima sincronización reintenta.
@@ -27,6 +28,7 @@
      solo para docentes niega escribir a @everyone y se lo permite al rol de
      docentes y al bot, que si no quedaría afuera. Para eso el bot necesita
      Gestionar canales y Gestionar roles (docs/discord.md). */
+import { mapLimited } from '@/lib/concurrency'
 import type {
   ExternalAttachment,
   ExternalChannelPort,
@@ -61,6 +63,9 @@ const CDN_HOSTS = ['cdn.discordapp.com', 'media.discordapp.net']
 const PAGE_SIZE = 100
 /** Páginas por fuente en una lectura; lo que sobra queda para la siguiente. */
 const MAX_PAGES = 10
+
+/** Cuántos hilos se leen a la vez en una lectura. */
+const THREADS_AT_ONCE = 4
 /** Cuántos mensajes sube, como máximo, para encontrar la raíz de una cadena de respuestas. */
 const MAX_CHAIN = 20
 /** Tipos de mensaje de Discord que son de personas. El resto es del sistema. */
@@ -361,13 +366,14 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
         const guild = await channelGuild(channelId)
         if (!guild.ok) return guild
 
-        // El canal y la lista de hilos a la vez, y después los hilos con novedades a la vez: uno detrás del
-        // otro sumaban un request entero por cada paso (#111).
+        // El canal y la lista de hilos a la vez, y después los hilos con novedades de a `THREADS_AT_ONCE`:
+        // uno detrás del otro sumaban un request entero por cada paso (#111).
         const [own, threadIds] = await Promise.all([
           readAfter(channelId, cursor, null),
           guild.value ? threadsWithNews(guild.value, channelId, cursor) : Promise.resolve([])
         ])
-        const sources = [own, ...(await Promise.all(threadIds.map((id) => readAfter(id, cursor, id))))]
+        const threads = await mapLimited(threadIds, THREADS_AT_ONCE, (id) => readAfter(id, cursor, id))
+        const sources = [own, ...threads]
 
         // Si una fuente quedó cortada, el cursor no puede pasar su último mensaje leído.
         const limit = sources
