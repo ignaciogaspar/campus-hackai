@@ -16,9 +16,10 @@
    - Las lecturas toleran caídas: devuelven lo último leído, marcado como
      desactualizado (`Fresh`). La oferta y las constancias también; la ventana
      de inscripción de la oferta se mira con el reloj de ahora.
-   - Las materias actuales de un alumno llevan sus inasistencias. Si el SIU no
-     da las inasistencias, salen igual, sin faltas y con `absencesUnavailable`;
-     como con Moodle caído, esa respuesta no pisa la última lectura completa.
+   - Las materias no llevan faltas: la tarjeta de la materia no las muestra.
+     `absencesOf` da, por materia actual del alumno, el detalle de sus
+     inasistencias (juntando las fuentes; por ahora solo el SIU). Un docente
+     recibe una lista vacía. Si el SIU no responde, devuelve lo último leído.
    - Con Moodle caído y el SIU arriba, las materias salen al día del SIU, sin
      enlaces al aula ni tareas, y con `classroomUnavailable`.
 
@@ -87,7 +88,7 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import { absencesIn, type MyAbsences } from '@/lib/core/studies/absences'
+import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail, mergeAbsences } from '@/lib/core/studies/absences'
 import {
   type Approved as ApprovedInCareer,
   buildCareer,
@@ -120,7 +121,13 @@ import type {
 } from '@/lib/ports/siu'
 import { all, type ExternalFailure, fail, type NotImplemented, ok, type Result } from '@/lib/result'
 
-export type { AbsenceWarning, MyAbsences } from '@/lib/core/studies/absences'
+export type {
+  AbsenceRecord,
+  AbsenceWarning,
+  MyAbsences,
+  MyAbsencesDetail,
+  SubjectAbsences
+} from '@/lib/core/studies/absences'
 export type {
   Career,
   CareerProgress,
@@ -172,9 +179,6 @@ export type MySubject = {
   classrooms: MyClassroom[]
   /** Tareas con fecha de esos cursos, por fecha. Solo las de materias actuales; las archivadas, vacío. */
   assignments: MyAssignment[]
-  /** Inasistencias del alumno en la comisión. Solo en las materias actuales de un alumno y si el SIU las
-      pudo dar; si no, `null`. */
-  absences: MyAbsences | null
 }
 
 export type MySubjects = {
@@ -182,8 +186,6 @@ export type MySubjects = {
   archived: MySubject[]
   /** Moodle no respondió: las materias salen del SIU, sin enlaces al aula ni tareas. */
   classroomUnavailable: boolean
-  /** El SIU no dio las inasistencias: las materias salen sin faltas. */
-  absencesUnavailable: boolean
 }
 
 export type MySection = {
@@ -402,6 +404,8 @@ type ReadError = StudiesReadError
 export type Studies = {
   /** Materias del período lectivo actual y archivadas. */
   subjectsOf(personId: PersonId): Promise<Result<Fresh<MySubjects>, ReadError>>
+  /** Las inasistencias del alumno por materia actual, con cada falta. Un docente recibe una lista vacía. */
+  absencesOf(personId: PersonId): Promise<Result<Fresh<MyAbsencesDetail>, ReadError>>
   /** Sus comisiones, como alumno o como docente. */
   sectionsOf(personId: PersonId): Promise<Result<Fresh<MySection[]>, ReadError>>
   /** Comisiones o mesas de examen con cupo, horario y docentes. */
@@ -805,14 +809,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!who.ok) return who
     const mine = await sectionsInTermsOf(who.value)
     if (!mine.ok) return mine
-    const student = mine.value.role === 'alumno'
-    const [classrooms, absences] = await Promise.all([
-      classroomsOf(mine.value.sections),
-      student ? siu.absences(who.value.siuId) : Promise.resolve(null)
-    ])
-    // Sin las inasistencias, las materias salen igual, sin faltas y marcadas
-    // con `absencesUnavailable`: no son lo principal de la pantalla.
-    const report = absences?.ok ? absences.value : null
+    const classrooms = await classroomsOf(mine.value.sections)
     const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
       const item: MySubject = {
         subjectId: subject.id,
@@ -834,16 +831,45 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
           name: c.fullName,
           url: classroom.courseUrl(c.id)
         })),
-        assignments: classrooms.assignments[i],
-        absences: report && current ? absencesIn(report, section.id) : null
+        assignments: classrooms.assignments[i]
       }
       return { item, current }
     })
     return ok({
       current: subjects.filter((s) => s.current).map((s) => s.item),
       archived: subjects.filter((s) => !s.current).map((s) => s.item),
-      classroomUnavailable: classrooms.unavailable,
-      absencesUnavailable: absences !== null && !absences.ok
+      classroomUnavailable: classrooms.unavailable
+    })
+  }
+
+  /** Las faltas de cada materia actual del alumno. Sin las del SIU no hay
+      cuenta que valga: falla, y `fresh` devuelve lo último leído. */
+  async function absencesOf(personId: PersonId): Promise<Result<MyAbsencesDetail, ReadError>> {
+    const who = await siuPersonOf(personId)
+    if (!who.ok) return who
+    if (who.value.person.role !== 'alumno') return ok({ subjects: [] })
+    const [mine, report] = await Promise.all([sectionsInTermsOf(who.value), siu.absences(who.value.siuId)])
+    if (!mine.ok) return mine
+    if (!report.ok) return fail(asUnknownPerson(report.error))
+    const siuRecords: AbsenceRecord[] = report.value.absences.map((a) => ({ ...a, source: 'siu' }))
+    // La segunda fuente (clases tomadas en HackAI) la suma A3.
+    const records = mergeAbsences(siuRecords, [])
+    return ok({
+      subjects: mine.value.sections
+        .filter((s) => s.current)
+        .map(({ section, subject }) => {
+          const mineHere = records.filter((a) => a.sectionId === section.id)
+          const max = report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
+          return {
+            ...absencesFrom(mineHere, max),
+            subjectId: subject.id,
+            subjectCode: subject.code,
+            subjectName: subject.name,
+            sectionId: section.id,
+            sectionName: section.name,
+            absences: mineHere
+          }
+        })
     })
   }
 
@@ -1767,8 +1793,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       fresh(
         `subjectsOf:${personId}`,
         () => subjectsOf(personId),
-        (s) => !s.classroomUnavailable && !s.absencesUnavailable
+        (s) => !s.classroomUnavailable
       ),
+    absencesOf: (personId) => fresh(`absencesOf:${personId}`, () => absencesOf(personId)),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     offer: offerNow,
     enroll,

@@ -116,8 +116,7 @@ export type TodayDeps = {
 const EMPTY_SUBJECTS: MySubjects = {
   current: [],
   archived: [],
-  classroomUnavailable: false,
-  absencesUnavailable: false
+  classroomUnavailable: false
 }
 
 /** Los tipos que pueden ser «el próximo parcial o final». */
