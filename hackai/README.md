@@ -350,7 +350,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
-| `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
+| `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas, Espacios y Seguimiento. |
 | `HACKAI_CAIDAS` | `si` deja tirar el SIU o Moodle desde `/caidas` para mostrarlo en la demo. Vacía o `no` (por defecto): no existe, como en producción. Ver «Mostrar una caída en la demo». |
 | `HACKAI_CACHE_SEGUNDOS` | Cuánto guarda la caché de lecturas (`lib/adapters/cache/`) lo que no cambia con lo que hace el alumno: personas, materias, comisiones, planes y vínculos. Vacía: 300. `0` no guarda nada (solo comparte la consulta en vuelo), por ejemplo para editar el seed o las notas en la base durante la demo; si no, un cambio así tarda hasta 5 minutos en verse en cada instancia de Vercel. Inscripciones, historia, cupos e inasistencias nunca se guardan. |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |
@@ -368,7 +368,7 @@ No las imprimas en logs ni en reportes.
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
 | `lib/result.ts` | `Result`, `ok()`, `fail()` y `notImplemented()`: los errores como valores. |
 | `lib/ports/` | Los seis puertos (identidad, SIU, aula virtual, canal externo, archivos, reloj) con sus capacidades. |
-| `lib/core/` | Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
+| `lib/core/` | Personas, Cursada, Espacios, Seguimiento y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
 | `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. Los adjuntos PDF son PDF que abre el visor del navegador (`synthetic-files.ts`). |
 | `lib/adapters/memoria/` | Un adaptador en memoria por puerto, cargado con ese set. |
 | `lib/adapters/discord/` | El canal externo real: API REST v10 de Discord, sin gateway. Bot y prueba manual (`npm run discord:probar`): [docs/discord.md](docs/discord.md). |

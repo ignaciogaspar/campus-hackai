@@ -1,6 +1,7 @@
 -- Vaciado de la demo: borra lo que dejan los ensayos en las tablas propias de
 -- Espacios (supabase/migrations/0002_spaces.sql): los espacios, sus canales,
--- los mensajes, el material y hasta dónde leyó cada persona. Los espacios y
+-- los mensajes, el material y hasta dónde leyó cada persona; y en las de
+-- Seguimiento (0006_coursework.sql): las tareas. Los espacios y
 -- sus canales por defecto se vuelven a crear la primera vez que alguien abre
 -- la materia, y lo de Moodle se trae de nuevo al abrirla.
 --
@@ -18,6 +19,7 @@
 begin;
 
 truncate table space_reads, space_messages, space_material, space_channels, spaces restart identity cascade;
+truncate table coursework_tasks restart identity cascade;
 
 commit;
 

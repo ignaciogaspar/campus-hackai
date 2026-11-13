@@ -51,6 +51,7 @@ import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
+import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -438,6 +439,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         data-just-read={hadUnread ? '' : undefined}
         className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8'
       >
+        <SubjectTabs subjectId={subjectId} current='espacio' />
         {view.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(view.staleSince)}: puede estar
