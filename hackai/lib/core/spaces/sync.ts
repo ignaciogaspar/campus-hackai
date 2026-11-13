@@ -22,6 +22,8 @@
      mitad, la próxima sincronización relee desde el mismo punto.
    - Una sola sincronización a la vez por espacio, para no enviar dos veces el
      mismo pendiente; y desde `open`, no más de una cada `SYNC_EVERY_MS`. */
+
+import { mapLimited } from '@/lib/concurrency'
 import type { People, PersonId } from '@/lib/core/people'
 import type {
   ExternalLink,
@@ -45,6 +47,9 @@ import { type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 
 /** Desde `open`, un espacio no se sincroniza más de una vez en este tiempo. */
 export const SYNC_EVERY_MS = 5000
+
+/** Cuántos canales vinculados se sincronizan a la vez: el adaptador ya lee varios hilos de cada uno. */
+const CHANNELS_AT_ONCE = 3
 
 /** Lo más largo que acepta Discord en un mensaje. */
 const MAX_TEXT = 2000
@@ -341,6 +346,8 @@ export function createSync({ people, externalChannel, files, store, timer }: Syn
     if (!cursor.ok) return NOTHING
     const page = await externalChannel.read(channel.externalLink.channelId, cursor.value)
     if (!page.ok) return NOTHING
+    // Sin nada nuevo no hay qué guardar: así no se leen los mensajes del canal en cada sincronización.
+    if (page.value.messages.length === 0 && page.value.cursor === cursor.value) return NOTHING
     const imported = await importPage(channel, page.value)
     return { ...NOTHING, imported: imported.ok ? imported.value : 0 }
   }
@@ -351,10 +358,11 @@ export function createSync({ people, externalChannel, files, store, timer }: Syn
     return addCounts(sent, await importNew(channel))
   }
 
+  /** Los canales en paralelo, de a `CHANNELS_AT_ONCE`: cada uno tiene su cursor y sus pendientes, y uno
+      detrás del otro sumaban segundos por canal (#111). */
   async function syncChannels(channels: Linked[]): Promise<SyncCounts> {
-    let total = NOTHING
-    for (const channel of channels) total = addCounts(total, await syncChannel(channel))
-    return total
+    const counts = await mapLimited(channels, CHANNELS_AT_ONCE, syncChannel)
+    return counts.reduce(addCounts, NOTHING)
   }
 
   return {
