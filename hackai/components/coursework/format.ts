@@ -53,9 +53,27 @@ export function gradesHref(subjectId: string, view: GradesView = {}): string {
   return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
 }
 
-/** Cómo se evalúa la comisión: instancias de examen, pesos y promoción. */
-export const evaluationHref = (subjectId: string, comision?: string) =>
-  href(`${subjectPath(subjectId)}/calificaciones/evaluacion`, comision)
+/** El estado de una columna en su pestaña de Calificaciones: «Sin notas», «2/3 · sin publicar», «3/3 · publicada».
+    Una columna publicada con notas nuevas dice cuántas faltan publicar. */
+export function columnStatus(
+  column: { graded: number; unpublished: number; published: boolean },
+  students: number
+): string {
+  if (column.graded === 0) return 'Sin notas'
+  const count = `${column.graded}/${students}`
+  if (!column.published) return `${count} · sin publicar`
+  return column.unpublished === 0 ? `${count} · publicada` : `${count} · ${column.unpublished} sin publicar`
+}
+
+/** Cómo se evalúa la comisión: instancias de examen, pesos y promoción. Lleva la columna de Calificaciones de la que
+    se viene, para volver a ella, y con `pesos` va directo a los pesos. */
+export function evaluationHref(subjectId: string, comision?: string, from: { columna?: string; pesos?: boolean } = {}) {
+  const params = new URLSearchParams()
+  if (comision) params.set('comision', comision)
+  if (from.columna) params.set('columna', from.columna)
+  const query = params.toString()
+  return `${subjectPath(subjectId)}/calificaciones/evaluacion${query ? `?${query}` : ''}${from.pesos ? '#pesos' : ''}`
+}
 
 /** Cuántos alumnos entran en una página de las listas del docente. */
 export const PAGE_SIZE = 25

@@ -12,7 +12,11 @@ export function RailScroller(props: ComponentProps<'div'>) {
     const track = rail.current
     const current = track?.querySelector<HTMLElement>('[aria-current]')
     if (!track || !current) return
-    const left = current.offsetLeft - (track.clientWidth - current.offsetWidth) / 2
+    // Con las cajas en pantalla y no con offsetLeft: ese se mide desde el primer ancestro posicionado, que no es el
+    // riel, y la opción elegida quedaba cortada. Tampoco scrollIntoView, que puede mover la página.
+    const box = current.getBoundingClientRect()
+    const frame = track.getBoundingClientRect()
+    const left = track.scrollLeft + box.left - frame.left - (track.clientWidth - box.width) / 2
     track.scrollLeft = Math.max(0, left)
   })
   return <div ref={rail} {...props} />

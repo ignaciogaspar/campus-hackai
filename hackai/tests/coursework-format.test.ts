@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  columnStatus,
   countsLabel,
   dueAtFromInput,
   dueLabel,
   durationLabel,
+  evaluationHref,
   gradeFromInput,
   gradeInputValue,
   gradesHref,
@@ -181,4 +183,24 @@ test('una fila de la planilla con otra nota pide guardarla, y si no es de 1 a 10
   assert.equal(sheetChange({ before: '', value: '12' }), 'invalida')
   assert.equal(sheetChange({ before: '', value: '0' }), 'invalida')
   assert.equal(sheetChange({ before: '7', value: 'siete' }), 'invalida')
+})
+
+test('cada pestaña de Calificaciones dice cuántos tienen nota y si está publicada', () => {
+  assert.equal(columnStatus({ graded: 0, unpublished: 0, published: false }, 3), 'Sin notas')
+  assert.equal(columnStatus({ graded: 2, unpublished: 2, published: false }, 3), '2/3 · sin publicar')
+  assert.equal(columnStatus({ graded: 3, unpublished: 0, published: true }, 3), '3/3 · publicada')
+  assert.equal(columnStatus({ graded: 3, unpublished: 1, published: true }, 3), '3/3 · 1 sin publicar')
+})
+
+test('el enlace a la evaluación lleva la comisión y la columna de la que se viene, y puede ir a los pesos', () => {
+  assert.equal(evaluationHref('am1'), '/materias/am1/calificaciones/evaluacion')
+  assert.equal(evaluationHref('am1', 'sec a'), '/materias/am1/calificaciones/evaluacion?comision=sec+a')
+  assert.equal(
+    evaluationHref('am1', undefined, { columna: 'evaluacion:ev-4' }),
+    '/materias/am1/calificaciones/evaluacion?columna=evaluacion%3Aev-4'
+  )
+  assert.equal(
+    evaluationHref('am1', 'sec-a', { columna: 'cursada', pesos: true }),
+    '/materias/am1/calificaciones/evaluacion?comision=sec-a&columna=cursada#pesos'
+  )
 })
