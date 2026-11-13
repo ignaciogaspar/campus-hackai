@@ -242,7 +242,8 @@ export type UnreadItem = {
   thread: MessageId | null
 }
 
-/** Una consulta sin resolver que le toca responder a un docente, con cuántas respuestas tiene. */
+/** Una consulta sin resolver que le toca responder a un docente, con cuántas respuestas tiene y si ya la
+    respondió un docente. */
 export type OpenQuestion = {
   messageId: MessageId
   channelId: ChannelId
@@ -256,6 +257,9 @@ export type OpenQuestion = {
   origin: Origin
   createdAt: string
   replies: number
+  /** Si la última respuesta es de un docente: está respondida y falta marcarla resuelta. Si después repreguntó un
+      alumno, o nadie respondió, `false`. */
+  answeredByTeacher: boolean
 }
 
 /** Una consulta que encontró la búsqueda, de un `#consultas` que la persona ve. */

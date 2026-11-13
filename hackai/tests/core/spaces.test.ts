@@ -2309,13 +2309,44 @@ test('al docente le tocan las consultas sin resolver de sus comisiones actuales,
       author: undefined,
       origin: 'hackai',
       createdAt: '2026-11-09T12:00:00.000Z',
-      replies: 2
+      replies: 2,
+      // La última respuesta es de Lucía, una alumna.
+      answeredByTeacher: false
     }
   )
   assert.ok(ferreyra.ok)
   assert.deepEqual(
     ferreyra.value.map((q) => q.text),
     ['¿Puedo rendir en la A?']
+  )
+})
+
+test('una consulta cuenta como respondida cuando la última respuesta es de un docente', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  const unanswered = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  const onlyStudents = await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Hay clase el jueves?' })
+  const answered = await spaces.post('p-jescobar', ids.consultasA, { text: '¿Y derivadas?' })
+  const askedAgain = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Se puede usar calculadora?' })
+  assert.ok(unanswered.ok && onlyStudents.ok && answered.ok && askedAgain.ok)
+  await spaces.post('p-jescobar', ids.consultasA, { text: 'Creo que sí.', replyTo: onlyStudents.value.id })
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'Sí, entra.', replyTo: answered.value.id })
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'No.', replyTo: askedAgain.value.id })
+  // El alumno repregunta después de la docente: le vuelve a tocar responder.
+  await spaces.post('p-taguirre', ids.consultasA, { text: '¿Ni la científica?', replyTo: askedAgain.value.id })
+
+  const ledesma = await spaces.openQuestions('p-mledesma')
+
+  assert.ok(ledesma.ok)
+  assert.deepEqual(
+    ledesma.value.map((q) => [q.text, q.replies, q.answeredByTeacher]),
+    [
+      ['¿Entra límites?', 0, false],
+      ['¿Hay clase el jueves?', 1, false],
+      ['¿Y derivadas?', 1, true],
+      ['¿Se puede usar calculadora?', 2, false]
+    ]
   )
 })
 

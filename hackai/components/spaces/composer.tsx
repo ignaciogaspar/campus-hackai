@@ -9,13 +9,15 @@
    En la compu Enter
    envía y Shift+Enter salta de línea; en el celular Enter salta de línea y se
    envía con el botón (composer-keys.ts). Ctrl o ⌘ + Enter envía siempre. En
-   Avisos, Enter salta de línea en todos lados y el botón dice «Publicar».
-   Dónde se ubica (pegado abajo en el celular) lo pone ComposerDock. */
-import { Paperclip, SendHorizontal, X } from 'lucide-react'
+   Avisos, Enter salta de línea en todos lados y el botón dice «Publicar». En el
+   hilo de una consulta, quien la puede marcar resuelta tiene además «Responder
+   y marcar resuelta». Dónde se ubica (pegado abajo en el celular) lo pone ComposerDock. */
+import { Check, Paperclip, SendHorizontal, X } from 'lucide-react'
 import { type ChangeEvent, type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { postMessage } from '@/app/actions/spaces'
 import { FormFeedback, useSpaceAction } from '@/components/spaces/action-form'
 import { sendsOnKey } from '@/components/spaces/composer-keys'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const MAX_HEIGHT = 160
@@ -37,9 +39,12 @@ type Props = {
   placeholder: string
   /** En Avisos, a quién le llega: Enter salta de línea y se publica con el botón «Publicar» o Ctrl o ⌘ + Enter. */
   announcementFor?: string
+  /** En el hilo de una consulta sin resolver, para quien la puede marcar resuelta: suma «Responder y marcar
+      resuelta», que hace las dos cosas de un toque. Enter sigue solo respondiendo. */
+  resolvable?: boolean
 }
 
-export function Composer({ subjectId, channelId, replyTo, placeholder, announcementFor }: Props) {
+export function Composer({ subjectId, channelId, replyTo, placeholder, announcementFor, resolvable }: Props) {
   const { state, dispatch, pending, submit, error } = useSpaceAction(postMessage)
   const [text, setText] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -175,6 +180,23 @@ export function Composer({ subjectId, channelId, replyTo, placeholder, announcem
         </button>
       </div>
 
+      {resolvable && (
+        <div className='flex justify-end'>
+          <button
+            type='submit'
+            name='resolve'
+            value='1'
+            disabled={empty || pending}
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'h-11 rounded-[10px] disabled:cursor-not-allowed'
+            )}
+          >
+            <Check aria-hidden='true' strokeWidth={2.2} />
+            Responder y marcar resuelta
+          </button>
+        </div>
+      )}
       {announcementFor && (
         <p id={`${id}-help`} className='hidden px-1 text-xs text-muted-foreground lg:block'>
           Enter salta de línea. Ctrl o ⌘ + Enter publica el aviso para {announcementFor}.

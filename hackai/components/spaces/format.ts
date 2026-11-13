@@ -134,6 +134,18 @@ export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {
   return `${SPACES_PATH}/${encodeURIComponent(subjectId)}${search ? `?${search}` : ''}`
 }
 
+/** En qué está una consulta, con las mismas palabras en el hilo y en el Hoy del docente. */
+export type QuestionState = 'sin-responder' | 'respondida' | 'resuelta'
+
+/** «Sin responder» hasta que la última respuesta es de un docente; después, «respondida» hasta que la marcan
+    resuelta. Si un alumno repregunta, vuelve a estar sin responder. `null` si el mensaje no es una consulta. */
+export function questionState(thread: Thread): QuestionState | null {
+  const { question } = thread.message
+  if (!question) return null
+  if (question.resolved) return 'resuelta'
+  return thread.replies.at(-1)?.author.role === 'profesor' ? 'respondida' : 'sin-responder'
+}
+
 /** El último mensaje de una lista, y si lo escribió quien mira. */
 export type Latest = { id: string; mine: boolean }
 

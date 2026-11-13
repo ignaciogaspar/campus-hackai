@@ -6,7 +6,7 @@
 import type { People, PersonId } from '@/lib/core/people'
 import type { ChannelId, MessageId, OpenQuestion, SpacesStore, StoredChannel, StoredMessage } from '@/lib/core/spaces'
 import { canResolve, type Membership } from '@/lib/core/spaces/access'
-import { authorsFrom } from '@/lib/core/spaces/authors'
+import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
 import { currentSpaces } from '@/lib/core/spaces/current-spaces'
 import type { Studies } from '@/lib/core/studies'
 import { type ExternalFailure, ok, type Result } from '@/lib/result'
@@ -20,13 +20,16 @@ function sectionName(member: Membership, channel: StoredChannel): string | null 
   return member.sections.find((s) => s.sectionId === scope.sectionId)?.name ?? null
 }
 
-/** Una sola pasada por los mensajes: las consultas sin resolver de cada canal y cuántas respuestas tiene cada mensaje. */
+/** Una sola pasada por los mensajes: las consultas sin resolver de cada canal, y cuántas respuestas tiene
+    cada mensaje y cuál es la última (vienen por `seq`, así que la última que pasa es la más nueva). */
 function tally(messages: StoredMessage[]) {
   const openByChannel = new Map<ChannelId, StoredMessage[]>()
   const replyCount = new Map<MessageId, number>()
+  const lastReply = new Map<MessageId, StoredMessage>()
   for (const m of messages) {
     if (m.replyTo !== null) {
       replyCount.set(m.replyTo, (replyCount.get(m.replyTo) ?? 0) + 1)
+      lastReply.set(m.replyTo, m)
       continue
     }
     if (m.resolved !== false) continue
@@ -34,7 +37,13 @@ function tally(messages: StoredMessage[]) {
     if (open) open.push(m)
     else openByChannel.set(m.channelId, [m])
   }
-  return { openByChannel, replyCount }
+  return { openByChannel, replyCount, lastReply }
+}
+
+/** Si la última respuesta es de un docente: la consulta ya tiene respuesta y falta marcarla resuelta. */
+async function answeredByTeacher(authors: Authors, last: StoredMessage | undefined): Promise<boolean> {
+  if (!last) return false
+  return (await authors.ofMessage(last)).role === 'profesor'
 }
 
 const oldestFirst = (a: OpenQuestion, b: OpenQuestion) =>
@@ -55,7 +64,7 @@ export async function openQuestions(
   const messages = await store.messages(answerable.map((a) => a.channel.id))
   if (!messages.ok) return messages
 
-  const { openByChannel, replyCount } = tally(messages.value)
+  const { openByChannel, replyCount, lastReply } = tally(messages.value)
 
   const authors = authorsFrom(people)
   const questions = await Promise.all(
@@ -72,7 +81,8 @@ export async function openQuestions(
           author: await authors.ofMessage(m),
           origin: m.origin,
           createdAt: m.createdAt,
-          replies: replyCount.get(m.id) ?? 0
+          replies: replyCount.get(m.id) ?? 0,
+          answeredByTeacher: await answeredByTeacher(authors, lastReply.get(m.id))
         })
       )
     )

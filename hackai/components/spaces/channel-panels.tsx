@@ -13,7 +13,7 @@ import { ArrowKeysList } from '@/components/spaces/arrow-keys'
 import { BackLink } from '@/components/spaces/back-link'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
-import { latestOf, spaceHref } from '@/components/spaces/format'
+import { latestOf, questionState, spaceHref } from '@/components/spaces/format'
 import { LatestMark } from '@/components/spaces/latest-mark'
 import { MessageCard, ReplyBlock } from '@/components/spaces/messages'
 import { buttonVariants } from '@/components/ui/button'
@@ -51,36 +51,66 @@ function ThreadLink({ subjectId, channel, thread }: { subjectId: string; channel
   )
 }
 
-function QuestionStatus({ thread }: { thread: Thread }) {
-  const question = thread.message.question
-  if (!question) return null
-  if (question.resolved) {
+const PILL = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold'
+
+/** En qué está la consulta, con las mismas palabras que el Hoy del docente. «Falta marcarla resuelta» lo lee solo
+    quien la puede marcar: al alumno le alcanza con saber que ya le respondieron. */
+function QuestionStatus({ channel, thread }: { channel: Channel; thread: Thread }) {
+  const state = questionState(thread)
+  if (state === null) return null
+  if (state === 'resuelta') {
     return (
-      <span className='inline-flex items-center gap-1 rounded-full bg-success-background px-2 py-0.5 text-[0.6875rem] font-bold text-success'>
+      <span className={cn(PILL, 'bg-success-background text-success')}>
         <Check aria-hidden='true' className='size-3.5' strokeWidth={2.4} />
         Resuelta
       </span>
     )
   }
-  return (
-    <span className='rounded-full bg-warning-background px-2 py-0.5 text-[0.6875rem] font-bold text-warning-foreground'>
-      {thread.replies.length ? 'Abierta' : 'Sin respuesta'}
-    </span>
-  )
+  if (state === 'respondida') {
+    return (
+      <span className={cn(PILL, 'bg-accent text-blue')}>
+        {channel.canResolve ? 'Respondida · falta marcarla resuelta' : 'Respondida'}
+      </span>
+    )
+  }
+  return <span className={cn(PILL, 'bg-warning-background text-warning-foreground')}>Sin responder</span>
 }
 
-function ResolveButton({ subjectId, channel, thread }: { subjectId: string; channel: Channel; thread: Thread }) {
-  const question = thread.message.question
-  if (!channel.canResolve || !question || question.resolved) return null
+const RESOLVE_BUTTON = cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-10 rounded-[10px]')
+
+function ResolveForm({ subjectId, thread, label }: { subjectId: string; thread: Thread; label: string }) {
   return (
     <ActionForm action={resolveQuestion} className='contents'>
       <input type='hidden' name='subjectId' value={subjectId} />
       <input type='hidden' name='messageId' value={thread.message.id} />
-      <SubmitButton className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-10 rounded-[10px]')}>
+      <SubmitButton className={RESOLVE_BUTTON}>
         <Check aria-hidden='true' strokeWidth={2.2} />
-        Marcar resuelta
+        {label}
       </SubmitButton>
     </ActionForm>
+  )
+}
+
+/* Marcar resuelta una consulta que nadie respondió pide confirmarlo: así un toque sin querer no la saca del Hoy
+   del docente sin respuesta. Con respuestas se marca de un toque. Sin JavaScript, con <details>. */
+function ResolveButton({ subjectId, channel, thread }: { subjectId: string; channel: Channel; thread: Thread }) {
+  const question = thread.message.question
+  if (!channel.canResolve || !question || question.resolved) return null
+  if (thread.replies.length > 0) return <ResolveForm subjectId={subjectId} thread={thread} label='Marcar resuelta' />
+  return (
+    <details className='group open:basis-full'>
+      <summary className={cn(RESOLVE_BUTTON, 'w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden')}>
+        <Check aria-hidden='true' strokeWidth={2.2} className='group-open:hidden' />
+        <span className='group-open:hidden'>Marcar resuelta</span>
+        <span className='hidden group-open:inline'>Cancelar</span>
+      </summary>
+      <div className='mt-2 flex flex-wrap items-center gap-2 rounded-[14px] bg-muted p-3'>
+        <p className='basis-full text-[0.8125rem] font-semibold'>
+          Todavía nadie la respondió. ¿La marcás resuelta igual? Sale de tus consultas sin resolver.
+        </p>
+        <ResolveForm subjectId={subjectId} thread={thread} label='Sí, marcarla resuelta' />
+      </div>
+    </details>
   )
 }
 
@@ -91,7 +121,7 @@ function ThreadCard({ subjectId, channel, thread }: { subjectId: string; channel
       <MessageCard message={thread.message}>
         {last && <ReplyBlock message={last} />}
         <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1'>
-          <QuestionStatus thread={thread} />
+          <QuestionStatus channel={channel} thread={thread} />
           <ThreadLink subjectId={subjectId} channel={channel} thread={thread} />
           <ResolveButton subjectId={subjectId} channel={channel} thread={thread} />
         </div>
@@ -287,7 +317,7 @@ export function ThreadPanel({
       {back}
       <MessageCard message={thread.message}>
         <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1'>
-          <QuestionStatus thread={thread} />
+          <QuestionStatus channel={channel} thread={thread} />
           <ResolveButton subjectId={subjectId} channel={channel} thread={thread} />
         </div>
       </MessageCard>
@@ -319,6 +349,7 @@ export function ThreadPanel({
             channelId={channel.id}
             replyTo={thread.message.id}
             placeholder='Escribí tu respuesta'
+            resolvable={channel.canResolve && thread.message.question?.resolved === false}
           />
         </ComposerDock>
       )}

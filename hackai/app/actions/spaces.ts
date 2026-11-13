@@ -96,7 +96,8 @@ function refresh(subjectId: string): void {
   revalidatePath(`/materias/${subjectId}`)
 }
 
-/** Publica un mensaje en un canal, o una respuesta en un hilo si llega `replyTo`. */
+/** Publica un mensaje en un canal, o una respuesta en un hilo si llega `replyTo`. Con `resolve`, además marca
+    resuelta la consulta que se responde. */
 export async function postMessage(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
@@ -120,8 +121,20 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
         : ERRORS[result.error]
     )
   }
+  if (replyTo && text(form, 'resolve') === '1') return resolveAfterReply(session.personId, subjectId, replyTo)
   refresh(subjectId)
   return done(replyTo ? 'Respuesta enviada.' : 'Mensaje enviado.')
+}
+
+/** «Responder y marcar resuelta»: la respuesta ya salió. Si marcarla falla se dice, pero como algo que salió: un
+    error devolvería el texto al campo y se podría mandar dos veces. */
+async function resolveAfterReply(personId: string, subjectId: string, messageId: string): Promise<SpaceActionState> {
+  const resolved = await system().spaces.resolve(personId, messageId)
+  refresh(subjectId)
+  if (!resolved.ok) {
+    return done('Tu respuesta se envió, pero no pudimos marcar la consulta resuelta: tocá «Marcar resuelta».')
+  }
+  return done('Respondiste y la consulta quedó resuelta.')
 }
 
 /** Marca una consulta como resuelta. */
