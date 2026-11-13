@@ -81,7 +81,8 @@ export function withSiuCache(
   return {
     capabilities: siu.capabilities,
     person: read('person', staticTtlMs, siu.person),
-    terms: read('terms', staticTtlMs, siu.terms),
+    // Los períodos del SIU de abajo son los mismos para todos: se comparten aunque se pidan para una persona.
+    terms: read('terms', staticTtlMs, () => siu.terms()),
     subject,
     subjects,
     section: read('section', staticTtlMs, siu.section),
@@ -101,7 +102,11 @@ export function withSiuCache(
     writeCourseGrade: siu.writeCourseGrade,
     enroll: write(siu.enroll),
     drop: write(siu.drop),
-    selfServiceUrl: siu.selfServiceUrl
+    selfServiceUrl: siu.selfServiceUrl,
+    // Los trámites cambian con lo que pide el alumno: pasan directo, como inscribir.
+    ...(siu.certificateRequests && { certificateRequests: siu.certificateRequests }),
+    ...(siu.requestCertificate && { requestCertificate: siu.requestCertificate }),
+    ...(siu.officialDocument && { officialDocument: siu.officialDocument })
   }
 }
 

@@ -253,7 +253,7 @@ for (const { day, now, daysToExam } of DEMO_DAYS) {
     assert.ok(activities.length >= 2, 'faltan actividades con créditos abiertas')
     assert.ok(activities.every((a) => a.credits !== null && a.credits > 0))
     assert.ok(
-      activities.some((a) => a.closesInDays <= 4),
+      activities.some((a) => a.closesInDays !== null && a.closesInDays <= 4),
       'falta una actividad que cierre en pocos días'
     )
   })

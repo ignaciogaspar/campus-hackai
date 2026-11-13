@@ -78,7 +78,11 @@ export function withSiuOutage(siu: SiuPort, outages: OutageSwitch): SiuPort {
     writeCourseGrade: guarded(down, siu.writeCourseGrade),
     enroll: guarded(down, siu.enroll),
     drop: guarded(down, siu.drop),
-    selfServiceUrl: siu.selfServiceUrl
+    selfServiceUrl: siu.selfServiceUrl,
+    // Los trámites solo los tiene el SIU leído con la cuenta del alumno: se envuelven si están.
+    ...(siu.certificateRequests && { certificateRequests: guarded(down, siu.certificateRequests) }),
+    ...(siu.requestCertificate && { requestCertificate: guarded(down, siu.requestCertificate) }),
+    ...(siu.officialDocument && { officialDocument: guarded(down, siu.officialDocument) })
   }
 }
 

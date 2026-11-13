@@ -13,6 +13,7 @@ import {
   type PendingFinal,
   type UpcomingItem
 } from '@/lib/core/studies'
+import { absencesFrom, maxAbsences } from '@/lib/core/studies/absences'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
@@ -180,17 +181,34 @@ test('sin máximo en el SIU sale solo la cuenta, y pasarse del máximo no da fal
   assert.deepEqual([pr1.count, pr1.justified, pr1.max, pr1.left, pr1.warning], [4, 1, 3, 0, 'limite'])
 })
 
-test('sin faltas no hay aviso, aunque el máximo sea 1', async () => {
+test('solo aparecen las materias con faltas', async () => {
   const data = structuredClone(syntheticData)
   data.siu.absences = data.siu.absences.filter((a) => !(a.personId === '30101' && a.sectionId === 'sec-am1-fi-a'))
-  data.siu.absenceLimits = data.siu.absenceLimits.map((l) => (l.sectionId === 'sec-am1-fi-a' ? { ...l, max: 1 } : l))
   const { studies } = build(data)
 
   const result = await studies.absencesOf('p-taguirre')
 
   assert.ok(result.ok)
-  const [am1] = result.value.data.subjects
-  assert.deepEqual([am1.count, am1.max, am1.left, am1.warning, am1.absences], [0, 1, 1, null, []])
+  assert.ok(result.value.data.subjects.every((s) => s.count > 0))
+  assert.ok(!result.value.data.subjects.some((s) => s.sectionId === 'sec-am1-fi-a'))
+})
+
+test('sin faltas no hay aviso, aunque el máximo sea 1', () => {
+  assert.deepEqual(absencesFrom([], 1), { count: 0, justified: 0, max: 1, left: 1, classes: null, warning: null })
+})
+
+test('sin máximo del SIU, sale de la asistencia que pide la facultad: el 25% de las clases', () => {
+  assert.equal(maxAbsences(16, 0.75), 4)
+  assert.equal(maxAbsences(15, 0.75), 3)
+  const half = { id: 'f', sectionId: 's', date: '2026-09-01', justified: false, amount: 0.5, source: 'siu' as const }
+  assert.deepEqual(absencesFrom([half, { ...half, id: 'g', amount: 1 }], 4, 16), {
+    count: 1.5,
+    justified: 0,
+    max: 4,
+    left: 2.5,
+    classes: 16,
+    warning: null
+  })
 })
 
 test('si el SIU no da las inasistencias, absencesOf devuelve lo último leído, desactualizado', async () => {

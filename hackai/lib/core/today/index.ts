@@ -294,7 +294,9 @@ export function createToday({ studies, spaces, coursework, clock }: TodayDeps): 
         upcoming: coming,
         next: nextExam(coming, now),
         unread: valueOr(unread, []),
-        openEnrollments: openEnrollments.ok ? openEnrollments.value.data.filter((o) => o.closesAt >= now) : [],
+        openEnrollments: openEnrollments.ok
+          ? openEnrollments.value.data.filter((o) => o.closesAt === null || o.closesAt >= now)
+          : [],
         staleSince: staleSince([subjects, upcoming, openEnrollments]),
         unavailable: [
           ...failed<Exclude<TodayPart, 'assignments'>>(reads),

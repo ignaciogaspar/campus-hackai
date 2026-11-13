@@ -8,6 +8,7 @@ import type { ReactNode } from 'react'
 import { CertificateCard, certificateTitle } from '@/components/academic/certificate-card'
 import { DOCUMENTS, type DocumentKind } from '@/components/procedures/documents'
 import { Requests } from '@/components/procedures/requests'
+import { SiuRequests } from '@/components/procedures/siu-requests'
 import { PageHeader } from '@/components/shell/page-header'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
@@ -52,7 +53,8 @@ function Block({ id, title, hint, children }: { id: string; title: string; hint:
   )
 }
 
-function Reports() {
+/** `official`: con la cuenta real, la historia y el plan son el PDF del SIU y el nombre lo pone el SIU. */
+function Reports({ official }: { official: boolean }) {
   return (
     <ul className='divide-y divide-border rounded-2xl border border-border bg-card'>
       {REPORTS.map(({ kind, icon: Icon, description }) => (
@@ -66,7 +68,7 @@ function Reports() {
           </div>
           <a
             href={`/tramites/${kind}`}
-            download={DOCUMENTS[kind].file}
+            download={official && kind !== 'analitico' ? true : DOCUMENTS[kind].file}
             className='inline-flex min-h-10 flex-none items-center gap-1.5 rounded-lg border border-border px-3 text-[0.8125rem] font-semibold text-blue transition-colors hover:bg-accent focus-ring'
           >
             <Download aria-hidden='true' className='size-4' strokeWidth={2} />
@@ -81,9 +83,13 @@ function Reports() {
 
 export default async function TramitesPage() {
   const session = await requireSession('alumno')
-  const certificates = await Promise.all(
-    CERTIFICATES.map((type) => system().studies.certificate(session.personId, type))
-  )
+  const [certificates, requests] = await Promise.all([
+    Promise.all(CERTIFICATES.map((type) => system().studies.certificate(session.personId, type))),
+    system().studies.certificateRequests(session.personId)
+  ])
+  // Con la cuenta real, las solicitudes son las del SIU; si el SIU no las da, las de la demo.
+  const realRequests = requests.ok ? requests.value : null
+  const requestUrl = certificates[0]?.ok ? certificates[0].value.data.url : ''
   const stale = staleSince(certificates)
 
   return (
@@ -99,16 +105,24 @@ export default async function TramitesPage() {
           <Block
             id='reportes'
             title='Certificados y reportes'
-            hint='Se descargan listos para imprimir. Son de prueba: el documento con firma se pide en la Autogestión.'
+            hint={
+              realRequests
+                ? 'La historia académica y el plan se descargan del SIU, como en la Autogestión. El analítico lo arma HackAI con tu historia.'
+                : 'Se descargan listos para imprimir. Son de prueba: el documento con firma se pide en la Autogestión.'
+            }
           >
-            <Reports />
+            <Reports official={realRequests !== null} />
           </Block>
           <Block
             id='solicitudes'
             title='Solicitudes'
-            hint='Lo que le pediste a la secretaría de tu facultad y en qué está. Es una simulación.'
+            hint={
+              realRequests
+                ? 'Lo que pediste en el SIU y en qué está, como lo muestra la Autogestión.'
+                : 'Lo que le pediste a la secretaría de tu facultad y en qué está. Es una simulación.'
+            }
           >
-            <Requests />
+            {realRequests ? <SiuRequests requests={realRequests} selfServiceUrl={requestUrl} /> : <Requests />}
           </Block>
         </div>
 
