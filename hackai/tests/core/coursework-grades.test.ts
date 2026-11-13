@@ -199,6 +199,17 @@ test('solo califica un docente de la comisión, a un alumno de la comisión y en
   }
 })
 
+test('con nota cargada antes de entregar, la tarea ya no acepta entregas', async () => {
+  const { coursework } = build()
+  const task = value(await coursework.createTask('p-mledesma', taskOf()))
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: `tarea:${task.id}` })))
+
+  assert.deepEqual(await coursework.submit('p-taguirre', task.id, [upload('tp.txt')]), {
+    ok: false,
+    error: 'ya-calificada'
+  })
+})
+
 test('calificar la entrega de una tarea cierra su reemplazo', async () => {
   const { coursework } = build()
   const task = value(await coursework.createTask('p-mledesma', taskOf()))

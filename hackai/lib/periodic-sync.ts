@@ -44,7 +44,7 @@ async function retryGrades(retryPass: Coursework['retryPass'], log: (message: st
   return retried.value
 }
 
-/** Valida el secreto y sincroniza. Responde 200 con el resumen (más `notas`, cuántas notas pasaron al SIU y cuántas
+/** Valida el secreto y sincroniza. Responde 200 con el resumen (más `grades`, cuántas notas pasaron al SIU y cuántas
     siguen pendientes, si la corrida reintenta el pase), 401 sin el secreto, 503 si falta `CRON_SECRET` y el error de
     Espacios si no pudo. */
 export async function handlePeriodicSync(
@@ -67,5 +67,5 @@ export async function handlePeriodicSync(
   }
   const { channels, imported, sent, pending } = result.value
   log(`[corrida-periodica] ok: ${channels} canales, ${imported} importados, ${sent} enviados, ${pending} pendientes`)
-  return Response.json(retryPass ? { ...result.value, notas: grades } : result.value)
+  return Response.json(retryPass ? { ...result.value, grades } : result.value)
 }

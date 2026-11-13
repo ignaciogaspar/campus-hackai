@@ -81,7 +81,7 @@ function CreateOnly({ sections, selectedId }: { sections: TaskSection[]; selecte
         <input
           type='file'
           name='file'
-          className='text-[0.8125rem] font-normal file:mr-3 file:min-h-10 file:cursor-pointer file:rounded-[10px] file:border-0 file:bg-ice file:px-3 file:font-semibold file:text-blue focus-visible:outline-3 focus-visible:outline-ring'
+          className='text-[0.8125rem] font-normal file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-[10px] file:border-0 file:bg-ice file:px-3 file:font-semibold file:text-blue focus-visible:outline-3 focus-visible:outline-ring'
         />
       </label>
       <fieldset className='flex flex-col gap-1'>

@@ -219,6 +219,22 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 27. Si la Austral no habilita escribir notas por la API, ¿el SIU acepta importarlas desde un archivo?
+
+- **Por qué importa:** la API real del SIU no escribe notas (research #1), así que el adaptador real declara que no puede y las notas quedan «sin pasar al SIU». Sin un plan B, el docente las vuelve a cargar alumno por alumno, que es justo lo que HackAI quiere evitar.
+- **Hipótesis (12/11/2026):** Guaraní deja importar notas de una evaluación o de un acta desde una planilla, y HackAI puede generarla con el mismo generador del Excel de la materia. No se verificó en el SIU de la Austral.
+- **Opciones:** pedir a la Austral la escritura por API para el pitch; exportar un archivo con el formato de importación del SIU; seguir cargándolas a mano en el SIU.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 28. ¿Una nota que el docente cambia en una columna ya publicada se republica sola?
+
+- **Por qué importa:** la spec #96 define publicar como una acción del docente. Hoy, cambiar o pegar una nota en una columna ya publicada la publica en el momento: el alumno la ve, le llega el aviso y pasa al SIU. Es cómodo para corregir un error, pero el docente no puede dejar un cambio en borrador.
+- **Hipótesis (12/11/2026):** una columna publicada queda publicada: corregir una nota la republica sola, porque el caso común es arreglar un error que el alumno ya vio.
+- **Opciones:** como está; que la columna vuelva a «con cambios sin publicar» y pida publicar de nuevo; preguntar al guardar.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

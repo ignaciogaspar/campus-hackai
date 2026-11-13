@@ -27,8 +27,18 @@ export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 
     sectionId: string,
     grades: StoredGrade[]
   ): Promise<Result<Map<string, PassStatus>, 'falla-externa'>> {
+    const passed = await passGroup(by, sectionId, grades)
+    return passed.ok ? ok(passed.value.states) : passed
+  }
+
+  /** Como `passAs`, y además dice si el SIU no respondió: solo eso frena el reintento de las comisiones que siguen. */
+  async function passGroup(
+    by: PersonId,
+    sectionId: string,
+    grades: StoredGrade[]
+  ): Promise<Result<{ states: Map<string, PassStatus>; siuDown: boolean }, 'falla-externa'>> {
     const states = new Map<string, PassStatus>(grades.map((g) => [g.id, 'pendiente']))
-    if (grades.length === 0) return ok(states)
+    if (grades.length === 0) return ok({ states, siuDown: false })
     const passed = await studies.passGrades(
       by,
       sectionId,
@@ -38,7 +48,7 @@ export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 
         value: g.value
       }))
     )
-    if (!passed.ok) return ok(states)
+    if (!passed.ok) return ok({ states, siuDown: passed.error === 'falla-externa' })
     const ids: Record<PassStatus, string[]> = { pendiente: [], pasado: [], 'no-permitido': [] }
     grades.forEach((g, i) => {
       // Cursada y Seguimiento nombran igual los tres estados.
@@ -51,11 +61,13 @@ export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 
       const saved = await store.setPassStatus(ids[status], status)
       if (!saved.ok) return saved
     }
-    return ok(states)
+    // Cursada marca `pendiente` la nota que el SIU no llegó a escribir.
+    return ok({ states, siuDown: ids.pendiente.length > 0 })
   }
 
   /** Reintenta las notas pendientes de a una comisión y docente, en el orden en que se publicaron. Corta en la
-      primera comisión en la que el SIU falla: las que siguen esperan a la próxima. */
+      primera comisión en la que el SIU no responde: las que siguen esperan a la próxima. Una comisión que queda
+      pendiente por otro motivo (el docente ya no la dicta) no frena a las demás. */
   async function retry(
     pending: StoredGrade[],
     actorOf: (g: StoredGrade) => PersonId | null
@@ -72,12 +84,12 @@ export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 
     let resolved = 0
     let passed = 0
     for (const { by, sectionId, grades } of groups.values()) {
-      const states = await passAs(by, sectionId, grades)
-      if (!states.ok) return fail('falla-externa')
-      const done = [...states.value.values()].filter((status) => status !== 'pendiente')
+      const group = await passGroup(by, sectionId, grades)
+      if (!group.ok) return fail('falla-externa')
+      const done = [...group.value.states.values()].filter((status) => status !== 'pendiente')
       resolved += done.length
       passed += done.filter((status) => status === 'pasado').length
-      if (done.length < grades.length) break
+      if (group.value.siuDown) break
     }
     return ok({ passed, pending: pending.length - resolved })
   }

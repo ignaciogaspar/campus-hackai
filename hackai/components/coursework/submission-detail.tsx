@@ -18,7 +18,7 @@ export function SubmissionDetailCard({ detail }: { detail: SubmissionDetail }) {
         <p className='text-[0.8125rem] text-muted-foreground'>Legajo {student.legajo}</p>
         <a
           href={`mailto:${student.email}`}
-          className='inline-flex min-h-8 w-fit items-center text-[0.8125rem] break-all text-blue underline-offset-2 hover:underline focus-ring'
+          className='inline-flex min-h-11 w-fit items-center text-[0.8125rem] break-all text-blue underline-offset-2 hover:underline focus-ring'
         >
           {student.email}
         </a>

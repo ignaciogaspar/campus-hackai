@@ -4,6 +4,7 @@ import type {
   AccessError,
   Coursework,
   CourseworkDeps,
+  CourseworkStoreError,
   DatedTask,
   NewTask,
   StoredSubmission,
@@ -185,7 +186,26 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     const previous = await store.submission(taskId, personId)
     if (!previous.ok) return previous
     if (previous.value?.gradedAt) return fail('ya-calificada')
+    const graded = await hasGrade(personId, found.value.task, found.value.mine)
+    if (!graded.ok) return graded
+    if (graded.value) return fail('ya-calificada')
     return ok({ task: found.value.task, previous: previous.value, checked: checked.value })
+  }
+
+  /** Si el docente ya le cargó nota en la tarea, aunque no haya entregado: con nota, la entrega queda cerrada. */
+  async function hasGrade(
+    personId: PersonId,
+    task: StoredTask,
+    mine: MySection[]
+  ): Promise<Result<boolean, CourseworkStoreError>> {
+    if (!task.graded) return ok(false)
+    for (const { sectionId } of mine) {
+      const grades = await store.gradesOfSection(sectionId)
+      if (!grades.ok) return grades
+      if (grades.value.some((g) => g.kind === 'tarea' && g.refId === task.id && g.personId === personId))
+        return ok(true)
+    }
+    return ok(false)
   }
 
   async function submit(personId: PersonId, taskId: string, input: NewFile[]): ReturnType<Coursework['submit']> {

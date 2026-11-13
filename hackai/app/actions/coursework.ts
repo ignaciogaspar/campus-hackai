@@ -210,7 +210,9 @@ export async function publishColumn(_prev: SpaceActionState, form: FormData): Pr
     message:
       published === 0
         ? 'No había notas nuevas para publicar: los alumnos ya ven todas.'
-        : `Publicamos ${published === 1 ? '1 nota' : `${published} notas`}. Los alumnos ya las ven y les llegó el aviso.`,
+        : published === 1
+          ? 'Publicamos 1 nota. El alumno ya la ve y le llegó el aviso.'
+          : `Publicamos ${published} notas. Los alumnos ya las ven y les llegó el aviso.`,
     at: Date.now()
   }
 }

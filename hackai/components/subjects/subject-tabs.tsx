@@ -25,7 +25,10 @@ export function SubjectTabs({
           key={tab.id}
           href={subjectTabHref(subjectId, tab, comision)}
           aria-current={tab.id === current ? 'page' : undefined}
-          className={cn(railItem({ size: 'sm' }), 'min-h-11 max-sm:gap-1 max-sm:px-2 max-sm:text-[0.75rem]')}
+          className={cn(
+            railItem({ size: 'sm' }),
+            'min-h-11 max-sm:flex-auto max-sm:gap-1 max-sm:px-2 max-sm:text-[0.75rem]'
+          )}
         >
           {tab.label}
         </Link>

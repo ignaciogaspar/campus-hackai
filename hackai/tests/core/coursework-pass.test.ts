@@ -183,6 +183,27 @@ test('el reintento pasa las notas en el orden en que se publicaron y corta en cu
   assert.deepEqual(order, ['ev-5', 'ev-4'])
 })
 
+test('una comisión que queda pendiente porque el docente ya no la dicta no frena el reintento de las demás', async () => {
+  const { coursework, siu, state, advance } = build()
+  const AGA = 'sec-aga-fi-a'
+  state.failWrites = true
+  value(await coursework.grade('p-mledesma', gradeOf({ value: 6 })))
+  value(await coursework.publish('p-mledesma', A, SEGUNDO_PARCIAL))
+  advance(60_000)
+  value(await coursework.grade('p-mledesma', gradeOf({ sectionId: AGA, columnId: 'evaluacion:ev-1', value: 9 })))
+  value(await coursework.publish('p-mledesma', AGA, 'evaluacion:ev-1'))
+  // La primera comisión publicada deja de ser suya.
+  const taught = siu.teacherSections
+  siu.teacherSections = async (id) => {
+    const sections = await taught(id)
+    return sections.ok ? { ok: true, value: sections.value.filter((s) => s.id !== A) } : sections
+  }
+
+  state.failWrites = false
+  assert.deepEqual(value(await coursework.retryPass()), { passed: 1, pending: 1 })
+  assert.deepEqual(await siuGrades(siu, 'p-taguirre', 'ev-1'), [9])
+})
+
 test('el docente reintenta el pase de su comisión desde Calificaciones; no el de otra', async () => {
   const { coursework, state } = build()
   value(await coursework.grade('p-mledesma', gradeOf()))

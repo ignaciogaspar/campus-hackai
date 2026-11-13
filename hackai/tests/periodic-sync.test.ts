@@ -119,10 +119,10 @@ test('si la corrida reintenta el pase, lo suma al resumen y al log, y un pase qu
     imported: 0,
     sent: 0,
     pending: 0,
-    notas: { passed: 2, pending: 1 }
+    grades: { passed: 2, pending: 1 }
   })
   assert.equal(failed.status, 200)
-  assert.deepEqual(await failed.json(), { channels: 1, imported: 0, sent: 0, pending: 0, notas: null })
+  assert.deepEqual(await failed.json(), { channels: 1, imported: 0, sent: 0, pending: 0, grades: null })
   assert.ok(logs.includes('[corrida-periodica] pase de notas: 2 pasadas, 1 pendientes'))
   assert.ok(logs.includes('[corrida-periodica] pase de notas: falla-externa'))
 })
@@ -139,7 +139,7 @@ test('la ruta toma el secreto de CRON_SECRET y sincroniza los canales vinculados
     const post = await POST(request(`Bearer ${SECRET}`))
 
     // En memoria arranca sin canales vinculados: no hay nada que sincronizar.
-    const nothing = { channels: 0, imported: 0, sent: 0, pending: 0, notas: { passed: 0, pending: 0 } }
+    const nothing = { channels: 0, imported: 0, sent: 0, pending: 0, grades: { passed: 0, pending: 0 } }
     assert.deepEqual([get.status, await get.json()], [200, nothing])
     assert.deepEqual([post.status, await post.json()], [200, nothing])
   } finally {

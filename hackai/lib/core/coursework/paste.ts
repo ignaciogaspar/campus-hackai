@@ -3,12 +3,11 @@
    puro: no guarda nada. La nota es la última celda de la línea y el alumno se
    busca en las demás, por legajo, mail o nombre. */
 import type { GradeScale, PasteCounts, PastedBy, PasteOutcome, PastePreview, PasteRow } from '@/lib/core/coursework'
+import { MAX_GRADE, MIN_GRADE } from '@/lib/core/coursework/grades'
 import type { SectionStudent } from '@/lib/core/studies'
 
 export const MAX_PASTE_CHARS = 100_000
 
-const MIN_GRADE = 1
-const MAX_GRADE = 10
 const ABSENT = /^(a|aus|ausente)$/i
 const NUMBER = /^\d+([.,]\d+)?$/
 
