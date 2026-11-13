@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HackAI · Pitch 2026</title>
+<style>
+/* Pitch de HackAI 2026. Lienzo fijo de 1920×1080 que se escala a la ventana.
+   Paleta de hackai/app/globals.css: navy #0e1548, tinta #10142c, azul #2c4e99,
+   azul claro #4573c0, cian #3ff0ff, naranja #ff7a1a. Fuente e imágenes van
+   locales para presentar sin conexión. */
+@font-face {
+  font-family: 'Inter';
+  src: url('fonts/inter-latin.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: block;
+}
+:root {
+  --noche: #04061a;
+  --navy: #0e1548;
+  --tinta: #10142c;
+  --azul: #2c4e99;
+  --medio: #4573c0;
+  --bruma: #a8bdea;
+  --gris: #575e69;
+  --naranja: #ff7a1a;
+  --suave: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --degrade: linear-gradient(118deg, #04061a 0%, #080d33 34%, #1a2f7c 64%, #27468f 84%, #3560b0 100%);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: #02030d; }
+body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color: var(--tinta); -webkit-font-smoothing: antialiased; }
+
+/* Escenario y slides. */
+.stage { position: fixed; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; transform: translate(-50%, -50%); overflow: hidden; }
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; gap: 40px;
+  padding: 150px 96px 72px;
+  opacity: 0; visibility: hidden; transform: translateX(48px);
+  transition: opacity 0.45s ease, transform 0.45s var(--suave), visibility 0s 0.45s;
+}
+.slide.antes { transform: translateX(-48px); }
+.slide.active { opacity: 1; visibility: visible; transform: none; transition: opacity 0.45s ease, transform 0.45s var(--suave); }
+.osc { color: #fff; background: var(--degrade); isolation: isolate; }
+.osc::before, .grad::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(1100px 800px at 100% 100%, rgba(63, 240, 255, 0.1), transparent 62%); }
+.cla { background: #fff; }
+.grad { position: relative; isolation: isolate; color: #fff; background: var(--degrade); }
+.neg { color: #fff; background: var(--noche); }
+.velo { position: absolute; background: rgba(255, 255, 255, 0.05); }
+
+/* Entrada de los bloques, en orden, al llegar a la slide. */
+@keyframes sube { from { opacity: 0; transform: translateY(32px); } }
+.slide.active .in { animation: sube 0.6s var(--suave) both; animation-delay: calc(var(--i, 0) * 90ms + 0.2s); }
+
+/* Barra de arriba: marca, secciones y número de slide. */
+.nav { position: absolute; left: 96px; right: 96px; top: 44px; display: flex; align-items: center; gap: 56px; font-size: 20px; }
+.nav .marca { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+.nav .logo { display: flex; gap: 3px; }
+.nav .logo i { width: 6px; height: 18px; background: currentColor; }
+.nav .logo i:last-child { width: 12px; }
+.nav nav { display: flex; gap: 36px; flex: 1; }
+.nav nav span { opacity: 0.66; }
+.nav nav .on { opacity: 1; font-weight: 600; }
+.nav .pag { font-variant-numeric: tabular-nums; }
+
+/* Texto. */
+.cor { font-size: 20px; letter-spacing: 0.5px; }
+.cla .cor { color: var(--azul); }
+.osc .cor, .slide .grad .cor, .slide .neg .cor { color: #e3e9f8; }
+.T { font-size: 84px; font-weight: 400; line-height: 1.05; letter-spacing: -3px; }
+.T .l2 { display: block; padding-left: 120px; }
+.cla .T .l2 { color: var(--azul); }
+.T.sm { font-size: 72px; letter-spacing: -2.5px; }
+.T.sm .l2 { padding-left: 0; color: var(--bruma); }
+.cab { display: flex; flex-direction: column; gap: 16px; }
+.txt { font-size: 28px; line-height: 1.4; }
+.txt-s { font-size: 24px; line-height: 1.4; }
+.cla .txt, .cla .txt-s { color: var(--gris); }
+.osc .txt, .osc .txt-s, .slide .grad .txt, .slide .grad .txt-s, .slide .neg .txt, .slide .neg .txt-s { color: #e3e9f8; }
+.h { font-size: 52px; font-weight: 400; line-height: 1.1; letter-spacing: -1.5px; }
+.hs { font-size: 30px; font-weight: 500; line-height: 1.25; }
+.aire { flex: 1; }
+.pie { position: absolute; left: 96px; bottom: 26px; font-size: 20px; }
+.osc .pie { color: #e3e9f8; }
+.cla .pie { color: var(--gris); }
+.tri { width: 22px; height: 22px; background: currentColor; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+
+/* Paneles rectos, translúcidos sobre el degradé. */
+.pan { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.18); }
+.dos-col { flex: 1; min-height: 0; display: flex; gap: 64px; }
+.col-a { width: 860px; flex: none; display: flex; flex-direction: column; gap: 24px; }
+.col-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.par { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+/* Portada. */
+.p-izq { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
+.p-der { position: relative; width: 620px; flex: none; display: flex; align-items: flex-start; justify-content: center; }
+/* El celular de la portada: inclinado a la derecha y saliéndose por abajo. Encima
+   flotan dos fichas de vidrio: la nota nueva, arriba a la izquierda, y la
+   entrega que vence, abajo a la derecha. */
+.heroe { position: relative; flex: none; margin-top: 16px; transform: rotate(8deg); }
+.heroe .phone { --pw: 420px; padding: 9px; border: 0; border-radius: 66px; background: #06070f; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.38), 0 60px 110px rgba(2, 3, 13, 0.55), 0 18px 36px rgba(2, 3, 13, 0.35); }
+.heroe .phone .scr { border-radius: 57px; }
+.ficha { position: absolute; display: flex; align-items: center; gap: 16px; color: var(--tinta); background: linear-gradient(120deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7)); border: 1px solid rgba(255, 255, 255, 0.9); -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5); box-shadow: 0 34px 70px rgba(2, 3, 13, 0.5), 0 6px 16px rgba(2, 3, 13, 0.22), inset 0 1px 0 #fff; }
+.ficha .f-et { font-size: 16px; font-weight: 600; letter-spacing: 0.1px; color: var(--azul); white-space: nowrap; }
+.ficha .f-tit { font-size: 24px; font-weight: 600; letter-spacing: -0.3px; line-height: 1.25; white-space: nowrap; }
+.ficha .f-txt { font-size: 19px; line-height: 1.35; color: var(--gris); white-space: nowrap; margin-top: 2px; }
+.f-aviso { top: 250px; right: 288px; padding: 12px 12px 12px 30px; border-radius: 99px; }
+.f-aviso .campana { position: relative; width: 64px; height: 64px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--navy); background: #fff; box-shadow: 0 6px 16px rgba(16, 20, 44, 0.2); }
+.f-aviso .campana svg { width: 28px; height: 28px; }
+.f-aviso .campana b { position: absolute; top: -3px; right: -3px; min-width: 24px; height: 24px; border-radius: 99px; display: grid; place-items: center; font-size: 14px; font-style: normal; font-weight: 700; color: #fff; background: var(--azul); box-shadow: 0 0 0 3px #fff; }
+.f-tarea { top: 596px; right: -140px; align-items: flex-start; padding: 18px 30px 20px 20px; border-radius: 36px; }
+.f-tarea .icono { width: 56px; height: 56px; flex: none; border-radius: 18px; display: grid; place-items: center; color: #1d6797; background: #e5f3fb; }
+.f-tarea .icono svg { width: 28px; height: 28px; }
+.f-tarea .f-pie { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 17px; color: var(--gris); white-space: nowrap; }
+.ficha .origen { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 8px; font-size: 16px; font-weight: 700; color: #9a4a06; background: #fff1e3; }
+.ficha .origen::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+@keyframes brota { from { opacity: 0; transform: translateY(20px) scale(0.92); } }
+@keyframes flota { 50% { transform: translateY(-9px); } }
+.slide.active .ficha { animation: brota 0.7s var(--suave) both, flota 7s ease-in-out infinite; animation-delay: var(--d, 0.9s), calc(var(--d, 0.9s) + 0.8s); }
+.H1 { font-size: 260px; font-weight: 400; line-height: 0.95; letter-spacing: -11px; margin-left: -10px; }
+.promesa { font-size: 52px; font-weight: 400; line-height: 1.15; letter-spacing: -1.5px; margin-top: 36px; }
+.promesa .l2 { display: block; padding-left: 120px; color: var(--bruma); }
+.p-pie { display: flex; justify-content: space-between; align-items: flex-end; }
+.firma { font-size: 24px; line-height: 1.5; color: #eef2fb; }
+
+/* Celular y compu donde se ven las capturas. */
+.phone { --pw: 300px; flex: none; padding: calc(var(--pw) * 0.05); border-radius: calc(var(--pw) * 0.2); background: #0a0d20; border: 2px solid rgba(255, 255, 255, 0.3); }
+.phone .scr { width: var(--pw); border-radius: calc(var(--pw) * 0.15); overflow: hidden; background: var(--navy); }
+.phone .status { height: calc(var(--pw) * 0.125); display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--pw) * 0.09); color: #fff; font-size: calc(var(--pw) * 0.046); font-weight: 600; }
+.phone .island { width: calc(var(--pw) * 0.28); height: calc(var(--pw) * 0.075); border-radius: 99px; background: #000; }
+.phone .bat { width: calc(var(--pw) * 0.075); height: calc(var(--pw) * 0.036); border-radius: 3px; background: #fff; }
+.phone img { display: block; width: 100%; }
+.laptop { --lw: 1060px; flex: none; display: flex; flex-direction: column; align-items: center; }
+.laptop .lid { padding: 14px 14px 16px; border-radius: 18px 18px 0 0; background: #141a3d; border: 1px solid rgba(255, 255, 255, 0.3); border-bottom: 0; }
+.laptop img { display: block; width: var(--lw); border-radius: 4px; }
+.laptop .deck { position: relative; width: calc(var(--lw) + 108px); height: 16px; border-radius: 2px 2px 16px 16px; background: linear-gradient(#eef1f8, #b4bdd2); }
+.laptop .deck::after { content: ''; position: absolute; left: 50%; top: 0; width: 120px; height: 6px; margin-left: -60px; border-radius: 0 0 8px 8px; background: #98a2bb; }
+
+/* El problema. */
+.sis { padding: 36px; display: flex; flex-direction: column; gap: 14px; }
+.sis ul { list-style: none; }
+.sis li { font-size: 26px; padding: 14px 0; border-top: 1px solid rgba(255, 255, 255, 0.22); }
+.tira { padding: 24px 36px; font-size: 26px; }
+
+/* Encuesta. */
+.cifra { font-size: 200px; font-weight: 300; line-height: 0.95; letter-spacing: -8px; }
+.barras { padding: 44px 48px; display: flex; flex-direction: column; justify-content: center; gap: 30px; flex: 1; }
+.barra { display: flex; flex-direction: column; gap: 12px; }
+.barra-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; font-size: 28px; }
+.barra-cab b { font-size: 44px; font-weight: 300; letter-spacing: -1px; }
+.track { height: 8px; background: rgba(255, 255, 255, 0.18); }
+.fill { height: 8px; width: 0; background: #fff; transition: width 1s var(--suave) 0.45s; }
+.slide.active .fill { width: var(--w); }
+.fill.destaca { background: var(--naranja); }
+.duele { flex: 1; min-height: 0; display: grid; grid-template-columns: 9fr 8fr; gap: 24px; }
+.duele .barras { padding: 36px 44px; gap: 26px; }
+.duele .barra-cab small { font-size: 24px; color: #e3e9f8; }
+.voces { padding: 36px 44px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.voces .h { font-size: 48px; }
+
+/* Slides claras: encabezado arriba y una banda oscura abajo. */
+.arriba { display: flex; justify-content: space-between; align-items: flex-end; gap: 64px; }
+.arriba .txt { width: 560px; flex: none; }
+.banda { flex: 1; min-height: 0; display: grid; }
+.b-32 { grid-template-columns: 3fr 2fr; }
+.b-2 { grid-template-columns: 1fr 1fr; }
+.b-3 { grid-template-columns: repeat(3, 1fr); }
+.b-4 { grid-template-columns: repeat(4, 1fr); }
+.bloque { padding: 44px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.banda.grad .bloque + .bloque { border-left: 1px solid rgba(255, 255, 255, 0.22); }
+.chips { display: flex; flex-wrap: wrap; gap: 12px; }
+.chip { font-size: 24px; padding: 10px 18px; border: 1px solid rgba(255, 255, 255, 0.4); white-space: nowrap; }
+.grupos { display: flex; flex-direction: column; gap: 22px; }
+.grupos b { display: block; font-size: 28px; font-weight: 500; line-height: 1.3; }
+.stat { font-size: 132px; font-weight: 300; line-height: 1; letter-spacing: -5px; }
+.b-4 .txt-s { min-height: 102px; }
+.b-5 { grid-template-columns: repeat(5, 1fr); }
+.b-5 .bloque { padding: 44px 30px; }
+.b-5 .stat { font-size: 116px; letter-spacing: -4px; }
+.b-5 .txt-s { min-height: 68px; }
+.pasos { font-size: 28px; line-height: 1.4; color: #eef2fb; display: flex; flex-direction: column; gap: 14px; padding-left: 1.2em; }
+.hipo { display: flex; gap: 40px; align-items: baseline; border-top: 2px solid var(--tinta); padding-top: 20px; }
+.hipo .cor { flex: none; width: 250px; }
+.cla .hipo .txt-s { color: var(--tinta); }
+
+/* Demo en vivo: una columna por perfil. */
+.perfiles { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+/* Estrategia. */
+.flujo { padding: 52px 48px; display: flex; align-items: stretch; gap: 22px; }
+.origenes { width: 280px; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.origenes p, .caja { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.3); }
+.origenes p { flex: 1; display: flex; align-items: center; font-size: 26px; font-weight: 500; padding: 14px 24px; }
+.caja { padding: 32px 28px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.flecha { align-self: center; flex: none; width: 52px; height: 26px; background: #fff; clip-path: polygon(0 36%, 60% 36%, 60% 0, 100% 50%, 60% 100%, 60% 64%, 0 64%); }
+.tres { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; }
+.tres > div { border-top: 2px solid var(--tinta); padding-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.tres .hs { font-size: 36px; font-weight: 400; letter-spacing: -0.5px; }
+.tres .txt-s { font-size: 28px; }
+
+/* Antes y después. */
+.cuadro { display: grid; grid-template-columns: 400px 720px 1fr; }
+.celda { border-bottom: 1px solid rgba(255, 255, 255, 0.24); padding: 15px 24px 15px 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.hk { background: rgba(255, 255, 255, 0.1); padding-left: 28px; }
+.th { font-size: 20px; font-weight: 500; letter-spacing: 0.5px; color: #fff; }
+.tramite { font-size: 28px; font-weight: 500; line-height: 1.25; }
+.ruta { font-size: 26px; line-height: 1.35; }
+.nota { font-size: 24px; line-height: 1.35; color: #e3e9f8; }
+.logro { font-size: 38px; font-weight: 400; line-height: 1.15; letter-spacing: -1px; }
+.denso { grid-template-columns: 380px 620px 1fr; }
+.denso .celda { padding: 15px 24px 15px 0; gap: 2px; }
+.denso .hk { padding-left: 28px; flex-direction: row; justify-content: flex-start; align-items: center; gap: 16px; }
+.denso .nota { font-size: 26px; }
+.denso .logro { width: 230px; flex: none; }
+.denso .rol { font-size: 18px; letter-spacing: 0.5px; color: var(--bruma); }
+
+/* Producto. */
+.prod { flex: 1; min-height: 0; display: flex; gap: 56px; align-items: center; }
+.lado { width: 500px; flex: none; align-self: stretch; display: flex; flex-direction: column; gap: 24px; }
+.items > div { border-top: 1px solid rgba(255, 255, 255, 0.26); padding: 16px 0; display: flex; flex-direction: column; gap: 6px; }
+
+/* Iteraciones. */
+.log { display: grid; grid-template-columns: 110px 1fr 84px 1fr; }
+.log > * { border-bottom: 1px solid rgba(255, 255, 255, 0.24); padding: 14px 24px 14px 0; display: flex; align-items: center; font-size: 28px; line-height: 1.3; }
+.log .a { color: #e3e9f8; }
+.log .d { font-weight: 500; }
+.log .flecha { width: 44px; height: 22px; }
+.datos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 48px; }
+.datos b { display: block; font-size: 64px; font-weight: 300; line-height: 1; letter-spacing: -2px; }
+.datos p { font-size: 22px; color: #e3e9f8; margin-top: 8px; }
+
+/* Cierre. */
+.final { font-size: 112px; font-weight: 400; line-height: 1.04; letter-spacing: -4px; }
+.final span { display: block; }
+.final .l2 { padding-left: 160px; }
+.final .l3 { padding-left: 320px; color: var(--bruma); }
+.salida { display: flex; align-items: center; gap: 40px; }
+.boton { font-size: 30px; font-weight: 500; color: var(--tinta); background: #fff; border-radius: 99px; padding: 18px 40px; }
+.url { font-size: 28px; color: #eef2fb; }
+
+/* Controles de quien presenta. */
+.avance { position: fixed; left: 0; bottom: 0; height: 4px; width: 0; background: var(--medio); transition: width 0.4s ease; z-index: 5; }
+.ayuda { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); font-size: 14px; color: #eef2fb; background: rgba(2, 3, 13, 0.9); border-radius: 99px; padding: 10px 20px; z-index: 6; transition: opacity 0.6s ease; }
+.ayuda.fuera { opacity: 0; pointer-events: none; }
+.guion-panel { position: fixed; left: 0; right: 0; bottom: 0; max-height: 38vh; overflow: auto; background: rgba(2, 3, 13, 0.95); color: #eef2fb; font-size: 20px; line-height: 1.5; padding: 20px 32px 28px; z-index: 7; display: none; }
+.guion-panel.abierto { display: block; }
+.guion-panel .gp-cab { display: flex; justify-content: space-between; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--bruma); margin-bottom: 8px; }
+.guion-panel p + p { margin-top: 10px; }
+.guion-panel b { color: #fff; }
+.slide aside { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide, .slide.active { transition: none; transform: none; }
+  .slide.active .in, .slide.active .ficha { animation: none; }
+  .fill { transition: none; }
+}
+@media print {
+  @page { size: 1920px 1080px; margin: 0; }
+  html, body { height: auto; overflow: visible; background: #fff; }
+  .stage { position: static; transform: none !important; height: auto; overflow: visible; }
+  .slide { position: relative; height: 1080px; overflow: hidden; opacity: 1; visibility: visible; transform: none; break-after: page; }
+  .slide .in, .slide .ficha { animation: none !important; }
+  .fill { width: var(--w); transition: none; }
+  .avance, .ayuda, .guion-panel { display: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+
+<!-- 1 · Portada -->
+<section class="slide osc" data-sec="x">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="dos-col">
+    <div class="p-izq">
+      <p class="cor in" style="--i:0">[HackAI 2026 · Universidad Austral]</p>
+      <div class="in" style="--i:1">
+        <h1 class="H1">HackAI</h1>
+        <p class="promesa">Un solo lugar que te dice qué te toca<span class="l2">y te avisa a tiempo.</span></p>
+      </div>
+      <div class="p-pie in" style="--i:3">
+        <p class="firma">Facundo Lanusse · Ignacio Gaspar<br>Marco Schenker · Facundo Pyznar</p>
+        <p class="cor">[Pitch · 13 de noviembre de 2026]</p>
+      </div>
+    </div>
+    <div class="p-der in" style="--i:2">
+      <div class="heroe">
+        <div class="phone"><div class="scr"><div class="status"><span>9:41</span><i class="island"></i><i class="bat"></i></div><img src="img/materias-m.png" alt="HackAI en el celular: Mis materias, con dos materias en curso"></div></div>
+        <div class="ficha f-aviso">
+          <div><p class="f-et">Nota nueva · Análisis Matemático I</p><p class="f-tit">Primer parcial</p></div>
+          <i class="campana"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><b>1</b></i>
+        </div>
+        <div class="ficha f-tarea" style="--d:1.15s">
+          <i class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></i>
+          <div><p class="f-tit">Guía 3 resuelta</p><p class="f-txt">Vence vie, 13 nov, 11:59 p. m.</p><p class="f-pie"><span class="origen">Moodle</span>Análisis Matemático I</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside><p><b>Persona 1 · 0:20</b> Buenas tardes. Somos Facundo, Ignacio, Marco y Facundo. En una semana rediseñamos la experiencia del SIU Guaraní y del Campus Virtual. Lo que construimos se llama HackAI y se resume en una promesa: un solo lugar que te dice qué te toca y te avisa a tiempo.</p></aside>
+</section>
+
+<!-- 2 · El problema: dos sistemas -->
+<section class="slide osc" data-sec="0">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="dos-col">
+    <div class="col-a">
+      <p class="cor">[El problema]</p>
+      <h2 class="T">Dos sistemas<span class="l2">que no se hablan.</span></h2>
+      <div class="aire"></div>
+      <p class="txt">Quien cruza la información es una persona, a mano.</p>
+    </div>
+    <div class="col-b">
+      <div class="par">
+        <div class="pan sis in" style="--i:0">
+          <p class="cor">(01)</p>
+          <h3 class="h">SIU Guaraní</h3>
+          <p class="txt-s">Lo administrativo: inscripciones, historia académica, plan y constancias.</p>
+          <div class="aire"></div>
+          <ul><li>Su calendario</li><li>Su bandeja</li><li>Sus notas</li></ul>
+        </div>
+        <div class="pan sis in" style="--i:1">
+          <p class="cor">(02)</p>
+          <h3 class="h">Campus Virtual</h3>
+          <p class="txt-s">Moodle: aulas, material, entregas y avisos de cada materia.</p>
+          <div class="aire"></div>
+          <ul><li>Su calendario</li><li>Su bandeja</li><li>Sus notas</li></ul>
+        </div>
+      </div>
+      <p class="pan tira in" style="--i:2">Único puente entre los dos: el botón «Ir»</p>
+    </div>
+  </div>
+  <p class="pie">Fuente: relevamiento de SIU y Campus, 10/11/2026</p>
+  <aside><p><b>Persona 1 · 0:40</b> La vida académica en la Austral está partida en dos sistemas. El SIU tiene lo administrativo; el Campus, que es un Moodle, las aulas y el material. Cada uno tiene su calendario, su bandeja y sus notas, y no se hablan: el único puente que encontramos es un botón «Ir» escondido en un reporte del SIU. Entonces el que cruza la información es una persona, a mano. Si es un alumno, cuando se le escapa un aviso pierde un cupo, un crédito o una fecha. Y si es alguien de gestión, como vamos a ver, se baja ochenta reportes.</p></aside>
+</section>
+
+<!-- 3 · El problema: qué les duele -->
+<section class="slide osc" data-sec="0">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="cab"><p class="cor">[El problema]</p><h2 class="T">Qué les duele</h2></div>
+  <div class="duele">
+    <div class="pan barras">
+      <p class="cor">(01) Alumnos · encuesta, n = 39</p>
+      <div class="barra in" style="--i:0"><div class="barra-cab"><p>Cursos viejos mezclados con los actuales</p><b>56%</b></div><div class="track"><div class="fill" style="--w:56%"></div></div></div>
+      <div class="barra in" style="--i:1"><div class="barra-cab"><p>Aulas con organización confusa</p><b>54%</b></div><div class="track"><div class="fill" style="--w:54%"></div></div></div>
+      <div class="barra in" style="--i:2"><div class="barra-cab"><p>Inscribirse a materias o exámenes en el SIU</p><b>54%</b></div><div class="track"><div class="fill" style="--w:54%"></div></div></div>
+      <div class="barra in" style="--i:3"><div class="barra-cab"><p>Se usa mal desde el celular</p><b>49%</b></div><div class="track"><div class="fill" style="--w:49%"></div></div></div>
+      <div class="barra in" style="--i:4"><div class="barra-cab"><p>Avisos que no llegan <small>· lo más pedido</small></p><b>44%</b></div><div class="track"><div class="fill destaca" style="--w:44%"></div></div></div>
+    </div>
+    <div class="pan voces">
+      <p class="cor">(02) Docentes y gestión · entrevistas</p>
+      <div class="items">
+        <div class="in" style="--i:2"><h3 class="h">10 a 15 minutos</h3><p class="txt-s">para tomar lista, en cada clase.</p></div>
+        <div class="in" style="--i:3"><h3 class="h">3 cargas por nota</h3><p class="txt-s">Moodle, un Excel y el SIU: «en esos pasos hay errores».</p></div>
+        <div class="in" style="--i:4"><h3 class="h">80 reportes</h3><p class="txt-s">para ver un solo indicador de toda la universidad.</p></div>
+      </div>
+    </div>
+  </div>
+  <p class="pie">Encuesta, n = 39. Entrevistas a 3 docentes, Admisiones y la Dirección de Estudios, 12 y 13/11.</p>
+  <aside><p><b>Persona 1 · 0:45</b> No lo supusimos: lo preguntamos. Respondieron 39 alumnos de cinco facultades. Más de la mitad se queja de los cursos viejos mezclados, de las aulas desordenadas y de la inscripción en el SIU. Y el 44 por ciento dice que los avisos no llegan, lo más pedido cuando los dejamos escribir. Después hablamos con docentes y con gestión, y apareció el mismo problema del otro lado. Un profesor tarda hasta quince minutos en tomar lista. Una docente con 120 alumnos corrige en Moodle, pasa las notas a un Excel y después las carga en el SIU: tres pasos, y en esos pasos hay errores. Y en la Dirección de Estudios, para saber cómo vienen los alumnos de toda la universidad, tienen que bajar un reporte por carrera y por año de ingreso: ochenta reportes, o esperar meses a que sistemas les arme un tablero de Power BI.</p></aside>
+</section>
+
+<!-- 4 · Usuario -->
+<section class="slide cla" data-sec="0">
+  <div class="arriba">
+    <div class="cab"><p class="cor">[El usuario]</p><h2 class="T">Para quién<span class="l2">lo construimos</span></h2></div>
+    <p class="txt">El alumno primero, después el docente. Y un tercero que no teníamos: gestión.</p>
+  </div>
+  <div class="banda b-3 grad">
+    <div class="bloque in" style="--i:0">
+      <p class="cor">(01) Primero</p>
+      <h3 class="h">El alumno de grado</h3>
+      <p class="txt">Varias materias, dos sistemas, todo desde el celular.</p>
+      <div class="aire"></div>
+      <div class="chips"><p class="chip">¿Qué me toca?</p><p class="chip">¿A qué me puedo anotar?</p><p class="chip">¿Hay algo nuevo?</p></div>
+    </div>
+    <div class="bloque in" style="--i:1">
+      <p class="cor">(02) Después</p>
+      <h3 class="h">El docente</h3>
+      <p class="txt">Publicar, tomar lista, corregir y cargar notas una sola vez.</p>
+      <div class="aire"></div>
+      <div class="chips"><p class="chip">Avisos que llegan</p><p class="chip">Lista en segundos</p><p class="chip">Notas sin pasos de más</p></div>
+    </div>
+    <div class="bloque in" style="--i:2">
+      <p class="cor">(03) Secretaría y Dirección de Estudios</p>
+      <h3 class="h">Gestión</h3>
+      <p class="txt">Asignar aulas y seguir a los alumnos que se están quedando.</p>
+      <div class="aire"></div>
+      <div class="chips"><p class="chip">¿Cómo vienen?</p><p class="chip">¿Quién está en riesgo?</p><p class="chip">¿Qué le falta a este alumno?</p></div>
+    </div>
+  </div>
+  <aside><p><b>Persona 1 · 0:45</b> El usuario principal es el alumno de grado, y lo que necesita son tres respuestas: qué me toca, a qué me puedo anotar y si hay algo nuevo. Después, el docente: publicar, tomar lista y cargar notas, una sola vez. Y apareció un tercero que no teníamos: gestión. La Dirección de Estudios, que nos contó en una entrevista cómo acompaña a los alumnos para que no se queden en el camino, y la secretaría que asigna las aulas. Su pregunta es otra: cómo vienen todos, quién está en riesgo y qué le falta a cada uno para recibirse.</p></aside>
+</section>
+
+<!-- 5 · Estrategia -->
+<section class="slide cla" data-sec="1">
+  <div class="cab"><p class="cor">[La estrategia]</p><h2 class="T">Sistema propio,<span class="l2">apoyado en lo que ya existe</span></h2></div>
+  <div class="flujo grad in" style="--i:0">
+    <div class="origenes"><p>SIU Guaraní</p><p>Moodle</p><p>Discord</p></div>
+    <i class="flecha"></i>
+    <div class="caja" style="width:300px"><h3 class="hs">Puertos y adaptadores</h3><p class="txt-s">Uno por sistema</p></div>
+    <i class="flecha"></i>
+    <div class="caja" style="flex:1"><h3 class="hs">Núcleo de HackAI</h3><p class="txt-s">Personas · Cursada · Espacios · Seguimiento · Hoy · Planning</p></div>
+    <i class="flecha"></i>
+    <div class="caja" style="width:330px"><h3 class="hs">Pantallas</h3><p class="txt-s">Alumno, docente y secretaría</p></div>
+  </div>
+  <div class="tres">
+    <div class="in" style="--i:2"><p class="cor">(01)</p><h3 class="hs">Delega lo que ya anda bien</h3><p class="txt-s">Actas, constancias y la historia oficial siguen en el SIU.</p></div>
+    <div class="in" style="--i:3"><p class="cor">(02)</p><h3 class="hs">Resuelve lo que nadie resuelve</h3><p class="txt-s">Qué me toca, avisos que llegan, lista en segundos y reportes cruzados.</p></div>
+    <div class="in" style="--i:4"><p class="cor">(03)</p><h3 class="hs">Aísla cada sistema</h3><p class="txt-s">Si mañana cambia el SIU, se cambia un adaptador y no la aplicación.</p></div>
+  </div>
+  <aside><p><b>Persona 1 · 0:40</b> La consigna permitía construir desde cero, sobre Moodle y el SIU, o envolver lo que hay. Elegimos una combinación. HackAI es un sistema propio que no reemplaza nada: el SIU, Moodle y Discord entran por un puerto, cada uno con su adaptador. La regla es simple: si un sistema existente resuelve algo bien, HackAI lo delega; si no lo resuelve nadie, lo resuelve el núcleo. Y como cada sistema está aislado, si mañana cambia el SIU, cambiamos un adaptador y no la aplicación.</p><p><b>Pase</b> Pero lo que importa es qué cambia para cada uno. Persona 2 se los muestra.</p></aside>
+</section>
+
+<!-- 6 · Antes y después -->
+<section class="slide osc" data-sec="1">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="cab"><p class="cor">[Antes y después]</p><h2 class="T">Cómo cambia cada trámite</h2></div>
+  <div class="cuadro denso in" style="--i:0">
+    <div class="celda"><p class="th">[Trámite]</p></div><div class="celda"><p class="th">[Hoy, en SIU y Campus]</p></div><div class="celda hk"><p class="th">[Con HackAI]</p></div>
+    <div class="celda"><p class="tramite">Saber qué me toca</p></div><div class="celda"><p class="ruta">3 clicks, en dos sistemas</p></div><div class="celda hk"><p class="logro">1 click</p><p class="nota">Un solo calendario</p></div>
+    <div class="celda"><p class="tramite">Enterarme de un aviso</p></div><div class="celda"><p class="ruta">3 clicks, y solo si entrás a mirar</p></div><div class="celda hk"><p class="logro">Te llega</p><p class="nota">Por Discord</p></div>
+    <div class="celda"><p class="tramite">Inscribirme</p></div><div class="celda"><p class="ruta">3 clicks; el cupo se ve al final</p></div><div class="celda hk"><p class="logro">3 clicks</p><p class="nota">Con cupo y horario a la vista</p></div>
+    <div class="celda"><p class="tramite">Saber qué finales debo</p></div><div class="celda"><p class="ruta">Cruzar dos pantallas a mano</p></div><div class="celda hk"><p class="logro">1 click</p><p class="nota">Con su próxima mesa</p></div>
+    <div class="celda"><p class="rol">[Docente]</p><p class="tramite">Tomar lista</p></div><div class="celda"><p class="ruta">10 a 15 minutos por clase</p></div><div class="celda hk"><p class="logro">4 toques</p><p class="nota">Solo tocás a los ausentes</p></div>
+    <div class="celda"><p class="rol">[Docente]</p><p class="tramite">Cargar las notas</p></div><div class="celda"><p class="ruta">Moodle › Excel › SIU, a mano</p></div><div class="celda hk"><p class="logro">Una vez</p><p class="nota">Y pasan al SIU</p></div>
+    <div class="celda"><p class="rol">[Gestión]</p><p class="tramite">Ver una cohorte</p></div><div class="celda"><p class="ruta">80 reportes para toda la universidad</p></div><div class="celda hk"><p class="logro">1 pantalla</p><p class="nota">Y se exporta</p></div>
+  </div>
+  <p class="pie">Hoy: línea base del 10/11 y entrevistas. HackAI: contado por el equipo, con datos sintéticos.</p>
+  <aside><p><b>Persona 2 · 1:00</b> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla. Una aclaración: los números de HackAI los contamos nosotros sobre datos sintéticos; medirlos con usuarios es lo que sigue.</p></aside>
+</section>
+
+<!-- 7 · Demo en vivo -->
+<section class="slide osc" data-sec="2">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="cab"><p class="cor">[La demo]</p><h2 class="T">Ahora, andando</h2></div>
+  <div class="perfiles">
+    <div class="pan sis in" style="--i:0">
+      <p class="cor">(01)</p>
+      <h3 class="h">El alumno</h3>
+      <p class="txt-s">Tomás Aguirre, alumno sintético.</p>
+      <div class="aire"></div>
+      <ul><li>Mis materias y finales pendientes</li><li>Un aviso que llega, en vivo</li><li>El cambio de aula, en la campana</li><li>Un solo calendario</li></ul>
+    </div>
+    <div class="pan sis in" style="--i:1">
+      <p class="cor">(02)</p>
+      <h3 class="h">El docente</h3>
+      <p class="txt-s">Diego Arrieta, docente sintético.</p>
+      <div class="aire"></div>
+      <ul><li>Su día en una pantalla</li><li>Tomar lista con toques</li><li>Notas pegadas de una planilla</li><li>Pase de notas al SIU simulado</li></ul>
+    </div>
+    <div class="pan sis in" style="--i:2">
+      <p class="cor">(03)</p>
+      <h3 class="h">Secretaría</h3>
+      <p class="txt-s">Planning de Aulas y Reportes.</p>
+      <div class="aire"></div>
+      <ul><li>La planilla de aulas y el Planning</li><li>Reportes cruzados</li><li>Del número al alumno</li><li>Seguimiento y exportación</li></ul>
+    </div>
+  </div>
+  <p class="pan tira in" style="--i:3">Personas sintéticas. Discord es real; el SIU y el Moodle están simulados con la forma de sus APIs.</p>
+  <aside>
+    <p><b>Persona 2 · entrada</b> Ahora lo ven andando. Lo que van a ver corre con personas sintéticas. Discord es real; el SIU y el Moodle están simulados con la forma de sus APIs.</p>
+    <p><b>7.1 Alumno · Persona 2 · 2:00</b></p>
+    <p>1. Ingreso de demo → Tomás Aguirre. «En producción se entra con la cuenta Microsoft de la Austral; acá elegimos una persona sintética.»</p>
+    <p>2. Cae en Materias. «Solo lo que cursa hoy. Las viejas están archivadas. Cada tarjeta muestra horario, aula y la próxima entrega.»</p>
+    <p>3. Pestaña Final pendiente. «Lo que el SIU no responde: qué finales debo y su próxima mesa.»</p>
+    <p>4. En curso → Análisis Matemático I → Avisos. «Cada materia tiene su espacio, que se crea solo desde el SIU, con el material en el mismo orden que el aula.»</p>
+    <p>5. Persona 3 publica el aviso como Mariana Ledesma. «Se publica una vez y llega por Discord, al celular, por la aplicación que ya usa.» Dejar que se vea llegar, sin prometer un tiempo.</p>
+    <p>6. Campana → «Cambió la clase de Análisis Matemático I (Comisión A)» → Planning. «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.»</p>
+    <p>7. Calendario → Agregar a mi calendario. «Clases, parciales, finales y entregas en un solo lugar. Los parciales, los finales y las entregas van al calendario del celular.»</p>
+    <p>8. Si sobra tiempo: Inscripciones → Física I de verano → Inscribirme. «El cupo y el horario antes de elegir, y un paso para quedar adentro.»</p>
+    <p><b>Pase</b> Ese aviso lo publicó un docente. Persona 3 les muestra su lado.</p>
+    <p><b>7.2 Docente · Persona 3 · 1:30</b></p>
+    <p>1. Ventana de Diego Arrieta → Hoy. «Su día en una pantalla: su clase, con Zoom si es virtual, y las consultas sin responder.»</p>
+    <p>2. Materias → Programación I → Alumnos y clases → la clase de hoy → Tomar lista → tocar a un ausente → Guardar lista. «Todos presentes, toca a los que faltan. En una clase de 30 con 3 ausentes son cuatro toques; hoy le lleva quince minutos.»</p>
+    <p>3. Calificaciones → Pegar de una planilla → vista previa → guardar → Publicar las notas. «Corrige una vez. El alumno la ve, y la nota pasa al SIU, que en la demo es el simulado.» Elegir un parcial y tener las filas ya copiadas.</p>
+    <p><b>7.3 Secretaría y Dirección de Estudios · Persona 3 · 1:30</b></p>
+    <p>1. Ventana de Secretaría → Cargar clases → Planning. «Secretaría sube la planilla de aulas del cuatrimestre, y alumnos y docentes ven el Planning. De acá salió el cambio de aula que le llegó a Tomás.»</p>
+    <p>2. Reportes → Facultad: Ingeniería y Ciencias Empresariales → Ingreso: 2024, 2025 y 2026. «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso, y también al cierre de años anteriores.»</p>
+    <p>3. Una barra de «Por facultad» o un indicador de «Para acompañar» → listado → un alumno. «De un número al listado y del listado al alumno, sin salir de Reportes.» Decir que los indicadores son una propuesta del equipo, sin validar todavía.</p>
+    <p>4. Ficha del alumno: Lo que le falta, el plan de estudios y Vida Universitaria. «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.»</p>
+    <p>5. Seguir a este alumno → En seguimiento → Exportar CSV. «Lo marca para seguirlo y se lo lleva en un archivo que abre en Excel.»</p>
+    <p><b>Pase</b> Eso es lo que construimos. Persona 4 les cuenta qué es real, qué medimos y qué sigue.</p>
+    <p><b>Si la demo falla</b> Pasar a las slides de respaldo, después del cierre, y seguir el guion sin cambiar el orden.</p>
+  </aside>
+</section>
+
+<!-- 8 · Real y simulado -->
+<section class="slide cla" data-sec="3">
+  <div class="arriba">
+    <div class="cab"><p class="cor">[La evidencia]</p><h2 class="T">Qué es real<span class="l2">y qué está simulado</span></h2></div>
+    <p class="txt">La demo corre con personas y datos sintéticos.</p>
+  </div>
+  <div class="banda b-3 grad">
+    <div class="bloque in" style="--i:0">
+      <p class="cor">(01)</p><h3 class="h">Real</h3><div class="aire"></div>
+      <div class="grupos">
+        <div><b>Discord</b><p class="txt-s">Un bot propio.</p></div>
+        <div><b>La aplicación</b><p class="txt-s">Publicada, y se instala en el celular.</p></div>
+        <div><b>SIU y Campus reales</b><p class="txt-s">Con su cuenta, sin guardar nada.</p></div>
+      </div>
+    </div>
+    <div class="bloque in" style="--i:1">
+      <p class="cor">(02)</p><h3 class="h">Simulado</h3><div class="aire"></div>
+      <div class="grupos">
+        <div><b>SIU y Moodle de la demo</b><p class="txt-s">Con la forma de sus APIs.</p></div>
+        <div><b>Las personas</b><p class="txt-s">Alumnos, docentes, notas y reportes.</p></div>
+        <div><b>Pases al SIU</b><p class="txt-s">Notas, asistencia y la inscripción de la demo.</p></div>
+      </div>
+    </div>
+    <div class="bloque in" style="--i:2">
+      <p class="cor">(03) Depende de la universidad</p><h3 class="h">Pendiente</h3><div class="aire"></div>
+      <div class="grupos">
+        <div><b>Ingreso</b><p class="txt-s">Con la cuenta Microsoft de la Austral.</p></div>
+        <div><b>Accesos institucionales</b><p class="txt-s">API del SIU y servicios web de Moodle.</p></div>
+        <div><b>Datos para reportes</b><p class="txt-s">Con autorización de Gobierno de Datos.</p></div>
+      </div>
+    </div>
+  </div>
+  <aside><p><b>Persona 4 · 0:40</b> Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.</p></aside>
+</section>
+
+<!-- 9 · Qué medimos -->
+<section class="slide cla" data-sec="3">
+  <div class="arriba">
+    <div class="cab"><p class="cor">[La evidencia]</p><h2 class="T">Qué medimos<span class="l2">y qué falta medir</span></h2></div>
+    <p class="txt"><b>Falta:</b> cronometrar las tareas con alumnos y la lista con un docente.</p>
+  </div>
+  <div class="banda b-5 grad">
+    <div class="bloque in" style="--i:0"><p class="cor">(01) El problema</p><div class="aire"></div><p class="stat">39</p><p class="txt-s">alumnos encuestados, de cinco facultades</p></div>
+    <div class="bloque in" style="--i:1"><p class="cor">(02) Docentes y gestión</p><div class="aire"></div><p class="stat">6</p><p class="txt-s">entrevistas a alumnas, docentes y gestión</p></div>
+    <div class="bloque in" style="--i:2"><p class="cor">(03) La línea base</p><div class="aire"></div><p class="stat">17</p><p class="txt-s">tareas medidas en SIU y Campus</p></div>
+    <div class="bloque in" style="--i:3"><p class="cor">(04) Avisar a tiempo</p><div class="aire"></div><p class="stat">13 s</p><p class="txt-s">tarda un aviso en llegar a otra pantalla</p></div>
+    <div class="bloque in" style="--i:4"><p class="cor">(05) Que se pueda usar</p><div class="aire"></div><p class="stat">3 s</p><p class="txt-s">para cambiar de canal; antes, hasta 28 s</p></div>
+  </div>
+  <p class="pie">Fuentes: encuesta, entrevistas, línea base del 10/11 y mediciones del equipo del 11 al 13/11</p>
+  <aside><p><b>Persona 4 · 0:50</b> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. La promesa de avisar a tiempo: un aviso publicado aparece en otra pantalla en 13 segundos sin recargar, y en Discord casi al instante. Y que se pueda usar: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Lo que no medimos, y lo decimos: no cronometramos las tareas con alumnos ni la lista con un docente. Tenemos el protocolo armado.</p><p><b>Si sobra tiempo</b> La cita de la Dirección de Estudios sobre lo que tarda hacer un tablero: «el departamento de sistemas me lleva meses, años». Contarla como dato del problema, no como elogio.</p></aside>
+</section>
+
+<!-- 10 · Iteraciones -->
+<section class="slide osc" data-sec="3">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="cab"><p class="cor">[Las iteraciones]</p><h2 class="T">Lo que cambiamos en el camino</h2></div>
+  <div class="log in" style="--i:0">
+    <p class="cor">(10/11)</p><p class="a">La base heredada no compilaba.</p><div><i class="flecha"></i></div><p class="d">Sistema propio, con puertos.</p>
+    <p class="cor">(12/11)</p><p class="a">La API del SIU no deja inscribir.</p><div><i class="flecha"></i></div><p class="d">HackAI usa la sesión del propio alumno.</p>
+    <p class="cor">(12/11)</p><p class="a">La pantalla Hoy le mostraba demasiado al alumno.</p><div><i class="flecha"></i></div><p class="d">Mis materias pasó a ser el inicio.</p>
+    <p class="cor">(12/11)</p><p class="a">Tomar lista lleva de 10 a 15 minutos.</p><div><i class="flecha"></i></div><p class="d">Docentes al alcance: lista con toques.</p>
+    <p class="cor">(13/11)</p><p class="a">Entrar a una materia tardaba hasta 17 segundos.</p><div><i class="flecha"></i></div><p class="d">Unos 3 segundos.</p>
+    <p class="cor">(13/11)</p><p class="a">Cada nota se carga tres veces; 80 reportes.</p><div><i class="flecha"></i></div><p class="d">Carga única de notas y Reportes.</p>
+    <p class="cor">(13/11)</p><p class="a">Con la cuenta real, el aula era la simulada.</p><div><i class="flecha"></i></div><p class="d">El Campus real, en vivo y sin guardarlo.</p>
+  </div>
+  <div class="aire"></div>
+  <div class="datos in" style="--i:2">
+    <div><b>452</b><p>commits</p></div><div><b>53</b><p>PRs</p></div><div><b>82</b><p>issues cerrados</p></div><div><b>~1.400</b><p>tests automáticos</p></div>
+  </div>
+  <p class="pie">Del primer commit, el 10/11, a la noche del 13/11</p>
+  <aside><p><b>Persona 4 · 0:50</b> No salió derecho. Arrancamos sobre una base que no compilaba y decidimos el sistema propio. Descubrimos que la API del SIU no deja inscribir y usamos la sesión del alumno. El primer inicio mostraba demasiado y lo simplificamos. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos al alcance. Y hoy, la Dirección de Estudios nos contó que carga cada nota tres veces y que baja ochenta reportes para ver una cohorte: de ahí salen la carga única de notas y la pantalla de reportes que vieron. Y cuando un alumno entraba con su cuenta real, el aula seguía siendo la simulada: ahora lee su Campus de verdad, sin guardar nada. Todo con revisión y tests automáticos en cada cambio.</p></aside>
+</section>
+
+<!-- 11 · Próximo paso -->
+<section class="slide cla" data-sec="4">
+  <div class="arriba">
+    <div class="cab"><p class="cor">[El próximo paso]</p><h2 class="T">Qué validaríamos<span class="l2">después</span></h2></div>
+    <p class="txt">Primero, probar que mejora. Después, salir a producción.</p>
+  </div>
+  <div class="banda b-2">
+    <div class="bloque neg in" style="--i:0; padding:36px 44px">
+      <p class="cor">(01) Con usuarios</p>
+      <h3 class="h">Probar que mejora</h3>
+      <div class="aire"></div>
+      <ol class="pasos">
+        <li>Cronometrar las tareas con alumnos.</li>
+        <li>Cronometrar la lista con un docente.</li>
+        <li>Un piloto con una cátedra que ya usa Discord.</li>
+        <li>Reportes, con un caso real de la Dirección de Estudios.</li>
+      </ol>
+    </div>
+    <div class="bloque grad in" style="--i:1; padding:36px 44px">
+      <p class="cor">(02) Con la universidad</p>
+      <h3 class="h">Pasar a producción</h3>
+      <div class="aire"></div>
+      <ol class="pasos">
+        <li>Ingreso con la cuenta Microsoft de la Austral.</li>
+        <li>Acceso a las APIs del SIU y de Moodle.</li>
+        <li>Acuerdo de datos (Ley 25.326) y Gobierno de Datos.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="hipo in" style="--i:2">
+    <p class="cor">[Siguiente hipótesis]</p>
+    <p class="txt-s">HackAI arma el camino más corto para que un alumno se reciba. No está construido.</p>
+  </div>
+  <aside><p><b>Persona 4 · 0:40</b> Qué sigue. Con usuarios: cronometrar las tareas con alumnos y la lista con un docente, un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.</p></aside>
+</section>
+
+<!-- 12 · Cierre -->
+<section class="slide osc" data-sec="x">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="velo" style="left:0; bottom:0; width:420px; height:96px"></div>
+  <p class="cor in" style="--i:0">[HackAI]</p>
+  <div class="aire"></div>
+  <h2 class="final in" style="--i:1"><span>Un solo lugar</span><span class="l2">que te dice qué te toca</span><span class="l3">y te avisa a tiempo.</span></h2>
+  <div class="aire"></div>
+  <div class="salida in" style="--i:3"><p class="boton">Probalo desde el celular</p><p class="url">campus-hackai.vercel.app</p></div>
+  <aside><p><b>Persona 4 · 0:15</b> Eso es HackAI: un solo lugar que te dice qué te toca y te avisa a tiempo. Para el alumno, para el docente y para quien los acompaña. Lo pueden probar desde el celular en campus-hackai.vercel.app. Gracias.</p></aside>
+</section>
+
+<!-- Respaldo 1 · Mis materias -->
+<section class="slide osc" data-sec="2" data-respaldo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Respaldo · alumno]</p>
+      <h2 class="T sm">Mis materias<span class="l2">como inicio</span></h2>
+      <div class="aire"></div>
+      <div class="items">
+        <div><p class="cor">(01)</p><h3 class="hs">Solo lo que cursás hoy</h3><p class="txt-s">Las materias viejas quedan archivadas, no mezcladas.</p></div>
+        <div><p class="cor">(02)</p><h3 class="hs">Lo próximo, en la tarjeta</h3><p class="txt-s">Horario, aula y la entrega que vence, sin entrar al aula.</p></div>
+        <div><p class="cor">(03)</p><h3 class="hs">Los finales que debés, aparte</h3><p class="txt-s">Una pestaña con cada final pendiente y su próxima mesa.</p></div>
+      </div>
+    </div>
+    <div class="laptop in" style="--i:0"><div class="lid"><img src="img/materias-w.png" alt="Mis materias en la compu: dos materias en curso, cada una con su horario, su próxima entrega y el acceso a su espacio"></div><div class="deck"></div></div>
+  </div>
+  <p class="pie">Captura de HackAI con datos sintéticos</p>
+  <aside><p><b>Respaldo de 7.1, pasos 2 y 3 · Persona 2</b> «Solo lo que cursa hoy. Las viejas están archivadas. Cada tarjeta muestra horario, aula y la próxima entrega.» Y la pestaña Final pendiente: «Lo que el SIU no responde: qué finales debo y su próxima mesa.»</p></aside>
+</section>
+
+<!-- Respaldo 2 · Espacio de la materia -->
+<section class="slide osc" data-sec="2" data-respaldo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Respaldo · alumno]</p>
+      <h2 class="T sm">El espacio<span class="l2">de la materia</span></h2>
+      <div class="aire"></div>
+      <div class="items">
+        <div><p class="cor">(01)</p><h3 class="hs">Avisos que llegan</h3><p class="txt-s">El docente publica una vez y sale también en Discord.</p></div>
+        <div><p class="cor">(02)</p><h3 class="hs">Se crea solo desde el SIU</h3><p class="txt-s">Te inscribís y quedás adentro del espacio.</p></div>
+        <div><p class="cor">(03)</p><h3 class="hs">Material con su origen</h3><p class="txt-s">En el mismo orden que el aula, y dice de dónde vino.</p></div>
+      </div>
+    </div>
+    <div class="laptop in" style="--i:0"><div class="lid"><img src="img/material-w.png" alt="Espacio de Análisis Matemático I: los canales Avisos, Consultas, Material y Directos, y el material ordenado por unidad con la etiqueta de su origen"></div><div class="deck"></div></div>
+  </div>
+  <p class="pie">Captura de HackAI con datos sintéticos</p>
+  <aside><p><b>Respaldo de 7.1, pasos 4 a 6 · Persona 2</b> «Cada materia tiene su espacio, que se crea solo desde el SIU, con el material en el mismo orden que el aula.» «Se publica una vez y llega por Discord, al celular, por la aplicación que ya usa.» «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.»</p></aside>
+</section>
+
+<!-- Respaldo 3 · Inscripción -->
+<section class="slide osc" data-sec="2" data-respaldo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Respaldo · alumno]</p>
+      <h2 class="T sm">Inscripción<span class="l2">en un paso</span></h2>
+      <div class="aire"></div>
+      <div class="items">
+        <div><p class="cor">(01)</p><h3 class="hs">El cupo, antes de elegir</h3><p class="txt-s">«Sin cupo» se ve en la comisión, no al final.</p></div>
+        <div><p class="cor">(02)</p><h3 class="hs">Todo para decidir</h3><p class="txt-s">Horarios, sede, duración y si la materia promociona.</p></div>
+        <div><p class="cor">(03)</p><h3 class="hs">Un paso para quedar adentro</h3><p class="txt-s">Quedás inscripto, en el aula y en el espacio.</p></div>
+      </div>
+    </div>
+    <div class="laptop in" style="--i:0"><div class="lid"><img src="img/inscripcion-w.png" alt="Inscripciones: la lista de materias con inscripción abierta y, al lado, la comisión de verano de Física I con modalidad, fechas, horarios y cupo"></div><div class="deck"></div></div>
+  </div>
+  <p class="pie">Datos sintéticos. En la demo, la inscripción va contra el SIU simulado.</p>
+  <aside><p><b>Respaldo de 7.1, paso 8 · Persona 2</b> Física I de verano: la comisión de la mañana está sin cupo y la de la tarde tiene lugar. «El cupo y el horario antes de elegir, y un paso para quedar adentro.»</p></aside>
+</section>
+
+<!-- Respaldo 4 · Docente -->
+<section class="slide osc" data-sec="2" data-respaldo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Respaldo · docente]</p>
+      <h2 class="T sm">El lado<span class="l2">del docente</span></h2>
+      <div class="aire"></div>
+      <div class="items">
+        <div><p class="cor">(01)</p><h3 class="hs">Su día en una pantalla</h3><p class="txt-s">Su clase, con Zoom si es virtual, y las consultas sin responder.</p></div>
+        <div><p class="cor">(02)</p><h3 class="hs">Lista con toques</h3><p class="txt-s">Todos presentes, y toca a los que faltan.</p></div>
+        <div><p class="cor">(03)</p><h3 class="hs">Notas una sola vez</h3><p class="txt-s">Pegadas de una planilla; pasan al SIU, que en la demo es el simulado.</p></div>
+      </div>
+    </div>
+    <div class="laptop in" style="--i:0"><div class="lid"><img src="img/calificaciones-w.png" alt="Calificaciones de una comisión: una nota por alumno para el primer parcial, con botones para publicar, pegar de una planilla y bajar a Excel"></div><div class="deck"></div></div>
+  </div>
+  <p class="pie">Captura de HackAI con datos sintéticos</p>
+  <aside><p><b>Respaldo de 7.2 · Persona 3</b> «Su día en una pantalla: su clase, con Zoom si es virtual, y las consultas sin responder.» «Todos presentes, toca a los que faltan. En una clase de 30 con 3 ausentes son cuatro toques; hoy le lleva quince minutos.» «Corrige una vez. El alumno la ve, y la nota pasa al SIU, que en la demo es el simulado.»</p></aside>
+</section>
+
+<!-- Respaldo 5 · Reportes -->
+<section class="slide osc" data-sec="2" data-respaldo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Respaldo · secretaría]</p>
+      <h2 class="T sm">Reportes<span class="l2">para gestión</span></h2>
+      <div class="aire"></div>
+      <div class="items">
+        <div><p class="cor">(01)</p><h3 class="hs">Ochenta reportes en una pantalla</h3><p class="txt-s">Cruza facultades, carreras y años de ingreso.</p></div>
+        <div><p class="cor">(02)</p><h3 class="hs">Del número al alumno</h3><p class="txt-s">Al listado y a la ficha, sin salir de Reportes.</p></div>
+        <div><p class="cor">(03)</p><h3 class="hs">Lo que le falta</h3><p class="txt-s">Se lo sigue y se exporta a un archivo que abre Excel.</p></div>
+      </div>
+    </div>
+    <div class="laptop in" style="--i:0"><div class="lid"><img src="img/reportes-w.png" alt="Reportes de secretaría: activos, ingresantes, graduados y bajas, con filtros por facultad, carrera y año de ingreso"></div><div class="deck"></div></div>
+  </div>
+  <p class="pie">Captura de HackAI. Los reportes corren sobre una población sintética.</p>
+  <aside><p><b>Respaldo de 7.3 · Persona 3</b> «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso.» «De un número al listado y del listado al alumno, sin salir de Reportes.» «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.» Decir que los indicadores son una propuesta del equipo, sin validar todavía.</p></aside>
+</section>
+
+</main>
+
+<div class="avance" id="avance"></div>
+<p class="ayuda" id="ayuda">← → para pasar · F pantalla completa · N guion</p>
+<div class="guion-panel" id="guion"><div class="gp-cab"><span id="guion-n"></span><span id="reloj">00:00</span></div><div id="guion-t"></div></div>
+
+<script>
+// Navegación del deck: flechas, espacio, clic o deslizar; F pantalla completa; N guion.
+const stage = document.getElementById('stage')
+const slides = [...document.querySelectorAll('.slide')]
+const avance = document.getElementById('avance')
+const ayuda = document.getElementById('ayuda')
+const guion = document.getElementById('guion')
+const SECCIONES = ['Problema', 'Solución', 'Demo', 'Evidencia', 'Próximo paso']
+// Las slides de respaldo van después del cierre y no cuentan en la numeración.
+const principales = slides.filter((s) => !s.dataset.respaldo).length
+const rotulo = (k) => (k < principales ? `${String(k + 1).padStart(2, '0')} / ${principales}` : `Respaldo ${k - principales + 1} / ${slides.length - principales}`)
+let actual = -1
+let inicio = null
+
+// La barra de arriba de cada slide: marca, secciones (con la actual resaltada) y número.
+slides.forEach((slide, k) => {
+  const nav = document.createElement('header')
+  nav.className = 'nav'
+  const items = SECCIONES.map((nombre, j) => `<span class="${String(j) === slide.dataset.sec ? 'on' : ''}">${nombre}</span>`).join('')
+  nav.innerHTML = `<div class="marca"><span class="logo"><i></i><i></i><i></i></span>HackAI</div><nav>${items}</nav><span class="pag">${rotulo(k)}</span>`
+  slide.prepend(nav)
+})
+
+function fit() {
+  const escala = Math.min(innerWidth / 1920, innerHeight / 1080)
+  stage.style.transform = `translate(-50%, -50%) scale(${escala})`
+}
+
+function go(n) {
+  n = Math.max(0, Math.min(slides.length - 1, n))
+  if (n === actual) return
+  slides.forEach((s, k) => {
+    s.classList.toggle('active', k === n)
+    s.classList.toggle('antes', k < n)
+  })
+  if (actual >= 0 && inicio === null) inicio = Date.now()
+  actual = n
+  history.replaceState(null, '', `#${n + 1}`)
+  avance.style.width = `${((n + 1) / slides.length) * 100}%`
+  document.getElementById('guion-n').textContent = `Slide ${rotulo(n)}`
+  document.getElementById('guion-t').innerHTML = slides[n].querySelector('aside')?.innerHTML ?? ''
+  guion.scrollTop = 0
+}
+window.go = go
+
+addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return
+  const k = e.key
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { e.preventDefault(); go(actual + 1) }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); go(actual - 1) }
+  else if (k === 'Home') go(0)
+  else if (k === 'End') go(slides.length - 1)
+  else if (k === 'f' || k === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
+  else if (k === 'n' || k === 'N') guion.classList.toggle('abierto')
+  ayuda.classList.add('fuera')
+})
+addEventListener('click', (e) => {
+  if (guion.contains(e.target)) return
+  go(actual + (e.clientX < innerWidth * 0.3 ? -1 : 1))
+  ayuda.classList.add('fuera')
+})
+let toqueX = null
+addEventListener('touchstart', (e) => { toqueX = e.touches[0].clientX }, { passive: true })
+addEventListener('touchend', (e) => {
+  if (toqueX === null) return
+  const dx = e.changedTouches[0].clientX - toqueX
+  if (Math.abs(dx) > 50) go(actual + (dx < 0 ? 1 : -1))
+  toqueX = null
+})
+addEventListener('resize', fit)
+setInterval(() => {
+  if (inicio === null) return
+  const s = Math.floor((Date.now() - inicio) / 1000)
+  document.getElementById('reloj').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}, 500)
+setTimeout(() => ayuda.classList.add('fuera'), 6000)
+
+fit()
+go((Number.parseInt(location.hash.slice(1), 10) || 1) - 1)
+</script>
+</body>
+</html>
