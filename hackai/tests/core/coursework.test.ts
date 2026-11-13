@@ -180,6 +180,45 @@ test('no se crea con nombre vacío, fecha inválida, consigna enorme o archivo v
   assert.deepEqual(value(await coursework.tasksOf('p-mledesma', 'am1')).tasks, [])
 })
 
+test('no se crea una tarea con la fecha límite ya pasada', async () => {
+  const { coursework } = build()
+
+  // El «hoy» del set es el martes 10/11/2026 a las 12:00.
+  assert.deepEqual(await coursework.createTask('p-mledesma', taskOf({ dueAt: '2026-01-01T01:00:00-03:00' })), {
+    ok: false,
+    error: 'fecha-pasada'
+  })
+  assert.deepEqual(await coursework.createTask('p-mledesma', taskOf({ dueAt: '2026-11-10T11:59:00-03:00' })), {
+    ok: false,
+    error: 'fecha-pasada'
+  })
+  assert.deepEqual(value(await coursework.tasksOf('p-mledesma', 'am1')).tasks, [])
+})
+
+test('una tarea vencida se edita sin tocar la fecha, pero no se le pone otra fecha pasada', async () => {
+  const { coursework, advance } = build()
+  const created = value(await coursework.createTask('p-mledesma', taskOf()))
+  advance(7 * 24 * 60)
+
+  const renamed = value(
+    await coursework.updateTask('p-mledesma', created.id, {
+      name: 'Práctica 3 (vencida)',
+      instructions: created.instructions,
+      dueAt: DUE
+    })
+  )
+  assert.equal(renamed.name, 'Práctica 3 (vencida)')
+  assert.equal(renamed.past, true)
+  assert.deepEqual(
+    await coursework.updateTask('p-mledesma', created.id, {
+      name: renamed.name,
+      instructions: renamed.instructions,
+      dueAt: '2026-11-15T23:59:00-03:00'
+    }),
+    { ok: false, error: 'fecha-pasada' }
+  )
+})
+
 test('crear una tarea es solo de docentes, y de las comisiones que dictan', async () => {
   const { coursework } = build()
 
@@ -220,9 +259,11 @@ test('una tarea sin nota queda marcada así', async () => {
 
 test('las que vencen primero salen arriba y las vencidas al final, según el reloj', async () => {
   const { coursework, advance } = build()
+  // Una tarea no se crea vencida: esta vence a la hora y el reloj pasa de largo.
+  await coursework.createTask('p-mledesma', taskOf({ name: 'Ya venció', dueAt: '2026-11-10T13:00:00-03:00' }))
+  advance(2 * 60)
   await coursework.createTask('p-mledesma', taskOf({ name: 'Tarde', dueAt: '2026-11-20T10:00:00-03:00' }))
   await coursework.createTask('p-mledesma', taskOf({ name: 'Temprano', dueAt: '2026-11-12T10:00:00-03:00' }))
-  await coursework.createTask('p-mledesma', taskOf({ name: 'Ya venció', dueAt: '2026-11-09T10:00:00-03:00' }))
 
   const before = value(await coursework.tasksOf('p-taguirre', 'am1'))
   assert.deepEqual(

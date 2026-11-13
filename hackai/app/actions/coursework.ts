@@ -34,6 +34,7 @@ const ERRORS: Record<TaskError, string> = {
   'nombre-invalido': 'Ponele un nombre a la tarea, de hasta 120 caracteres.',
   'consigna-invalida': 'La consigna es demasiado larga: usá hasta 5.000 caracteres o subí un archivo.',
   'fecha-invalida': 'Elegí la fecha y la hora límite.',
+  'fecha-pasada': 'La fecha límite ya pasó. Elegí una fecha y hora de acá en adelante.',
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
   'falla-externa': 'No pudimos guardarlo porque un sistema no responde. Probá de nuevo en un rato.'

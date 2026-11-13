@@ -30,6 +30,11 @@ export function checkedTexts(input: TaskChanges): Result<TaskChanges, TaskTextEr
   return ok({ name, instructions, dueAt: due.toISOString() })
 }
 
+/** Si la fecha límite (ya normalizada) es de antes de `now`: una tarea no nace vencida, ni se la corre al pasado. */
+export function checkedDue(dueAt: string, now: Date): Result<string, 'fecha-pasada'> {
+  return new Date(dueAt).getTime() < now.getTime() ? fail('fecha-pasada') : ok(dueAt)
+}
+
 function fileView(file: StoredTaskFile): TaskFile {
   return { name: file.name, contentType: file.contentType, size: file.size, url: fileUrl(file.id, file.name) }
 }

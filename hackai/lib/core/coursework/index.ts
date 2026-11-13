@@ -446,6 +446,8 @@ export type GradeError = 'nota-invalida' | 'comentario-invalido'
 export type CourseGradeError = 'peso-invalido' | 'sin-nota-calculada'
 export type ColumnError = 'solo-docentes' | 'columna-desconocida'
 export type TaskTextError = 'nombre-invalido' | 'consigna-invalida' | 'fecha-invalida'
+/** La fecha límite ya pasó: una tarea no se crea vencida ni se le corre la fecha al pasado. */
+export type TaskDueError = 'fecha-pasada'
 export type TaskFileError = 'demasiado-grande' | 'archivo-vacio'
 export type SubmitError =
   | AccessError
@@ -457,18 +459,21 @@ export type SubmitError =
   | TaskFileError
 
 export type Coursework = {
-  /** Crea una tarea para una o varias comisiones vigentes que dicta el docente. Si algo falla después de
-      guardar el archivo, lo borra. */
+  /** Crea una tarea para una o varias comisiones vigentes que dicta el docente, con la fecha límite por venir. Si
+      algo falla después de guardar el archivo, lo borra. */
   createTask(
     personId: PersonId,
     task: NewTask
-  ): Promise<Result<TaskView, AccessError | 'solo-docentes' | 'sin-comisiones' | TaskTextError | TaskFileError>>
-  /** Cambia el nombre, la consigna y la fecha límite. Lo hacen los docentes de las comisiones de la tarea. */
+  ): Promise<
+    Result<TaskView, AccessError | 'solo-docentes' | 'sin-comisiones' | TaskTextError | TaskDueError | TaskFileError>
+  >
+  /** Cambia el nombre, la consigna y la fecha límite. Lo hacen los docentes de las comisiones de la tarea. Una tarea
+      vencida se edita igual; si se le cambia la fecha, la nueva no puede haber pasado. */
   updateTask(
     personId: PersonId,
     taskId: TaskId,
     changes: TaskChanges
-  ): Promise<Result<TaskView, AccessError | 'tarea-desconocida' | 'solo-docentes' | TaskTextError>>
+  ): Promise<Result<TaskView, AccessError | 'tarea-desconocida' | 'solo-docentes' | TaskTextError | TaskDueError>>
   /** Las tareas de una comisión de la materia: al docente, la que elige de las que dicta; al alumno, la suya. */
   tasksOf(personId: PersonId, subjectId: string, sectionId?: string): Promise<Result<TaskList, AccessError>>
   /** Una tarea, si la persona es de una de sus comisiones; si no, `tarea-desconocida`, como si no existiera. */

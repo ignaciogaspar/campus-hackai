@@ -83,6 +83,12 @@ test('la fecha límite dice si vence o venció, en la hora de Buenos Aires', () 
   assert.match(dueLabel({ dueAt, past: true }), /^Venció vie.*13 nov.*23:59$/)
 })
 
+test('la fecha límite de una tarea de otro año dice de qué año es', () => {
+  const now = '2026-11-13T12:00:00-03:00'
+  assert.equal(dueLabel({ dueAt: '2025-03-02T04:00:00.000Z', past: true }, now), 'Venció dom, 2 mar 2025, 01:00')
+  assert.equal(dueLabel({ dueAt: '2026-11-14T02:59:00.000Z', past: false }, now), 'Vence vie, 13 nov, 23:59')
+})
+
 test('lo que escribe la persona en el campo de fecha se toma en Buenos Aires y vuelve igual', () => {
   assert.equal(dueAtFromInput('2026-11-13T23:59'), '2026-11-14T02:59:00.000Z')
   assert.equal(dueAtFromInput('2026-11-13T23:59:30'), '2026-11-14T02:59:00.000Z')

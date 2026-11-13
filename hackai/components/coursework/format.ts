@@ -128,9 +128,9 @@ export function sectionsLabel(names: string[]): string {
   return `Comisiones ${names.slice(0, -1).join(', ')} y ${last}`
 }
 
-/** «Vence vie, 13 nov, 23:59» o «Venció vie, 13 nov, 23:59». */
-export function dueLabel(task: { dueAt: string; past: boolean }): string {
-  return `${task.past ? 'Venció' : 'Vence'} ${dueTime(task.dueAt)}`
+/** «Vence vie, 13 nov, 23:59» o «Venció vie, 13 nov, 23:59»; si no es del año de `now`, con el año. */
+export function dueLabel(task: { dueAt: string; past: boolean }, now: string = new Date().toISOString()): string {
+  return `${task.past ? 'Venció' : 'Vence'} ${dueTime(task.dueAt, now)}`
 }
 
 /** El valor de un `<input type='datetime-local'>` para una fecha, en la hora de Buenos Aires: `2026-11-13T23:59`. */

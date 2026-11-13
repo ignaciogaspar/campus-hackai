@@ -27,7 +27,7 @@ import {
 import { createGradebook } from '@/lib/core/coursework/gradebook'
 import { countsOf, rowsOf, studentInTaught, studentsOf } from '@/lib/core/coursework/roster'
 import { checkedFiles, removeAll, saveAll } from '@/lib/core/coursework/submissions'
-import { byDue, checkedTexts, datedOf, submissionFor, taskFor } from '@/lib/core/coursework/tasks'
+import { byDue, checkedDue, checkedTexts, datedOf, submissionFor, taskFor } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
 import { isFileId, type NewFile } from '@/lib/ports/files'
@@ -76,6 +76,8 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
 
     const texts = checkedTexts(input)
     if (!texts.ok) return texts
+    const due = checkedDue(texts.value.dueAt, clock.now())
+    if (!due.ok) return due
     const file = await saveFile(input.file)
     if (!file.ok) return file
 
@@ -124,6 +126,11 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     if (!teaches(found.value.mine)) return fail('solo-docentes')
     const texts = checkedTexts(changes)
     if (!texts.ok) return texts
+    // Una tarea ya vencida se sigue editando; lo que no se puede es correrle la fecha al pasado.
+    if (texts.value.dueAt !== new Date(found.value.task.dueAt).toISOString()) {
+      const due = checkedDue(texts.value.dueAt, clock.now())
+      if (!due.ok) return due
+    }
     const updated = await store.updateTask(taskId, texts.value)
     if (!updated.ok) return updated
     if (!updated.value) return fail('tarea-desconocida')

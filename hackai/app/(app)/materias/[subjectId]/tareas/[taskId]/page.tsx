@@ -130,7 +130,7 @@ function TaskBody({
           </div>
           <aside className='flex flex-col gap-4 max-lg:-order-1 lg:sticky lg:top-6'>
             <TaskDetail task={task} />
-            <EditTaskForm task={task} />
+            <EditTaskForm task={task} now={system().now()} />
           </aside>
         </>
       ) : (
