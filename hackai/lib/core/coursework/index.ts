@@ -1,7 +1,8 @@
 /* Seguimiento (coursework): las tareas de una materia y sus entregas. Interfaz y
    reglas en hackai/docs/ARQUITECTURA.md. Hoy el docente crea y edita tareas, el
-   alumno las ve y las entrega; la vista del docente sobre las entregas y las
-   calificaciones se suman en los tickets siguientes.
+   alumno las ve y las entrega, y el docente califica y publica las notas; la
+   vista del docente sobre las entregas, los pesos y el pase al SIU se suman en
+   los tickets siguientes.
 
    - Una tarea es de una o más comisiones vigentes de una materia, y la crea un
      docente que las dicta todas. La gestionan los docentes de esas comisiones.
@@ -22,6 +23,18 @@
      archivos de una entrega los baja solo quien la hizo.
    - Las tareas con fecha de las materias actuales del alumno (`dated`) las
      compone Hoy para el calendario y el `.ics`.
+   - Calificaciones: una columna por tarea con nota de la comisión y una por
+     evaluación del cronograma del SIU (Cursada, solo docentes de la comisión).
+     La columna es por comisión: la misma tarea en dos comisiones tiene dos
+     columnas, y se publica de a una. Una tarea sin nota no tiene columna. El
+     docente pone nota (1 a 10, con dos decimales) o ausente, y un comentario;
+     calificar la entrega de una tarea cierra su reemplazo.
+   - El alumno ve una nota solo cuando su columna está publicada. Publicar
+     sella las notas cargadas; una nota que se carga o se cambia después en una
+     columna ya publicada sale publicada en ese momento. Que una nota publicada
+     sea nueva para la campana lo decide `newGrades` (última semana, después de
+     la última vez que el alumno las vio); quien junta estas notas con las del
+     SIU es Hoy, no Cursada.
 
    Usa Cursada, el puerto de Archivos y el reloj. Cursada no lo llama. */
 import { createCourseworkModule } from '@/lib/core/coursework/module'
@@ -114,7 +127,92 @@ export type DatedTask = {
   past: boolean
 }
 
+export type ColumnKind = 'tarea' | 'evaluacion'
+
+/** Una columna de Calificaciones de una comisión: una tarea con nota o una evaluación del cronograma del SIU. */
+export type GradeColumn = {
+  /** `tarea:<id de la tarea>` o `evaluacion:<id de la evaluación del SIU>`. */
+  id: string
+  kind: ColumnKind
+  name: string
+  /** ISO: la fecha límite de la tarea o la fecha de la evaluación. */
+  date: string
+  /** Si es una evaluación, de qué tipo; si es una tarea, `null`. */
+  assessmentKind: 'parcial' | 'recuperatorio' | 'tp' | null
+  /** ISO: desde cuándo la ven los alumnos; `null` si todavía es un borrador. */
+  publishedAt: string | null
+  /** Cuántos alumnos tienen nota o ausente. */
+  graded: number
+  /** De esos, cuántos todavía no los ve el alumno. */
+  unpublished: number
+}
+
+/** La nota de un alumno en una columna. */
+export type GradeCell = {
+  /** De 1 a 10; `null` si estuvo ausente. */
+  value: number | null
+  absent: boolean
+  comment: string
+  /** ISO: cuándo se cargó. */
+  gradedAt: string
+  /** Si el alumno ya la ve. */
+  published: boolean
+}
+
+export type GradebookStudent = {
+  /** `null` si todavía no tiene cuenta en HackAI: no se le puede cargar nota. */
+  personId: PersonId | null
+  legajo: string
+  /** «Apellido, Nombres». */
+  name: string
+  email: string
+  /** Su nota en cada columna, por id de columna; sin entrada si no tiene. */
+  cells: Record<string, GradeCell>
+}
+
+export type Gradebook = {
+  subject: TaskSubject
+  /** Las comisiones vigentes que dicta (o todas, si la materia está archivada). */
+  sections: TaskSection[]
+  sectionId: string
+  /** Por fecha. */
+  columns: GradeColumn[]
+  students: GradebookStudent[]
+  staleSince: string | null
+}
+
+export type NewGrade = {
+  sectionId: string
+  columnId: string
+  studentId: PersonId
+  /** De 1 a 10. Se ignora si `absent`. */
+  value: number | null
+  absent: boolean
+  comment: string
+}
+
+/** Una nota publicada, como la ve el alumno. */
+export type PublishedGrade = {
+  subjectId: string
+  subjectName: string
+  sectionId: string
+  kind: ColumnKind
+  /** El id de la tarea o de la evaluación del SIU. */
+  refId: string
+  name: string
+  /** ISO: la fecha límite de la tarea; `null` en una evaluación (la fecha la tiene el SIU). */
+  date: string | null
+  /** De 1 a 10; `null` si estuvo ausente. */
+  value: number | null
+  absent: boolean
+  comment: string
+  /** ISO: desde cuándo la ve. */
+  publishedAt: string
+}
+
 export type AccessError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
+export type GradeError = 'nota-invalida' | 'comentario-invalido'
+export type ColumnError = 'solo-docentes' | 'columna-desconocida'
 export type TaskTextError = 'nombre-invalido' | 'consigna-invalida' | 'fecha-invalida'
 export type TaskFileError = 'demasiado-grande' | 'archivo-vacio'
 export type SubmitError =
@@ -152,6 +250,31 @@ export type Coursework = {
   /** Los bytes de un archivo de Seguimiento: la consigna de una tarea, para quien la ve, o un archivo de una
       entrega, para quien la hizo. */
   file(personId: PersonId, fileId: string): Promise<Result<FileContent, 'archivo-desconocido' | AccessError>>
+  /** Calificaciones de una comisión de la materia: las columnas y una fila por alumno. La comisión es la pedida si el
+      docente la dicta, o la primera. A un alumno le da `solo-docentes`. */
+  gradebook(
+    personId: PersonId,
+    subjectId: string,
+    sectionId?: string
+  ): Promise<Result<Gradebook, AccessError | 'solo-docentes'>>
+  /** Carga la nota (o el ausente) y el comentario de un alumno en una columna, o los reemplaza. Si la columna ya está
+      publicada, el alumno la ve al toque. Calificar la entrega de una tarea cierra su reemplazo. */
+  grade(
+    personId: PersonId,
+    input: NewGrade
+  ): Promise<Result<GradeCell, AccessError | ColumnError | GradeError | 'alumno-desconocido'>>
+  /** Publica las notas cargadas de una columna: desde ahí las ven los alumnos y les llega a la campana. Publicar de
+      nuevo no repite nada. Una columna sin notas cargadas es `sin-notas`. Devuelve cuántas notas se publicaron ahora. */
+  publish(
+    personId: PersonId,
+    sectionId: string,
+    columnId: string
+  ): Promise<Result<{ published: number }, AccessError | ColumnError | 'sin-notas'>>
+  /** Las notas publicadas del alumno, la más nueva primero. Nunca trae una de una columna sin publicar. */
+  publishedFor(personId: PersonId): Promise<Result<PublishedGrade[], AccessError>>
+  /** Las publicadas con número en los últimos 7 días y después de `seenAt` (cuando el alumno vio sus notas por última
+      vez, o `null`), la más nueva primero. Un ausente no es una nota que llega. */
+  newGrades(personId: PersonId, seenAt: string | null): Promise<Result<PublishedGrade[], AccessError>>
 }
 
 // Almacén de Seguimiento: un seam interno, que se inyecta al armar el módulo y
@@ -185,6 +308,26 @@ export type StoredSubmission = {
   gradedAt: string | null
 }
 
+/** La nota de un alumno en una columna de una comisión. Una columna es `sectionId` + `kind` + `refId`. */
+export type StoredGrade = {
+  id: string
+  sectionId: string
+  kind: ColumnKind
+  /** El id de la tarea o de la evaluación del SIU. */
+  refId: string
+  personId: PersonId
+  /** Cómo se llamaba la columna al cargar la nota. Una tarea se lee siempre de la tarea. */
+  columnName: string
+  value: number | null
+  absent: boolean
+  comment: string
+  gradedAt: string
+  /** Desde cuándo la ve el alumno, o `null` si es borrador. */
+  publishedAt: string | null
+}
+
+export type ColumnKey = Pick<StoredGrade, 'sectionId' | 'kind' | 'refId'>
+
 export type CourseworkStore = {
   createTask(task: Omit<StoredTask, 'id'>): Promise<Result<StoredTask, CourseworkStoreError>>
   /** La tarea con lo cambiado, o `null` si no existe. */
@@ -202,6 +345,22 @@ export type CourseworkStore = {
   submissionsBy(personId: PersonId, taskIds: string[]): Promise<Result<StoredSubmission[], CourseworkStoreError>>
   /** La entrega que tiene ese archivo, o `null`. */
   submissionByFile(fileId: string): Promise<Result<StoredSubmission | null, CourseworkStoreError>>
+  /** Guarda la nota de la persona en la columna: la crea o, si ya había una, la reemplaza entera. */
+  saveGrade(grade: Omit<StoredGrade, 'id'>): Promise<Result<StoredGrade, CourseworkStoreError>>
+  /** Todas las notas de la comisión, en el orden en que se cargaron por primera vez. */
+  gradesOfSection(sectionId: string): Promise<Result<StoredGrade[], CourseworkStoreError>>
+  /** Publica en `at` las notas de la columna que tienen nota o ausente y todavía no estaban publicadas. Devuelve las
+      que se publicaron ahora. */
+  publishColumn(column: ColumnKey, at: string): Promise<Result<StoredGrade[], CourseworkStoreError>>
+  /** Las notas publicadas de la persona, de todas sus comisiones, en el orden en que se cargaron. */
+  publishedGradesOf(personId: PersonId): Promise<Result<StoredGrade[], CourseworkStoreError>>
+  /** Cierra en `at` la entrega de la persona a la tarea (si ya estaba cerrada, no la toca). La entrega, o `null` si
+      no entregó. */
+  gradeSubmission(
+    taskId: string,
+    personId: PersonId,
+    at: string
+  ): Promise<Result<StoredSubmission | null, CourseworkStoreError>>
 }
 
 export type CourseworkDeps = {

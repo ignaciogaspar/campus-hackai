@@ -1,6 +1,7 @@
 /* Almacén de Seguimiento sobre Supabase: las tareas y las entregas, en las
    tablas propias `coursework_tasks` y `coursework_submissions`
-   (supabase/migrations/0006_coursework.sql). Se porta como
+   (supabase/migrations/0006_coursework.sql), y las notas de Calificaciones en
+   `coursework_grades` (supabase/migrations/0007_coursework_grades.sql). Se porta como
    el almacén en memoria y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts).
 
@@ -15,7 +16,14 @@
    no filtra por comisión. */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createQueryRunner } from '@/lib/adapters/supabase/query'
-import type { CourseworkStore, StoredSubmission, StoredTask, StoredTaskFile } from '@/lib/core/coursework'
+import type {
+  ColumnKey,
+  CourseworkStore,
+  StoredGrade,
+  StoredSubmission,
+  StoredTask,
+  StoredTaskFile
+} from '@/lib/core/coursework'
 import { fail, ok } from '@/lib/result'
 
 export type SupabaseCourseworkStoreOptions = {
@@ -48,6 +56,54 @@ type SubmissionRow = {
   submitted_at: string
   files: StoredTaskFile[]
   graded_at: string | null
+}
+
+type GradeRow = {
+  id: string
+  section_id: string
+  kind: 'tarea' | 'evaluacion'
+  ref_id: string
+  person_id: string
+  column_name: string
+  value: number | string | null
+  absent: boolean
+  comment: string
+  graded_at: string
+  published_at: string | null
+}
+
+const GRADE_COLUMNS =
+  'id, section_id, kind, ref_id, person_id, column_name, value, absent, comment, graded_at, published_at'
+
+function toGrade(row: GradeRow): StoredGrade {
+  return {
+    id: row.id,
+    sectionId: row.section_id,
+    kind: row.kind,
+    refId: row.ref_id,
+    personId: row.person_id,
+    columnName: row.column_name,
+    value: row.value === null ? null : Number(row.value),
+    absent: row.absent,
+    comment: row.comment,
+    gradedAt: iso(row.graded_at),
+    publishedAt: row.published_at ? iso(row.published_at) : null
+  }
+}
+
+function gradeRow(grade: Omit<StoredGrade, 'id'>): Omit<GradeRow, 'id'> {
+  return {
+    section_id: grade.sectionId,
+    kind: grade.kind,
+    ref_id: grade.refId,
+    person_id: grade.personId,
+    column_name: grade.columnName,
+    value: grade.value,
+    absent: grade.absent,
+    comment: grade.comment,
+    graded_at: grade.gradedAt,
+    published_at: grade.publishedAt
+  }
 }
 
 const SUBMISSION_COLUMNS = 'id, task_id, person_id, submitted_at, files, graded_at'
@@ -267,6 +323,109 @@ export function createSupabaseCourseworkStore({
       if (!rows.ok) return fail('falla-externa')
       const [row] = rows.value ?? []
       return ok(row ? toSubmission(row) : null)
+    },
+
+    saveGrade: saveGradeOf(run, client),
+
+    async gradesOfSection(sectionId) {
+      const rows = await run<GradeRow[]>('notas de la comisión', (s) =>
+        client.from('coursework_grades').select(GRADE_COLUMNS).eq('section_id', sectionId).order('seq').abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      return ok((rows.value ?? []).map(toGrade))
+    },
+
+    async publishColumn(column, at) {
+      const rows = await findColumn(run, client, column)
+      if (!rows.ok) return rows
+      const ids = rows.value.filter((g) => g.publishedAt === null && (g.value !== null || g.absent)).map((g) => g.id)
+      if (ids.length === 0) return ok([])
+      const updated = await run<GradeRow[]>('publicar columna', (s) =>
+        client
+          .from('coursework_grades')
+          .update({ published_at: at })
+          .in('id', ids)
+          .select(GRADE_COLUMNS)
+          .order('seq')
+          .abortSignal(s)
+      )
+      if (!updated.ok) return fail('falla-externa')
+      return ok((updated.value ?? []).map(toGrade))
+    },
+
+    async publishedGradesOf(personId) {
+      const rows = await run<GradeRow[]>('notas publicadas', (s) =>
+        client.from('coursework_grades').select(GRADE_COLUMNS).eq('person_id', personId).order('seq').abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      return ok((rows.value ?? []).map(toGrade).filter((g) => g.publishedAt !== null))
+    },
+
+    async gradeSubmission(taskId, personId, at) {
+      const existing = await submissionOf(taskId, personId)
+      if (!existing.ok || !existing.value || existing.value.gradedAt) return existing
+      const closed = await run<SubmissionRow>('cerrar entrega', (s) =>
+        client
+          .from('coursework_submissions')
+          .update({ graded_at: at })
+          .eq('id', existing.value!.id)
+          .select(SUBMISSION_COLUMNS)
+          .abortSignal(s)
+          .single()
+      )
+      if (!closed.ok || !closed.value) return fail('falla-externa')
+      return ok(toSubmission(closed.value))
     }
+  }
+}
+
+type Runner = ReturnType<typeof createQueryRunner>
+
+/** Las notas de una columna, de todos los alumnos. */
+async function findColumn(run: Runner, client: SupabaseClient, column: ColumnKey) {
+  const rows = await run<GradeRow[]>('notas de la columna', (s) =>
+    client
+      .from('coursework_grades')
+      .select(GRADE_COLUMNS)
+      .eq('section_id', column.sectionId)
+      .eq('kind', column.kind)
+      .eq('ref_id', column.refId)
+      .order('seq')
+      .abortSignal(s)
+  )
+  return rows.ok ? ok((rows.value ?? []).map(toGrade)) : fail('falla-externa' as const)
+}
+
+/** Guarda la nota de la persona en la columna: la crea o, si ya había una, la reemplaza entera. Si otra carga llegó
+    entre la lectura y el alta, esta la reemplaza. */
+function saveGradeOf(run: Runner, client: SupabaseClient): CourseworkStore['saveGrade'] {
+  const find = async (grade: Omit<StoredGrade, 'id'>) => {
+    const rows = await findColumn(run, client, grade)
+    return rows.ok ? ok(rows.value.find((g) => g.personId === grade.personId) ?? null) : rows
+  }
+  const replace = (id: string, grade: Omit<StoredGrade, 'id'>) =>
+    run<GradeRow>('reemplazar nota', (s) =>
+      client
+        .from('coursework_grades')
+        .update(gradeRow(grade))
+        .eq('id', id)
+        .select(GRADE_COLUMNS)
+        .abortSignal(s)
+        .single()
+    )
+  const create = (grade: Omit<StoredGrade, 'id'>) =>
+    run<GradeRow>('crear nota', (s) =>
+      client.from('coursework_grades').insert(gradeRow(grade)).select(GRADE_COLUMNS).abortSignal(s).single()
+    )
+  return async (grade) => {
+    const existing = await find(grade)
+    if (!existing.ok) return existing
+    let saved = existing.value ? await replace(existing.value.id, grade) : await create(grade)
+    if (!saved.ok && saved.error === 'duplicado') {
+      const raced = await find(grade)
+      saved = raced.ok && raced.value ? await replace(raced.value.id, grade) : fail('falla-externa')
+    }
+    if (!saved.ok || !saved.value) return fail('falla-externa')
+    return ok(toGrade(saved.value))
   }
 }

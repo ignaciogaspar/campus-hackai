@@ -14,7 +14,7 @@ import { after, test } from 'node:test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursework-store'
-import type { CourseworkStore, StoredSubmission, StoredTask } from '@/lib/core/coursework'
+import type { CourseworkStore, StoredGrade, StoredSubmission, StoredTask } from '@/lib/core/coursework'
 import type { Result } from '@/lib/result'
 import { createFakePostgrest } from '@/tests/contracts/fake-postgrest'
 
@@ -61,6 +61,26 @@ const submissionOf = (
   submittedAt: '2026-11-12T13:00:00.000Z',
   files: [{ id: randomUUID(), name: 'tp.pdf', contentType: 'application/pdf', size: 10 }],
   gradedAt: null,
+  ...fields
+})
+
+const LATER = '2026-11-12T18:00:00.000Z'
+
+const gradeOf = (
+  ids: Ids,
+  sectionId: string,
+  fields: Partial<Omit<StoredGrade, 'id'>> = {}
+): Omit<StoredGrade, 'id'> => ({
+  sectionId,
+  kind: 'evaluacion',
+  refId: 'ev-1',
+  personId: ids.person(2),
+  columnName: 'Primer parcial',
+  value: 8,
+  absent: false,
+  comment: '',
+  gradedAt: CREATED_AT,
+  publishedAt: null,
   ...fields
 })
 
@@ -209,6 +229,97 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
       name: 'Práctica 3'
     })
   })
+
+  it('guarda la nota de un alumno en una columna y, al volver a guardarla, la reemplaza entera', async (store, ids) => {
+    const section = ids.subject(1)
+    const first = value(await store.saveGrade(gradeOf(ids, section, { value: 7.5, comment: 'Bien' })))
+
+    assert.match(first.id, /\S/)
+    assert.deepEqual(withoutId(first), gradeOf(ids, section, { value: 7.5, comment: 'Bien' }))
+    const second = value(
+      await store.saveGrade(gradeOf(ids, section, { value: null, absent: true, comment: '', gradedAt: LATER }))
+    )
+    assert.equal(second.id, first.id)
+    assert.deepEqual(value(await store.gradesOfSection(section)), [second])
+    assert.equal(second.absent, true)
+    assert.equal(second.value, null)
+  })
+
+  it('las notas de una comisión no incluyen las de otras', async (store, ids) => {
+    const [a, b] = [ids.subject(1), ids.subject(2)]
+    await store.saveGrade(gradeOf(ids, a, { refId: 'ev-1' }))
+    await store.saveGrade(gradeOf(ids, a, { refId: 'ev-1', personId: ids.person(3) }))
+    await store.saveGrade(gradeOf(ids, b, { refId: 'ev-1' }))
+
+    const ofA = value(await store.gradesOfSection(a))
+
+    assert.equal(ofA.length, 2)
+    assert.ok(ofA.every((g) => g.sectionId === a))
+    assert.deepEqual(value(await store.gradesOfSection(ids.subject(9))), [])
+  })
+
+  it('publicar una columna sella solo las notas de esa columna que todavía no estaban publicadas, y es idempotente', async (store, ids) => {
+    const section = ids.subject(1)
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1' }))
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1', personId: ids.person(3), value: 9 }))
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-2' }))
+
+    const published = value(await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER))
+
+    assert.equal(published.length, 2)
+    assert.ok(published.every((g) => g.publishedAt === LATER && g.refId === 'ev-1'))
+    const again = value(
+      await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, '2026-11-12T20:00:00.000Z')
+    )
+    assert.deepEqual(again, [])
+    const all = value(await store.gradesOfSection(section))
+    assert.deepEqual(
+      all.map((g) => [g.refId, g.publishedAt]),
+      [
+        ['ev-1', LATER],
+        ['ev-1', LATER],
+        ['ev-2', null]
+      ]
+    )
+  })
+
+  it('publicar no sella una columna vacía ni las notas sin nota ni ausente', async (store, ids) => {
+    const section = ids.subject(1)
+    const column = { sectionId: section, kind: 'tarea' as const, refId: 'tarea-1' }
+    assert.deepEqual(value(await store.publishColumn(column, LATER)), [])
+    await store.saveGrade(gradeOf(ids, section, { kind: 'tarea', refId: 'tarea-1', value: null, comment: 'Falta' }))
+
+    assert.deepEqual(value(await store.publishColumn(column, LATER)), [])
+  })
+
+  it('las notas publicadas de una persona son solo las suyas y las publicadas', async (store, ids) => {
+    const section = ids.subject(1)
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1' }))
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-2' }))
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1', personId: ids.person(3) }))
+    await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER)
+
+    const mine = value(await store.publishedGradesOf(ids.person(2)))
+
+    assert.deepEqual(
+      mine.map((g) => [g.refId, g.personId, g.publishedAt]),
+      [['ev-1', ids.person(2), LATER]]
+    )
+    assert.deepEqual(value(await store.publishedGradesOf(ids.person(9))), [])
+  })
+
+  it('calificar una entrega la cierra: ya tiene fecha de calificación y no se vuelve a pisar', async (store, ids) => {
+    const task = value(await store.createTask(taskOf(ids)))
+    value(await store.saveSubmission(submissionOf(ids, task.id)))
+
+    const closed = value(await store.gradeSubmission(task.id, ids.person(2), LATER))
+    const again = value(await store.gradeSubmission(task.id, ids.person(2), '2026-11-12T20:00:00.000Z'))
+
+    assert.equal(closed?.gradedAt, LATER)
+    assert.equal(again?.gradedAt, LATER)
+    assert.equal(value(await store.gradeSubmission(task.id, ids.person(7), LATER)), null)
+    assert.equal(value(await store.gradeSubmission('no-es-un-uuid', ids.person(2), LATER)), null)
+  })
 }
 
 // --- El PostgREST de mentira con la tabla de 0006_coursework.sql -----------
@@ -241,6 +352,26 @@ const TABLES = {
     jsonb: ['files'],
     generated: { id: 'uuid' },
     unique: [['id'], ['task_id', 'person_id']]
+  },
+  coursework_grades: {
+    columns: [
+      'id',
+      'seq',
+      'section_id',
+      'kind',
+      'ref_id',
+      'person_id',
+      'column_name',
+      'value',
+      'absent',
+      'comment',
+      'graded_at',
+      'published_at'
+    ],
+    uuid: ['id'],
+    generated: { id: 'uuid', seq: 'identity' },
+    defaults: { absent: false, comment: '' },
+    unique: [['id'], ['section_id', 'kind', 'ref_id', 'person_id']]
   }
 } satisfies Parameters<typeof createFakePostgrest>[0]['tables']
 
@@ -272,5 +403,6 @@ if (url && key) {
   // Borra las tareas que dejó esta corrida.
   after(async () => {
     await supabaseClient(url, key).from('coursework_tasks').delete().like('subject_id', `prueba-${RUN}-%`)
+    await supabaseClient(url, key).from('coursework_grades').delete().like('section_id', `prueba-${RUN}-%`)
   })
 }

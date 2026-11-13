@@ -1,12 +1,14 @@
 /* Almacén de Seguimiento en memoria. Arranca vacío: las tareas las crean los
    docentes y las entregas, los alumnos. Se porta como el de Supabase y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts). */
-import type { CourseworkStore, StoredSubmission, StoredTask } from '@/lib/core/coursework'
+import type { CourseworkStore, StoredGrade, StoredSubmission, StoredTask } from '@/lib/core/coursework'
 import { ok } from '@/lib/result'
 
 export function createMemoryCourseworkStore(): CourseworkStore {
   const tasks: StoredTask[] = []
   const submissions: StoredSubmission[] = []
+  const grades: StoredGrade[] = []
+  let gradeCounter = 0
   let counter = 0
   let submissionCounter = 0
 
@@ -67,6 +69,52 @@ export function createMemoryCourseworkStore(): CourseworkStore {
     async submissionByFile(fileId) {
       const found = submissions.find((s) => s.files.some((f) => f.id === fileId))
       return ok(found ? copy(found) : null)
+    },
+
+    async saveGrade(grade) {
+      const index = grades.findIndex(
+        (g) =>
+          g.sectionId === grade.sectionId &&
+          g.kind === grade.kind &&
+          g.refId === grade.refId &&
+          g.personId === grade.personId
+      )
+      if (index >= 0) {
+        grades[index] = { ...copy(grade), id: grades[index].id }
+        return ok(copy(grades[index]))
+      }
+      gradeCounter += 1
+      const created: StoredGrade = { ...copy(grade), id: `nota-${gradeCounter}` }
+      grades.push(created)
+      return ok(copy(created))
+    },
+
+    async gradesOfSection(sectionId) {
+      return ok(copy(grades.filter((g) => g.sectionId === sectionId)))
+    },
+
+    async publishColumn(column, at) {
+      const published = grades.filter(
+        (g) =>
+          g.sectionId === column.sectionId &&
+          g.kind === column.kind &&
+          g.refId === column.refId &&
+          g.publishedAt === null &&
+          (g.value !== null || g.absent)
+      )
+      for (const g of published) g.publishedAt = at
+      return ok(copy(published))
+    },
+
+    async publishedGradesOf(personId) {
+      return ok(copy(grades.filter((g) => g.personId === personId && g.publishedAt !== null)))
+    },
+
+    async gradeSubmission(taskId, personId, at) {
+      const found = submissions.find((s) => s.taskId === taskId && s.personId === personId)
+      if (!found) return ok(null)
+      found.gradedAt ??= at
+      return ok(copy(found))
     }
   }
 }
