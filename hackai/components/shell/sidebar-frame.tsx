@@ -3,7 +3,9 @@
 /* El marco de las pantallas en compu: de borde a borde de la ventana, recto,
    de vidrio esmerilado con un gradiente suave. Adentro, a la izquierda, la
    barra lateral (sin fondo propio: es el marco) y, a la derecha, la pantalla
-   en un panel blanco redondeado que scrollea solo. Al plegar la barra el panel se
+   en un panel blanco que scrollea solo y llega hasta el borde derecho y el de
+   abajo de la ventana: la única esquina redondeada es la de arriba a la
+   izquierda, la que da a la barra. Al plegar la barra el panel se
    corre con la misma animación; plegada quedan solo los íconos.
    Se pliega con el botón de arriba de la barra o con ⌘B / Ctrl+B. Cómo la dejó
    la persona se guarda en la cookie `hackai_sidebar`, que lee el layout de
@@ -106,7 +108,7 @@ export function SidebarFrame({
           <div
             id={CONTENT_ID}
             tabIndex={-1}
-            className='outline-none lg:fixed lg:top-2 lg:right-2 lg:bottom-2 lg:left-(--sidebar-w) lg:overflow-y-auto lg:overscroll-contain lg:rounded-[1.25rem] lg:bg-card lg:shadow-panel lg:[scrollbar-width:none] lg:transition-[left] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
+            className='outline-none lg:fixed lg:top-2 lg:right-0 lg:bottom-0 lg:left-(--sidebar-w) lg:overflow-y-auto lg:overscroll-contain lg:rounded-tl-[1.25rem] lg:bg-card lg:shadow-panel lg:[scrollbar-width:none] lg:transition-[left] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
           >
             {children}
           </div>
