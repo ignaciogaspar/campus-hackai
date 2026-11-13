@@ -43,16 +43,20 @@ export default async function EvaluationPage({ params, searchParams }: { params:
   const { subjectId } = await params
   const raw = await searchParams
   const comision = typeof raw.comision === 'string' && raw.comision !== '' ? raw.comision : undefined
+  // La columna de Calificaciones de la que se vino, para volver a ella.
+  const columna = typeof raw.columna === 'string' && raw.columna !== '' ? raw.columna : undefined
 
   const result = await system().coursework.evaluation(session.personId, subjectId, comision)
   if (!result.ok) {
-    return <TaskError error={result.error} title='Evaluación' retryHref={evaluationHref(subjectId, comision)} />
+    return (
+      <TaskError error={result.error} title='Evaluación' retryHref={evaluationHref(subjectId, comision, { columna })} />
+    )
   }
   const setup = result.value
   const several = setup.sections.length > 1
   const selected = setup.sections.find((s) => s.sectionId === setup.sectionId)
   const ids = { subjectId, sectionId: setup.sectionId }
-  const back = gradesHref(subjectId, { comision: several ? setup.sectionId : undefined })
+  const back = gradesHref(subjectId, { comision: several ? setup.sectionId : undefined, columna })
 
   return (
     <>
