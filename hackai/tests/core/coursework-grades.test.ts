@@ -357,3 +357,83 @@ test('con el SIU caído no se pueden leer las comisiones: falla externa', async 
   assert.deepEqual(await coursework.gradebook('p-mledesma', 'am1'), { ok: false, error: 'falla-externa' })
   assert.deepEqual(await coursework.publishedFor('p-taguirre'), { ok: false, error: 'falla-externa' })
 })
+
+// --- Pegar notas ------------------------------------------------------------
+
+const PASTED = '30101\t8,5\n30102\tA\n99999\t7\n'
+
+test('pegar notas muestra una vista previa y no guarda nada hasta confirmar', async () => {
+  const { coursework } = build()
+
+  const preview = value(await coursework.previewPaste('p-mledesma', A, PARCIAL_1, PASTED, '1-10'))
+
+  assert.deepEqual(
+    preview.rows.map((r) => [r.outcome, r.personId, r.value]),
+    [
+      ['nota', 'p-taguirre', 8.5],
+      ['ausente', 'p-lbenitez', null],
+      ['no-reconocido', null, null]
+    ]
+  )
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.ok(book.students.every((s) => Object.keys(s.cells).length === 0))
+})
+
+test('confirmar guarda las notas y los ausentes, conserva el comentario y reemplaza lo anterior', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf({ value: 4, comment: 'Revisá el punto 1.' })))
+
+  const saved = value(await coursework.applyPaste('p-mledesma', A, PARCIAL_1, PASTED, '1-10'))
+
+  assert.equal(saved.saved, 2)
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  const cells = Object.fromEntries(book.students.map((s) => [s.personId, s.cells[PARCIAL_1]]))
+  assert.equal(cells['p-taguirre']?.value, 8.5)
+  assert.equal(cells['p-taguirre']?.comment, 'Revisá el punto 1.')
+  assert.equal(cells['p-lbenitez']?.absent, true)
+  assert.equal(cells['p-jescobar'], undefined)
+})
+
+test('pegar en una columna ya publicada deja las notas publicadas', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  value(await coursework.publish('p-mledesma', A, PARCIAL_1))
+
+  value(await coursework.applyPaste('p-mledesma', A, PARCIAL_1, '30102\t9', '1-10'))
+
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.students.find((s) => s.personId === 'p-lbenitez')?.cells[PARCIAL_1]?.published, true)
+})
+
+test('pegar notas convierte de 0 a 100', async () => {
+  const { coursework } = build()
+
+  value(await coursework.applyPaste('p-mledesma', A, PARCIAL_1, '30101\t72', '0-100'))
+
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.students[0].cells[PARCIAL_1]?.value, 7.2)
+})
+
+test('pegar notas sin nada para guardar, vacío o de otra comisión falla', async () => {
+  const { coursework } = build()
+  assert.deepEqual(await coursework.applyPaste('p-mledesma', A, PARCIAL_1, '99999\t7', '1-10'), {
+    ok: false,
+    error: 'sin-notas'
+  })
+  assert.deepEqual(await coursework.previewPaste('p-mledesma', A, PARCIAL_1, '  \n', '1-10'), {
+    ok: false,
+    error: 'texto-vacio'
+  })
+  assert.deepEqual(await coursework.previewPaste('p-mledesma', A, 'tarea:no-existe', PASTED, '1-10'), {
+    ok: false,
+    error: 'columna-desconocida'
+  })
+  assert.deepEqual(await coursework.applyPaste('p-taguirre', A, PARCIAL_1, PASTED, '1-10'), {
+    ok: false,
+    error: 'solo-docentes'
+  })
+  assert.deepEqual(await coursework.applyPaste('p-mledesma', B, PARCIAL_1, PASTED, '1-10'), {
+    ok: false,
+    error: 'sin-acceso'
+  })
+})

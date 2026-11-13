@@ -9,7 +9,10 @@ import type {
   Coursework,
   CourseworkDeps,
   GradebookStudent,
+  GradeScale,
   NewGrade,
+  PasteError,
+  PastePreview,
   PublishedGrade,
   StoredGrade
 } from '@/lib/core/coursework'
@@ -27,6 +30,7 @@ import {
   newOnes,
   parseColumnId
 } from '@/lib/core/coursework/grades'
+import { MAX_PASTE_CHARS, previewOf } from '@/lib/core/coursework/paste'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
 import { fail, ok, type Result } from '@/lib/result'
@@ -168,25 +172,85 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     if (!checked.ok) return checked
     const { column, published } = target.value
 
+    const saved = await save(column, published, input.sectionId, input.studentId, checked.value)
+    return saved.ok ? ok(cellOf(saved.value)) : saved
+  }
+
+  /** Guarda la nota de un alumno en una columna. En una columna ya publicada, la nota que se carga o se cambia sale
+      publicada en ese momento. Calificar la entrega de una tarea cierra su reemplazo. */
+  async function save(
+    column: ColumnDef,
+    published: boolean,
+    sectionId: string,
+    studentId: PersonId,
+    checked: Pick<StoredGrade, 'value' | 'absent' | 'comment'>
+  ): Promise<Result<StoredGrade, 'falla-externa'>> {
     const now = clock.now().toISOString()
     const saved = await store.saveGrade({
-      sectionId: input.sectionId,
+      sectionId,
       kind: column.kind,
       refId: column.refId,
-      personId: input.studentId,
+      personId: studentId,
       columnName: column.name,
-      ...checked.value,
+      ...checked,
       gradedAt: now,
-      // En una columna ya publicada, la nota que se carga o se cambia sale publicada en ese momento.
       publishedAt: published ? now : null
     })
     if (!saved.ok) return saved
-    // Calificar la entrega de una tarea cierra su reemplazo.
     if (column.kind === 'tarea') {
-      const closed = await store.gradeSubmission(column.refId, input.studentId, now)
+      const closed = await store.gradeSubmission(column.refId, studentId, now)
       if (!closed.ok) return closed
     }
-    return ok(cellOf(saved.value))
+    return ok(saved.value)
+  }
+
+  /** Lo que se entiende del texto pegado en la columna, con la columna y lo ya cargado en ella. */
+  async function pasted(
+    personId: PersonId,
+    sectionId: string,
+    id: string,
+    text: string,
+    scale: GradeScale
+  ): Promise<
+    Result<{ preview: PastePreview; column: ColumnDef; grades: StoredGrade[] }, AccessError | ColumnError | PasteError>
+  > {
+    if (text.trim() === '') return fail('texto-vacio')
+    if (text.length > MAX_PASTE_CHARS) return fail('texto-demasiado-largo')
+    const teaching = await teachingSection(personId, sectionId)
+    if (!teaching.ok) return teaching
+    const column = await columnOf(personId, teaching.value.section, id)
+    if (!column.ok) return column
+    const [students, grades] = await Promise.all([
+      studies.sectionStudents(personId, sectionId),
+      store.gradesOfSection(sectionId)
+    ])
+    if (!students.ok) return fail(readFailure(students.error))
+    if (!grades.ok) return grades
+    return ok({ preview: previewOf(text, students.value.data, scale), column: column.value, grades: grades.value })
+  }
+
+  const previewPaste: Coursework['previewPaste'] = async (personId, sectionId, id, text, scale) => {
+    const read = await pasted(personId, sectionId, id, text, scale)
+    return read.ok ? ok(read.value.preview) : read
+  }
+
+  const applyPaste: Coursework['applyPaste'] = async (personId, sectionId, id, text, scale) => {
+    const read = await pasted(personId, sectionId, id, text, scale)
+    if (!read.ok) return read
+    const { preview, column, grades } = read.value
+    const rows = preview.rows.filter((r) => r.personId !== null && (r.outcome === 'nota' || r.outcome === 'ausente'))
+    if (rows.length === 0) return fail('sin-notas')
+    const published = grades.some((g) => inColumn(g, column) && g.publishedAt)
+    for (const row of rows) {
+      const before = grades.find((g) => inColumn(g, column) && g.personId === row.personId)
+      const saved = await save(column, published, sectionId, row.personId as PersonId, {
+        value: row.value,
+        absent: row.outcome === 'ausente',
+        comment: before?.comment ?? ''
+      })
+      if (!saved.ok) return saved
+    }
+    return ok({ saved: rows.length })
   }
 
   const publish: Coursework['publish'] = async (personId, sectionId, id) => {
@@ -260,5 +324,5 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     return ok(newOnes(published.value, clock.now().toISOString(), seenAt))
   }
 
-  return { gradebook, grade, publish, publishedFor, newGrades }
+  return { gradebook, grade, previewPaste, applyPaste, publish, publishedFor, newGrades }
 }

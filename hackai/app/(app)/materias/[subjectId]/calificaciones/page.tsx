@@ -10,7 +10,7 @@
    a veces no se actualizaba (ver el espacio de la materia). */
 import { CheckCircle2 } from 'lucide-react'
 import type { Metadata } from 'next'
-import { gradesHref, nextStudent } from '@/components/coursework/format'
+import { gradesHref, nextStudent, notesLabel } from '@/components/coursework/format'
 import { GradeEditor } from '@/components/coursework/grade-editor'
 import { ColumnPicker, ColumnSummary, NoColumns, StudentList } from '@/components/coursework/gradebook'
 import { TaskError } from '@/components/coursework/task-error'
@@ -89,6 +89,15 @@ export default async function GradebookPage({ params, searchParams }: { params: 
                 >
                   <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
                   Terminaste la lista. Cuando quieras, publicá las notas.
+                </p>
+              )}
+              {Number(raw.pegadas) > 0 && !editing && (
+                <p
+                  role='status'
+                  className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-2.5 text-[0.875rem] font-semibold text-success'
+                >
+                  <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
+                  Guardamos {notesLabel(Number(raw.pegadas))} de la planilla. Revisalas y publicalas cuando quieras.
                 </p>
               )}
               {editing ? (
