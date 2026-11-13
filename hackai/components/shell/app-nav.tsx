@@ -9,19 +9,18 @@ import {
   GraduationCap,
   House,
   LibraryBig,
-  LogOut,
   type LucideIcon,
   NotebookPen
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { useFormStatus } from 'react-dom'
-import { signOut } from '@/app/actions/session'
+import { SignOutButton } from '@/components/session/sign-out-button'
 import { Avatar } from '@/components/shell/avatar'
 import { Brand } from '@/components/shell/brand'
 import { useSidebar } from '@/components/shell/sidebar-context'
 import { isActive, TabBar } from '@/components/shell/tab-bar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Person, Role } from '@/lib/core/people'
 import { cn } from '@/lib/utils'
@@ -84,43 +83,50 @@ function GroupLabel({ children, className }: { children: ReactNode; className?: 
   return <p className={cn('px-3 pt-6 pb-2 text-[0.75rem] text-gray-light', FADES, className)}>{children}</p>
 }
 
-/* «Salir», un ícono rojo al lado de quién entró. Plegada la barra no está: queda solo el avatar. */
-function SignOutButton() {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type='submit'
-      disabled={pending}
-      aria-busy={pending}
-      aria-label={pending ? 'Saliendo…' : 'Salir'}
-      title='Salir'
-      className='grid size-11 flex-none cursor-pointer place-items-center rounded-lg text-destructive transition-colors duration-150 hover:bg-destructive/10 focus-ring disabled:cursor-progress disabled:opacity-60'
-    >
-      <LogOut aria-hidden='true' className={ICON} strokeWidth={1.8} />
-    </button>
-  )
-}
-
-/* Al pie de la barra lateral, en compu: quién entró y, al lado, «Salir». En el
-   celular lo mismo está en la hoja que abre el avatar del encabezado. */
+/* Al pie de la barra lateral, en compu: quién entró. El avatar y el nombre
+   abren el menú de la cuenta, con el nombre completo, la carrera o «Docente»,
+   la facultad y «Cerrar sesión» escrito. Plegada la barra queda el avatar, que
+   abre el mismo menú. Al abrirse, el foco va al menú y no a «Cerrar sesión»,
+   para que un Enter de más no saque a nadie. En el celular lo mismo está en la
+   hoja que abre el avatar del encabezado (components/session/profile-menu.tsx). */
 function SidebarAccount({ person, detail }: { person: Person; detail?: string }) {
   return (
     <div className='mt-auto flex flex-col'>
       {/* Una línea separa la cuenta de lo de arriba. */}
       <div aria-hidden='true' className='mx-2 mt-4 border-t border-ink/10' />
       <GroupLabel className='pt-4'>Cuenta</GroupLabel>
-      <div className='flex items-center gap-3 px-2 group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:px-0'>
-        <Avatar person={person} className='size-10 ring-2 ring-white/80' />
-        <span className={cn('flex min-w-0 flex-1 flex-col', FADES)}>
-          <span className='truncate text-[0.875rem] leading-snug font-semibold text-ink' title={person.name}>
-            {person.name}
+      <Popover>
+        <PopoverTrigger
+          aria-label={`Tu perfil: ${person.name}`}
+          className='flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-150 hover:bg-white/55 focus-ring data-[state=open]:bg-white group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:px-0'
+        >
+          <Avatar person={person} className='size-10 ring-2 ring-white/80' />
+          <span className={cn('flex min-w-0 flex-1 flex-col', FADES)}>
+            <span className='truncate text-[0.875rem] leading-snug font-semibold text-ink'>{person.name}</span>
+            {detail && <span className='truncate text-[0.8125rem] leading-snug text-gray-light'>{detail}</span>}
           </span>
-          {detail && <span className='truncate text-[0.8125rem] leading-snug text-gray-light'>{detail}</span>}
-        </span>
-        <form action={signOut} className='group-data-[sidebar=plegada]/nav:hidden'>
-          <SignOutButton />
-        </form>
-      </div>
+        </PopoverTrigger>
+        <PopoverContent
+          side='right'
+          align='end'
+          sideOffset={14}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            if (e.target instanceof HTMLElement) e.target.focus()
+          }}
+          className='flex w-72 flex-col gap-4 p-4'
+        >
+          <div className='flex items-start gap-3'>
+            <Avatar person={person} className='size-11' />
+            <div className='min-w-0 flex-1'>
+              <p className='text-[0.9375rem] leading-snug font-bold text-pretty text-ink'>{person.name}</p>
+              {detail && <p className='text-[0.8125rem] text-pretty text-muted-foreground'>{detail}</p>}
+              <p className='text-[0.8125rem] text-pretty text-muted-foreground'>{person.school.name}</p>
+            </div>
+          </div>
+          <SignOutButton tone='light' />
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
@@ -227,7 +233,7 @@ const pick = (sections: Section[], hrefs: string[]) => hrefs.flatMap((href) => s
 /* En el celular, la barra de vidrio de abajo (tab-bar.tsx) con lo de todos los
    días y «Más» para el resto. En compu, la barra lateral sobre el marco de
    vidrio, en grupos como un menú de app: el menú principal, Tu carrera (solo
-   alumnos) y, al pie, la cuenta con Salir. Lo del medio scrollea si no entra,
+   alumnos) y, al pie, la cuenta, que abre el menú con «Cerrar sesión». Lo del medio scrollea si no entra,
    solo para abajo. Se pliega a solo íconos; su ancho sale de --sidebar-w
    (sidebar-frame.tsx). */
 export function AppNav({

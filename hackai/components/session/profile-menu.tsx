@@ -1,9 +1,9 @@
 'use client'
 
-/* El perfil, arriba a la derecha del encabezado: el avatar abre una hoja con
-   quién entró y el botón para salir. En el celular es la única forma de salir,
-   porque en el encabezado no entra un botón más; en compu, «Salir» también va
-   suelto al lado. */
+/* El perfil, arriba a la derecha del encabezado del celular: el avatar abre una
+   hoja con quién entró y «Cerrar sesión». Al abrirse, el foco va a «Cerrar»
+   (components/ui/sheet.tsx), no a «Cerrar sesión». En compu, lo mismo es el
+   menú de la cuenta al pie de la barra lateral (components/shell/app-nav.tsx). */
 import { SignOutButton } from '@/components/session/sign-out-button'
 import { Avatar } from '@/components/shell/avatar'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'

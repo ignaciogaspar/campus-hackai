@@ -21,7 +21,7 @@ const SIDES = {
 /* Hoja con fondo oscuro detrás. Se cierra con «Cerrar», arriba a la derecha
    (en el celular no hay Escape), con Escape o tocando afuera. «Cerrar» va
    antes que el contenido, así que es lo primero que recibe el foco al abrir:
-   nunca un botón que hace algo, como «Salir». Al cerrar, el foco vuelve al
+   nunca un botón que hace algo, como «Cerrar sesión». Al cerrar, el foco vuelve al
    disparador (SheetTrigger) o adonde diga `onCloseAutoFocus`. */
 export function SheetContent({
   title,
