@@ -19,7 +19,7 @@ export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; t
       href='/novedades'
       aria-label={pending ? `Novedades, ${unread} sin leer` : 'Novedades'}
       className={cn(
-        'relative inline-flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
+        'relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
         light
           ? 'h-11 bg-card text-ink ring-border hover:bg-ice'
           : pending

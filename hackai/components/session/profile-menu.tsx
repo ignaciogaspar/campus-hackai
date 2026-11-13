@@ -12,7 +12,10 @@ import type { Person } from '@/lib/core/people'
 export function ProfileMenu({ person, detail }: { person: Person; detail?: string }) {
   return (
     <Sheet>
-      <SheetTrigger aria-label={`Tu perfil: ${person.name}`} className='cursor-pointer rounded-full focus-ring'>
+      <SheetTrigger
+        aria-label={`Tu perfil: ${person.name}`}
+        className='grid size-11 cursor-pointer place-items-center rounded-full focus-ring'
+      >
         <Avatar person={person} className='ring-2 ring-white/25' />
       </SheetTrigger>
       <SheetContent title={person.name} description={detail}>

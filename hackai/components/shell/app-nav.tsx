@@ -32,6 +32,8 @@ type Section = {
   icon: LucideIcon
   /** Solo en la barra lateral de compu: en el celular ya está en el encabezado, como la campana. */
   desktopOnly?: boolean
+  /** El nombre en la barra de abajo del celular, si el de la sección no entra en su celda. */
+  short?: string
 }
 
 /* El menú del alumno. Los nombres son los que usa el alumno, no los del SIU:
@@ -39,7 +41,7 @@ type Section = {
 const STUDENT: Section[] = [
   { href: '/materias', label: 'Materias', icon: LibraryBig },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
-  { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList },
+  { href: '/inscripciones', label: 'Inscripciones', short: 'Anotarme', icon: ClipboardList },
   { href: '/notas', label: 'Notas', icon: NotebookPen },
   { href: '/inasistencias', label: 'Inasistencias', icon: CalendarX },
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }

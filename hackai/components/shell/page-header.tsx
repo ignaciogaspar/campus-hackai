@@ -75,7 +75,10 @@ export function PageHeader({
       {art && <HeaderArtLayer art={art} />}
       <div className='relative grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-6 lg:min-h-32 lg:content-center lg:px-6 lg:pt-6'>
         <div
-          className={cn('flex min-h-10 items-center', !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden')}
+          className={cn(
+            'flex min-h-11 min-w-0 items-center',
+            !signedOut && (!backHref || hideBackOnDesktop) && 'lg:hidden'
+          )}
         >
           {backHref ? (
             <Link
@@ -89,7 +92,7 @@ export function PageHeader({
             <HeaderBrand school={school} />
           )}
         </div>
-        <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
+        <div className='col-start-2 row-start-1 flex flex-none items-center gap-1 lg:row-span-3'>
           <InstallButton />
           {!signedOut && (
             <span className={cn('contents', !desktopBell && 'lg:hidden')}>

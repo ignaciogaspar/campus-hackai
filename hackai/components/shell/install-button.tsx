@@ -1,6 +1,6 @@
 'use client'
 
-import { Download } from 'lucide-react'
+import { SquarePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -8,7 +8,7 @@ import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/s
 type InstallPrompt = Event & { prompt: () => Promise<void> }
 
 const PILL =
-  'inline-flex min-h-8 items-center gap-1 rounded-full bg-white/15 px-2.5 text-xs font-bold text-white hover:bg-white/25 focus-ring lg:hidden'
+  'inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full bg-white/15 px-2.5 text-xs font-bold text-white hover:bg-white/25 focus-ring lg:hidden'
 
 /* La hoja con los pasos para instalar la app desde el navegador del iPhone o el iPad. */
 export function IosInstallSteps() {
@@ -62,7 +62,7 @@ export function InstallButton() {
   if (prompt) {
     return (
       <button type='button' className={PILL} onClick={() => prompt.prompt().finally(() => setPrompt(null))}>
-        <Download aria-hidden='true' className='size-4' />
+        <SquarePlus aria-hidden='true' className='size-4' />
         <span className='max-[399px]:sr-only'>Instalar</span>
       </button>
     )
@@ -71,7 +71,7 @@ export function InstallButton() {
   return (
     <Sheet>
       <SheetTrigger className={PILL}>
-        <Download aria-hidden='true' className='size-4' />
+        <SquarePlus aria-hidden='true' className='size-4' />
         <span className='max-[399px]:sr-only'>Instalar</span>
       </SheetTrigger>
       <IosInstallSteps />

@@ -13,7 +13,13 @@ import { type PointerEvent, useRef, useState } from 'react'
 import { Sheet, SheetClose, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
-export type Tab = { href: string; label: string; icon: LucideIcon }
+export type Tab = {
+  href: string
+  label: string
+  icon: LucideIcon
+  /** El nombre en la barra de abajo, si el de la sección no entra en su celda (Inscripciones). */
+  short?: string
+}
 
 export const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -42,8 +48,8 @@ function Cell({ tab, on }: { tab: Tab; on: boolean }) {
         )}
         strokeWidth={on ? 2.1 : 1.8}
       />
-      <span className='max-w-full truncate px-0.5 text-[0.625rem] leading-tight font-semibold min-[390px]:text-[0.6875rem]'>
-        {tab.label}
+      <span className='max-w-full truncate px-0.5 text-[0.6875rem] leading-tight font-semibold min-[375px]:text-xs'>
+        {tab.short ?? tab.label}
       </span>
     </>
   )
