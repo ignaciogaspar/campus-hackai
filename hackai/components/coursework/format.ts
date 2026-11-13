@@ -1,6 +1,7 @@
 /* Cómo se escriben en las pantallas de Seguimiento los enlaces entre pantallas,
    las fechas límite y los textos de cada tarea. Sin reglas de negocio: solo
    formato. Las fechas van en la hora de Buenos Aires. */
+import { dueTime } from '@/components/dates'
 import { TIME_ZONE } from '@/lib/dates'
 
 const SUBJECTS_PATH = '/materias'
@@ -127,18 +128,8 @@ export function sectionsLabel(names: string[]): string {
   return `Comisiones ${names.slice(0, -1).join(', ')} y ${last}`
 }
 
-/** «vie, 13 nov, 23:59»: en 24 horas, como se escribe la hora acá. */
-export function dueTime(iso: string): string {
-  return new Date(iso).toLocaleString('es-AR', {
-    timeZone: TIME_ZONE,
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23'
-  })
-}
+/** «vie, 13 nov, 23:59»: la misma fecha límite que en el resto de la app. */
+export { dueTime }
 
 /** «Vence vie, 13 nov, 23:59» o «Venció vie, 13 nov, 23:59». */
 export function dueLabel(task: { dueAt: string; past: boolean }): string {

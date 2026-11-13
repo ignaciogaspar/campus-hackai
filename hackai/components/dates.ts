@@ -21,12 +21,19 @@ export function shortDay(day: string): string {
 
 /** «10 nov, 11:40»: la hora de una lectura, para decir de cuándo es lo que se muestra. */
 export function readTime(iso: string): string {
-  return format(iso, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return format(iso, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
-/** «vie, 13 nov, 23:59»: una fecha límite. */
+/** «vie, 13 nov, 23:59»: una fecha límite, en 24 horas, como se escribe la hora acá. */
 export function dueTime(iso: string): string {
-  return format(iso, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  return format(iso, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  })
 }
 
 /** «Lunes 16 de noviembre». */
