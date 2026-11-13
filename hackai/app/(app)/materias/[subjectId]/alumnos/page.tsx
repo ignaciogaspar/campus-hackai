@@ -9,6 +9,7 @@ import { Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader } from '@/components/shell/page-header'
+import { ClassHistory } from '@/components/subjects/class-history'
 import { ClassList } from '@/components/subjects/class-list'
 import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
@@ -107,6 +108,29 @@ function StudentsBlock({ students, sectionName }: { students: Students; sectionN
   )
 }
 
+type History = Awaited<ReturnType<Studies['classHistory']>>
+
+/** El historial de la comisión, o por qué no está. */
+function HistoryBlock({
+  history,
+  subjectId,
+  section
+}: {
+  history: History
+  subjectId: string
+  section: { sectionId: string; name: string }
+}) {
+  if (!history.ok) return <ErrorNotice>{ERRORS[history.error]}</ErrorNotice>
+  return (
+    <ClassHistory
+      history={history.value}
+      subjectId={subjectId}
+      sectionId={section.sectionId}
+      sectionName={section.name}
+    />
+  )
+}
+
 type Classes = Awaited<ReturnType<Studies['classesOf']>>
 
 /** Las clases de la comisión, o por qué no están. */
@@ -145,9 +169,10 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
   if (!mine.ok || !section)
     return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} />
 
-  const [students, classes] = await Promise.all([
+  const [students, classes, history] = await Promise.all([
     system().studies.sectionStudents(session.personId, section.sectionId),
-    system().studies.classesOf(session.personId, section.sectionId)
+    system().studies.classesOf(session.personId, section.sectionId),
+    system().studies.classHistory(session.personId, section.sectionId)
   ])
   const staleRead = mine.value.stale ? mine.value : students.ok && students.value.stale ? students.value : null
   const several = taught.length > 1
@@ -182,6 +207,7 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
           section={section}
           total={students.ok ? students.value.data.length : 0}
         />
+        <HistoryBlock history={history} subjectId={subjectId} section={section} />
         <StudentsBlock students={students} sectionName={section.name} />
       </main>
     </>
