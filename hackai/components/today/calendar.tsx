@@ -44,14 +44,15 @@ const TONES: Record<CalendarTone, { label: string; block: string; dot: string }>
   tp: { label: 'TP', block: 'bg-kind-tp-background border-kind-tp', dot: 'bg-kind-tp' },
   entrega: { label: 'Entrega', block: 'bg-kind-entrega-background border-kind-entrega', dot: 'bg-kind-entrega' },
   inscripcion: { label: 'Inscripción', block: 'bg-muted border-ink/45', dot: 'bg-ink/60' },
-  clase: { label: 'Clase', block: 'bg-accent border-blue', dot: 'bg-blue' }
+  clase: { label: 'Clase', block: 'bg-accent border-blue', dot: 'bg-blue' },
+  suspendida: { label: 'Suspendida', block: 'bg-muted border-gray-light', dot: 'bg-gray-light' }
 }
 
 /** Qué se puede mostrar u ocultar en Calendario: los parciales, recuperatorios y TP van juntos. */
 type Group = 'clases' | 'evaluaciones' | 'finales' | 'entregas' | 'inscripciones'
 
 const GROUPS: { group: Group; label: string; tones: CalendarTone[] }[] = [
-  { group: 'clases', label: 'Clases', tones: ['clase'] },
+  { group: 'clases', label: 'Clases', tones: ['clase', 'suspendida'] },
   { group: 'evaluaciones', label: 'Parciales y TP', tones: ['parcial', 'recuperatorio', 'tp'] },
   { group: 'finales', label: 'Finales', tones: ['final'] },
   { group: 'entregas', label: 'Entregas', tones: ['entrega'] },
@@ -95,7 +96,7 @@ function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: bo
       )}
     >
       <b className='text-[0.75rem] leading-snug font-semibold break-words hyphens-auto'>{e.title}</b>
-      {!short && (!e.code || e.tone === 'clase') && (
+      {!short && (!e.code || e.tone === 'clase' || e.tone === 'suspendida') && (
         <span className='text-[0.6875rem] leading-snug break-words text-ink/70'>{e.subject}</span>
       )}
       <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.6875rem] text-ink/60 tabular-nums'>
@@ -217,7 +218,17 @@ function DayColumn({
 /* La semana, en franjas de dos horas que miden siempre lo mismo. Cada evento
    cae a la altura de su hora: una clase de 15 a 17 arranca a mitad de la franja
    de 14 a 16 y termina a mitad de la de 16 a 18. */
-function Week({ days, events, today, now }: { days: string[]; events: CalendarEvent[]; today: string; now: string }) {
+export function Week({
+  days,
+  events,
+  today,
+  now
+}: {
+  days: string[]
+  events: CalendarEvent[]
+  today: string
+  now: string
+}) {
   const inWeek = events.filter((e) => days.includes(e.day))
   const allDay = inWeek.filter((e) => e.minutes === null)
   const clusters = clustersOf(inWeek)
@@ -286,7 +297,7 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
 /* En el celular, la semana como agenda: cada día con lo que tiene, uno debajo
    del otro y a todo el ancho, en vez de una grilla de siete columnas que no
    entra. Los días sin nada se dicen en una línea. */
-function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent[]; today: string }) {
+export function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent[]; today: string }) {
   const byTime = (a: CalendarEvent, b: CalendarEvent) => (a.minutes ?? -1) - (b.minutes ?? -1)
   return (
     <ol className='flex flex-col divide-y divide-border'>
@@ -329,7 +340,7 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
 
 /* El mes chico de la derecha: el día de hoy en azul, la semana que se ve con
    fondo celeste y un puntito en los días con algo. Tocar un día lleva a su semana. */
-function MiniMonth({
+export function MiniMonth({
   month,
   week,
   today,
@@ -398,7 +409,7 @@ function MiniMonth({
   )
 }
 
-function WeekToolbar({
+export function WeekToolbar({
   week,
   onDay,
   onToday,

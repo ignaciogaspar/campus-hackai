@@ -44,6 +44,10 @@ Persona en proceso de ingreso. En el SIU queda como una propuesta aparte («Aspi
 En el SIU, el papel con el que un usuario ve el portal (alumno, docente, gestión). Un alumno ve un selector con una sola opción.
 _Avoid_: usar «perfil» para la propuesta o para la página de datos personales.
 
+**Secretaría (Secretary)**:
+Persona de la secretaría académica de una facultad que asigna las aulas y carga el Planning. En HackAI es el rol `secretaria`: no cursa ni dicta, entra directo a `/planning`.
+_Avoid_: «admin», «bedelía» (no está confirmado que sean lo mismo).
+
 **Gestión (Staff)**:
 Personal administrativo que cierra actas y administra inscripciones (bedelía, departamento de alumnos). No existe como rol en Campus Austral. Nombre y alcance, a confirmar.
 
@@ -271,6 +275,16 @@ _Avoid_: «feedback» en UI.
 Persona sin login que responde una encuesta por QR con un nombre.
 
 ### HackAI
+
+**Planning (Planning)**:
+Dónde y a qué hora se dicta cada clase de todas las materias: materia, comisión, facultad, edificio, aula y horario. Lo carga secretaría en HackAI pegando su planilla o subiéndola. Toma el nombre del «Planning Aulas» del Campus Virtual, que muestra lo mismo para todas las sedes juntas.
+_Avoid_: «calendario» (ese es el de cada alumno), «horario» a secas.
+
+**Aula física (Room)**:
+El salón donde se dicta una clase («Aula A9», «Laboratorio 2»), dentro de un edificio. En la UI se dice «aula», como en el Planning de la universidad; en el código es `room`, para no confundirla con el aula virtual de Moodle.
+
+**Cambio de último momento (Planning change)**:
+Una clase del Planning con fecha que manda ese día sobre la clase semanal de la misma materia y comisión: otra aula, otro horario o suspendida. Si no hay clase semanal que pisar, es una clase extra.
 
 **Seguimiento (Coursework)**:
 Módulo de HackAI que lleva las tareas de una materia: el docente las crea para una o más de sus comisiones y los alumnos de esas comisiones las ven. Suma las entregas, las calificaciones y el pase de las notas al SIU. No es el seguimiento de Moodle ni reemplaza al SIU: es lo propio de HackAI.

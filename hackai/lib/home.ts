@@ -3,7 +3,8 @@
 import type { Role } from '@/lib/core/people'
 
 /** El alumno entra a sus materias (lo de la semana está en Calendario); el docente, a Hoy, con sus consultas
-    sin resolver. */
+    sin resolver; secretaría, al Planning que carga. */
 export function homeFor(role: Role): string {
+  if (role === 'secretaria') return '/planning'
   return role === 'alumno' ? '/materias' : '/hoy'
 }

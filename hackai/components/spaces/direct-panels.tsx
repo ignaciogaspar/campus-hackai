@@ -17,7 +17,7 @@ import { UnreadCount } from '@/components/ui/unread-count'
 import type { Role } from '@/lib/core/people'
 import type { Author, Channel, DirectContact } from '@/lib/core/spaces'
 
-const ROLE_NAMES: Record<Role, string> = { alumno: 'Alumno', profesor: 'Docente' }
+const ROLE_NAMES: Record<Role, string> = { alumno: 'Alumno', profesor: 'Docente', secretaria: 'Secretaría' }
 
 /** Lo que dice la pestaña Directos según quién la mira. */
 const DIRECTS_TEXT: Record<Role, { emptyTitle: string; emptyBody: string; note: string }> = {
@@ -30,7 +30,9 @@ const DIRECTS_TEXT: Record<Role, { emptyTitle: string; emptyBody: string; note: 
     emptyTitle: 'Nadie te escribió todavía',
     emptyBody: 'Cuando un alumno de tu comisión te escriba en privado, la conversación aparece acá.',
     note: 'Tus alumnos te pueden escribir en privado. Lo que se escriben lo ven solo vos y el alumno.'
-  }
+  },
+  // Secretaría no cursa ni dicta: no tiene espacios ni directos.
+  secretaria: { emptyTitle: 'Sin mensajes directos', emptyBody: 'Secretaría no tiene mensajes directos.', note: '' }
 }
 
 /** La otra persona de la conversación. Espacios la da siempre en un canal directo; si faltara, se ve sin datos. */

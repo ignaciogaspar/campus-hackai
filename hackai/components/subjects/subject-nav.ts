@@ -4,6 +4,8 @@
    rutas de la materia. Seguimiento suma sus pestañas (Tareas, Calificaciones)
    en SUBJECT_TABS. */
 
+import type { Role } from '@/lib/core/people'
+
 export type SubjectTab = { id: string; label: string; path: string; teachersOnly?: boolean }
 
 /** Las pestañas de la materia, en orden. `path` cuelga de `/materias/<materia>`. El alumno no ve las de
@@ -19,7 +21,7 @@ export const SUBJECT_TABS: SubjectTab[] = [
 export const ALUMNOS_TAB: SubjectTab = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
 
 /** Las pestañas que ve cada uno: el docente todas y el alumno, el espacio y las tareas. */
-export const tabsFor = (role: 'alumno' | 'profesor'): SubjectTab[] =>
+export const tabsFor = (role: Role): SubjectTab[] =>
   SUBJECT_TABS.filter((tab) => role === 'profesor' || !tab.teachersOnly)
 
 /** El enlace a una pestaña de la materia, con la comisión elegida si la hay. */

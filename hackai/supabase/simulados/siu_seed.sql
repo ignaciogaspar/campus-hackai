@@ -40,7 +40,8 @@ insert into siu_persons (id, surname, names, email, role, school_id) values
   ('30107', 'Giménez', 'Agustina', 'agustina.gimenez@alumnos.example.edu.ar', 'alumno', 'fce'),
   ('30108', 'Herrera', 'Nicolás', 'nicolas.herrera@alumnos.example.edu.ar', 'alumno', 'fce'),
   ('30109', 'Ibarra', 'Camila', 'camila.ibarra@alumnos.example.edu.ar', 'alumno', 'fce'),
-  ('30110', 'Juárez', 'Federico', 'federico.juarez@alumnos.example.edu.ar', 'alumno', 'fce')
+  ('30110', 'Juárez', 'Federico', 'federico.juarez@alumnos.example.edu.ar', 'alumno', 'fce'),
+  ('20201', 'FI', 'Secretaría', 'secretaria.fi@example.edu.ar', 'secretaria', 'fi')
 on conflict (id) do update set surname = excluded.surname, names = excluded.names, email = excluded.email, role = excluded.role, school_id = excluded.school_id;
 
 insert into siu_person_programs (person_id, program_id, status, position) values

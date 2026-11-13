@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { subjectTabHref, tabsFor } from '@/components/subjects/subject-nav'
 import { railItem, railTrack } from '@/components/ui/rail'
+import type { Role } from '@/lib/core/people'
 import { cn } from '@/lib/utils'
 
 /* Barra de pestañas de la materia: el espacio, los alumnos y las calificaciones (solo el docente) y las
@@ -16,7 +17,7 @@ export function SubjectTabs({
   subjectId: string
   current: string
   comision?: string
-  role?: 'alumno' | 'profesor'
+  role?: Role
 }) {
   return (
     <nav aria-label='Secciones de la materia' className={cn(railTrack({ size: 'sm' }), 'w-full lg:max-w-xl')}>

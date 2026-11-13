@@ -7,7 +7,7 @@ import type { Origin } from '@/components/ui/origin-badge'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE, weekdayIndex } from '@/lib/dates'
 
-export type CalendarTone = UpcomingItem['kind'] | 'inscripcion' | 'clase'
+export type CalendarTone = UpcomingItem['kind'] | 'inscripcion' | 'clase' | 'suspendida'
 
 export type CalendarEvent = {
   id: string

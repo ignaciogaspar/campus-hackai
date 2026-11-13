@@ -2,7 +2,7 @@
 
 begin;
 
-delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-rquiroga', 'p-pmolina', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez']::text[]) and system <> all (array['discord']::text[]);
+delete from people_accounts where person_id = any (array['p-mledesma', 'p-gferreyra', 'p-cbustos', 'p-darrieta', 'p-srosales', 'p-rquiroga', 'p-pmolina', 'p-taguirre', 'p-lbenitez', 'p-mcabrera', 'p-sdominguez', 'p-jescobar', 'p-vfunes', 'p-agimenez', 'p-nherrera', 'p-cibarra', 'p-fjuarez', 'p-secretaria-fi']::text[]) and system <> all (array['discord']::text[]);
 
 insert into people_accounts (person_id, system, external_id) values
   ('p-mledesma', 'identity', 'demo:p-mledesma'),
@@ -55,7 +55,10 @@ insert into people_accounts (person_id, system, external_id) values
   ('p-cibarra', 'moodle', '409'),
   ('p-fjuarez', 'identity', 'demo:p-fjuarez'),
   ('p-fjuarez', 'siu', '30110'),
-  ('p-fjuarez', 'moodle', '410')
+  ('p-fjuarez', 'moodle', '410'),
+  ('p-secretaria-fi', 'identity', 'demo:p-secretaria-fi'),
+  ('p-secretaria-fi', 'siu', '20201'),
+  ('p-secretaria-fi', 'moodle', '501')
 on conflict (person_id, system) do update set external_id = excluded.external_id;
 
 insert into people_accounts (person_id, system, external_id) values

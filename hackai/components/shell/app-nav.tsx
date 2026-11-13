@@ -3,6 +3,7 @@
 import {
   Bell,
   CalendarDays,
+  CalendarRange,
   CalendarX,
   ClipboardList,
   FileText,
@@ -11,7 +12,8 @@ import {
   LibraryBig,
   LogOut,
   type LucideIcon,
-  NotebookPen
+  NotebookPen,
+  Upload
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -42,6 +44,7 @@ const STUDENT: Section[] = [
   { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList },
   { href: '/notas', label: 'Notas', icon: NotebookPen },
   { href: '/inasistencias', label: 'Inasistencias', icon: CalendarX },
+  { href: '/planning', label: 'Planning', icon: CalendarRange },
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
 ]
 
@@ -55,12 +58,20 @@ const TEACHER: Section[] = [
   { href: '/materias', label: 'Materias', icon: LibraryBig },
   { href: '/hoy', label: 'Hoy', icon: House },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
+  { href: '/planning', label: 'Planning', icon: CalendarRange },
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
+]
+
+/* Secretaría carga el Planning de Aulas: no cursa ni dicta, así que solo ve eso. */
+const SECRETARY: Section[] = [
+  { href: '/planning', label: 'Planning', icon: CalendarRange },
+  { href: '/cargar-clases', label: 'Cargar clases', icon: Upload }
 ]
 
 /* En el celular, qué va en la barra de abajo y en qué orden; el resto va en «Más». */
 const STUDENT_TABS = ['/calendario', '/notas', '/materias', '/inscripciones']
 const TEACHER_TABS = ['/materias', '/hoy', '/calendario']
+const SECRETARY_TABS = ['/planning', '/cargar-clases']
 
 /* Lo que se apaga al plegar la barra: los nombres y los títulos de grupo. Se
    van rápido y, al desplegar, vuelven cuando la barra ya casi se abrió, para
@@ -245,10 +256,11 @@ export function AppNav({
 }) {
   const pathname = usePathname()
   const { collapsed } = useSidebar()
-  const student = (role ?? person?.role) !== 'profesor'
-  const main = student ? STUDENT : TEACHER
+  const current = role ?? person?.role ?? 'alumno'
+  const student = current === 'alumno'
+  const main = current === 'secretaria' ? SECRETARY : student ? STUDENT : TEACHER
   const career = student ? CAREER : []
-  const tabHrefs = student ? STUDENT_TABS : TEACHER_TABS
+  const tabHrefs = current === 'secretaria' ? SECRETARY_TABS : student ? STUDENT_TABS : TEACHER_TABS
   const tabs = pick(main, tabHrefs)
   const more = [...main, ...career].filter((s) => !tabHrefs.includes(s.href) && !s.desktopOnly)
   return (

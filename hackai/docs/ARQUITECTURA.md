@@ -190,6 +190,22 @@ Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la p
 
 Compone Cursada, Espacios y Seguimiento, y usa el reloj para el próximo parcial. No tiene almacén propio. El Calendario y el `.ics` salen de `today(persona)`, así que muestran las tareas de HackAI sin más; si Seguimiento no responde, faltan esas tareas y `unavailable` lleva `coursework`. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 
+### Planning (`planning`)
+
+En qué aula y a qué hora se dicta cada clase, de todas las materias. Lo carga secretaría (rol `secretaria`), que es quien asigna las aulas al empezar la cursada y las cambia: el SIU tiene el horario de cada comisión pero no el aula al día, y el Planning de Aulas del Campus (un MRBS) muestra todas las sedes juntas. Pantallas: `/planning` (todos, con filtros por facultad, edificio, aula y materia, y «Solo mis materias») y `/cargar-clases` (secretaría).
+
+| Operación | Qué hace |
+| --- | --- |
+| `classes(desde, hasta)` | Las clases de esos días con el cambio de cada día, por día y hora. Una clase semanal se repite en su día; una con fecha manda ese día sobre las semanales de la misma materia, comisión y facultad (sin importar tildes ni mayúsculas): `cambio` (otra aula u horario), `suspendida`, o `extra` si no había semanal que pisar |
+| `entries()` | Lo cargado, para la pantalla de secretaría: las semanales por día y hora, después las de fecha |
+| `preview(filas)` | Qué se entendió de cada fila de la planilla, sin guardar: la clase o el motivo («Falta el aula.»). Las columnas se reconocen por el encabezado en cualquier orden (`columns`); sin encabezado van en el orden de la planilla de ejemplo. Entiende horas y fechas como texto o como los números con que las guarda Excel |
+| `load(persona, filas, modo)` | Guarda las filas que se entendieron: `reemplazar` cambia todo el planning, `agregar` suma (un cambio de último momento o una clase a mano). Solo secretaría (`solo-secretaria`); sin ninguna fila entendida, `sin-clases` y no toca nada |
+| `remove(persona, clase)` | Borra una clase cargada. Solo secretaría |
+
+Usa Personas para el rol y su almacén (`planning_entries`, `supabase/migrations/0013_planning.sql`). En Supabase reemplazar inserta la carga nueva y recién después borra las otras, así una falla a la mitad deja el planning anterior. En memoria arranca con el planning sintético (`syntheticData.planning`); en Supabase, vacío. La planilla se pega (texto con tabulaciones, `lib/delimited-text.ts`) o se sube como .xlsx (`lib/xlsx-read.ts`, sin dependencias, con `node:zlib`) o .csv.
+
+No guarda personas: solo materia, comisión, facultad, edificio y aula. El Planning de Aulas real trae nombres de docentes y responsables; no se cargan.
+
 ### Dependencias entre módulos
 
 ```text
@@ -199,6 +215,8 @@ today ──► studies ──► people
   │       └──────────────┤
   └──► coursework ──► studies
 ```
+
+Planning usa solo Personas (`planning ──► people`), para saber si quien carga es de secretaría.
 
 Hoy llama a Seguimiento (`dated`) para sumar las tareas con fecha al calendario. Seguimiento usa además el puerto de Archivos y el reloj.
 

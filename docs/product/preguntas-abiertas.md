@@ -276,6 +276,13 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 34. ¿De dónde sale el Planning en producción: de la planilla de secretaría o del Planning de Aulas de la universidad?
+
+- **Por qué importa:** HackAI tiene su propio Planning, que carga secretaría pegando o subiendo su planilla. Pero las aulas ya se cargan en el «Planning Aulas» del Campus Virtual, que parece un MRBS (Meeting Room Booking System) y se lee sin cuenta («Usuario Anónimo»), y la pantalla de la facultad muestra lo mismo. Cargar en los dos lados es trabajo doble y se puede desincronizar.
+- **Hipótesis:** en producción, un adaptador de solo lectura sobre ese MRBS (su `report.php` podría exportar CSV o iCal) llenaría el Planning sin que secretaría haga nada distinto, y la carga de HackAI quedaría para lo que no está ahí. Sin confirmar: falta la dirección del MRBS, ver si exporta sin login y hablar con secretaría sobre cómo cargan las aulas y los cambios. Los nombres de las reservas son texto libre y traen nombres de docentes: no se guardan.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

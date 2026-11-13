@@ -72,6 +72,7 @@ import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-cha
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
+import { createMemoryPlanningStore } from '@/lib/adapters/memoria/planning-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
@@ -91,11 +92,13 @@ import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
 import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursework-store'
 import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
+import { createSupabasePlanningStore } from '@/lib/adapters/supabase/planning-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import { createSupabaseStudiesStore } from '@/lib/adapters/supabase/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { type Coursework, createCoursework } from '@/lib/core/coursework'
 import { createPeople, type People, type PeopleStore, type PersonId } from '@/lib/core/people'
+import { createPlanning, type Planning } from '@/lib/core/planning'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
 import { createStudies, type Studies } from '@/lib/core/studies'
 import { createToday, type Today } from '@/lib/core/today'
@@ -181,6 +184,7 @@ export type System = {
   spaces: Spaces
   coursework: Coursework
   today: Today
+  planning: Planning
 }
 
 function choose<A extends AdapterName>(env: Env, name: A): AdapterChoice[A] {
@@ -303,6 +307,10 @@ const studiesStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseC
 const courseworkStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
   store === 'supabase' ? createSupabaseCourseworkStore({ client: supabase() }) : createMemoryCourseworkStore()
 
+/** El almacén de Planning: en Supabase arranca vacío y lo carga secretaría; en memoria, con el planning sintético. */
+const planningStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient, data: SyntheticData) =>
+  store === 'supabase' ? createSupabasePlanningStore({ client: supabase() }) : createMemoryPlanningStore(data.planning)
+
 /** Arma todos los módulos con los adaptadores que piden las variables de
     entorno. Cada llamada tiene su propia copia de los datos en memoria. */
 export function compose(
@@ -405,6 +413,7 @@ export function compose(
     store: courseworkStoreOf(adapters.store, supabase)
   })
   const today = createToday({ studies, spaces, coursework, clock })
+  const planning = createPlanning({ people, store: planningStoreOf(adapters.store, supabase, data) })
 
   const now = () => clock.now().toISOString()
   return {
@@ -419,7 +428,8 @@ export function compose(
     studies,
     spaces,
     coursework,
-    today
+    today,
+    planning
   }
 }
 
