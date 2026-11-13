@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
 import type { ClassHistoryEntry } from '@/lib/core/studies'
 
-const MODALITY_TEXT: Record<ClassHistoryEntry['modality'], string> = {
+const MODALITY_TEXT: Record<NonNullable<ClassHistoryEntry['modality']>, string> = {
   presencial: 'Presencial',
   virtual: 'Virtual',
   hibrida: 'Híbrida'
@@ -31,7 +31,7 @@ function HistoryRow({
     <li className='flex flex-col gap-1.5 px-4 py-3.5'>
       <span className='font-semibold'>{`${longDay(entry.classAt)} · ${timeOf(entry.classAt)}`}</span>
       <span className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
-        <span>{MODALITY_TEXT[entry.modality]}</span>
+        {entry.modality && <span>{MODALITY_TEXT[entry.modality]}</span>}
         <StatusPill tone={PASE_TONE[entry.pase]}>{PASE_TEXT[entry.pase]}</StatusPill>
       </span>
       {entry.absent.length === 0 ? (

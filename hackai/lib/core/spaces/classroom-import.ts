@@ -12,8 +12,10 @@
 
    Traer de Moodle nunca corta la apertura del espacio: si Moodle, Cursada,
    Personas o el almacén no responden, se saltea lo que no se pudo traer y
-   entra en la próxima. Se registran solo ids, nunca textos ni nombres. Lo
-   llama `open`; la corrida periódica de #15 lo puede llamar igual. */
+   entra en la próxima. Devuelve si Moodle respondió todo, así `open` no da
+   por traído lo que falló y lo reintenta en la apertura siguiente. Se
+   registran solo ids, nunca textos ni nombres. Lo llama `open`; la corrida
+   periódica de #15 lo puede llamar igual. */
 import type { People } from '@/lib/core/people'
 import type {
   SpacesStore,
@@ -232,17 +234,38 @@ async function importContents(
   }
 }
 
+/** El aula virtual, anotando si alguna lectura de cursos, avisos o recursos falló. */
+function watched(classroom: ClassroomPort): { classroom: ClassroomPort; failed: () => boolean } {
+  let failed = false
+  const note = <T extends Result<unknown, string>>(read: T): T => {
+    if (!read.ok) failed = true
+    return read
+  }
+  return {
+    classroom: {
+      ...classroom,
+      coursesForSection: async (sectionId) => note(await classroom.coursesForSection(sectionId)),
+      announcements: async (courseId, since) => note(await classroom.announcements(courseId, since)),
+      contents: async (courseId) => note(await classroom.contents(courseId))
+    },
+    failed: () => failed
+  }
+}
+
 /** Trae lo nuevo de Moodle al espacio y a sus canales. `member` es quien lo abre: con él se lee la
-    oferta de la materia. */
+    oferta de la materia. Devuelve `false` si Moodle no respondió alguna lectura. */
 export async function importFromClassroom(
   deps: ClassroomImportDeps,
   member: Membership,
   space: StoredSpace,
   channels: StoredChannel[]
-): Promise<void> {
+): Promise<boolean> {
+  const moodle = watched(deps.classroom)
+  const reading = { ...deps, classroom: moodle.classroom }
   const withChannels = channels.flatMap((c) => sectionOf(c) ?? [])
   const offered = await offeredSections(deps.studies, member, space)
-  const courses = await coursesBySection(deps.classroom, [...new Set([...withChannels, ...offered])])
-  await importAnnouncements(deps, space, channels, courses)
-  await importContents(deps, space, courses)
+  const courses = await coursesBySection(moodle.classroom, [...new Set([...withChannels, ...offered])])
+  await importAnnouncements(reading, space, channels, courses)
+  await importContents(reading, space, courses)
+  return !moodle.failed()
 }

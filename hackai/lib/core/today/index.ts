@@ -1,5 +1,5 @@
 /* Hoy (today): todo lo de la pantalla de inicio en una llamada. Compone
-   Cursada y Espacios y no tiene almacén propio.
+   Cursada, Espacios y Seguimiento y no tiene almacén propio.
 
    - Lee a la vez las materias, los próximos parciales y finales, las
      inscripciones abiertas y las novedades sin leer. Si una lectura falla, esa
@@ -9,6 +9,10 @@
      tareas con fecha de Moodle de sus materias actuales, que vienen con las
      materias. Por eso una caída de Moodle se lleva las entregas, no los parciales:
      las materias salen igual, del SIU, y `unavailable` lleva `assignments`.
+   - Suman también las tareas con fecha de HackAI de sus comisiones (Seguimiento,
+     `dated`), con su propio id (`tarea-hackai:<id>`) y origen `hackai`: cada
+     fuente trae las suyas, así las de Moodle no se repiten. Si Seguimiento no
+     responde, faltan esas tareas y `unavailable` lleva `coursework`.
    - Lo que pasó y lo que cerró se mira contra el reloj al armar la pantalla, no
      al leer: una lectura desactualizada puede ser de antes de que pasara un
      parcial o cerrara una inscripción.
@@ -29,26 +33,41 @@
    - Las fechas son los parciales de sus comisiones y las mesas que integra,
      según Cursada, sin las que ya pasaron.
 
-   Usa Cursada, Espacios y el reloj. */
+   Las notas del alumno (`grades` y `newGrades`) juntan lo del SIU (Cursada) con
+   lo publicado en HackAI (Seguimiento), que Cursada no conoce:
+   - Una evaluación calificada y publicada en HackAI se ve con la nota y el
+     comentario de HackAI; una tarea con nota publicada es una fila más. Lo del
+     SIU que no pasó por HackAI se ve como siempre. Si Seguimiento no responde,
+     salen las notas del SIU y `hackaiUnavailable` lo avisa.
+   - Las notas nuevas de la campana son las del SIU y las publicadas en HackAI,
+     lo más nuevo primero, sin repetir una que está en los dos. Con el SIU caído
+     no se cuentan las del SIU: una nota vieja no se anuncia como nueva.
+
+   Usa Cursada, Espacios, Seguimiento y el reloj. */
+import type { Coursework, DatedTask } from '@/lib/core/coursework'
 import type { PersonId } from '@/lib/core/people'
 import type { OpenQuestion, Spaces, UnreadItem } from '@/lib/core/spaces'
 import {
+  type AssessmentGrade,
+  type Career,
   compareUpcoming,
   type MySection,
   type MySubject,
   type MySubjects,
   type OpenEnrollment,
   type Studies,
+  type StudiesReadError,
   type UpcomingItem
 } from '@/lib/core/studies'
+import { asNewGrade, newestFirst, withoutPublished, withPublished } from '@/lib/core/today/grades'
 import { daysBetween } from '@/lib/dates'
-import { staleSince } from '@/lib/fresh'
+import { type Fresh, staleSince } from '@/lib/fresh'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
 
 /** Cada parte de la pantalla que sale de una lectura aparte, más las entregas de Moodle (`assignments`), que
     vienen con las materias y faltan si Moodle no responde. */
-export type TodayPart = 'subjects' | 'assignments' | 'upcoming' | 'openEnrollments' | 'unread'
+export type TodayPart = 'subjects' | 'assignments' | 'upcoming' | 'openEnrollments' | 'unread' | 'coursework'
 
 /** El próximo parcial o final, con los días de calendario que faltan (0 si es hoy). */
 export type NextExam = UpcomingItem & { daysLeft: number }
@@ -57,7 +76,7 @@ export type TodayView = {
   /** La hora del reloj al armar la pantalla, para ubicar las fechas: hoy, esta semana. */
   now: string
   subjects: MySubjects
-  /** Próximos parciales y finales, más las entregas con fecha de Moodle, por fecha. */
+  /** Próximos parciales y finales, más las entregas con fecha de Moodle y las tareas con fecha de HackAI, por fecha. */
   upcoming: UpcomingItem[]
   /** El próximo parcial o final que todavía no pasó, o `null`. */
   next: NextExam | null
@@ -105,11 +124,17 @@ export type Today = {
   today(personId: PersonId): Promise<Result<TodayView, 'persona-desconocida'>>
   /** El Hoy del docente: sus comisiones, las consultas que le tocan, sus fechas y lo que no leyó. */
   teaching(personId: PersonId): Promise<Result<TeachingView, 'persona-desconocida'>>
+  /** Notas, por materia: la carrera del alumno con lo publicado en HackAI puesto donde corresponde. */
+  grades(personId: PersonId): Promise<Result<Fresh<Career> & { hackaiUnavailable: boolean }, StudiesReadError>>
+  /** Las notas nuevas del alumno, del SIU y de HackAI, después de `seenAt` (cuando vio sus notas por última vez, o
+      `null`), la más nueva primero. */
+  newGrades(personId: PersonId, seenAt: string | null): Promise<Result<AssessmentGrade[], 'persona-desconocida'>>
 }
 
 export type TodayDeps = {
   studies: Studies
   spaces: Spaces
+  coursework: Coursework
   clock: ClockPort
 }
 
@@ -138,6 +163,26 @@ function assignmentsAsUpcoming(subject: MySubject): UpcomingItem[] {
     location: null,
     hasSection: true
   }))
+}
+
+/** Las tareas con fecha de HackAI como próximos: entregas, con otro prefijo que las de Moodle. */
+export const HACKAI_TASK_PREFIX = 'tarea-hackai:'
+
+function taskAsUpcoming(task: DatedTask): UpcomingItem {
+  return {
+    id: `${HACKAI_TASK_PREFIX}${task.id}`,
+    kind: 'entrega',
+    source: 'hackai',
+    subjectId: task.subjectId,
+    subjectCode: task.subjectCode,
+    subjectName: task.subjectName,
+    name: task.name,
+    date: task.dueAt,
+    past: task.past,
+    examPeriod: null,
+    location: null,
+    hasSection: true
+  }
 }
 
 function nextExam(upcoming: UpcomingItem[], now: string): NextExam | null {
@@ -174,8 +219,30 @@ function failed<P extends string>(reads: Record<P, Read<unknown>>): P[] {
   return (Object.keys(reads) as P[]).filter((part) => !reads[part].ok)
 }
 
-export function createToday({ studies, spaces, clock }: TodayDeps): Today {
+export function createToday({ studies, spaces, coursework, clock }: TodayDeps): Today {
   return {
+    async grades(personId) {
+      const [career, published] = await Promise.all([studies.career(personId), coursework.publishedFor(personId)])
+      if (!career.ok) return career
+      if (!published.ok) return ok({ ...career.value, hackaiUnavailable: published.error === 'falla-externa' })
+      const data = withPublished(career.value.data, published.value, clock.now().toISOString())
+      return ok({ ...career.value, data, hackaiUnavailable: false })
+    },
+    async newGrades(personId, seenAt) {
+      const [siu, hackai, published] = await Promise.all([
+        studies.newGrades(personId, seenAt),
+        coursework.newGrades(personId, seenAt),
+        coursework.publishedFor(personId)
+      ])
+      if (!siu.ok && siu.error === 'persona-desconocida') return fail('persona-desconocida')
+      const fromSiu = siu.ok && !siu.value.stale ? siu.value.data : []
+      return ok(
+        newestFirst([
+          ...withoutPublished(fromSiu, published.ok ? published.value : []),
+          ...(hackai.ok ? hackai.value.map(asNewGrade) : [])
+        ])
+      )
+    },
     async teaching(personId) {
       const [sections, dates, questions, unread] = await Promise.all([
         studies.sectionsOf(personId),
@@ -200,19 +267,24 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
       })
     },
     async today(personId) {
-      const [subjects, upcoming, openEnrollments, unread] = await Promise.all([
+      const [subjects, upcoming, openEnrollments, unread, tasks] = await Promise.all([
         studies.subjectsOf(personId),
         studies.upcoming(personId),
         studies.openEnrollments(personId),
-        spaces.unreadFor(personId)
+        spaces.unreadFor(personId),
+        coursework.dated(personId)
       ])
-      const reads = { subjects, upcoming, openEnrollments, unread }
+      const reads = { subjects, upcoming, openEnrollments, unread, coursework: tasks }
       if (Object.values(reads).some((r) => !r.ok && r.error === 'persona-desconocida')) {
         return fail('persona-desconocida')
       }
       const now = clock.now().toISOString()
       const mySubjects = subjects.ok ? subjects.value.data : EMPTY_SUBJECTS
-      const coming = [...(upcoming.ok ? upcoming.value.data : []), ...mySubjects.current.flatMap(assignmentsAsUpcoming)]
+      const coming = [
+        ...(upcoming.ok ? upcoming.value.data : []),
+        ...mySubjects.current.flatMap(assignmentsAsUpcoming),
+        ...valueOr(tasks, []).map(taskAsUpcoming)
+      ]
         .map((i) => ({ ...i, past: i.date < now }))
         .sort(compareUpcoming)
 
@@ -222,7 +294,9 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         upcoming: coming,
         next: nextExam(coming, now),
         unread: valueOr(unread, []),
-        openEnrollments: openEnrollments.ok ? openEnrollments.value.data.filter((o) => o.closesAt >= now) : [],
+        openEnrollments: openEnrollments.ok
+          ? openEnrollments.value.data.filter((o) => o.closesAt === null || o.closesAt >= now)
+          : [],
         staleSince: staleSince([subjects, upcoming, openEnrollments]),
         unavailable: [
           ...failed<Exclude<TodayPart, 'assignments'>>(reads),

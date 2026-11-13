@@ -107,7 +107,11 @@ Resultado de una cursada aprobada que habilita a rendir el examen final. Se pier
 _Avoid_: confundirla con «alumno regular», que es la condición general que acredita la constancia.
 
 **Promoción (Promotion)**:
-Aprobación de la materia durante la cursada, sin examen final. Al inscribirse, la comisión indica si la instancia es promoción o regularidad.
+Aprobación de la materia durante la cursada, sin examen final. Al inscribirse, la comisión indica si la instancia es promoción o regularidad. En HackAI el docente la confirma o la cambia por comisión, con la nota de cursada mínima para promocionar; quien llega pasa al SIU como `promocionado`.
+
+**Instancia de examen (Exam instance)**:
+Un parcial, recuperatorio o integrador de una comisión, que es una columna de Calificaciones. Las del cronograma del SIU vienen de ahí, y el docente les puede corregir el nombre, el tipo y la fecha en HackAI. Las que suma el docente existen solo en HackAI: sus notas no pasan al SIU.
+_Avoid_: «evaluación» para las propias (evaluación es la del cronograma del SIU).
 
 **Final pendiente (Pending final)**:
 Situación de un alumno que tiene la regularidad de una materia y todavía no aprobó su examen final. El SIU no la muestra como tal: hay que buscar materias con Regularidad y sin Examen en la historia académica.
@@ -255,6 +259,24 @@ Persona sin login que responde una encuesta por QR con un nombre.
 
 ### HackAI
 
+**Seguimiento (Coursework)**:
+Módulo de HackAI que lleva las tareas de una materia: el docente las crea para una o más de sus comisiones y los alumnos de esas comisiones las ven. Suma las entregas, las calificaciones y el pase de las notas al SIU. No es el seguimiento de Moodle ni reemplaza al SIU: es lo propio de HackAI.
+_Avoid_: «actividades», «trabajos prácticos».
+
+**Tarea de HackAI (Task)**:
+Una tarea con nombre, consigna, archivo opcional, fecha límite y si lleva nota, creada en HackAI por un docente. No es la Tarea (Assignment) de Moodle: esa viene del aula virtual. En el código, `Task` es la de HackAI y `Assignment` la de Moodle. Una tarea que no lleva nota no tiene columna en Calificaciones.
+
+**Peso (Weight)**:
+Cuánto cuenta una columna de Calificaciones en la nota de cursada de su comisión, de 0 a 100. Lo pone el docente por columna; una columna sin peso, o con peso 0, no cuenta. No hace falta que los pesos sumen 100: la nota usa la proporción entre las columnas en las que el alumno tiene nota.
+
+**Nota de cursada (Course grade)**:
+La nota con la que un alumno termina la cursada de una comisión en HackAI: el promedio ponderado de sus columnas con nota y peso, que se calcula sola. El docente la puede pisar y queda marcada como `editada`; después se publica y pasa al SIU como el resto de las notas. Una tarea sin nota, un ausente y una columna en la que el alumno no tiene nota no entran en el promedio. No es la «cursada» del SIU (el intento de cursar una materia): es la nota que lleva ese intento. Recuperatorios y mínimo para regularizar son una hipótesis (`docs/product/preguntas-abiertas.md`, pregunta 25).
+_Avoid_: «promedio de la materia», «nota final» (esa es la del final).
+
+**Pase al SIU (Grade pass)**:
+Escribir en el SIU las notas que el docente publicó en HackAI: la de cada evaluación del cronograma del SIU y la nota de cursada. Una tarea no existe en el SIU y queda solo en HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó: el SIU falló y se reintenta, sin duplicar), `pasado` o `no-permitido` («Sin pasar al SIU»: el SIU no deja escribir notas). El alumno ve la nota en los tres estados. Se hace por la capacidad `canWriteGrades` del puerto del SIU: el adaptador real declara que no puede, el simulado sí.
+_Avoid_: «sincronizar notas», «exportar».
+
 **Espacio de la materia (Subject space)**:
 Lugar de una materia en HackAI donde se comunican sus docentes y alumnos. Hay uno por materia y facultad: la misma materia en dos facultades son dos espacios. Adentro hay canales de toda la materia y canales de cada comisión. Quien se inscribe a una comisión en el SIU queda adentro.
 _Avoid_: «aula», «servidor», «curso».
@@ -270,6 +292,13 @@ _Avoid_: «integración» a secas.
 **Mensaje directo (Direct message)**:
 Mensaje privado entre un alumno y un docente de su espacio. Entre alumnos no hay.
 _Avoid_: «mensaje» a secas: choca con el Mensaje del SIU y con la mensajería de Moodle.
+
+**Calificaciones (Gradebook)**:
+Pestaña del docente en la materia donde carga las notas de una comisión. Tiene una columna por cada tarea con nota de la comisión y una por cada evaluación del cronograma del SIU (parcial, recuperatorio, TP). Una tarea sin nota no tiene columna. En cada columna el docente pone a cada alumno una nota o un ausente y un comentario.
+_Avoid_: «planilla», «libreta».
+
+**Nota publicada (Published grade)**:
+Nota de una columna que el docente publicó en HackAI: desde ese momento el alumno la ve, con el comentario entero, en Notas, y le llega a la campana y a Novedades. Una nota sin publicar no la ve nadie más que el docente. Es una nota de HackAI, distinta de la nota cargada en el SIU: para una evaluación calificada y publicada en HackAI, Notas muestra la de HackAI.
 
 ### Este repo
 

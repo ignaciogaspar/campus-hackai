@@ -11,6 +11,7 @@
 import { randomInt, randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createStore, STATIC_TTL_MS } from '@/lib/adapters/cache/store'
+import { courseResult, validGrade } from '@/lib/adapters/siu-grades'
 import { createQueryRunner, type Query } from '@/lib/adapters/supabase/query'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
@@ -251,7 +252,8 @@ export function createSimulatedSiu({
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
-    canRecordAttendance: true
+    canRecordAttendance: true,
+    canWriteGrades: true
   }
   const now = () => clock.now().toISOString()
 
@@ -648,6 +650,89 @@ export function createSimulatedSiu({
         return ok(row.value?.meets_conditions ?? false)
       })
     },
+
+    // --- B: notas ---
+    async writeAssessmentGrade(personId, sectionId, assessmentId, value) {
+      if (value !== null && !validGrade(value)) return fail('nota-invalida')
+      const exists = await person(personId)
+      if (!exists.ok) return exists
+      const assessment = await read<AssessmentRow>('evaluacion', (s) =>
+        client
+          .from('siu_assessments')
+          .select('*')
+          .eq('id', assessmentId)
+          .eq('section_id', sectionId)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!assessment.ok) return assessment
+      if (!assessment.value) return fail('no-encontrado')
+      // Una sola nota por alumno y evaluación: si ya hay una (cargada por el docente o por HackAI), se reemplaza.
+      const previous = await list<{ id: string }>('nota-previa', (s) =>
+        client
+          .from('siu_provisional_results')
+          .select('id')
+          .eq('person_id', personId)
+          .eq('assessment_id', assessmentId)
+          .order('id')
+          .abortSignal(s)
+      )
+      if (!previous.ok) return previous
+      const at = now()
+      const saved = await run('cargar-nota', (s) =>
+        client
+          .from('siu_provisional_results')
+          .upsert(
+            {
+              id: previous.value[0]?.id ?? `ap-hackai-${personId}-${assessmentId}`,
+              person_id: personId,
+              section_id: sectionId,
+              assessment_id: assessmentId,
+              grade: value,
+              date: assessment.value?.date,
+              loaded_at: at
+            },
+            { onConflict: 'id' }
+          )
+          .abortSignal(s)
+      )
+      return saved.ok ? ok({ date: at }) : fail('falla-externa')
+    },
+
+    async writeCourseGrade(personId, sectionId, value, promoted = false) {
+      if (!validGrade(value)) return fail('nota-invalida')
+      const exists = await person(personId)
+      if (!exists.ok) return exists
+      const section = await read<SectionRow>('comision', (s) =>
+        client.from('siu_sections').select('*').eq('id', sectionId).abortSignal(s).maybeSingle()
+      )
+      if (!section.ok) return section
+      if (!section.value) return fail('no-encontrado')
+      const at = now()
+      const saved = await run('cargar-cursada', (s) =>
+        client
+          .from('siu_history')
+          .upsert(
+            {
+              id: `hk-cursada-${personId}-${sectionId}`,
+              person_id: personId,
+              subject_id: section.value?.subject_id,
+              type: 'cursada',
+              date: at,
+              grade: value,
+              result: courseResult(value, promoted),
+              grade_record: `HK-${sectionId}`,
+              section_id: null,
+              assessment_id: null,
+              loaded_at: null
+            },
+            { onConflict: 'id' }
+          )
+          .abortSignal(s)
+      )
+      return saved.ok ? ok({ date: at }) : fail('falla-externa')
+    },
+    // --- fin B: notas ---
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 21 (máximo 15). Se refactoriza después de la demo (#30).
     async enroll(personId, target) {

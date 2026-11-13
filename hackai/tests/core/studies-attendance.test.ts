@@ -53,6 +53,7 @@ function value<T>(result: { ok: true; value: T } | { ok: false; error: string })
 async function absencesIn(studies: ReturnType<typeof build>['studies'], personId = STUDENT) {
   const read = await studies.absencesOf(personId)
   const detail: MyAbsencesDetail = value(read).data
+  // Una materia sin faltas no sale: ahí `subject` es `undefined` aunque el tipo diga que no.
   return { subject: detail.subjects.find((s) => s.sectionId === SECTION) as SubjectAbsences, stale: value(read).stale }
 }
 
@@ -307,21 +308,22 @@ test('una clase tomada sin ausentes reemplaza las faltas que el SIU tenía de es
 
   value(await studies.takeAttendance(TEACHER, SECTION, '2026-09-15T17:00:00.000Z', []))
 
+  // Sin ninguna falta, la materia no sale en Inasistencias.
   const { subject } = await absencesIn(studies)
-  assert.equal(subject.count, 0)
-  assert.deepEqual(subject.absences, [])
+  assert.equal(subject, undefined)
 })
 
 test('corregir la lista el mismo día cambia las inasistencias y se vuelve a pasar al SIU', async () => {
   const { studies, siu } = build()
   value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.mcabrera]))
-  const before = (await absencesIn(studies, 'p-sdominguez')).subject.count
+  const before = (await absencesIn(studies, 'p-sdominguez')).subject?.count ?? 0
 
   const corrected = value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.sdominguez]))
 
   assert.equal(corrected.pase, 'pasado')
   // Mcabrera ya no figura, Domínguez sí.
-  assert.equal((await absencesIn(studies)).subject.absences.filter((a) => a.date === TODAY_CLASS).length, 0)
+  const mcabrera = (await absencesIn(studies)).subject?.absences ?? []
+  assert.equal(mcabrera.filter((a) => a.date === TODAY_CLASS).length, 0)
   assert.equal((await absencesIn(studies, 'p-sdominguez')).subject.count, before + 1)
   const inSiu = value(await siu.absences(LEGAJO.mcabrera)).absences.filter((a) => a.date === TODAY_CLASS)
   assert.equal(inSiu.length, 0)

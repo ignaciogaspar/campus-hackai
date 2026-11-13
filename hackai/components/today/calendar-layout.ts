@@ -3,6 +3,7 @@
    hay cada semana y cómo se agrupa lo que se pisa. Todo en la hora de Buenos
    Aires y con semanas de lunes a domingo. Qué es un parcial, qué pasó y cuál
    es el próximo lo decide Hoy: acá solo se ubica. */
+import type { Origin } from '@/components/ui/origin-badge'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE, weekdayIndex } from '@/lib/dates'
 
@@ -24,7 +25,7 @@ export type CalendarEvent = {
   /** Dónde: el aula de una clase o el lugar de un final, si el SIU lo da. */
   place: string | null
   tone: CalendarTone
-  origin: 'siu' | 'moodle'
+  origin: Origin
   past: boolean
   next: boolean
 }
@@ -95,7 +96,7 @@ const CLOSING: Record<OpenEnrollment['kind'], string> = {
 }
 
 /** Las fechas de Hoy como eventos. Los parciales y finales van en su hora; las
-    entregas de Moodle y los cierres de inscripción, en la fila de todo el día. */
+    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. */
 export function eventsOf(
   upcoming: UpcomingItem[],
   enrollments: OpenEnrollment[],
@@ -120,24 +121,29 @@ export function eventsOf(
       next: item.id === nextId
     }
   })
-  const closings = enrollments.map(
-    (e): CalendarEvent => ({
-      id: `inscripcion:${e.kind}:${e.subjectId}`,
-      day: dayKey(e.closesAt),
-      minutes: null,
-      end: null,
-      time: null,
-      code: null,
-      title: `Cierra la inscripción ${CLOSING[e.kind]}`,
-      subject: e.subjectName,
-      place: null,
-      tone: 'inscripcion',
-      origin: 'siu',
-      past: e.closesAt < now,
-      next: false
-    })
+  // Una inscripción sin fecha de cierre informada no tiene día en el calendario.
+  const closings = enrollments.flatMap((e): CalendarEvent[] =>
+    e.closesAt === null ? [] : [closingEvent(e, e.closesAt, now)]
   )
   return [...dates, ...closings]
+}
+
+function closingEvent(e: OpenEnrollment, closesAt: string, now: string): CalendarEvent {
+  return {
+    id: `inscripcion:${e.kind}:${e.subjectId}`,
+    day: dayKey(closesAt),
+    minutes: null,
+    end: null,
+    time: null,
+    code: null,
+    title: `Cierra la inscripción ${CLOSING[e.kind]}`,
+    subject: e.subjectName,
+    place: null,
+    tone: 'inscripcion',
+    origin: 'siu',
+    past: closesAt < now,
+    next: false
+  }
 }
 
 const WEEKDAYS: Record<MySubject['schedule'][number]['day'], number> = {

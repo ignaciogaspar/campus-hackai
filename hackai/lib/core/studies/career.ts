@@ -26,6 +26,8 @@ export type SubjectStatus = 'promocionada' | 'aprobada' | 'regular' | 'en-curso'
 
 /** Una evaluación de la materia con su nota, si ya está cargada. */
 export type SubjectAssessment = {
+  /** El id de la evaluación en el cronograma del SIU, o de la tarea de HackAI. Es null si el SIU no lo dice. */
+  id: string | null
   name: string
   /** `null` si el SIU no expone el cronograma y no se sabe qué fue. */
   kind: SiuAssessment['kind'] | null
@@ -34,7 +36,10 @@ export type SubjectAssessment = {
   /** La nota está cargada. Cargada y sin nota es un ausente. */
   graded: boolean
   past: boolean
-  source: 'historia' | 'actuacion-provisoria' | null
+  /** De dónde viene la nota: Cursada solo da las del SIU; 'hackai' es de una nota publicada en Seguimiento. */
+  source: 'historia' | 'actuacion-provisoria' | 'hackai' | null
+  /** El comentario del docente, entero. Cursada no lo tiene: solo viene de las notas de HackAI. */
+  comment: string | null
 }
 
 /** Cómo viene el alumno en una materia. */
@@ -49,6 +54,8 @@ export type SubjectStanding = {
   /** Año calendario de lo último que hizo en la materia: la aprobó, la cursó o la está cursando. `null` si nunca la cursó. */
   academicYear: number | null
   termName: string | null
+  /** La comisión más reciente de la materia, la de las notas; es null si nunca la cursó. */
+  sectionId: string | null
   sectionName: string | null
   assessments: SubjectAssessment[]
   /** Nota de la cursada regular, si la tiene. */
@@ -78,6 +85,8 @@ export type Career = {
   electiveHours: CareerProgress
   /** Cuánto de la carrera está aprobado, de 0 a 100. */
   percent: number
+  /** Si `percent` es el del SIU; si no, una estimación de HackAI con las materias del plan. */
+  percentFromSiu: boolean
 }
 
 export const EMPTY_CAREER: Career = {
@@ -89,7 +98,8 @@ export const EMPTY_CAREER: Career = {
   universityLife: { approved: 0, total: 0 },
   universityLifeCredits: { approved: 0, total: 0 },
   electiveHours: { approved: 0, total: 0 },
-  percent: 0
+  percent: 0,
+  percentFromSiu: false
 }
 
 /** Una comisión que cursó o cursa, con lo que hace falta para la carrera. */
@@ -119,9 +129,10 @@ export type Approved = {
 
 export type CareerInput = {
   now: string
-  program: { id: string; name: string } | null
+  program: { id: string; name: string; progressPercent?: number | null } | null
   plan: SiuStudyPlan | null
-  /** `credits`: los que da una actividad de vida universitaria; `null` o sin dato en una materia. */
+  /** `credits`: los que da una actividad de vida universitaria, o las horas de una optativa; `null` o sin dato
+      en una materia obligatoria. */
   subjects: Map<string, { code: string; name: string; credits?: number | null }>
   /** Las comisiones de la más importante a la menos: actuales primero y después la más reciente. */
   sections: TakenSection[]
@@ -164,26 +175,30 @@ function assessmentsOf(section: TakenSection | undefined, input: CareerInput): S
   const scheduled = schedule.map((a): SubjectAssessment => {
     const found = gradeOf(a.id)
     return {
+      id: a.id,
       name: a.name,
       kind: a.kind,
       date: a.date,
       grade: found?.grade ?? null,
       graded: Boolean(found),
       past: a.date < input.now,
-      source: found?.source ?? null
+      source: found?.source ?? null,
+      comment: null
     }
   })
   const loose = loaded
     .filter((g) => !schedule.some((a) => a.id === g.assessmentId))
     .map(
       (g): SubjectAssessment => ({
+        id: g.assessmentId,
         name: input.genericName,
         kind: null,
         date: g.date,
         grade: g.grade,
         graded: true,
         past: true,
-        source: g.source
+        source: g.source,
+        comment: null
       })
     )
   return [...scheduled, ...loose].sort((a, b) => a.date.localeCompare(b.date))
@@ -215,6 +230,7 @@ function standingOf(subjectId: string, input: CareerInput): SubjectStanding {
     status: statusOf(approved, section, Boolean(regular)),
     academicYear: academicYearOf(approved, section, regular),
     termName: section?.termName ?? null,
+    sectionId: section?.sectionId ?? null,
     sectionName: section?.sectionName ?? null,
     assessments: assessmentsOf(section, input),
     courseGrade: regular?.grade ?? null,
@@ -245,12 +261,28 @@ function unitsOf(
     (sum, s) => sum + (input.subjects.get(s.subjectId)?.credits ?? 0),
     0
   )
-  const hours = approvedOf('optativa').length * rules.hoursPerElective
-  const requiredHours = (input.plan?.electivesRequired ?? 0) * rules.hoursPerElective
+  // Las horas de cada optativa, si el SIU las da (en `credits`); si no, las de una optativa típica.
+  const hours = approvedOf('optativa').reduce(
+    (sum, s) => sum + (input.subjects.get(s.subjectId)?.credits ?? rules.hoursPerElective),
+    0
+  )
+  const requiredHours =
+    input.plan?.electiveHoursRequired ?? (input.plan?.electivesRequired ?? 0) * rules.hoursPerElective
   return {
-    universityLifeCredits: { approved: credits, total: rules.universityLifeCredits },
+    universityLifeCredits: {
+      approved: credits,
+      total: input.plan?.universityLifeCreditsRequired ?? rules.universityLifeCredits
+    },
     electiveHours: { approved: hours, total: requiredHours }
   }
+}
+
+/** El avance del SIU, si lo da; si no, la estimación con las materias del plan. */
+function percentOf(input: CareerInput, estimate: number): Pick<Career, 'percent' | 'percentFromSiu'> {
+  const fromSiu = input.program?.progressPercent
+  return typeof fromSiu === 'number'
+    ? { percent: Math.round(fromSiu), percentFromSiu: true }
+    : { percent: estimate, percentFromSiu: false }
 }
 
 const bySubjectOrder = (a: SubjectStanding, b: SubjectStanding) =>
@@ -282,6 +314,6 @@ export function buildCareer(input: CareerInput): Career {
     electives,
     universityLife,
     ...unitsOf(subjects, input),
-    percent: total ? Math.round((done / total) * 100) : 0
+    ...percentOf(input, total ? Math.round((done / total) * 100) : 0)
   }
 }

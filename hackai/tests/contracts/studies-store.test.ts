@@ -2,7 +2,7 @@
    corre contra el almacén en memoria, contra el de Supabase con un PostgREST de
    mentira (sin red), y contra una base de prueba de verdad solo si están
    HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY, con
-   supabase/migrations/0007_studies_classes.sql aplicada. Contra la base de
+   supabase/migrations/0011_studies_classes.sql aplicada. Contra la base de
    verdad cada prueba usa comisiones y alumnos con un id propio de la corrida y
    al final borra las clases que creó. */
 import assert from 'node:assert/strict'

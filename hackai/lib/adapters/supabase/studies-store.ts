@@ -1,5 +1,5 @@
 /* Almacén de Cursada sobre Supabase: las clases con la lista tomada, en la
-   tabla propia `section_classes` (supabase/migrations/0007_studies_classes.sql).
+   tabla propia `section_classes` (supabase/migrations/0011_studies_classes.sql).
    Se porta como el almacén en memoria y pasa la misma batería de contrato
    (tests/contracts/studies-store.test.ts).
 

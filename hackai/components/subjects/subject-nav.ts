@@ -4,13 +4,20 @@
    rutas de la materia. Seguimiento suma sus pestañas (Tareas, Calificaciones)
    en SUBJECT_TABS. */
 
-export type SubjectTab = { id: string; label: string; path: string }
+export type SubjectTab = { id: string; label: string; path: string; teachersOnly?: boolean }
 
-/** Las pestañas de la materia del docente, en orden. `path` cuelga de `/materias/<materia>`. */
+/** Las pestañas de la materia, en orden. `path` cuelga de `/materias/<materia>`. El alumno no ve las de
+    `teachersOnly`. */
 export const SUBJECT_TABS: SubjectTab[] = [
   { id: 'espacio', label: 'Espacio', path: '' },
-  { id: 'alumnos', label: 'Alumnos y clases', path: '/alumnos' }
+  { id: 'alumnos', label: 'Alumnos y clases', path: '/alumnos', teachersOnly: true },
+  { id: 'tareas', label: 'Tareas', path: '/tareas' },
+  { id: 'calificaciones', label: 'Calificaciones', path: '/calificaciones', teachersOnly: true }
 ]
+
+/** Las pestañas que ve cada uno: el docente todas y el alumno, el espacio y las tareas. */
+export const tabsFor = (role: 'alumno' | 'profesor'): SubjectTab[] =>
+  SUBJECT_TABS.filter((tab) => role === 'profesor' || !tab.teachersOnly)
 
 /** El enlace a una pestaña de la materia, con la comisión elegida si la hay. */
 export function subjectTabHref(subjectId: string, tab: SubjectTab, comision?: string): string {

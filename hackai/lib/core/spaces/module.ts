@@ -6,11 +6,13 @@
    Moodle (classroom-import). Los archivos guardados se entregan acá, con la misma
    regla de quién ve qué.
 
-   `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
-   vista, no más de una vez cada `CLASSROOM_SYNC_EVERY_MS` por espacio. La
-   sincronización con el canal externo es su propia pieza (sync): `open` y
-   `version` traen lo nuevo, `post` envía, `link` vincula y trae lo que ya
-   había, y `syncAll` es la corrida periódica. */
+   `open` trae los avisos y los recursos nuevos de Moodle, no más de una vez
+   cada `CLASSROOM_SYNC_EVERY_MS` por espacio, y lo nuevo del canal externo.
+   Con `defer` lo hace sin que la vista lo espere: tardaban de 1 a 10 segundos
+   y frenaban cada cambio de canal (#111). La sincronización con el canal
+   externo es su propia pieza (sync): `open` y `version` traen lo nuevo, `post`
+   envía, `link` vincula y trae lo que ya había, y `syncAll` es la corrida
+   periódica. */
 import type { PersonId } from '@/lib/core/people'
 import type {
   AccessError,
@@ -95,6 +97,7 @@ const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(m
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
   const { people, studies, classroom, files, clock, store, externalChannel, timer } = deps
+  const defer = deps.defer ?? ((task: () => Promise<unknown>) => task().then(() => undefined))
   const sync = createSync({ people, externalChannel, files, store, timer })
   const server = createServerLink({ people, externalChannel, store })
   /** Cuándo trajo `open` lo nuevo de Moodle de cada espacio, en milisegundos del reloj. */
@@ -158,11 +161,26 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (!space.ok) return space
     const channels = await ensureChannels(store, space.value, member.value)
     if (!channels.ok) return channels
-    if (syncDue(space.value.id)) {
-      await importFromClassroom({ classroom, studies, people, store }, member.value, space.value, channels.value)
-    }
-    // Lo nuevo del canal externo vinculado. Si no responde, se muestra lo que ya hay.
-    await sync.ifDue(space.value.id, channels.value)
+    const spaceId = space.value.id
+    const fromClassroom = syncDue(spaceId)
+    await defer(async () => {
+      if (fromClassroom) {
+        // Si Moodle no respondió todo o algo tiró, la próxima apertura vuelve a intentar sin esperar el intervalo.
+        let complete = false
+        try {
+          complete = await importFromClassroom(
+            { classroom, studies, people, store },
+            member.value,
+            space.value,
+            channels.value
+          )
+        } finally {
+          if (!complete) lastSync.delete(spaceId)
+        }
+      }
+      // Lo nuevo del canal externo vinculado. Si no responde, queda lo que ya hay.
+      await sync.ifDue(space.value.id, channels.value)
+    })
     return spaceView(member.value, space.value, channels.value)
   }
 

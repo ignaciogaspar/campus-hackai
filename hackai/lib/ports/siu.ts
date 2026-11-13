@@ -19,6 +19,10 @@ export type SiuCapabilities = {
   /** Escribir la asistencia de una clase por API. La API real no lo permite. */
   canRecordAttendance: boolean
   // --- fin A: asistencia ---
+  // --- B: notas ---
+  /** Cargar por API las notas de una evaluación y la de cursada. La API real no lo permite. */
+  canWriteGrades: boolean
+  // --- fin B: notas ---
 }
 
 /** El rol como lo informa el SIU. El de una persona de HackAI es `Role`, de
@@ -27,7 +31,14 @@ export type SiuRole = 'alumno' | 'profesor'
 
 export type SiuSchool = { id: string; name: string }
 
-export type SiuProgram = { id: string; name: string; status: 'activa' | 'pasiva' }
+export type SiuProgram = {
+  id: string
+  name: string
+  status: 'activa' | 'pasiva'
+  /** El avance del alumno en la propuesta, de 0 a 100, como lo calcula el SIU (Reportes > Promedio y porcentaje
+      de avance). Solo lo da un SIU leído con la cuenta del alumno. */
+  progressPercent?: number | null
+}
 
 export type SiuPerson = {
   id: string
@@ -46,12 +57,16 @@ export type SiuTerm = {
   name: string
   start: string
   end: string
-  enrollmentStart: string
-  enrollmentEnd: string
+  /** Ventana de inscripción a cursada. `null` es «el SIU no la informa»: entonces dice `enrollmentOpen`. */
+  enrollmentStart: string | null
+  enrollmentEnd: string | null
+  /** Lo que dice el SIU hoy cuando no da las fechas: la inscripción está abierta o no. Sin esto, mandan las fechas. */
+  enrollmentOpen?: boolean
 }
 
 /** Materia («actividad» en el SIU). Se dicta en una o más facultades. Las
-    actividades de vida universitaria dan créditos; las materias, `null`. */
+    actividades de vida universitaria dan créditos y las optativas, horas (el
+    SIU las llama créditos a las dos); las demás materias, `null`. */
 export type SiuSubject = { id: string; code: string; name: string; credits: number | null }
 
 export type SiuSchedule = {
@@ -70,14 +85,19 @@ export type SiuSection = {
   teacherIds: string[]
   schedule: SiuSchedule[]
   location: string
-  modality: 'presencial' | 'virtual' | 'hibrida'
-  instance: 'promocion' | 'regularidad'
+  /** `null` si el SIU no la informa. */
+  modality: 'presencial' | 'virtual' | 'hibrida' | null
+  /** `null` si el SIU no la informa. */
+  instance: 'promocion' | 'regularidad' | null
   /** Cupo. `null` es «sin definir». */
   capacity: number | null
   /** Propuestas para las que se abre la comisión. Vacío es «para todas las de la facultad». */
   programIds: string[]
   /** Observaciones de la comisión, como las carga la facultad. */
   notes: string | null
+  /** Cuántas clases tiene la comisión en su período, si se puede saber (el SIU real: su calendario de
+      asignaciones). Sirve para el máximo de faltas cuando el SIU no lo da. */
+  classCount?: number | null
 }
 
 export type SiuEnrollmentStatus = 'aceptada' | 'pendiente' | 'rechazada' | 'baja'
@@ -131,6 +151,11 @@ export type SiuStudyPlan = {
   name: string
   years: number
   electivesRequired: number
+  /** Las horas de optativas que pide la regla del plan, si el SIU las da. Sin ellas, el núcleo las cuenta por
+      cantidad de optativas. */
+  electiveHoursRequired?: number | null
+  /** Los créditos de vida universitaria que pide el plan, si el SIU los da. Sin ellos, los de las reglas del núcleo. */
+  universityLifeCreditsRequired?: number | null
   universityLifeRequired: number
   subjects: SiuPlanSubject[]
 }
@@ -186,6 +211,8 @@ export type SiuAbsence = {
   sectionId: string
   date: string
   justified: boolean
+  /** Cuántas inasistencias vale esa clase («Cant. inasistencias» del SIU: puede ser 0,5 o 2). Sin dato, 1. */
+  amount?: number
 }
 
 /** Máximo de inasistencias de una comisión. Que el SIU de la Austral lo dé es
@@ -216,6 +243,12 @@ export type SiuEnrollError =
   | ExternalFailure
 export type SiuDropError = 'no-inscripto' | 'fuera-de-periodo' | 'no-encontrado' | 'no-soportado' | ExternalFailure
 export type SiuReadError = 'no-encontrado' | ExternalFailure
+// --- B: notas ---
+/** Qué se cargó en el SIU: la nota de la evaluación o la de cursada, y cuándo. */
+export type SiuGradeReceipt = { date: string }
+/** Sin `canWriteGrades`, `no-soportado`. Una nota fuera de 1 a 10 es `nota-invalida`. */
+export type SiuWriteGradeError = 'no-soportado' | 'no-encontrado' | 'nota-invalida' | ExternalFailure
+// --- fin B: notas ---
 
 // --- A: asistencia ---
 /** Cuándo el SIU recibió la asistencia de una clase. */
@@ -226,6 +259,35 @@ export type SiuAttendanceError = 'no-encontrado' | 'no-soportado' | ExternalFail
 /** Dónde mandar al alumno en la Autogestión del SIU. */
 export type SiuSelfServiceTarget = SiuTarget | { kind: 'constancia'; type: SiuCertificateType }
 
+/** Una solicitud de constancia o certificado, como la lista Trámites > Solicitudes. Los textos van como los
+    escribe el SIU («Impreso», «Online», «Autogestión»). */
+export type SiuCertificateRequest = {
+  id: string
+  type: string
+  requestedAt: string | null
+  presentTo: string
+  requestedIn: string
+  copies: number | null
+  status: string
+  expiresAt: string | null
+  /** Dónde verla o descargarla en la Autogestión, si el SIU da un enlace. */
+  url: string | null
+}
+
+export type SiuNewCertificateRequest = {
+  type: SiuCertificateType
+  copies: number
+  presentTo: string
+  notes: string
+}
+
+/** Lo que respondió el SIU a una solicitud: si la aceptó y su mensaje, tal cual. */
+export type SiuRequestOutcome = { accepted: boolean; message: string }
+
+/** Un documento oficial del SIU para descargar, como lo genera la Autogestión. */
+export type SiuOfficialDocumentKind = 'historia' | 'plan'
+export type SiuOfficialDocument = { body: ArrayBuffer; contentType: string; filename: string }
+
 export type SiuSectionFilter = { subjectId?: string; schoolId?: string; termId?: string }
 export type SiuExamBoardFilter = { subjectId?: string; schoolId?: string }
 
@@ -233,7 +295,9 @@ export type SiuPort = {
   capabilities: SiuCapabilities
 
   person(personId: string): Promise<Result<SiuPerson, SiuReadError>>
-  terms(): Promise<Result<SiuTerm[], ExternalFailure>>
+  /** Los períodos lectivos. `personId`: para quién se piden; un SIU con cuentas propias de cada alumno suma los
+      de esa cuenta, y nunca los de otra. */
+  terms(personId?: string): Promise<Result<SiuTerm[], ExternalFailure>>
   subject(subjectId: string): Promise<Result<SiuSubject, SiuReadError>>
   /** Devuelve las materias encontradas, sin repetir ids. */
   subjects(ids: string[]): Promise<Result<SiuSubject[], ExternalFailure>>
@@ -266,6 +330,26 @@ export type SiuPort = {
   absences(personId: string): Promise<Result<SiuAbsences, SiuReadError>>
   meetsCertificateConditions(personId: string, type: SiuCertificateType): Promise<Result<boolean, SiuReadError>>
 
+  // --- B: notas ---
+  /** Carga la nota de un alumno en una evaluación del cronograma de su comisión (`null` es ausente). Es idempotente
+      por alumno y evaluación: cargarla de nuevo la reemplaza y no deja dos. Se lee de vuelta con
+      `provisionalResults`. */
+  writeAssessmentGrade(
+    personId: string,
+    sectionId: string,
+    assessmentId: string,
+    grade: number | null
+  ): Promise<Result<SiuGradeReceipt, SiuWriteGradeError>>
+  /** Carga la nota de cursada de un alumno en una comisión. Es idempotente por alumno y comisión. Se lee de vuelta
+      con `history`, como un renglón `cursada`; con `promoted`, con resultado `promocionado`. */
+  writeCourseGrade(
+    personId: string,
+    sectionId: string,
+    grade: number,
+    promoted?: boolean
+  ): Promise<Result<SiuGradeReceipt, SiuWriteGradeError>>
+  // --- fin B: notas ---
+
   /** Sin `canEnroll` devuelven `no-soportado`. */
   enroll(personId: string, target: SiuTarget): Promise<Result<SiuReceipt, SiuEnrollError>>
   drop(personId: string, target: SiuTarget): Promise<Result<SiuReceipt, SiuDropError>>
@@ -284,5 +368,19 @@ export type SiuPort = {
   ): Promise<Result<SiuAttendanceReceipt, SiuAttendanceError>>
   // --- fin A: asistencia ---
 
-  selfServiceUrl(target: SiuSelfServiceTarget): string
+  /** `personId`: de quién es, cuando el destino depende de la persona (por ejemplo, la cuenta real). */
+  selfServiceUrl(target: SiuSelfServiceTarget, personId?: string): string
+
+  /** Trámites de la Autogestión. Solo los tiene un SIU leído con la cuenta del alumno: sin ellos, Trámites muestra
+      lo de la demo. */
+  certificateRequests?(personId: string): Promise<Result<SiuCertificateRequest[], SiuReadError | 'no-soportado'>>
+  /** Pide una constancia. `no-soportado` si este SIU no puede pedirla por API (se pide en la Autogestión). */
+  requestCertificate?(
+    personId: string,
+    request: SiuNewCertificateRequest
+  ): Promise<Result<SiuRequestOutcome, 'no-soportado' | ExternalFailure>>
+  officialDocument?(
+    personId: string,
+    kind: SiuOfficialDocumentKind
+  ): Promise<Result<SiuOfficialDocument, SiuReadError | 'no-soportado'>>
 }

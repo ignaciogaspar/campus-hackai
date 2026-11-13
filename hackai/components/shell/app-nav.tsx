@@ -24,6 +24,7 @@ import { Avatar } from '@/components/shell/avatar'
 import { Brand } from '@/components/shell/brand'
 import { useSidebar } from '@/components/shell/sidebar-context'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
+import { LinkPending } from '@/components/ui/link-pending'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Person, Role } from '@/lib/core/people'
@@ -235,7 +236,9 @@ function SubjectBranch({ subjects, pathname }: { subjects: NavSubject[]; pathnam
                 className='size-7 [&_svg]:size-3.5'
               />
               <span className={cn('min-w-0 flex-1 truncate', FADES)}>{s.name}</span>
-              <UnreadCount count={s.unread} className={SIDEBAR_COUNT} />
+              <LinkPending className={cn('text-blue', FADES)}>
+                <UnreadCount count={s.unread} className={SIDEBAR_COUNT} />
+              </LinkPending>
             </Link>
           </li>
         )

@@ -24,6 +24,7 @@ export function unionAbsences(siuRecords: AbsenceRecord[], taken: StoredClass[],
         sectionId: c.sectionId,
         date: c.classAt,
         justified: false,
+        amount: 1,
         source: 'hackai'
       })
     )

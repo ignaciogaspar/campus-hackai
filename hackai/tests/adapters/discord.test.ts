@@ -191,6 +191,30 @@ test('los mensajes de un hilo que se archivó entre dos lecturas no se pierden',
   )
 })
 
+test('con varios hilos con novedades, la lectura los junta en orden de id con su hilo, y el cursor queda en el último', async () => {
+  const { fake, port } = setup()
+  const roots = Array.from({ length: 6 }, (_, i) => `131000000000000050${i}`)
+  for (const root of roots) {
+    fake.addMessage(raw(root))
+    fake.startThread(CHANNEL, root, `Consulta ${root}`)
+  }
+  // Las respuestas llegan en otro orden que los hilos, para que el orden salga de los ids.
+  const replies = roots.map((root, i) => [`13300000000000005${9 - i}0`, root] as const)
+  for (const [id, root] of replies) fake.addMessage(raw(id, { channel_id: root }))
+
+  const page = await port.read(CHANNEL, null)
+
+  assert.ok(page.ok)
+  const expected = [...roots.map((root) => [root, null] as const), ...replies].sort(([a], [b]) =>
+    BigInt(a) < BigInt(b) ? -1 : 1
+  )
+  assert.deepEqual(
+    page.value.messages.map((m) => [m.id, m.threadId]),
+    expected.map(([id, thread]) => [id, thread])
+  )
+  assert.equal(page.value.cursor, expected.at(-1)?.[0])
+})
+
 test('cada request a la API lleva el token del bot y el User-Agent; la CDN no recibe el token', async () => {
   const { fake, port } = setup()
   fake.addMessage(

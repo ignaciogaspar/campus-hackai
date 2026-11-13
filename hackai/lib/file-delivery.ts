@@ -2,23 +2,38 @@
    mensaje): lo que responde la ruta `/archivos/<id>/<nombre>`
    (app/archivos/[id]/[name]/route.ts). El bucket es privado y el navegador
    nunca va directo a Supabase: el archivo sale de acá, a quien lo puede ver.
-   Quién lo ve lo decide `file` de Espacios.
+   Quién lo ve lo decide `file` de Espacios (material y adjuntos) o de
+   Seguimiento (la consigna de una tarea): la ruta pregunta primero a uno y
+   después al otro.
 
    Seguridad: el archivo se sirve desde nuestro origen, así que un HTML o un
    SVG subido podría correr código con la sesión de quien lo abre. Por eso solo
    un puñado de tipos inofensivos se abre en el navegador; todo lo demás se
    baja, con una CSP que no deja correr nada. Todo va con nosniff, así el
    navegador no adivina otro tipo que el guardado. */
+
+import type { Coursework } from '@/lib/core/coursework'
 import type { PersonId } from '@/lib/core/people'
 import type { Spaces } from '@/lib/core/spaces'
-import type { ErrorOf } from '@/lib/result'
+import type { FileContent } from '@/lib/ports/files'
+import type { ErrorOf, Result } from '@/lib/result'
 import { signInUrl } from '@/lib/return-to'
 
 export type FileDeliveryDeps = {
   /** Quién pide el archivo, según la sesión; nada si no hay sesión. */
   personId: PersonId | null
-  /** Los bytes del archivo, si la persona lo ve: `file` de Espacios. */
-  file: Spaces['file']
+  /** Los bytes del archivo, si la persona lo ve: `file` de Espacios y, si no es suyo, el de Seguimiento. */
+  file: (personId: PersonId, fileId: string) => Promise<Result<FileContent, FileError>>
+}
+
+/** `file` de la ruta: pregunta primero a Espacios (material y adjuntos) y, si el archivo no es suyo, a Seguimiento
+    (la consigna de una tarea). Cualquier otro error de Espacios, como `sin-acceso`, se devuelve tal cual. */
+export function fileFrom({ spaces, coursework }: { spaces: Spaces; coursework: Coursework }): FileDeliveryDeps['file'] {
+  return async (personId, fileId) => {
+    const found = await spaces.file(personId, fileId)
+    if (found.ok || found.error !== 'archivo-desconocido') return found
+    return coursework.file(personId, fileId)
+  }
 }
 
 /** Tipos que el navegador abre con su visor de PDF o de imágenes. Ese visor no
@@ -141,6 +156,7 @@ const STORAGE_DOWN: ErrorPage = {
   ])
 }
 
+/** Los errores de `file` de Espacios; los de Seguimiento son los mismos. */
 type FileError = ErrorOf<ReturnType<Spaces['file']>>
 
 /** La página de cada error de Espacios. Es exhaustivo a propósito: si Espacios

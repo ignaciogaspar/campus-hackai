@@ -7,8 +7,9 @@
      una hoja con el resto y «Crear canal».
    - En compu, un riel vertical a la izquierda con todos los canales, como los
      de Discord, y «Canal» para el docente.
-   Son enlaces (`?canal=`): en el navegador corren solo las flechas del teclado
-   y la hoja de «Más». */
+   Son enlaces (`?canal=`): en el navegador corren solo las flechas del teclado,
+   la hoja de «Más» y la ruedita que reemplaza el ícono mientras carga el canal
+   elegido (LinkPending). */
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { ArrowKeysList } from '@/components/spaces/arrow-keys'
@@ -22,6 +23,7 @@ import {
   spaceHref
 } from '@/components/spaces/format'
 import { MoreChannels } from '@/components/spaces/more-channels'
+import { LinkPending } from '@/components/ui/link-pending'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Channel } from '@/lib/core/spaces'
@@ -54,7 +56,9 @@ function PhoneRail({ subjectId, tabs, canManage, creating }: RailProps) {
         {shown.map(({ id, kind, href, label, unread, selected }) => (
           <li key={id} className='flex min-w-0 [&>*]:flex-1'>
             <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'md' })}>
-              <ChannelIcon kind={kind} />
+              <LinkPending>
+                <ChannelIcon kind={kind} />
+              </LinkPending>
               <span className='max-w-full truncate px-1'>{label}</span>
               <UnreadCount count={unread} className='absolute top-1 right-[calc(50%-28px)]' />
             </Link>
@@ -81,7 +85,9 @@ function DesktopRail({ subjectId, tabs, canManage, creating }: RailProps) {
         {tabs.map(({ id, kind, href, label, unread, selected }) => (
           <li key={id} className='flex [&>*]:flex-1'>
             <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'column' })}>
-              <ChannelIcon kind={kind} />
+              <LinkPending>
+                <ChannelIcon kind={kind} />
+              </LinkPending>
               <span className='min-w-0 flex-1 truncate'>{label}</span>
               <UnreadCount count={unread} />
             </Link>
@@ -94,7 +100,9 @@ function DesktopRail({ subjectId, tabs, canManage, creating }: RailProps) {
               aria-current={creating ? 'page' : undefined}
               className={railItem({ size: 'column', className: 'text-blue!' })}
             >
-              <Plus aria-hidden='true' className='flex-none' strokeWidth={1.8} />
+              <LinkPending>
+                <Plus aria-hidden='true' className='flex-none' strokeWidth={1.8} />
+              </LinkPending>
               Canal
               <span className='sr-only'> nuevo</span>
             </Link>

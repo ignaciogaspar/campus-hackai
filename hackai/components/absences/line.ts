@@ -1,16 +1,17 @@
-/* El texto de las inasistencias de una materia, para su fila. Solo arma
-   el texto: cuántas quedan y cuándo avisar lo decide Cursada. */
+/* El texto de las inasistencias de una materia, para su fila: cuántas lleva y,
+   si hay máximo, de cuántas. Lo de quedar libre va como sugerencia abajo de la
+   lista, no en cada materia. */
 import type { MyAbsences } from '@/lib/core/studies'
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+/** Un número de faltas como se lee: entero, o con coma si es media falta. */
+const amount = (n: number) =>
+  Number.isInteger(n) ? String(n) : n.toLocaleString('es-AR', { maximumFractionDigits: 2 })
 
-/** «3 de 8 faltas (1 justificada) · te quedan 5», o sin máximo, «2 faltas». Sin
-    ninguna falta, «Sin faltas», con cuántas le quedan si hay máximo. */
-export function absencesLine({ count, justified, max, left }: MyAbsences): string {
-  const none = count === 0
-  const counted = none ? 'Sin faltas' : max === null ? plural(count, 'falta', 'faltas') : `${count} de ${max} faltas`
-  const parts = [justified ? `${counted} (${plural(justified, 'justificada', 'justificadas')})` : counted]
-  if (left === 0) parts.push('llegaste al máximo')
-  else if (left !== null) parts.push(left === 1 ? 'te queda 1' : `te quedan ${left}`)
-  return parts.join(' · ')
+const plural = (n: number, one: string, many: string) => `${amount(n)} ${n === 1 ? one : many}`
+
+/** «2 de 3 faltas (1 justificada)», o sin máximo, «2 faltas». Sin ninguna, «Sin faltas». */
+export function absencesLine({ count, justified, max }: MyAbsences): string {
+  const counted =
+    count === 0 ? 'Sin faltas' : max === null ? plural(count, 'falta', 'faltas') : `${amount(count)} de ${max} faltas`
+  return justified ? `${counted} (${plural(justified, 'justificada', 'justificadas')})` : counted
 }

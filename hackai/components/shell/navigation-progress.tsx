@@ -4,7 +4,9 @@
    navegación al servidor: sin esto, entre el toque y la respuesta no pasa
    nada en pantalla y parece que no anduvo. Aparece al tocar un enlace interno
    y se va cuando cambian la ruta o la query. No mide nada: avanza sola y
-   frena antes del final hasta que llega la respuesta. */
+   frena antes del final hasta que llega la respuesta. Para lectores de
+   pantalla, una región viva siempre montada dice «Cargando…» mientras tanto
+   (la ruedita de LinkPending es solo visual). */
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -63,11 +65,16 @@ export function NavigationProgress() {
   }, [phase])
 
   return (
-    <div aria-hidden='true' className='pointer-events-none fixed inset-x-0 top-0 z-50 h-[3px] overflow-hidden'>
-      <div
-        className='h-full w-full origin-left bg-blue-light transition-[transform,opacity] ease-out motion-reduce:transition-none'
-        style={STYLES[phase]}
-      />
-    </div>
+    <>
+      <div aria-hidden='true' className='pointer-events-none fixed inset-x-0 top-0 z-50 h-[3px] overflow-hidden'>
+        <div
+          className='h-full w-full origin-left bg-blue-light transition-[transform,opacity] ease-out motion-reduce:transition-none'
+          style={STYLES[phase]}
+        />
+      </div>
+      <p role='status' className='sr-only'>
+        {phase === 'cargando' ? 'Cargando…' : ''}
+      </p>
+    </>
   )
 }

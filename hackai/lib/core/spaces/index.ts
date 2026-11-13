@@ -567,6 +567,10 @@ export type SpacesDeps = {
       espacio. No es el reloj: el de la demo está fijo, y con él un espacio se
       sincronizaría una sola vez por proceso. */
   timer: () => number
+  /** Corre lo que `open` trae de Moodle y del canal externo sin que la página lo espere: en la app, con
+      `after()` de Next. Si no está, `open` lo espera, como en los tests. Lo nuevo aparece cuando el
+      canal abierto consulta su versión (ChannelUpdates). */
+  defer?: (task: () => Promise<unknown>) => Promise<void>
 }
 
 export function createSpaces(deps: SpacesDeps): Spaces {

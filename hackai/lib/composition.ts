@@ -27,8 +27,9 @@
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
    necesita las mismas dos variables. Lo usan Personas, para los vínculos con
-   cada sistema, Cursada, para las listas que toma el docente, y Espacios, para
-   espacios, canales, mensajes, material y lo leído.
+   cada sistema, Cursada, para las listas que toma el docente, Espacios, para
+   espacios, canales, mensajes, material y lo leído, y Seguimiento, para las
+   tareas.
 
    Archivos con `supabase` guarda en el bucket privado de Supabase Storage
    (supabase/migrations/0003_files.sql), con las mismas dos variables.
@@ -38,6 +39,15 @@
    y `DISCORD_CLIENT_SECRET`; sin ellos, el espacio solo se vincula pegando el
    enlace o el ID de cada canal. `DISCORD_REDIRECT_URI` fija la URL de vuelta
    si la del pedido no es la que está cargada en el Developer Portal.
+
+   Cuentas reales del SIU (ADR 0009, lib/adapters/siu-real/): sobre el SIU
+   elegido, cualquiera entra con su sesión del SIU desde el ingreso
+   (`/entrar-con-siu`) y ve lo que muestra su Autogestión, en vivo. Prendido
+   por defecto; `HACKAI_SIU_REAL_PUBLICO=no` lo apaga. Inscribir, dar de baja y
+   pedir constancias van al SIU de verdad; `HACKAI_SIU_ESCRITURAS=no` lo manda
+   a la Autogestión. `HACKAI_SIU_REAL=si` con `SIU_SESION` suma una cuenta fija,
+   primera en el ingreso de demo. Las personas sintéticas siguen en el SIU
+   elegido.
 
    `HACKAI_CAIDAS=si` envuelve al SIU y al aula virtual con un interruptor que
    los hace responder como caídos, para mostrarlo en la demo desde `/caidas`
@@ -49,6 +59,7 @@
    configuración, no algo que el núcleo pueda resolver. */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { after } from 'next/server'
 import { cache as reactCache } from 'react'
 import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
@@ -56,6 +67,7 @@ import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-ch
 import { createDiscordOAuth, type DiscordOAuth } from '@/lib/adapters/discord/oauth'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
+import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -65,14 +77,25 @@ import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
+import { createRealSiu, identifySession, type RealSiu } from '@/lib/adapters/siu-real'
+import {
+  type RealPerson,
+  realPersonId,
+  withRealPeople,
+  withRealPerson,
+  withRealSubject
+} from '@/lib/adapters/siu-real/person'
+import { createRealSiuRegistry, type RealSiuRegistry, siuIdOf } from '@/lib/adapters/siu-real/registry'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
+import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursework-store'
 import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import { createSupabaseStudiesStore } from '@/lib/adapters/supabase/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
-import { createPeople, type People } from '@/lib/core/people'
+import { type Coursework, createCoursework } from '@/lib/core/coursework'
+import { createPeople, type People, type PeopleStore, type PersonId } from '@/lib/core/people'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
 import { createStudies, type Studies } from '@/lib/core/studies'
 import { createToday, type Today } from '@/lib/core/today'
@@ -83,6 +106,8 @@ import type { FilesPort } from '@/lib/ports/files'
 import type { IdentityPort } from '@/lib/ports/identity'
 import type { SiuPort } from '@/lib/ports/siu'
 import { memoRead, type RequestScope } from '@/lib/request-memo'
+import type { ExternalFailure, Result } from '@/lib/result'
+import { personKey } from '@/lib/siu-session'
 
 export type Env = Record<string, string | undefined>
 
@@ -131,6 +156,22 @@ export type System = {
   now(): string
   /** El interruptor de caídas de la demo, o `null` si `HACKAI_CAIDAS` no lo pide. */
   outages: OutageSwitch | null
+  /** Las cuentas reales del SIU, o `null` sin `HACKAI_SIU_REAL` ni `HACKAI_SIU_REAL_PUBLICO`. `version` es la
+      huella de lo que muestra el SIU de una persona real (o `null` si no es real), para que su pantalla se
+      redibuje sola (app/api/siu/version). `connect` arma la cuenta de quien entra con su sesión del SIU. */
+  siuLive: {
+    /** Si la persona es de una cuenta real. No consulta nada. */
+    isReal(personId: PersonId): boolean
+    version(personId: PersonId): Promise<Result<string, ExternalFailure> | null>
+    /** Si quien entra puede usar su cuenta real (prendido salvo `HACKAI_SIU_REAL_PUBLICO=no`). */
+    canConnect: boolean
+    /** Si con la cuenta real se inscribe y se piden constancias de verdad (`HACKAI_SIU_ESCRITURAS`). */
+    writes: boolean
+    connect(key: string, session: string): void
+    /** Reconoce a quien entra con su sesión del SIU y arma su cuenta: su clave y su persona de HackAI, o `null`
+        si la sesión no es válida. */
+    signIn(session: string): Promise<{ key: string; personId: PersonId } | null>
+  } | null
   /** «Conectar con Discord», o `null` si el canal externo no es Discord o falta la aplicación de Discord. */
   discordOAuth: DiscordOAuth | null
   /** La URL de vuelta de Discord fijada por `DISCORD_REDIRECT_URI`, o `null` para usar la del pedido. */
@@ -138,6 +179,7 @@ export type System = {
   people: People
   studies: Studies
   spaces: Spaces
+  coursework: Coursework
   today: Today
 }
 
@@ -174,6 +216,93 @@ function outagesFrom(env: Env): OutageSwitch | null {
   return value === 'si' ? createOutageSwitch() : null
 }
 
+/** Una variable que vale `si` o `no`; vacía, lo que diga `byDefault`. */
+function flag(env: Env, variable: string, byDefault = false): boolean {
+  const value = env[variable]?.trim() || (byDefault ? 'si' : 'no')
+  if (value !== 'si' && value !== 'no') throw new Error(`${variable} tiene que ser si o no`)
+  return value === 'si'
+}
+
+/** Lo común a las cuentas reales del SIU: dónde está, cada cuánto se vuelve a leer y si se escribe. */
+function realSiuCommon(env: Env) {
+  const seconds = env.HACKAI_SIU_REAL_SEGUNDOS?.trim()
+  if (seconds && !/^\d{1,4}$/.test(seconds))
+    throw new Error('HACKAI_SIU_REAL_SEGUNDOS tiene que ser una cantidad de segundos, como 20')
+  return {
+    baseUrl: (env.SIU_URL?.trim() || 'https://siu.austral.edu.ar/portal').replace(/\/$/, ''),
+    // Por defecto se inscribe y se piden constancias de verdad con la cuenta real (ADR 0009); `no` lo apaga.
+    writes: flag(env, 'HACKAI_SIU_ESCRITURAS', true),
+    ttlMs: seconds ? Number(seconds) * 1000 : undefined
+  }
+}
+
+/** El SIU real de la cuenta del `.env.local`, sobre el SIU elegido, solo si `HACKAI_SIU_REAL=si`. */
+function realSiuOf(env: Env, fallback: SiuPort, clock: ClockPort) {
+  if (!flag(env, 'HACKAI_SIU_REAL')) return null
+  const session = required(env, 'SIU_SESION', 'HACKAI_SIU_REAL=si')
+  return createRealSiu({ ...realSiuCommon(env), session, personId: REAL_PERSON.accounts.siu ?? '', fallback, clock })
+}
+
+/** Las cuentas reales de quienes entran con su sesión del SIU. Prendido por defecto: cualquiera entra con su
+    cuenta desde el ingreso, sin configurar nada. `HACKAI_SIU_REAL_PUBLICO=no` lo apaga. */
+function realSiuRegistryOf(env: Env, fallback: SiuPort, clock: ClockPort) {
+  if (!flag(env, 'HACKAI_SIU_REAL_PUBLICO', true)) return null
+  return createRealSiuRegistry({ ...realSiuCommon(env), fallback, clock })
+}
+
+/** Personas con la persona de la cuenta real del `.env.local` y las de quienes entran con su sesión del SIU. */
+function withRealAccounts(store: PeopleStore, single: boolean, many: boolean): PeopleStore {
+  const withSingle = single ? withRealPerson(store, REAL_PERSON) : store
+  return many ? withRealPeople(withSingle) : withSingle
+}
+
+/** Las cuentas reales para las pantallas: la huella de cada una y armar la de quien entra. */
+function siuLiveOf(
+  single: RealSiu | null,
+  registry: RealSiuRegistry | null,
+  { baseUrl, writes }: { baseUrl: string; writes: boolean }
+): NonNullable<System['siuLive']> {
+  return {
+    isReal: (personId) =>
+      (single !== null && personId === REAL_PERSON.personId) ||
+      (registry !== null && /^p-siu-[a-f0-9]{12}$/.test(personId)),
+    async version(personId) {
+      if (single && personId === REAL_PERSON.personId) return single.version()
+      const key = personId.match(/^p-siu-([a-f0-9]{12})$/)?.[1]
+      const account = key && registry ? registry.accountOf(siuIdOf(key)) : null
+      return account ? account.version() : null
+    },
+    canConnect: registry !== null,
+    writes,
+    connect(key, session) {
+      registry?.register(key, session)
+    },
+    async signIn(session) {
+      if (!registry) return null
+      const who = await identifySession(baseUrl, session)
+      if (!who) return null
+      const key = personKey(who.document)
+      registry.register(key, session)
+      return { key, personId: realPersonId(key) }
+    }
+  }
+}
+
+/** La persona de HackAI de la cuenta real del SIU. */
+export const REAL_PERSON: RealPerson = {
+  personId: 'p-real',
+  subject: { subject: 'real-alumno', name: 'Tu cuenta del SIU' },
+  accounts: { siu: 'real-alumno' }
+}
+
+/** El almacén de Cursada (las listas que toma el docente): en Supabase o en memoria. */
+const studiesStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
+  store === 'supabase' ? createSupabaseStudiesStore({ client: supabase() }) : createMemoryStudiesStore()
+
+/** El almacén de Seguimiento: en Supabase o en memoria, como el resto de los módulos. */
+const courseworkStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
+  store === 'supabase' ? createSupabaseCourseworkStore({ client: supabase() }) : createMemoryCourseworkStore()
+
 /** Arma todos los módulos con los adaptadores que piden las variables de
     entorno. Cada llamada tiene su propia copia de los datos en memoria. */
 export function compose(
@@ -199,7 +328,7 @@ export function compose(
 
   const outages = outagesFrom(env)
   const cache = { staticTtlMs: cacheTtlFrom(env), requestScope }
-  const siu =
+  const baseSiu =
     adapters.siu === 'simulado'
       ? withSiuCache(
           createSimulatedSiu({
@@ -211,13 +340,16 @@ export function compose(
           cache
         )
       : createMemorySiu(data, clock)
+  const realSiu = realSiuOf(env, baseSiu, clock)
+  const registry = realSiuRegistryOf(env, realSiu ?? baseSiu, clock)
+  const siu = registry ?? realSiu ?? baseSiu
   const classroom =
     adapters.classroom === 'simulado'
       ? withClassroomCache(createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl }), cache)
       : createMemoryClassroom(data)
 
   const ports: Ports = {
-    identity: createMemoryIdentity(data),
+    identity: realSiu ? withRealSubject(createMemoryIdentity(data), REAL_PERSON) : createMemoryIdentity(data),
     siu: outages ? withSiuOutage(siu, outages) : siu,
     classroom: outages ? withClassroomOutage(classroom, outages) : classroom,
     externalChannel:
@@ -228,14 +360,15 @@ export function compose(
     clock
   }
 
+  const peopleStore =
+    adapters.store === 'supabase'
+      ? withPeopleStoreCache(createSupabasePeopleStore({ client: supabase() }), cache)
+      : createMemoryPeopleStore(data)
   const people = memoPeople(
     createPeople({
       identity: ports.identity,
       siu: ports.siu,
-      store:
-        adapters.store === 'supabase'
-          ? withPeopleStoreCache(createSupabasePeopleStore({ client: supabase() }), cache)
-          : createMemoryPeopleStore(data)
+      store: withRealAccounts(peopleStore, realSiu !== null, registry !== null)
     }),
     requestScope
   )
@@ -245,8 +378,7 @@ export function compose(
       siu: ports.siu,
       classroom: ports.classroom,
       clock,
-      store:
-        adapters.store === 'supabase' ? createSupabaseStudiesStore({ client: supabase() }) : createMemoryStudiesStore()
+      store: studiesStoreOf(adapters.store, supabase)
     }),
     requestScope
   )
@@ -261,11 +393,18 @@ export function compose(
       store:
         adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore(),
       // El tiempo real del proceso, aunque el reloj sea el fijo de la demo.
-      timer: () => performance.now()
+      timer: () => performance.now(),
+      defer: afterResponse
     }),
     requestScope
   )
-  const today = createToday({ studies, spaces, clock })
+  const coursework = createCoursework({
+    studies,
+    files: ports.files,
+    clock,
+    store: courseworkStoreOf(adapters.store, supabase)
+  })
+  const today = createToday({ studies, spaces, coursework, clock })
 
   const now = () => clock.now().toISOString()
   return {
@@ -273,12 +412,39 @@ export function compose(
     ports,
     now,
     outages,
+    siuLive: realSiu || registry ? siuLiveOf(realSiu, registry, realSiuCommon(env)) : null,
     discordOAuth: discordOAuthFrom(env, adapters),
     discordRedirectUri: env.DISCORD_REDIRECT_URI?.trim() || null,
     people,
     studies,
     spaces,
+    coursework,
     today
+  }
+}
+
+/** El error de `after()` cuando se llama fuera de un pedido de Next, como en los tests y los scripts. */
+function outsideRequest(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('outside a request scope')
+}
+
+/** Corre la tarea después de mandar la página, con `after()` de Next, así abrir un espacio no espera a Moodle
+    ni a Discord. Fuera de un pedido `after` falla, y la tarea se espera ahí mismo. Si `after` falla por otra
+    cosa, queda registrado y la tarea también se espera: es más lento, pero no se pierde. Un error de la
+    tarea se registra y no llega a quien abrió el espacio. */
+export async function afterResponse(task: () => Promise<unknown>): Promise<void> {
+  const run = () =>
+    task().then(
+      () => undefined,
+      (error: unknown) => {
+        console.error('Falló lo que se trae de Moodle o del canal externo después de abrir un espacio', error)
+      }
+    )
+  try {
+    after(run)
+  } catch (error) {
+    if (!outsideRequest(error)) console.error('after() no anduvo: lo de Moodle y Discord se espera ahora', error)
+    await run()
   }
 }
 
@@ -305,7 +471,8 @@ function memoStudies(studies: Studies, scope: RequestScope | undefined): Studies
     sectionsOf: memoRead(scope, 'studies.sectionsOf', studies.sectionsOf),
     enroll: clearAfter(studies.enroll, () => scope?.()?.clear()),
     drop: clearAfter(studies.drop, () => scope?.()?.clear()),
-    takeAttendance: clearAfter(studies.takeAttendance, () => scope?.()?.clear())
+    takeAttendance: clearAfter(studies.takeAttendance, () => scope?.()?.clear()),
+    requestCertificate: clearAfter(studies.requestCertificate, () => scope?.()?.clear())
   }
 }
 

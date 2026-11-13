@@ -9,18 +9,22 @@ import { cn } from '@/lib/utils'
 
 /* Campana del encabezado: lleva a Novedades, con lo que hay sin leer de todas
    las materias. Con algo sin leer se pinta blanca, para que se vea sobre el
-   navy; en compu dice «Novedades» y el número va adentro. */
-export function NotificationsBell({ unread }: { unread: number }) {
+   navy; en compu dice «Novedades» y el número va adentro. Con `tone='light'`
+   va sobre el fondo claro, como en la barra de la materia del docente. */
+export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; tone?: 'navy' | 'light' }) {
   const pending = unread > 0
+  const light = tone === 'light'
   return (
     <Link
       href='/novedades'
       aria-label={pending ? `Novedades, ${unread} sin leer` : 'Novedades'}
       className={cn(
         'relative inline-flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
-        pending
-          ? 'bg-white text-navy ring-white hover:bg-white/90'
-          : 'bg-white/10 text-white ring-white/20 hover:bg-white/20'
+        light
+          ? 'h-11 bg-card text-ink ring-border hover:bg-ice'
+          : pending
+            ? 'bg-white text-navy ring-white hover:bg-white/90'
+            : 'bg-white/10 text-white ring-white/20 hover:bg-white/20'
       )}
     >
       <Bell aria-hidden='true' className={cn('size-5', pending && 'motion-safe:animate-[wiggle_1.2s_ease-in-out_1]')} />
@@ -29,7 +33,10 @@ export function NotificationsBell({ unread }: { unread: number }) {
       </span>
       <UnreadCount
         count={unread}
-        className='absolute -top-1 -right-1 bg-blue text-white ring-2 ring-navy lg:static lg:ring-0'
+        className={cn(
+          'absolute -top-1 -right-1 bg-blue text-white ring-2 lg:static lg:ring-0',
+          light ? 'ring-card' : 'ring-navy'
+        )}
       />
     </Link>
   )
@@ -42,9 +49,9 @@ export function NotificationsBell({ unread }: { unread: number }) {
    Novedades. No sale del layout, porque Next.js no lo vuelve a ejecutar al
    navegar entre pantallas. Sin sesión no hay campana; si Espacios no responde,
    se ve sin número. */
-export async function SessionBell() {
+export async function SessionBell({ tone }: { tone?: 'navy' | 'light' } = {}) {
   const session = await getSession()
   if (!session) return null
   const [read, grades] = await Promise.all([system().spaces.unreadFor(session.personId), newGradesFor(session)])
-  return <NotificationsBell unread={newsTotal(read.ok ? read.value : [], grades.length)} />
+  return <NotificationsBell unread={newsTotal(read.ok ? read.value : [], grades.length)} tone={tone} />
 }

@@ -32,6 +32,9 @@ type Props = {
   /** Pantallas sin sesión, como el ingreso: no hay barra lateral ni novedades,
       así que la marca se ve también en compu y no va la campana. */
   signedOut?: boolean
+  /** `false` en las pantallas que en compu llevan la campana en su propia barra (la de la materia del docente): en
+      el encabezado queda solo para el celular. */
+  desktopBell?: boolean
   /** Arriba a la derecha, antes de la campana: acciones propias de la pantalla. */
   actions?: ReactNode
   /** Debajo del título, sobre el navy: chips de comisión, docente, una acción principal. */
@@ -62,6 +65,7 @@ export function PageHeader({
   hideBackOnDesktop,
   unread,
   signedOut = false,
+  desktopBell = true,
   actions,
   children
 }: Props) {
@@ -86,14 +90,17 @@ export function PageHeader({
         </div>
         <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>
           <InstallButton />
-          {!signedOut &&
-            (unread === undefined ? (
-              <Suspense fallback={<NotificationsBell unread={0} />}>
-                <SessionBell />
-              </Suspense>
-            ) : (
-              <NotificationsBell unread={unread} />
-            ))}
+          {!signedOut && (
+            <span className={cn('contents', !desktopBell && 'lg:hidden')}>
+              {unread === undefined ? (
+                <Suspense fallback={<NotificationsBell unread={0} />}>
+                  <SessionBell />
+                </Suspense>
+              ) : (
+                <NotificationsBell unread={unread} />
+              )}
+            </span>
+          )}
           {actions}
           <HeaderSessionActions />
         </div>

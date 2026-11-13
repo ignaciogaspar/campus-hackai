@@ -3,12 +3,10 @@
    vio. Va en una cookie y no en la base: vale por
    navegador, así que en otro dispositivo la nota vuelve a salir como nueva
    hasta que la vea ahí. Guarda la persona, porque en la demo varias entran
-   desde el mismo navegador. Qué nota es nueva lo decide Cursada
-   (`newGrades`); acá solo se guarda y se lee la hora, y se decide si se
-   muestran. Va aparte de la ruta que escribe la cookie y de lib/new-grades.ts,
+   desde el mismo navegador. Qué nota es nueva lo decide Hoy (`newGrades`, que
+   junta las del SIU y las publicadas en HackAI); acá solo se guarda y se lee la
+   hora. Va aparte de la ruta que escribe la cookie y de lib/new-grades.ts,
    que la lee, para poder testearlo. */
-import type { Fresh } from '@/lib/fresh'
-import type { Result } from '@/lib/result'
 
 export const GRADES_SEEN_COOKIE = 'hackai_notas_vistas'
 
@@ -23,10 +21,4 @@ export function seenAtFrom(value: string | undefined, personId: string): string 
   const [owner, at] = value?.split('|') ?? []
   if (owner !== personId || !at || Number.isNaN(Date.parse(at))) return null
   return new Date(at).toISOString()
-}
-
-/** Las notas nuevas que se muestran: solo si se leyeron al día. Con el SIU caído, la campana no las cuenta y
-    Novedades no las muestra, aunque Cursada tenga lo último leído: una nota vieja no se anuncia como nueva. */
-export function shownNewGrades<T>(read: Result<Fresh<T[]>, string>): T[] {
-  return read.ok && !read.value.stale ? read.value.data : []
 }

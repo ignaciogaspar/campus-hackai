@@ -1,7 +1,7 @@
-/* Inasistencias, por materia: las que el alumno cursa, cada una con sus faltas,
-   el máximo si lo hay y cuántas le quedan, y al tocarla, cada falta con su
-   fecha y si está justificada. Sin reglas de negocio: la cuenta y el aviso los
-   decide Cursada. */
+/* Inasistencias, por materia: solo las que el alumno cursa y en las que tiene
+   faltas, cada una con el máximo si lo hay («2 de 3 faltas»), con la regla de
+   asistencia como sugerencia abajo, y al tocarla, cada falta con su fecha y si está justificada. Sin
+   reglas de negocio: la cuenta, el máximo y el aviso los decide Cursada. */
 import { CalendarCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import { AbsencesList } from '@/components/absences/absences-list'
@@ -33,11 +33,20 @@ export default async function InasistenciasPage() {
           <>
             {result.value.stale && <StaleBanner since={result.value.readAt} now={system().now()} />}
             {result.value.data.subjects.length === 0 ? (
-              <EmptyState icon={CalendarCheck} title='No estás cursando materias'>
-                Cuando te inscribas a una materia, acá vas a ver tus faltas y cuántas te quedan.
+              <EmptyState icon={CalendarCheck} title='No tenés faltas'>
+                En tus materias de este período no hay inasistencias cargadas en el SIU.
               </EmptyState>
             ) : (
-              <AbsencesList subjects={result.value.data.subjects} />
+              <>
+                <AbsencesList subjects={result.value.data.subjects} />
+                {result.value.data.subjects.some((s) => s.classes !== null) && (
+                  <p className='px-1 text-[0.8125rem] text-pretty text-muted-foreground'>
+                    Sugerencia: la facultad pide el 75% de asistencia, así que el máximo de cada materia es el 25% de
+                    sus clases. Pasarlo puede dejarte libre. Las clases salen del calendario de cada comisión en el SIU,
+                    sin descontar feriados.
+                  </p>
+                )}
+              </>
             )}
           </>
         )}

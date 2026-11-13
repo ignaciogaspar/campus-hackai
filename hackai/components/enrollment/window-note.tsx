@@ -10,13 +10,14 @@ type EnrollmentWindow = Pick<OfferItem, 'enrollmentWindow' | 'enrollmentStart' |
 export function WindowNote({ item }: { item: EnrollmentWindow }) {
   const { enrollmentStart: start, enrollmentEnd: end } = item
   if (item.enrollmentWindow === 'abierta') {
+    if (end === null) return <>Inscripción abierta · el SIU no informa hasta cuándo</>
     return (
       <>
         Inscripción abierta hasta el <time dateTime={end}>{shortDate(end)}</time>
       </>
     )
   }
-  if (item.enrollmentWindow === 'no-abrio') {
+  if (item.enrollmentWindow === 'no-abrio' && start !== null && end !== null) {
     return (
       <>
         La inscripción abre el <time dateTime={start}>{`${shortDate(start)} a las ${timeOf(start)}`}</time> y cierra el{' '}
@@ -25,12 +26,14 @@ export function WindowNote({ item }: { item: EnrollmentWindow }) {
     )
   }
   if (item.alreadyEnrolled) {
+    if (end === null) return <>La inscripción cerró: ya no te podés dar de baja.</>
     return (
       <>
         La inscripción cerró el <time dateTime={end}>{shortDate(end)}</time>: ya no te podés dar de baja.
       </>
     )
   }
+  if (start === null || end === null) return <>Inscripción cerrada</>
   return (
     <>
       Inscripción cerrada · fue del {shortDate(start)} al {shortDate(end)}
