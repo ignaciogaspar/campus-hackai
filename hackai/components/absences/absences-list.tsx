@@ -61,7 +61,7 @@ export function AbsencesList({ subjects }: { subjects: SubjectAbsences[] }) {
                 <ul className='divide-y divide-border'>
                   {subject.absences.map((a) => (
                     <li
-                      key={`${a.date}-${a.source}`}
+                      key={`${a.source}-${a.id}`}
                       className='flex items-center justify-between gap-3 px-4 py-3 text-[0.875rem]'
                     >
                       <time dateTime={a.date} className='font-medium'>

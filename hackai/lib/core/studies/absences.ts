@@ -27,6 +27,8 @@ export type AbsenceSource = 'siu' | 'hackai'
 
 /** Una falta, venga de donde venga. */
 export type AbsenceRecord = {
+  /** Id de la falta en su fuente: dos faltas pueden tener el mismo instante (una clase doble). */
+  id: string
   sectionId: string
   /** Instante ISO de la clase. */
   date: string

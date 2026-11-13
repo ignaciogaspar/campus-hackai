@@ -854,7 +854,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!report.ok) return fail(asUnknownPerson(report.error))
     // Por ahora la única fuente es el SIU; la toma de lista (#108) suma la de HackAI.
     const records: AbsenceRecord[] = report.value.absences
-      .map((a) => ({ sectionId: a.sectionId, date: a.date, justified: a.justified, source: 'siu' as const }))
+      .map((a) => ({ id: a.id, sectionId: a.sectionId, date: a.date, justified: a.justified, source: 'siu' as const }))
       .sort((a, b) => a.date.localeCompare(b.date))
     return ok({
       subjects: mine.value.sections
