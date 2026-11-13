@@ -83,7 +83,10 @@ export function LatestMark({ scope, latest, at, children }: Props) {
     <div
       ref={mark}
       aria-hidden='true'
-      className={cn('h-0', at === 'bottom' ? 'scroll-mb-(--dock-space) lg:scroll-mb-24' : 'scroll-mt-4')}
+      className={cn(
+        'h-0',
+        at === 'bottom' ? 'scroll-mb-(--dock-space) lg:scroll-mb-[calc(var(--dock-height,0px)+1.75rem)]' : 'scroll-mt-4'
+      )}
     />
   )
   return (

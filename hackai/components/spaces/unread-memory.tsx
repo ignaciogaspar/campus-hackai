@@ -61,7 +61,10 @@ export function ThreadItem({
   return (
     <li
       data-new={isNew ? '' : undefined}
-      className={cn('scroll-mt-4 scroll-mb-(--dock-space) lg:scroll-mb-24', className)}
+      className={cn(
+        'scroll-mt-4 scroll-mb-(--dock-space) lg:scroll-mb-[calc(var(--dock-height,0px)+1.75rem)]',
+        className
+      )}
     >
       {isNew && (
         <p className='new-divider mb-3 items-center gap-3 text-xs font-bold text-blue-light'>

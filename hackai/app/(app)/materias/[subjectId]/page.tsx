@@ -485,7 +485,10 @@ export default async function SpacePage({ params, searchParams }: { params: Para
 
       <main
         data-just-read={hadUnread ? '' : undefined}
-        className={cn(SUBJECT_WIDTH, 'flex flex-col gap-4 px-4 pt-5 pb-(--dock-space) lg:px-8 lg:pt-8 lg:pb-8')}
+        className={cn(
+          SUBJECT_WIDTH,
+          'flex flex-col gap-4 px-4 pt-5 pb-[calc(var(--dock-extra)+1rem)] lg:px-8 lg:pt-8 lg:pb-8'
+        )}
       >
         {view.staleSince && (
           <StaleNotice>
