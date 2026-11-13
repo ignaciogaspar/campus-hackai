@@ -63,8 +63,8 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader
-        title='¿Quién sos?'
-        subtitle='Elegí una persona para entrar. No hace falta clave.'
+        title='HackAI'
+        subtitle='Un solo lugar que te dice qué te toca y te avisa a tiempo: tus materias, notas, inscripciones y avisos del SIU y del Campus Virtual.'
         art='ingreso'
         signedOut
       >
@@ -95,6 +95,13 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
             <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
           </Link>
         )}
+
+        <div>
+          <h2 className='text-lg font-extrabold text-ink'>¿Quién sos?</h2>
+          <p className='text-sm text-pretty text-muted-foreground'>
+            Elegí un alumno o un docente inventado para entrar. No hace falta clave.
+          </p>
+        </div>
 
         {!listed.ok ? (
           <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
