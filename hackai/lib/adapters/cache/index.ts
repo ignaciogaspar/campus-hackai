@@ -19,7 +19,7 @@
    - Los vínculos de cada persona con el SIU, Moodle y Discord (el almacén de
      Personas) se guardan unos minutos: la app solo los lee; los carga el seed.
    Un error no se guarda nunca: la próxima lectura vuelve a intentar. Inscribir
-   o dar de baja pasa directo. */
+   o dar de baja, y cargar notas, pasa directo (lo que cargó se lee sin guardar). */
 import type { PeopleStore } from '@/lib/core/people'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
@@ -112,6 +112,8 @@ export function withSiuCache(
     provisionalResults: read('provisionalResults', 0, siu.provisionalResults),
     absences: read('absences', 0, siu.absences),
     meetsCertificateConditions: read('meetsCertificateConditions', 0, siu.meetsCertificateConditions),
+    writeAssessmentGrade: siu.writeAssessmentGrade,
+    writeCourseGrade: siu.writeCourseGrade,
     enroll: siu.enroll,
     drop: siu.drop,
     selfServiceUrl: siu.selfServiceUrl

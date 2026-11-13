@@ -197,6 +197,37 @@ export async function publishColumn(_prev: SpaceActionState, form: FormData): Pr
   }
 }
 
+type PassActionError = ErrorOf<ReturnType<Coursework['retryPassOf']>>
+
+const PASS_ERRORS: Record<PassActionError, string> = {
+  'persona-desconocida': ERRORS['persona-desconocida'],
+  'sin-acceso': 'No dictás esa comisión.',
+  'solo-docentes': 'Solo los docentes de la comisión pasan las notas al SIU.',
+  'falla-externa': 'El SIU no responde. Las notas siguen pendientes y las reintentamos solas.'
+}
+
+/** Reintenta el pase al SIU de las notas pendientes de la comisión. */
+export async function retryGradePass(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  if (!subjectId || !sectionId) return failed(UNEXPECTED)
+
+  const result = await system().coursework.retryPassOf(session.personId, sectionId)
+  if (!result.ok) return failed(PASS_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  const { passed, pending } = result.value
+  if (pending > 0) return failed('El SIU todavía no responde. Las notas siguen pendientes y las reintentamos solas.')
+  return {
+    status: 'ok',
+    message:
+      passed === 0
+        ? 'No había notas pendientes de pasar.'
+        : `Pasamos ${passed === 1 ? '1 nota' : `${passed} notas`} al SIU.`,
+    at: Date.now()
+  }
+}
+
 /** El alumno entrega uno o más archivos, o reemplaza su entrega anterior. */
 export async function submitTask(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()

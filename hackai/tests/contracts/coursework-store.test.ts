@@ -81,6 +81,7 @@ const gradeOf = (
   comment: '',
   gradedAt: CREATED_AT,
   publishedAt: null,
+  pass: null,
   ...fields
 })
 
@@ -278,12 +279,18 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1', personId: ids.person(3), value: 9 }))
     await store.saveGrade(gradeOf(ids, section, { refId: 'ev-2' }))
 
-    const published = value(await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER))
+    const published = value(
+      await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER, null)
+    )
 
     assert.equal(published.length, 2)
     assert.ok(published.every((g) => g.publishedAt === LATER && g.refId === 'ev-1'))
     const again = value(
-      await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, '2026-11-12T20:00:00.000Z')
+      await store.publishColumn(
+        { sectionId: section, kind: 'evaluacion', refId: 'ev-1' },
+        '2026-11-12T20:00:00.000Z',
+        null
+      )
     )
     assert.deepEqual(again, [])
     const all = value(await store.gradesOfSection(section))
@@ -300,10 +307,10 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
   it('publicar no sella una columna vacía ni las notas sin nota ni ausente', async (store, ids) => {
     const section = ids.subject(1)
     const column = { sectionId: section, kind: 'tarea' as const, refId: 'tarea-1' }
-    assert.deepEqual(value(await store.publishColumn(column, LATER)), [])
+    assert.deepEqual(value(await store.publishColumn(column, LATER, null)), [])
     await store.saveGrade(gradeOf(ids, section, { kind: 'tarea', refId: 'tarea-1', value: null, comment: 'Falta' }))
 
-    assert.deepEqual(value(await store.publishColumn(column, LATER)), [])
+    assert.deepEqual(value(await store.publishColumn(column, LATER, null)), [])
   })
 
   it('las notas publicadas de una persona son solo las suyas y las publicadas', async (store, ids) => {
@@ -311,7 +318,7 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1' }))
     await store.saveGrade(gradeOf(ids, section, { refId: 'ev-2' }))
     await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1', personId: ids.person(3) }))
-    await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER)
+    await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER, null)
 
     const mine = value(await store.publishedGradesOf(ids.person(2)))
 
@@ -320,6 +327,73 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
       [['ev-1', ids.person(2), LATER]]
     )
     assert.deepEqual(value(await store.publishedGradesOf(ids.person(9))), [])
+  })
+
+  it('publicar con pase deja las notas pendientes de pasar, y las que no se pasan no tienen pase', async (store, ids) => {
+    const section = ids.subject(1)
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1' }))
+    await store.saveGrade(gradeOf(ids, section, { kind: 'tarea', refId: 'tarea-1' }))
+
+    const passed = value(
+      await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER, {
+        status: 'pendiente',
+        by: ids.person(1)
+      })
+    )
+    const task = value(await store.publishColumn({ sectionId: section, kind: 'tarea', refId: 'tarea-1' }, LATER, null))
+
+    assert.deepEqual(
+      passed.map((g) => g.pass),
+      [{ status: 'pendiente', by: ids.person(1) }]
+    )
+    assert.deepEqual(
+      task.map((g) => g.pass),
+      [null]
+    )
+  })
+
+  it('cambia el estado de pase de las notas pedidas y deja en pie a quién las pasa', async (store, ids) => {
+    const section = ids.subject(1)
+    const pass = { status: 'pendiente' as const, by: ids.person(1) }
+    const first = value(await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1', pass })))
+    const second = value(await store.saveGrade(gradeOf(ids, section, { refId: 'ev-2', pass })))
+
+    value(await store.setPassStatus([first.id], 'pasado'))
+    value(await store.setPassStatus([], 'no-permitido'))
+
+    const all = value(await store.gradesOfSection(section))
+    assert.deepEqual(
+      all.map((g) => [g.id === first.id ? 'primera' : 'segunda', g.pass]),
+      [
+        ['primera', { status: 'pasado', by: ids.person(1) }],
+        ['segunda', pass]
+      ]
+    )
+    assert.ok(second.id)
+  })
+
+  it('las notas que esperan pasar salen por orden de publicación', async (store, ids) => {
+    const section = ids.subject(1)
+    const pass = { status: 'pendiente' as const, by: ids.person(1) }
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-1' }))
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-2' }))
+    await store.saveGrade(gradeOf(ids, section, { refId: 'ev-3' }))
+    await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-2' }, CREATED_AT, pass)
+    await store.publishColumn({ sectionId: section, kind: 'evaluacion', refId: 'ev-1' }, LATER, pass)
+
+    const pending = value(await store.pendingPasses()).filter((g) => g.sectionId === section)
+
+    assert.deepEqual(
+      pending.map((g) => g.refId),
+      ['ev-2', 'ev-1']
+    )
+    value(await store.setPassStatus([pending[0].id], 'pasado'))
+    assert.deepEqual(
+      value(await store.pendingPasses())
+        .filter((g) => g.sectionId === section)
+        .map((g) => g.refId),
+      ['ev-1']
+    )
   })
 
   it('calificar una entrega la cierra: ya tiene fecha de calificación y no se vuelve a pisar', async (store, ids) => {
@@ -380,7 +454,9 @@ const TABLES = {
       'absent',
       'comment',
       'graded_at',
-      'published_at'
+      'published_at',
+      'pass_status',
+      'pass_by'
     ],
     uuid: ['id'],
     generated: { id: 'uuid', seq: 'identity' },

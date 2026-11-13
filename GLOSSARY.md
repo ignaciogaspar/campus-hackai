@@ -256,11 +256,15 @@ Persona sin login que responde una encuesta por QR con un nombre.
 ### HackAI
 
 **Seguimiento (Coursework)**:
-Módulo de HackAI que lleva las tareas de una materia: el docente las crea para una o más de sus comisiones y los alumnos de esas comisiones las ven. A futuro suma entregas y calificaciones. No es el seguimiento de Moodle ni reemplaza al SIU: es lo propio de HackAI.
+Módulo de HackAI que lleva las tareas de una materia: el docente las crea para una o más de sus comisiones y los alumnos de esas comisiones las ven. Suma las entregas, las calificaciones y el pase de las notas al SIU. No es el seguimiento de Moodle ni reemplaza al SIU: es lo propio de HackAI.
 _Avoid_: «actividades», «trabajos prácticos».
 
 **Tarea de HackAI (Task)**:
 Una tarea con nombre, consigna, archivo opcional, fecha límite y si lleva nota, creada en HackAI por un docente. No es la Tarea (Assignment) de Moodle: esa viene del aula virtual. En el código, `Task` es la de HackAI y `Assignment` la de Moodle. Una tarea que no lleva nota no tiene columna en Calificaciones.
+
+**Pase al SIU (Grade pass)**:
+Escribir en el SIU las notas que el docente publicó en HackAI: la de cada evaluación del cronograma del SIU y, más adelante, la de cursada. Una tarea no existe en el SIU y queda solo en HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó: el SIU falló y se reintenta, sin duplicar), `pasado` o `no-permitido` («Sin pasar al SIU»: el SIU no deja escribir notas). El alumno ve la nota en los tres estados. Se hace por la capacidad `canWriteGrades` del puerto del SIU: el adaptador real declara que no puede, el simulado sí.
+_Avoid_: «sincronizar notas», «exportar».
 
 **Espacio de la materia (Subject space)**:
 Lugar de una materia en HackAI donde se comunican sus docentes y alumnos. Hay uno por materia y facultad: la misma materia en dos facultades son dos espacios. Adentro hay canales de toda la materia y canales de cada comisión. Quien se inscribe a una comisión en el SIU queda adentro.

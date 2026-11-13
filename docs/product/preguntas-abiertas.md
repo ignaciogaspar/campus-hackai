@@ -195,6 +195,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 24. ¿Con qué resultado queda una cursada que HackAI pasa al SIU, y qué nota vale si la bedelía la corrige después?
+
+- **Por qué importa:** al publicar, HackAI pasa al SIU la nota de cada evaluación y (en #103) la de cursada. El SIU simulado tiene que guardar la cursada con un resultado (`regular` o `desaprobado`), y la API real no deja escribir notas: hay que decidir qué pasa cuando la bedelía cambia en el SIU una nota que ya pasó.
+- **Hipótesis (12/11/2026):** la cursada queda `regular` desde 4 y `desaprobado` por debajo (el mínimo real para regularizar lo define cada cátedra: ver la pregunta de #103). Si la bedelía corrige una nota en el SIU, HackAI sigue mostrando la que cargó el docente; no se vuelve a leer del SIU. Reenviar una nota la reemplaza en el SIU y no la duplica.
+- **Opciones:** mínimo configurable por comisión; mostrar la nota del SIU cuando difiere de la de HackAI; avisar al docente de la diferencia.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

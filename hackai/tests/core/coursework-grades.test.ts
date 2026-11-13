@@ -145,7 +145,8 @@ test('el docente pone nota y comentario a un alumno y los ve en la fila', async 
     absent: false,
     comment: 'Muy bien el punto 2.',
     gradedAt: syntheticData.now,
-    published: false
+    published: false,
+    pass: null
   })
   const book = value(await coursework.gradebook('p-mledesma', 'am1'))
   assert.deepEqual(book.students[0].cells[PARCIAL_1], cell)

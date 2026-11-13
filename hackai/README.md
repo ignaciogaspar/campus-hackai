@@ -279,7 +279,7 @@ La demo corre en Vercel con el plan Hobby. Vercel compila Next.js por su cuenta;
 
 ## Corrida periódica
 
-Los espacios se sincronizan con sus canales externos aunque nadie los abra: un cron del hosting pide `/api/cron/sync`, que llama a `syncAll` de Espacios. La ruta acepta `GET` y `POST`, y solo deja pasar el pedido que trae `Authorization: Bearer <valor de CRON_SECRET>`. Compara el secreto en tiempo constante, y ni el secreto ni lo que trajo el pedido van a la respuesta o al log. El log de cada corrida lleva solo el resultado y los números del resumen.
+Los espacios se sincronizan con sus canales externos aunque nadie los abra: un cron del hosting pide `/api/cron/sync`, que llama a `syncAll` de Espacios y después reintenta el pase al SIU de las notas que quedaron pendientes (`retryPass` de Seguimiento). La ruta acepta `GET` y `POST`, y solo deja pasar el pedido que trae `Authorization: Bearer <valor de CRON_SECRET>`. Compara el secreto en tiempo constante, y ni el secreto ni lo que trajo el pedido van a la respuesta o al log. El log de cada corrida lleva solo el resultado y los números del resumen.
 
 | Responde | Cuándo |
 | --- | --- |
@@ -389,7 +389,7 @@ No las imprimas en logs ni en reportes.
 | `app/(app)/inscripciones/`, `components/enrollment/` | Inscripciones del alumno, en dos pestañas (materias y exámenes): lo que tiene la inscripción abierta, solo de su carrera, y lo que ya tiene; al elegir una materia (`?materia=`, y `?tab=examenes` para las mesas), su oferta con modalidad, horarios, cupo, sede, docentes y observaciones. Las actividades con créditos van con las materias. Inscribirse y darse de baja van por el mismo flujo; si el SIU no deja hacerlo por API, llevan a la Autogestión. `offerHref` arma el enlace; las rutas viejas (`[materia]/`, `[materia]/final/`) redirigen. |
 | `app/simulado/`, `components/simulated/` | La página a la que llevan los enlaces al SIU y a Moodle simulados: dice que es una demo y qué abriría el enlace en producción. |
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, vincularlos con Discord, subir y organizar el material y escribirle en privado a un docente de la comisión. |
-| `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
+| `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios y reintenta el pase de notas al SIU. Ver «Corrida periódica». |
 | `app/manifest.ts`, `public/sw.js`, `app/sin-conexion/`, `components/shell/service-worker.tsx` | La app instalable y su pantalla sin conexión. Ver «App instalable». |
 | `vercel.json` | El cron diario del deploy en Vercel y la integración de Git apagada. Ver «Deploy en Vercel». |
 | `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |

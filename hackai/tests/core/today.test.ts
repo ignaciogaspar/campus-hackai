@@ -596,7 +596,8 @@ test('Notas: una evaluación publicada en HackAI muestra la nota y el comentario
     view.value.data.subjects.filter((s) => s.subjectId !== 'am1'),
     siu.value.data.subjects.filter((s) => s.subjectId !== 'am1')
   )
-  assert.equal(am1(siu.value.data).assessments[0].grade, 7)
+  // Publicar pasó la nota al SIU, que la reemplazó: el 9 de HackAI es también el del SIU, y se ve una sola vez.
+  assert.equal(am1(siu.value.data).assessments[0].grade, 9)
 })
 
 test('Notas: una tarea con nota publicada aparece en su materia aunque no exista en el SIU', async () => {

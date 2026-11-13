@@ -1,6 +1,7 @@
 /* SIU en memoria, sobre una copia del set de datos sintéticos. Se porta como
    el SIU simulado: puede inscribir y tiene cronograma. Las capacidades se
    pueden cambiar para probar el núcleo contra un SIU como el real. */
+import { courseResult, validGrade } from '@/lib/adapters/siu-grades'
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { SiuCapabilities, SiuEnrollmentStatus, SiuPort, SiuReceipt, SiuTarget } from '@/lib/ports/siu'
@@ -16,6 +17,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
+    canWriteGrades: true,
     ...options.capabilities
   }
   let transactions = 0
@@ -173,6 +175,55 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       const entry = db.certificates.find((c) => c.personId === personId && c.type === type)
       return ok(entry?.meetsConditions ?? false)
     },
+
+    // --- B: notas ---
+    async writeAssessmentGrade(personId, sectionId, assessmentId, grade) {
+      if (!capabilities.canWriteGrades) return fail('no-soportado')
+      if (grade !== null && !validGrade(grade)) return fail('nota-invalida')
+      const assessment = db.assessments.find((a) => a.id === assessmentId && a.sectionId === sectionId)
+      if (!hasPerson(personId) || !assessment) return fail('no-encontrado')
+      const at = now()
+      // Una sola nota por alumno y evaluación: la que ya había se reemplaza.
+      const existing = db.provisionalResults.find((r) => r.personId === personId && r.assessmentId === assessmentId)
+      if (existing) Object.assign(existing, { grade, loadedAt: at })
+      else
+        db.provisionalResults.push({
+          id: `ap-hackai-${personId}-${assessmentId}`,
+          personId,
+          sectionId,
+          assessmentId,
+          grade,
+          date: assessment.date,
+          loadedAt: at
+        })
+      return ok({ date: at })
+    },
+
+    async writeCourseGrade(personId, sectionId, grade) {
+      if (!capabilities.canWriteGrades) return fail('no-soportado')
+      if (!validGrade(grade)) return fail('nota-invalida')
+      const section = db.sections.find((s) => s.id === sectionId)
+      if (!hasPerson(personId) || !section) return fail('no-encontrado')
+      const at = now()
+      const entry = {
+        id: `hk-cursada-${personId}-${sectionId}`,
+        personId,
+        subjectId: section.subjectId,
+        type: 'cursada' as const,
+        date: at,
+        grade,
+        result: courseResult(grade),
+        gradeRecord: `HK-${sectionId}`,
+        sectionId: null,
+        assessmentId: null,
+        loadedAt: null
+      }
+      const index = db.history.findIndex((h) => h.id === entry.id)
+      if (index >= 0) db.history[index] = entry
+      else db.history.push(entry)
+      return ok({ date: at })
+    },
+    // --- fin B: notas ---
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 17 (máximo 15). Se refactoriza después de la demo (#30).
     async enroll(personId, target) {
