@@ -16,6 +16,7 @@ import {
   groupsOf,
   STATES
 } from '@/components/grades/filters'
+import { assessmentsProgress } from '@/components/grades/format'
 import { gradeText, isApproved, KIND, StatusChip } from '@/components/grades/status'
 import { SubjectDetail } from '@/components/grades/subject-detail'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
@@ -60,7 +61,8 @@ function Filter({
   )
 }
 
-/* A la derecha de cada materia, lo más importante de su estado: la nota final, la de cursada o cuántos parciales tienen nota. */
+/* A la derecha de cada materia, lo más importante de su estado: la nota final o la de cursada. En curso, cuántas
+   evaluaciones tienen nota, como texto secundario: las notas van en la fila. */
 function Summary({ subject }: { subject: SubjectStanding }) {
   if (isApproved(subject.status)) {
     return subject.finalGrade !== null ? (
@@ -79,37 +81,52 @@ function Summary({ subject }: { subject: SubjectStanding }) {
       </span>
     )
   }
-  const graded = subject.assessments.filter((a) => a.grade !== null).length
-  if (!subject.assessments.length) return null
+  return null
+}
+
+/* Las notas de una materia en curso, sin abrir la hoja: «Primer parcial 7 · Segundo parcial —», y cuántas tienen
+   nota. */
+function Progress({ subject }: { subject: SubjectStanding }) {
+  const progress = subject.status === 'en-curso' ? assessmentsProgress(subject.assessments) : null
+  if (!progress) return null
   return (
-    <span className='flex flex-none flex-col items-end text-right'>
-      <span className='text-[0.6875rem] text-muted-foreground'>Con nota</span>
-      <span className='text-lg leading-tight font-extrabold text-ink tabular-nums'>
-        {graded}/{subject.assessments.length}
+    <span className='flex min-w-0 flex-col gap-0.5 text-[0.75rem] text-muted-foreground'>
+      <span className='text-pretty'>
+        {progress.items.map((item, i) => (
+          <span key={item.name}>
+            {i > 0 && ' · '}
+            <span className='whitespace-nowrap'>
+              {item.name} <b className='font-bold text-ink tabular-nums'>{item.result}</b>
+            </span>
+          </span>
+        ))}
       </span>
+      <span>{progress.count}</span>
     </span>
   )
 }
 
-/* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea. */
+/* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea; en curso,
+   sus notas. */
 function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: () => void }) {
   return (
-    <li>
+    <li className='min-w-0'>
       <button
         type='button'
         onClick={onOpen}
         aria-haspopup='dialog'
-        className='flex h-full w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
+        className='flex h-full w-full min-w-0 cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
       >
         <SubjectIcon name={subject.name} size='sm' tone={subject.status === 'en-curso' ? 'solid' : 'soft'} />
         <span className='flex min-w-0 flex-1 flex-col gap-1'>
           <span className='line-clamp-2 text-[0.9375rem] leading-snug font-semibold text-ink'>{subject.name}</span>
           <span className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
             <StatusChip status={subject.status} />
-            <span className='min-w-0 truncate text-[0.75rem] text-muted-foreground'>
+            <span className='min-w-0 text-[0.75rem] text-muted-foreground'>
               {subject.code} · {subject.termName ?? KIND[subject.kind]}
             </span>
           </span>
+          <Progress subject={subject} />
         </span>
         <Summary subject={subject} />
       </button>

@@ -49,10 +49,7 @@ export function groupName(subject: Pick<SubjectStanding, 'year' | 'kind'>): stri
   return subject.kind === 'fuera-del-plan' ? 'Fuera del plan' : 'Cualquier año'
 }
 
-/** «7» o «8,5». */
-export function gradeText(grade: number): string {
-  return grade.toLocaleString('es-AR', { maximumFractionDigits: 2 })
-}
+export { gradeText } from '@/components/grades/format'
 
 export const isApproved = (status: SubjectStatus) => status === 'promocionada' || status === 'aprobada'
 
