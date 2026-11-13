@@ -59,6 +59,7 @@ export default async function NovedadesPage() {
                 items={read.value}
                 grades={grades.length}
                 gradeNews={grades.length > 0 && <GradeNews grades={grades} />}
+                teacher={session.role === 'profesor'}
               />
             </Suspense>
           ) : (

@@ -944,10 +944,13 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
       channelName: 'avisos',
       kind: 'avisos',
       sectionId: 'sec-am1-fi-a',
+      sectionName: 'A',
       count: 2,
       latest: undefined,
       counterpart: null,
-      thread: null
+      thread: null,
+      repliedToMine: false,
+      unanswered: 0
     }
   )
 
@@ -963,6 +966,33 @@ test('las novedades sin leer de todos sus espacios, la más nueva primero', asyn
   assert.deepEqual(await spaces.unreadFor('p-nadie'), { ok: false, error: 'persona-desconocida' })
   siuState.down = true
   assert.deepEqual(await spaces.unreadFor('p-jescobar'), { ok: false, error: 'falla-externa' })
+})
+
+test('una novedad dice de qué comisión es, si respondieron tu consulta y cuántas consultas siguen sin respuesta', async () => {
+  const { spaces, setNow } = build()
+  const ids = await am1(spaces)
+  setNow('2026-11-09T12:00:00.000Z')
+  const mine = await spaces.post('p-taguirre', ids.consultasA, { text: '¿Entra límites?' })
+  assert.ok(mine.ok)
+  // Responder deja leído lo de antes para la docente; lo que sigue, no.
+  await spaces.post('p-mledesma', ids.consultasA, { text: 'Sí, entra.', replyTo: mine.value.id })
+  const derivadas = await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Y derivadas?' })
+  assert.ok(derivadas.ok)
+  await spaces.post('p-jescobar', ids.consultasA, { text: 'Creo que sí.', replyTo: derivadas.value.id })
+  await spaces.post('p-lbenitez', ids.consultasA, { text: '¿Hay que llevar calculadora?' })
+
+  const student = await spaces.unreadFor('p-taguirre')
+  const teacher = await spaces.unreadFor('p-mledesma')
+
+  assert.ok(student.ok && teacher.ok)
+  const asked = student.value.find((u) => u.channelId === ids.consultasA)
+  assert.deepEqual([asked?.sectionName, asked?.repliedToMine], ['A', true])
+  const other = teacher.value.find((u) => u.channelId === ids.consultasA)
+  assert.deepEqual(
+    [other?.repliedToMine, other?.unanswered],
+    [false, 1],
+    'la de la calculadora sigue sin respuesta; la de derivadas ya tiene una'
+  )
 })
 
 test('marcar todo como leído deja sin novedades a quien lo pide, sin tocar las de los demás', async () => {

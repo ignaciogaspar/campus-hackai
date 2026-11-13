@@ -44,6 +44,28 @@ function threadOf(messages: StoredMessage[]): MessageId | null {
   return roots.size === 1 && hasReply ? [...roots][0] : null
 }
 
+/** Si algo de lo sin leer responde a un hilo que abrió la persona. */
+function repliesToMine(snapshot: Snapshot, unread: StoredMessage[]): boolean {
+  const mine = new Set(snapshot.messages.filter((m) => m.authorId === snapshot.personId).map((m) => m.id))
+  return unread.some((m) => m.replyTo !== null && mine.has(m.replyTo))
+}
+
+/** Las consultas sin leer que nadie más que quien preguntó respondió todavía, y no están resueltas. */
+function unansweredIn(snapshot: Snapshot, channel: StoredChannel, unread: StoredMessage[]): number {
+  if (channel.kind !== 'consultas') return 0
+  const replies = snapshot.messages.filter((m) => m.channelId === channel.id && m.replyTo !== null)
+  const answered = (question: StoredMessage) =>
+    replies.some((r) => r.replyTo === question.id && r.authorId !== question.authorId)
+  return unread.filter((m) => m.replyTo === null && m.resolved !== true && !answered(m)).length
+}
+
+/** El nombre de la comisión del canal, si es de una. */
+function sectionNameOf(member: CurrentSpace['member'], channel: StoredChannel): string | null {
+  const { scope } = channel
+  if (scope.kind !== 'comision') return null
+  return member.sections.find((s) => s.sectionId === scope.sectionId)?.name ?? null
+}
+
 /** La novedad de un canal, o `null` si no hay nada sin leer. */
 async function itemOf(
   authors: Authors,
@@ -62,10 +84,13 @@ async function itemOf(
     channelName: channel.name,
     kind: channel.kind,
     sectionId: channel.scope.kind === 'comision' ? channel.scope.sectionId : null,
+    sectionName: sectionNameOf(member, channel),
     count: unread.count,
     latest,
     counterpart,
-    thread: threadOf(unread.messages)
+    thread: threadOf(unread.messages),
+    repliedToMine: repliesToMine(snapshot, unread.messages),
+    unanswered: unansweredIn(snapshot, channel, unread.messages)
   }
 }
 

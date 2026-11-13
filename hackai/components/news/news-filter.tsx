@@ -126,11 +126,14 @@ function useMarkAll() {
 export function NewsFilter({
   items,
   grades,
-  gradeNews
+  gradeNews,
+  teacher = false
 }: {
   items: UnreadItem[]
   grades: number
   gradeNews: ReactNode
+  /** Si quien mira dicta: sus filas marcan las consultas sin respuesta. */
+  teacher?: boolean
 }) {
   const shown = asShown(useSearchParams().get('tipo') ?? undefined)
   const { phase, error, start, undo } = useMarkAll()
@@ -159,7 +162,11 @@ export function NewsFilter({
         </div>
       )}
       {error && <ErrorNotice>{error}</ErrorNotice>}
-      {marking ? <NothingUnread /> : <News items={items} shown={shown} grades={grades} gradeNews={gradeNews} />}
+      {marking ? (
+        <NothingUnread />
+      ) : (
+        <News items={items} shown={shown} grades={grades} gradeNews={gradeNews} teacher={teacher} />
+      )}
     </>
   )
 }
@@ -169,12 +176,14 @@ function News({
   items,
   shown,
   grades,
-  gradeNews
+  gradeNews,
+  teacher
 }: {
   items: UnreadItem[]
   shown: Shown
   grades: number
   gradeNews: ReactNode
+  teacher: boolean
 }) {
   if (items.length === 0 && grades === 0) return <NothingUnread />
   const kindItems = shown === 'todas' ? items : items.filter((i) => newsKindOf(i.kind) === shown)
@@ -189,7 +198,7 @@ function News({
           No tenés novedades sin leer de este tipo. Probá con otro filtro.
         </EmptyState>
       ) : (
-        shown !== 'notas' && kindItems.length > 0 && <NewsList groups={newsBySubject(kindItems)} />
+        shown !== 'notas' && kindItems.length > 0 && <NewsList groups={newsBySubject(kindItems)} teacher={teacher} />
       )}
     </>
   )

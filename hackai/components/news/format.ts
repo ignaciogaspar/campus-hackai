@@ -10,8 +10,13 @@ import type { Author, ChannelKind, Origin, UnreadItem } from '@/lib/core/spaces'
 export type NewsRow = {
   channelId: string
   kind: ChannelKind
-  /** «Avisos», «#parciales-viejos» o «Mensaje directo de Mariana Ledesma». */
+  /** Qué pasó: «Avisos · Comisión A», «#parciales-viejos», «Mensaje directo de Mariana Ledesma» o, si le
+      respondieron a quien mira, «Respondieron tu consulta». */
   title: string
+  /** De qué canal es, cuando el título no lo dice: «Consultas · Comisión A», «Otros canales». Si no, `null`. */
+  chip: string | null
+  /** En `#consultas`, cuántas de las sin leer siguen sin respuesta. */
+  unanswered: number
   /** Quién publicó o subió lo último; `null` en un directo, porque lo dice el título, o si no se sabe. */
   author: Author | null
   /** El texto del mensaje, o el nombre del archivo si solo trae un adjunto o es material. */
@@ -27,15 +32,32 @@ export type NewsRow = {
 
 export type SubjectNews = { subjectId: string; subjectName: string; count: number; rows: NewsRow[] }
 
+/** El canal y, si es de una comisión, cuál: «Avisos · Comisión A». */
+function channelOf(item: UnreadItem): string {
+  const base = channelTitle(item.kind, item.channelName)
+  return item.sectionName ? `${base} · Comisión ${item.sectionName}` : base
+}
+
+/** El título y el chip de una fila: el chip solo va si dice algo que el título no. */
+function titleOf(item: UnreadItem): { title: string; chip: string | null } {
+  if (item.kind === 'directo') {
+    return { title: `Mensaje directo de ${item.counterpart?.name ?? 'Persona sin datos'}`, chip: null }
+  }
+  if (item.repliedToMine) {
+    const what = item.kind === 'consultas' ? 'tu consulta' : 'tu mensaje'
+    return { title: `Respondieron ${what}`, chip: channelOf(item) }
+  }
+  return { title: channelOf(item), chip: item.kind === 'libre' ? LABELS.canales : null }
+}
+
 function rowOf(item: UnreadItem): NewsRow {
   const direct = item.kind === 'directo'
   const thread = direct ? undefined : (item.thread ?? undefined)
   return {
     channelId: item.channelId,
     kind: item.kind,
-    title: direct
-      ? `Mensaje directo de ${item.counterpart?.name ?? 'Persona sin datos'}`
-      : channelTitle(item.kind, item.channelName),
+    ...titleOf(item),
+    unanswered: item.unanswered,
     author: direct ? null : item.latest.author,
     text: item.latest.text,
     when: messageTime(item.latest.createdAt),
@@ -56,6 +78,8 @@ export const NEWS_KINDS: { kind: NewsKind; label: string }[] = [
   { kind: 'directos', label: 'Directos' },
   { kind: 'canales', label: 'Otros canales' }
 ]
+
+const LABELS = Object.fromEntries(NEWS_KINDS.map((k) => [k.kind, k.label])) as Record<NewsKind, string>
 
 const KIND_OF: Record<ChannelKind, NewsKind> = {
   avisos: 'avisos',

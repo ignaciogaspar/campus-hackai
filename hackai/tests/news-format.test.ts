@@ -19,10 +19,13 @@ function item(overrides: Partial<UnreadItem> & Pick<UnreadItem, 'channelId' | 'k
     subjectName: 'Análisis Matemático I',
     channelName: overrides.kind,
     sectionId: null,
+    sectionName: null,
     count: 1,
     latest,
     counterpart: null,
     thread: null,
+    repliedToMine: false,
+    unanswered: 0,
     ...overrides
   }
 }
@@ -64,6 +67,29 @@ test('un mensaje directo dice de quién es, y un canal que creó el docente va c
     [
       ['Mensaje directo de Mariana Ledesma', null],
       ['#parciales-viejos', 'Mariana Ledesma']
+    ]
+  )
+})
+
+test('cada fila dice qué pasó y de qué comisión es, sin un chip que repita el título', () => {
+  const [group] = newsBySubject([
+    item({ channelId: 'ch-a', kind: 'avisos', sectionId: 'sec-a', sectionName: 'A' }),
+    item({ channelId: 'ch-b', kind: 'avisos', sectionId: 'sec-b', sectionName: 'B' }),
+    item({ channelId: 'ch-c', kind: 'consultas', sectionId: 'sec-a', sectionName: 'A', repliedToMine: true }),
+    item({ channelId: 'ch-l', kind: 'libre', channelName: 'parciales-viejos' }),
+    item({ channelId: 'ch-d', kind: 'directo', channelName: 'directo', counterpart: ledesma }),
+    item({ channelId: 'ch-q', kind: 'consultas', unanswered: 2 })
+  ])
+
+  assert.deepEqual(
+    group.rows.map((r) => [r.title, r.chip, r.unanswered]),
+    [
+      ['Avisos · Comisión A', null, 0],
+      ['Avisos · Comisión B', null, 0],
+      ['Respondieron tu consulta', 'Consultas · Comisión A', 0],
+      ['#parciales-viejos', 'Otros canales', 0],
+      ['Mensaje directo de Mariana Ledesma', null, 0],
+      ['Consultas', null, 2]
     ]
   )
 })
