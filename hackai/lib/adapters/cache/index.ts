@@ -90,6 +90,7 @@ export function withSiuCache(
     studyPlan: read('studyPlan', staticTtlMs, siu.studyPlan),
     sections: dynamic('sections', siu.sections),
     courseEnrollments: dynamic('courseEnrollments', siu.courseEnrollments),
+    sectionEnrollments: dynamic('sectionEnrollments', siu.sectionEnrollments),
     examBoards: dynamic('examBoards', siu.examBoards),
     examEnrollments: dynamic('examEnrollments', siu.examEnrollments),
     history: dynamic('history', siu.history),

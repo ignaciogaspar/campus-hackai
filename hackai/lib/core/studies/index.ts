@@ -97,6 +97,11 @@ import {
   type LoadedGrade,
   type TakenSection
 } from '@/lib/core/studies/career'
+import {
+  createSectionStudents,
+  type SectionStudent,
+  type SectionStudentsError
+} from '@/lib/core/studies/section-students'
 import { daysBetween } from '@/lib/dates'
 import type { Fresh } from '@/lib/fresh'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
@@ -140,7 +145,7 @@ export type {
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
-export type { Fresh }
+export type { Fresh, SectionStudent, SectionStudentsError }
 
 /** Una comisión (cursada) o una mesa (examen). */
 export type Target = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
@@ -409,6 +414,12 @@ export type Studies = {
   absencesOf(personId: PersonId): Promise<Result<Fresh<MyAbsencesDetail>, ReadError>>
   /** Sus comisiones, como alumno o como docente. */
   sectionsOf(personId: PersonId): Promise<Result<Fresh<MySection[]>, ReadError>>
+  /** Los alumnos de una comisión (legajo, nombre y mail), solo para un docente de esa comisión: un alumno o un docente
+      de otra recibe `sin-acceso`. */
+  sectionStudents(
+    personId: PersonId,
+    sectionId: string
+  ): Promise<Result<Fresh<SectionStudent[]>, ReadError | SectionStudentsError>>
   /** Comisiones o mesas de examen con cupo, horario y docentes. */
   offer(personId: PersonId, query: OfferQuery): Promise<Result<Fresh<OfferItem[]>, ReadError>>
   /** Inscribe en el SIU y matricula en Moodle, todo o nada. */
@@ -692,17 +703,19 @@ function asUnknownPerson<E extends string>(
 }
 
 export function createStudies({ people, siu, classroom, clock }: StudiesDeps): Studies {
+  const sectionStudents = createSectionStudents({ people, siu })
+
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
 
   /** Lee y guarda la lectura como lo último leído. Una lectura incompleta (`complete` da `false`, como las materias
       sin el aula de Moodle) se devuelve igual, pero no pisa una completa: si después se cae el SIU, vuelve la
       completa. */
-  async function fresh<T>(
+  async function fresh<T, E extends string = never>(
     key: string,
-    read: () => Promise<Result<T, ReadError>>,
+    read: () => Promise<Result<T, ReadError | E>>,
     complete: (value: T) => boolean = () => true
-  ): Promise<Result<Fresh<T>, ReadError>> {
+  ): Promise<Result<Fresh<T>, ReadError | E>> {
     const result = await read()
     if (result.ok) {
       const value: Fresh<T> = { data: result.value, readAt: clock.now().toISOString(), stale: false }
@@ -1799,6 +1812,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       ),
     absencesOf: (personId) => fresh(`absencesOf:${personId}`, () => absencesOf(personId)),
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
+    sectionStudents: (personId, sectionId) =>
+      fresh(`sectionStudents:${personId}:${sectionId}`, () => sectionStudents(personId, sectionId)),
     offer: offerNow,
     enroll,
     drop,
