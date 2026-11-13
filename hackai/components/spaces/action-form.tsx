@@ -69,26 +69,44 @@ export function useSpaceAction(action: SpaceAction) {
 export function ActionForm({
   action,
   resetOnSuccess = false,
+  clearOnEdit = false,
   className,
   children,
+  onInput,
   ...props
 }: Omit<ComponentProps<'form'>, 'action' | 'onSubmit'> & {
   action: SpaceAction
   /** Vacía los campos cuando sale bien, como al subir un archivo. */
   resetOnSuccess?: boolean
+  /** Esconde el resultado anterior apenas se vuelve a escribir: si no, un «Guardamos 3 notas» viejo parece de lo
+      que se acaba de cambiar. */
+  clearOnEdit?: boolean
   children: ReactNode
 }) {
   const { state, dispatch, pending, submit, error } = useSpaceAction(action)
   const form = useRef<HTMLFormElement>(null)
+  // El resultado sobre el que se volvió a escribir. Uno nuevo vuelve a mostrarse.
+  const [editedOn, setEditedOn] = useState<SpaceActionState | null>(null)
+  const hidden = clearOnEdit && editedOn === state
 
   useEffect(() => {
     if (state.status === 'ok' && resetOnSuccess) form.current?.reset()
   }, [state, resetOnSuccess])
 
   return (
-    <form ref={form} action={dispatch} onSubmit={submit} className={className} {...props}>
+    <form
+      ref={form}
+      action={dispatch}
+      onSubmit={submit}
+      onInput={(event) => {
+        if (clearOnEdit) setEditedOn(state)
+        onInput?.(event)
+      }}
+      className={className}
+      {...props}
+    >
       <Pending.Provider value={pending}>{children}</Pending.Provider>
-      <FormFeedback error={error} success={state.status === 'ok' ? state.message : null} />
+      <FormFeedback error={hidden ? null : error} success={!hidden && state.status === 'ok' ? state.message : null} />
     </form>
   )
 }

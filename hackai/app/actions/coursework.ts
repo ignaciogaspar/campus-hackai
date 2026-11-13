@@ -14,6 +14,7 @@ import {
   evaluationHref,
   gradeFromInput,
   gradesHref,
+  pastedText,
   taskHref,
   tasksHref
 } from '@/components/coursework/format'
@@ -378,7 +379,7 @@ export async function previewPastedGrades(_prev: PasteState, form: FormData): Pr
 
   const result = await system().coursework.previewPaste(session.personId, sectionId, columnId, pasted, scale)
   if (!result.ok) return failed(PASTE_ERRORS[result.error])
-  return { status: 'preview', preview: result.value, text: pasted, scale, at: Date.now() }
+  return { status: 'preview', preview: result.value, text: pastedText(pasted), scale, at: Date.now() }
 }
 
 /** Guarda las notas pegadas, ya vistas en la vista previa, y vuelve a Calificaciones. */

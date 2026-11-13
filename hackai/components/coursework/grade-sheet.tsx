@@ -131,45 +131,56 @@ export function GradeSheet({
     )
   }
   const view = { comision: sectionId, columna: columnId }
-  // Con las notas guardadas en la clave, al volver del servidor la planilla se rearma con lo nuevo.
+  // Con las notas guardadas en la clave de la lista, al volver del servidor los campos se rearman con lo nuevo. El
+  // formulario no la lleva: si se rearmara, se perdería el «Guardamos N notas».
   const saved = page.items.map((s) => sheetValue(s.cells[columnId])).join('|')
   return (
-    <ActionForm key={`${columnId}-${page.page}-${saved}`} action={saveGradeSheet} className='flex flex-col gap-3'>
-      <input type='hidden' name='subjectId' value={subjectId} />
-      <input type='hidden' name='sectionId' value={sectionId} />
-      <input type='hidden' name='columnId' value={columnId} />
-      <Card>
-        <div className='flex items-baseline justify-between gap-3 border-b border-border px-4 py-2 text-xs font-semibold text-muted-foreground'>
-          <span>{students === 1 ? '1 alumno' : `${students} alumnos`}</span>
-          <span>Nota</span>
+    <div className='flex flex-col gap-3'>
+      <ActionForm key={`${columnId}-${page.page}`} action={saveGradeSheet} clearOnEdit className='flex flex-col gap-3'>
+        <input type='hidden' name='subjectId' value={subjectId} />
+        <input type='hidden' name='sectionId' value={sectionId} />
+        <input type='hidden' name='columnId' value={columnId} />
+        <Card key={saved}>
+          <div className='flex items-baseline justify-between gap-3 border-b border-border px-4 py-2 text-xs font-semibold text-muted-foreground'>
+            <span>{students === 1 ? '1 alumno' : `${students} alumnos`}</span>
+            <span>Nota</span>
+          </div>
+          <ul aria-label='Alumnos' className='divide-y divide-border'>
+            {page.items.map((s) => (
+              <SheetRow
+                key={s.legajo}
+                student={s}
+                cell={s.cells[columnId]}
+                selected={s.personId !== null && s.personId === selectedId}
+                columnPublished={columnPublished}
+                commentHref={
+                  s.personId ? gradesHref(subjectId, { ...view, alumno: s.personId, pagina: page.page }) : null
+                }
+              />
+            ))}
+          </ul>
+        </Card>
+        {columnPublished && (
+          <p className='rounded-xl bg-ice/70 px-3 py-2 text-[0.8125rem] text-ink'>
+            Esta columna ya está publicada: los alumnos ven las notas que guardes al toque
+          </p>
+        )}
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+          <p id='planilla-ayuda' className='text-[0.8125rem] text-muted-foreground'>
+            De 1 a 10, con coma o punto. Escribí «A» si faltó.
+          </p>
+          <SubmitButton className={cn(PRIMARY, 'w-full sm:w-auto')}>
+            {columnPublished ? 'Guardar y publicar' : 'Guardar notas'}
+          </SubmitButton>
         </div>
-        <ul aria-label='Alumnos' className='divide-y divide-border'>
-          {page.items.map((s) => (
-            <SheetRow
-              key={s.legajo}
-              student={s}
-              cell={s.cells[columnId]}
-              selected={s.personId !== null && s.personId === selectedId}
-              columnPublished={columnPublished}
-              commentHref={
-                s.personId ? gradesHref(subjectId, { ...view, alumno: s.personId, pagina: page.page }) : null
-              }
-            />
-          ))}
-        </ul>
-      </Card>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-        <p id='planilla-ayuda' className='text-[0.8125rem] text-muted-foreground'>
-          De 1 a 10, con coma o punto. Escribí «A» si faltó.
-        </p>
-        <SubmitButton className={cn(PRIMARY, 'w-full sm:w-auto')}>Guardar notas</SubmitButton>
-      </div>
+      </ActionForm>
+      {/* Fuera del formulario, para que el resultado de guardar quede pegado al botón. */}
       <Pagination
         page={page.page}
         pages={page.pages}
         hrefFor={(n) => gradesHref(subjectId, { ...view, pagina: n })}
         label='Páginas de alumnos'
       />
-    </ActionForm>
+    </div>
   )
 }

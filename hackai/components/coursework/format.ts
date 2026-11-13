@@ -88,6 +88,10 @@ export function pasteGradesHref(subjectId: string, view: { comision?: string; co
 /** La cantidad de notas: «1 nota», «12 notas». */
 export const notesLabel = (count: number) => (count === 1 ? '1 nota' : `${count} notas`)
 
+/** El texto pegado con los saltos de línea como LF. El navegador manda un textarea con CRLF y el campo lo tiene con
+    LF: sin esto, la vista previa nunca coincide con lo escrito y no se puede guardar. */
+export const pastedText = (text: string) => text.replace(/\r\n?/g, '\n')
+
 /** La nota que escribió la persona: acepta coma o punto decimal. `null` si no escribió nada; `NaN` si lo escrito no
     es un número. */
 export function gradeFromInput(value: string): number | null {

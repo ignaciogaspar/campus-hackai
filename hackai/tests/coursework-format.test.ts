@@ -12,6 +12,7 @@ import {
   newTaskHref,
   nextStudent,
   notesLabel,
+  pastedText,
   pasteGradesHref,
   rowStatus,
   sectionsLabel,
@@ -150,4 +151,11 @@ test('los enlaces de pegar notas llevan la comisión y la columna, y Calificacio
   )
   assert.equal(notesLabel(1), '1 nota')
   assert.equal(notesLabel(12), '12 notas')
+})
+
+test('el texto pegado es el mismo venga con saltos de Windows, de Mac viejo o de Unix', () => {
+  // El navegador manda el textarea con CRLF y el estado del cliente lo tiene con LF: los dos tienen que coincidir.
+  assert.equal(pastedText('30101\t8,5\r\n30102\t7\r\n30103\tA'), '30101\t8,5\n30102\t7\n30103\tA')
+  assert.equal(pastedText('30101\t8\r30102\t7'), '30101\t8\n30102\t7')
+  assert.equal(pastedText('30101\t8\n30102\t7'), '30101\t8\n30102\t7')
 })

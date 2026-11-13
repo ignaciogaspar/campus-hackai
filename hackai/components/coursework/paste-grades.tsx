@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { useActionState, useState } from 'react'
 import { previewPastedGrades, savePastedGrades } from '@/app/actions/coursework'
 import { GradeBadge } from '@/components/academic/grade-badge'
-import { gradeInputValue, notesLabel } from '@/components/coursework/format'
+import { gradeInputValue, notesLabel, pastedText } from '@/components/coursework/format'
 import { ActionForm, FormFeedback, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -116,7 +116,7 @@ export function PasteGrades({
   const [text, setText] = useState('')
   const [scale, setScale] = useState<GradeScale>('1-10')
   const shown = state.status === 'preview' ? state : null
-  const stale = shown !== null && (shown.text !== text || shown.scale !== scale)
+  const stale = shown !== null && (shown.text !== pastedText(text) || shown.scale !== scale)
   const toSave = shown ? shown.preview.counts.ready + shown.preview.counts.absent : 0
   const rows = shown
     ? [...shown.preview.rows.filter(needsReview), ...shown.preview.rows.filter((r) => !needsReview(r))]
