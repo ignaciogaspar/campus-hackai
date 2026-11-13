@@ -2,8 +2,31 @@ import { CircleAlert, Clock, type LucideIcon, WifiOff } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-/* Vacío: dice por qué está vacío o qué es lo próximo. */
-export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
+/* Vacío: dice por qué está vacío o qué es lo próximo. `compact` es una franja
+   baja, con el ícono a la izquierda, para un vacío que no tiene que empujar lo
+   que sigue fuera de la pantalla. */
+export function EmptyState({
+  icon: Icon,
+  title,
+  compact = false,
+  children
+}: {
+  icon: LucideIcon
+  title: string
+  compact?: boolean
+  children: ReactNode
+}) {
+  if (compact) {
+    return (
+      <div className='flex items-start gap-3 rounded-[18px] bg-card px-4 py-3 text-[0.8125rem] text-muted-foreground'>
+        <Icon aria-hidden='true' className='mt-0.5 size-5 flex-none text-gray-light' strokeWidth={1.8} />
+        <div className='flex min-w-0 flex-col gap-0.5'>
+          <strong className='text-[0.9375rem] text-foreground'>{title}</strong>
+          <p className='text-pretty'>{children}</p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className='flex flex-col items-center gap-2 rounded-[22px] bg-card px-4 py-6 text-center text-[0.8125rem] text-muted-foreground'>
       <Icon aria-hidden='true' className='size-7 text-gray-light' strokeWidth={1.8} />

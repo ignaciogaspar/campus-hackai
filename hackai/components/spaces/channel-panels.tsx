@@ -54,9 +54,17 @@ function ThreadLink({ subjectId, channel, thread }: { subjectId: string; channel
   )
 }
 
-function QuestionStatus({ thread }: { thread: Thread }) {
+/** Cómo está una consulta. En Consultas, lo que abre un docente no es una consulta: se rotula como suyo. */
+function QuestionStatus({ channel, thread }: { channel: Channel; thread: Thread }) {
   const question = thread.message.question
-  if (!question) return null
+  if (!question) {
+    if (channel.kind !== 'consultas' || thread.message.author.role !== 'profesor') return null
+    return (
+      <span className='rounded-full bg-accent px-2 py-0.5 text-[0.6875rem] font-bold text-blue'>
+        Mensaje del docente
+      </span>
+    )
+  }
   if (question.resolved) {
     return (
       <span className='inline-flex items-center gap-1 rounded-full bg-success-background px-2 py-0.5 text-[0.6875rem] font-bold text-success'>
@@ -94,7 +102,7 @@ function ThreadCard({ subjectId, channel, thread }: { subjectId: string; channel
       <MessageCard message={thread.message}>
         {last && <ReplyBlock message={last} />}
         <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1'>
-          <QuestionStatus thread={thread} />
+          <QuestionStatus channel={channel} thread={thread} />
           <ThreadLink subjectId={subjectId} channel={channel} thread={thread} />
           <ResolveButton subjectId={subjectId} channel={channel} thread={thread} />
         </div>
@@ -194,6 +202,13 @@ function QuestionList({
   filter
 }: ListProps & { shown: Thread[]; filter: QuestionFilter }) {
   if (!threads.length) {
+    if (channel.canResolve) {
+      return (
+        <EmptyState icon={MessagesSquare} title='Todavía nadie preguntó'>
+          Cuando un alumno pregunte, te aparece en Hoy y acá, hasta que la marques resuelta.
+        </EmptyState>
+      )
+    }
     return (
       <EmptyState icon={MessagesSquare} title='Nadie preguntó todavía'>
         {`Si tenés una duda, escribila abajo: la ven todos los de ${audience(channel)} y los docentes responden acá.`}
@@ -290,7 +305,7 @@ export function ThreadPanel({
       {back}
       <MessageCard message={thread.message}>
         <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1'>
-          <QuestionStatus thread={thread} />
+          <QuestionStatus channel={channel} thread={thread} />
           <ResolveButton subjectId={subjectId} channel={channel} thread={thread} />
         </div>
       </MessageCard>

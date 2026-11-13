@@ -73,9 +73,11 @@ export function ClassHistory({
 }) {
   if (history.length === 0) {
     return (
-      <EmptyState icon={History} title='Todavía no tomaste lista'>
-        Cuando tomes lista en la comisión {sectionName}, la clase queda guardada acá.
-      </EmptyState>
+      <div className='max-w-3xl'>
+        <EmptyState icon={History} title='Todavía no tomaste lista' compact>
+          Cuando tomes lista en la comisión {sectionName}, la clase queda guardada acá.
+        </EmptyState>
+      </div>
     )
   }
   return (

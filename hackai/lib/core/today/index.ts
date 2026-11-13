@@ -30,6 +30,11 @@
      de esa materia, para no contarlos dos veces.
    - Las consultas son las sin resolver que le tocan, según Espacios
      (`openQuestions`), la más vieja primero.
+   - Lo sin leer (`unread`) no repite esas consultas: un canal de consultas sale
+     de la lista si lo sin leer es de una consulta abierta (su hilo, o el canal
+     cuando no es de un solo hilo y tiene alguna abierta). Lo de una consulta ya
+     resuelta, los avisos, el material y los directos siguen. Los no leídos de
+     cada comisión sí los cuentan, como en Novedades.
    - Las fechas son los parciales de sus comisiones y las mesas que integra,
      según Cursada, sin las que ya pasaron.
    - Su clase de ahora (`nowClass`) es la que está en curso o, si no hay, la
@@ -135,7 +140,7 @@ export type TeachingView = {
   nowClass: NowClass | null
   /** Parciales de sus comisiones y mesas que integra que no pasaron, por fecha. */
   dates: UpcomingItem[]
-  /** Todo lo que no leyó, los directos incluidos, lo más nuevo primero. */
+  /** Lo que no leyó, los directos incluidos, lo más nuevo primero, sin las consultas que ya están en `questions`. */
   unread: UnreadItem[]
   /** Hora de la lectura más vieja que se usó, si alguna está desactualizada; si no, `null`. */
   staleSince: string | null
@@ -256,6 +261,16 @@ function nowClassOf(subjects: MySubjects, now: string): NowClass | null {
   }
 }
 
+/** Lo sin leer sin las consultas abiertas, que ya van en las consultas sin resolver (la regla está en el encabezado). */
+function withoutOpenQuestions(unread: UnreadItem[], questions: OpenQuestion[]): UnreadItem[] {
+  const openThreads = new Set(questions.map((q) => q.messageId))
+  const channelsWithOpen = new Set(questions.map((q) => q.channelId))
+  return unread.filter((u) => {
+    if (u.kind !== 'consultas') return true
+    return u.thread ? !openThreads.has(u.thread) : !channelsWithOpen.has(u.channelId)
+  })
+}
+
 type Read<T> = Result<T, string>
 
 const valueOr = <T>(read: Read<T>, empty: T): T => (read.ok ? read.value : empty)
@@ -303,13 +318,14 @@ export function createToday({ studies, spaces, coursework, clock }: TodayDeps): 
       }
       const now = clock.now().toISOString()
       const unreadItems = valueOr(unread, [])
+      const openItems = valueOr(questions, [])
       return ok({
         now,
         sections: taughtSections(sections.ok ? sections.value.data : [], unreadItems),
-        questions: valueOr(questions, []),
+        questions: openItems,
         nowClass: subjects.ok ? nowClassOf(subjects.value.data, now) : null,
         dates: (dates.ok ? dates.value.data : []).filter((d) => d.date >= now),
-        unread: unreadItems,
+        unread: withoutOpenQuestions(unreadItems, openItems),
         staleSince: staleSince([sections, dates, subjects]),
         unavailable: failed<TeachingPart>(reads)
       })
