@@ -27,6 +27,7 @@ import {
 import { pageletInfo, pagelets, textOf, urlIn } from '@/lib/adapters/siu-real/html'
 import {
   type OpenSubject,
+  type Plan,
   parseAbsences,
   parseAssignments,
   parseCourseSchedules,
@@ -37,6 +38,7 @@ import {
   parseOfferedSections,
   parseOpenSubjects,
   parsePlan,
+  parsePrerequisites,
   parseProgress,
   parseProvisional,
   parseRequestOptions,
@@ -311,6 +313,22 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
     return { electives: parseElectives(contOf(list)), verifiedElectiveHours: parseVerifiedHours(message) }
   }
 
+  /** Las correlativas que el plan no trae en la página: el SIU las carga al apretar «Ver», con los `data-*` del
+      botón, en la URL del `info` del plan que nombra las correlativas. De a pocas, para no saturar el SIU. Si no
+      hay URL o el pedido falla, la materia queda sin correlativas. */
+  async function prerequisitesOf(plan: string, parsed: Plan): Promise<Plan> {
+    const info = pageletInfo(plan, 'info_plan')
+    const key = Object.keys(info).find((k) => /correlativ/i.test(k) && urlIn(info, k))
+    const url = key ? urlIn(info, key) : null
+    if (!url) return parsed
+    const rows = await inBatches(parsed.rows, PARALLEL, async (row) => {
+      if (row.prerequisites !== null || !row.prerequisitesRequest) return row
+      const cont = contOf(await ajax(url, row.prerequisitesRequest).catch(() => null))
+      return { ...row, prerequisites: cont ? parsePrerequisites(cont) : null }
+    })
+    return { ...parsed, rows }
+  }
+
   /** El detalle de cada materia en curso, con las notas de sus parciales y TP. Va después de pedir la
       historia: el SIU resuelve el id del detalle con la última historia que mostró. */
   function inCourseOf(historia: string, history: ReturnType<typeof parseHistory>) {
@@ -441,11 +459,12 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
       const enrollments = parseEnrollments(pagelets(inscripciones).get('cursadas') ?? '')
       const history = parseHistory(pagelets(historia).get('info_historia') ?? '')
       const openSubjects = parseOpenSubjects(pagelets(cursada).get('lista_materias') ?? '')
-      const [electives, inCourse, closed, offer] = await Promise.all([
+      const [electives, inCourse, closed, offer, planWithPrerequisites] = await Promise.all([
         electivesOf(plan, parsedPlan),
         inCourseOf(historia, history),
         closedOf(historia, history),
-        offerOf(openSubjects)
+        offerOf(openSubjects),
+        prerequisitesOf(plan, parsedPlan)
       ])
       const termNames = [
         ...new Set([...enrollments.map((e) => e.term), ...offer.flatMap((o) => o.sections.map((s) => s.heading))])
@@ -466,7 +485,7 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
           openSubjects,
           ...reportsOf({ avance, actuacion, cronograma, vidaUniversitaria, inasistencias, cursada }),
           procedures: proceduresOf([solicitudes, nuevaSolicitud], historia, plan),
-          plan: parsedPlan
+          plan: planWithPrerequisites
         })
       )
     } catch (error) {

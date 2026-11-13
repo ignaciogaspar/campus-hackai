@@ -26,6 +26,7 @@ import type {
   SiuPerson,
   SiuPlanSubjectKind,
   SiuPort,
+  SiuPrerequisite,
   SiuProvisionalResult,
   SiuReceipt,
   SiuSection,
@@ -138,7 +139,13 @@ type StudyPlanRow = {
   years: number
   electives_required: number
   university_life_required: number
-  subjects: { subject_id: string; year: number | null; kind: SiuPlanSubjectKind; position: number }[]
+  subjects: {
+    subject_id: string
+    year: number | null
+    kind: SiuPlanSubjectKind
+    position: number
+    prerequisites: SiuPrerequisite[] | null
+  }[]
 }
 type ProvisionalRow = {
   id: string
@@ -553,7 +560,7 @@ export function createSimulatedSiu({
         client
           .from('siu_study_plans')
           .select(
-            'program_id, name, years, electives_required, university_life_required, subjects:siu_plan_subjects(subject_id, year, kind, position)'
+            'program_id, name, years, electives_required, university_life_required, subjects:siu_plan_subjects(subject_id, year, kind, position, prerequisites)'
           )
           .eq('program_id', programId)
           .abortSignal(s)
@@ -570,7 +577,13 @@ export function createSimulatedSiu({
         universityLifeRequired: plan.university_life_required,
         subjects: [...plan.subjects]
           .sort((a, b) => a.position - b.position)
-          .map((p) => ({ subjectId: p.subject_id, year: p.year, kind: p.kind }))
+          .map((p) => ({
+            subjectId: p.subject_id,
+            year: p.year,
+            kind: p.kind,
+            // La columna es `not null default '[]'`: el simulado siempre sabe las correlativas, y vacío es «no tiene».
+            prerequisites: p.prerequisites ?? []
+          }))
       })
     },
 

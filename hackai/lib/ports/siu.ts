@@ -139,9 +139,21 @@ export type SiuExamEnrollment = {
 /** Cómo cuenta una materia en el plan: obligatoria, optativa o actividad de vida universitaria. */
 export type SiuPlanSubjectKind = 'obligatoria' | 'optativa' | 'vida-universitaria'
 
+/** Cómo hay que tener una correlativa: con la cursada regular o aprobada (por final, promoción o equivalencia). */
+export type SiuPrerequisiteCondition = 'regular' | 'aprobada'
+
+/** Una correlativa para cursar una materia del plan: el SIU la muestra como «Requisito» y «Condición». */
+export type SiuPrerequisite = { subjectId: string; condition: SiuPrerequisiteCondition }
+
 /** Una materia del plan de estudios, con el año de la carrera en que va.
-    `year` es `null` si se puede hacer en cualquier año, como las de vida universitaria. */
-export type SiuPlanSubject = { subjectId: string; year: number | null; kind: SiuPlanSubjectKind }
+    `year` es `null` si se puede hacer en cualquier año, como las de vida universitaria.
+    `prerequisites` son las correlativas para cursarla; sin el campo, el SIU no las dio. */
+export type SiuPlanSubject = {
+  subjectId: string
+  year: number | null
+  kind: SiuPlanSubjectKind
+  prerequisites?: SiuPrerequisite[]
+}
 
 /** Plan de estudios vigente de una propuesta (/propuestas/{propuesta}/planes):
     cuántos años dura, sus materias y cuántas optativas y actividades de vida

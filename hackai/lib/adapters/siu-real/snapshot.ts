@@ -32,6 +32,7 @@ import type {
   SiuOfficialDocumentKind,
   SiuPerson,
   SiuPlanSubject,
+  SiuPrerequisite,
   SiuProvisionalResult,
   SiuSchedule,
   SiuSchool,
@@ -197,14 +198,36 @@ function splitName(full: string | null): { names: string; surname: string } {
     : { names: words[0], surname: '' }
 }
 
-function planSubject(row: Plan['rows'][number], subjectId: (code: string) => string): SiuPlanSubject | null {
+/** Las correlativas de una materia del plan, con ids de HackAI. El requisito sin código se busca por nombre entre
+    las materias del plan; el que no está en el plan no va. Sin correlativas leídas, `undefined`: no se sabe. */
+function prerequisitesOf(
+  row: Plan['rows'][number],
+  plan: Plan,
+  subjectId: (code: string) => string
+): SiuPrerequisite[] | undefined {
+  if (row.prerequisites === null) return undefined
+  const codeByName = new Map(plan.rows.flatMap((r) => (r.code ? [[r.name.toLowerCase(), r.code] as const] : [])))
+  const inPlan = new Set(plan.rows.flatMap((r) => (r.code ? [r.code] : [])))
+  return row.prerequisites.flatMap((p) => {
+    const code = p.code ?? codeByName.get(p.name.toLowerCase())
+    return code && inPlan.has(code) && code !== row.code ? [{ subjectId: subjectId(code), condition: p.condition }] : []
+  })
+}
+
+function planSubject(
+  row: Plan['rows'][number],
+  plan: Plan,
+  subjectId: (code: string) => string
+): SiuPlanSubject | null {
   if (!row.code) return null
+  const prerequisites = prerequisitesOf(row, plan, subjectId)
   const year = row.module.match(/^(\d+)/)?.[1]
-  if (/optativ/i.test(row.module)) return { subjectId: subjectId(row.code), year: null, kind: 'optativa' }
+  if (/optativ/i.test(row.module))
+    return { subjectId: subjectId(row.code), year: null, kind: 'optativa', prerequisites }
   if (/vida universitaria/i.test(row.module))
-    return { subjectId: subjectId(row.code), year: null, kind: 'vida-universitaria' }
+    return { subjectId: subjectId(row.code), year: null, kind: 'vida-universitaria', prerequisites }
   // «Otros Requisitos» (por ejemplo, la práctica profesional) también es obligatorio, sin año.
-  return { subjectId: subjectId(row.code), year: year ? Number(year) : null, kind: 'obligatoria' }
+  return { subjectId: subjectId(row.code), year: year ? Number(year) : null, kind: 'obligatoria', prerequisites }
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: arma cada colección del puerto en orden; partirla esconde cómo se relacionan los ids.
@@ -510,7 +533,7 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
       if (subject) subject.credits = Math.round(e.credits * hoursPerCredit * 100) / 100
     }
   }
-  const planSubjects = plan.rows.flatMap((row) => planSubject(row, subjectId) ?? [])
+  const planSubjects = plan.rows.flatMap((row) => planSubject(row, plan, subjectId) ?? [])
   // De las optativas y la vida universitaria, el plan solo suma las que el alumno cursó o aprobó: las listas
   // del SIU traen cientos. Optativa es lo que está en la lista de optativas; vida universitaria, lo que está
   // en su reporte. Lo demás (seminarios, otras propuestas) queda fuera del plan.

@@ -138,7 +138,8 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       {
         subjectId: 'pye',
         year: 2,
-        kind: 'obligatoria'
+        kind: 'obligatoria',
+        prerequisites: [{ subjectId: 'am1', condition: 'regular' }]
       }
     )
     assert.deepEqual(
@@ -146,7 +147,8 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       {
         subjectId: 'tor',
         year: null,
-        kind: 'vida-universitaria'
+        kind: 'vida-universitaria',
+        prerequisites: []
       }
     )
     assert.deepEqual(await siu.studyPlan('asp-fi'), { ok: false, error: 'no-encontrado' })

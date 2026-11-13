@@ -23,6 +23,8 @@ const subject = (subjectId: string, name: string, fields: Partial<SubjectStandin
   approvedAt: null,
   approval: null,
   examDate: null,
+  prerequisites: [],
+  canTake: false,
   ...fields
 })
 

@@ -115,7 +115,8 @@ export function siuSeedSql(data: SyntheticData): string {
           subject_id: text(x.subjectId),
           year: num(x.year),
           kind: text(x.kind),
-          position: num(i)
+          position: num(i),
+          prerequisites: json(x.prerequisites ?? [])
         }))
       )
     ),

@@ -22,6 +22,7 @@ import {
   parseOfferedSections,
   parseOpenSubjects,
   parsePlan,
+  parsePrerequisites,
   parseSchedule,
   parseVerifiedHours,
   splitSectionHeading,
@@ -79,16 +80,31 @@ const CRONOGRAMA = `<div class="titulo_operacion"><h2 class="clearfix"><span cla
 const ACTUACION = `<table class="table"><thead><tr><th>Propuesta</th><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Resultado</th><th>Nro. Acta</th><th>Año Académico</th><th>Período Lectivo</th><th>Comisión</th></tr></thead>
 <tbody><tr><td>IINF</td><td>Bases de Datos</td><td>28/10/2026</td><td>6.50</td><td>Aprobado</td><td></td><td>2026</td><td>${TERM}</td><td>Bases de Datos INF</td></tr></tbody></table>`
 
-const materia = (name: string, nota: string, origen: string, credits = '') =>
-  `<tr class="materia"><td>${name}</td><td>Materia</td><td></td><td></td><td>${nota}</td><td>${origen}</td><td>${credits}</td><td></td><td></td></tr><tr class="correlatividades"></tr>`
+/** Una materia del plan. `ver` es la celda Correlativas (el botón «Ver»); `correlativas`, lo que trae su fila
+    `tr.correlatividades`, que el SIU deja vacía si las carga al apretar «Ver». */
+const materia = (name: string, nota: string, origen: string, credits = '', ver = '', correlativas = '') =>
+  `<tr class="materia"><td>${name}</td><td>Materia</td><td></td><td></td><td>${nota}</td><td>${origen}</td><td>${credits}</td><td></td><td>${ver}</td></tr><tr class="correlatividades">${correlativas}</tr>`
+/** La tabla «Para cursar» de Requisito / Condición, y la de «Para rendir», que el árbol no usa. */
+const paraCursar = (rows: [string, string][]) =>
+  `<td colspan="9"><h4>Para cursar</h4><table class="table"><thead><tr><th>Requisito</th><th>Condición</th></tr></thead><tbody>${rows
+    .map(([r, c]) => `<tr><td>${r}</td><td>${c}</td></tr>`)
+    .join(
+      ''
+    )}</tbody></table><button class="btn">Verificar</button><h4>Para rendir</h4><table class="table"><tbody><tr><td>Programación I (PR1)</td><td>Aprobada</td></tr></tbody></table></td>`
+const VER_PPS = `<a href="#" class="btn btn-mini js-ver-correlativas" data-materia="7701" data-plan="55">Ver</a>`
+const CORRELATIVAS_PPS = paraCursar([
+  ['Bases de Datos (BD2)', 'Regularizada'],
+  ['Materia: Programación I', 'Examen aprobado'],
+  ['Física Cuántica (FCU9)', 'Aprobada']
+])
 const modulo = (name: string, inner: string) =>
   `<div class="modulos accordion"><div class="accordion-group"><div class="accordion-heading"><a class="modulos accordion-toggle"><b>Módulo:</b> ${name} </a></div>${inner}</div></div>`
 
 const PLAN = `<table class="table encabezado"><tbody><tr><td><b>Propuesta:</b> (IINF) Ingeniería en Informática</td><td><b>Plan:</b> (IINF/2019) IINF Plan 2019</td><td><b>Versión:</b> V 1.0</td></tr></tbody></table>
 ${modulo('1er. Año', `<table><tbody>${materia('Programación I (PR1)', '8 (Aprobado)', 'Examen')}</tbody></table>`)}
-${modulo('3er. Año', `<table><tbody>${materia('Bases de Datos (BD2)', '', 'En Curso')}</tbody></table>`)}
+${modulo('3er. Año', `<table><tbody>${materia('Bases de Datos (BD2)', '', 'En Curso', '', '<a class="btn">Ver</a>', paraCursar([['Programación I (PR1)', 'Cursada aprobada']]))}</tbody></table>`)}
 ${modulo('Materias Optativas', `<div class="materia_generica accordion" id="accordion9" data-elemento="9001" data-cargado="false"><div class="accordion-heading"><a class="materia_generica accordion-toggle"><b>Materia Genérica:</b> Materias Optativas (GAGIINFOPT) </a></div><h3><b>Cumplimiento:</b> Obtener 192 horas de actividades aprobadas</h3><button type="button" class="btn btn_verificar_cumplimiento_js" data-regla="116" data-materia="9001" data-parametros="p" data-elemento-comp="1" data-completo="false" >Verificar</button><div class="js-optativas"><!-- aca escribe el ajax --></div></div>`)}
-${modulo('Otros Requisitos', `<table><tbody>${materia('Práctica Profesional Supervisada (PPS1)', '', '', '33.00')}${materia('Programa de Vida Universitaria (GFIEXTVU)', '', '', '10.00')}</tbody></table>`)}`
+${modulo('Otros Requisitos', `<table><tbody>${materia('Práctica Profesional Supervisada (PPS1)', '', '', '33.00', VER_PPS)}${materia('Programa de Vida Universitaria (GFIEXTVU)', '', '', '10.00')}</tbody></table>`)}`
 
 const AVANCE = `<table class="table"><thead><tr><th>Certificado</th><th>Orientación</th><th>Ori. Elegida</th><th>% de Avance</th><th>Aprobadas</th><th>Promedio con aplazos</th><th>Promedio sin aplazos</th></tr></thead>
 <tbody><tr><td>Ingeniero en Informática</td><td></td><td>No</td><td>41.5 %</td><td>2</td><td>8.00</td><td>8.00</td></tr></tbody></table>`
@@ -195,12 +211,14 @@ const ROUTES: Record<string, { session: boolean; body: string; contentType?: str
       {
         info_plan: {
           url_optativas: `${BASE}/plan_estudio/optativas`,
-          url_verificar_cumplimientos: `${BASE}/plan_estudio/verificar`
+          url_verificar_cumplimientos: `${BASE}/plan_estudio/verificar`,
+          url_correlatividades: `${BASE}/plan_estudio/correlatividades`
         }
       }
     )
   },
   'plan_estudio/optativas': { session: true, body: json({ cod: 1, cont: OPTATIVAS }) },
+  'plan_estudio/correlatividades': { session: true, body: json({ cod: 1, cont: CORRELATIVAS_PPS }) },
   'plan_estudio/verificar': {
     session: true,
     body: json({ cod: 1, mensaje_usuario: 'Debe obtener 192 horas de actividades aprobadas del grupo. Lleva 64 horas' })
@@ -352,6 +370,32 @@ test('lee el plan por módulos, la regla de horas de optativas y su botón «Ver
       ['PPS1', 'Otros Requisitos'],
       ['GFIEXTVU', 'Otros Requisitos']
     ]
+  )
+})
+
+test('lee las correlativas para cursar que trae el plan, y el botón «Ver» de las que no trae', () => {
+  const plan = parsePlan(PLAN)
+  const row = (code: string) => plan.rows.find((r) => r.code === code)!
+  // Bases de Datos las trae en la página: solo las de cursar, no las de rendir.
+  assert.deepEqual(row('BD2').prerequisites, [{ name: 'Programación I', code: 'PR1', condition: 'regular' }])
+  // La práctica las carga al apretar «Ver»: queda el pedido con los datos del botón.
+  assert.equal(row('PPS1').prerequisites, null)
+  assert.deepEqual(row('PPS1').prerequisitesRequest, { materia: '7701', plan: '55' })
+  // Sin botón ni fila llena, no se sabe.
+  assert.equal(row('PR1').prerequisites, null)
+  assert.equal(row('PR1').prerequisitesRequest, null)
+})
+
+test('lee las condiciones de una tabla de correlativas', () => {
+  assert.deepEqual(parsePrerequisites(CORRELATIVAS_PPS), [
+    { name: 'Bases de Datos', code: 'BD2', condition: 'regular' },
+    { name: 'Programación I', code: null, condition: 'aprobada' },
+    { name: 'Física Cuántica', code: 'FCU9', condition: 'aprobada' }
+  ])
+  // Solo «Para rendir»: para cursar no pide nada.
+  assert.deepEqual(
+    parsePrerequisites('<h4>Para rendir</h4><table><tr><td>Programación I (PR1)</td><td>Aprobada</td></tr></table>'),
+    []
   )
 })
 
@@ -599,6 +643,24 @@ test('arma el plan con lo cursado: optativas de su lista, vida universitaria de 
     ],
     'el seminario queda fuera del plan'
   )
+})
+
+test('el plan trae las correlativas del SIU con ids de HackAI, y pide las que carga el botón «Ver»', async () => {
+  const { siu, requests } = build()
+  const plan = await siu.studyPlan('real-iinf')
+  assert.ok(plan.ok)
+  const of = (id: string) => plan.value.subjects.find((s) => s.subjectId === id)?.prerequisites
+  assert.deepEqual(of('real-bd2'), [{ subjectId: 'real-pr1', condition: 'regular' }])
+  // Programación I viene sin código y se busca por nombre; Física Cuántica no está en el plan y no va.
+  assert.deepEqual(of('real-pps1'), [
+    { subjectId: 'real-bd2', condition: 'regular' },
+    { subjectId: 'real-pr1', condition: 'aprobada' }
+  ])
+  // Sin correlativas leídas, no se sabe: no es lo mismo que no tener.
+  assert.equal(of('real-pr1'), undefined)
+  const asked = requests.filter((r) => r.url.endsWith('plan_estudio/correlatividades'))
+  assert.equal(asked.length, 1)
+  assert.equal(asked[0].body, 'materia=7701&plan=55')
 })
 
 test('el avance y los créditos de vida universitaria que pide el plan salen del SIU', async () => {

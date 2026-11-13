@@ -2505,6 +2505,41 @@ test('la carrera trae cada materia del plan con su estado, sus notas y el avance
   assert.equal(career.percent, 17)
 })
 
+test('la carrera dice qué correlativas cumple cada materia y cuáles puede cursar ya', async () => {
+  const { studies } = build()
+
+  const result = await studies.career('p-sdominguez')
+
+  assert.ok(result.ok)
+  const subject = (id: string) => result.value.data.subjects.find((s) => s.subjectId === id)!
+  // Análisis II pide Análisis I aprobada (la está cursando: no alcanza) y Álgebra regular (la tiene).
+  assert.deepEqual(subject('am2').prerequisites, [
+    { subjectId: 'am1', condition: 'aprobada', met: false },
+    { subjectId: 'aga', condition: 'regular', met: true }
+  ])
+  assert.equal(subject('am2').canTake, false)
+  // Ética Profesional pide Introducción a la Ingeniería aprobada: la promocionó.
+  assert.deepEqual(subject('etp').prerequisites, [{ subjectId: 'iin', condition: 'aprobada', met: true }])
+  assert.equal(subject('etp').canTake, true)
+  // Una aprobada no se vuelve a cursar, aunque no tenga correlativas.
+  assert.equal(subject('iin').canTake, false)
+  // Del plan solo cuentan las correlativas que están en él: Programación II no es de Industrial.
+  assert.ok(result.value.data.subjects.every((s) => s.prerequisites.every((p) => subject(p.subjectId))))
+})
+
+test('sin las correlativas de una materia, no dice que la puede cursar', async () => {
+  // El SIU real puede no dar las correlativas de una materia (el pedido de «Ver» falló): no se sabe, no es «no tiene».
+  const data = structuredClone(syntheticData)
+  const plan = data.siu.studyPlans.find((p) => p.programId === 'iind')!
+  const ethics = plan.subjects.find((s) => s.subjectId === 'etp')!
+  delete ethics.prerequisites
+  const result = await build(data).studies.career('p-sdominguez')
+
+  assert.ok(result.ok)
+  const etp = result.value.data.subjects.find((s) => s.subjectId === 'etp')!
+  assert.deepEqual([etp.status, etp.prerequisites, etp.canTake], ['pendiente', [], false])
+})
+
 test('el año lectivo de una cursada es el del nombre del período, y sin año en el nombre, el de su inicio', async () => {
   // El SIU publica el período anual con inicio en diciembre del año anterior.
   const annual = structuredClone(syntheticData)

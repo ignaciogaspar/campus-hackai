@@ -108,8 +108,12 @@ create table if not exists siu_plan_subjects (
   year integer check (year is null or year > 0),             -- anio_de_cursada
   kind text not null check (kind in ('obligatoria', 'optativa', 'vida-universitaria')),
   position integer not null default 0,
+  prerequisites jsonb not null default '[]',                 -- correlativas para cursar: [{subjectId, condition}]
   primary key (program_id, subject_id)
 );
+
+-- Para una base creada antes de que el plan tuviera las correlativas.
+alter table siu_plan_subjects add column if not exists prerequisites jsonb not null default '[]';
 
 -- Inscripciones a cursada (/inscripciones, esquema Inscripcion).
 create table if not exists siu_course_enrollments (

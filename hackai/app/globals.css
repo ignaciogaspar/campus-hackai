@@ -285,6 +285,9 @@
   --animate-grow-y: grow-y 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-draw: draw 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-rise: rise 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Las líneas del árbol de correlativas (components/career/prerequisite-tree.tsx) se descubren de izquierda a
+     derecha, mientras suben las columnas. */
+  --animate-reveal-x: reveal-x 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
   @keyframes grow-x {
     from {
       transform: scaleX(0);
@@ -301,6 +304,14 @@
     }
     to {
       stroke-dashoffset: 0;
+    }
+  }
+  @keyframes reveal-x {
+    from {
+      clip-path: inset(-8px 100% -8px -8px);
+    }
+    to {
+      clip-path: inset(-8px -8px -8px -8px);
     }
   }
   @keyframes rise {
