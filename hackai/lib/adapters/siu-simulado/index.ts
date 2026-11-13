@@ -266,6 +266,15 @@ export function createSimulatedSiu({
     return found.value ? ok(true) : fail('no-encontrado')
   }
 
+  /** Que la comisión exista en el SIU: `no-encontrado` si no. */
+  async function requireSection(sectionId: string): Promise<Result<true, ExternalFailure | 'no-encontrado'>> {
+    const found = await read('comision-existe', (s) =>
+      client.from('siu_sections').select('id').eq('id', sectionId).abortSignal(s).maybeSingle()
+    )
+    if (!found.ok) return found
+    return found.value ? ok(true) : fail('no-encontrado')
+  }
+
   async function terms(): Promise<Result<SiuTerm[], ExternalFailure>> {
     const rows = await list<TermRow>('periodos', (s) =>
       client.from('siu_terms').select('*').order('start_at').abortSignal(s)
@@ -425,6 +434,23 @@ export function createSimulatedSiu({
       )
       return ok(found.map(({ section: _section, ...row }) => toCourseEnrollment(row)))
     },
+
+    // --- B: seguimiento ---
+    async sectionEnrollments(sectionId) {
+      const exists = await requireSection(sectionId)
+      if (!exists.ok) return exists
+      const rows = await list<CourseEnrollmentRow>('inscripciones-de-comision', (s) =>
+        client
+          .from('siu_course_enrollments')
+          .select('*')
+          .eq('section_id', sectionId)
+          .in('status', ACTIVE)
+          .order('id')
+          .abortSignal(s)
+      )
+      return rows.ok ? ok(rows.value.map(toCourseEnrollment)) : rows
+    },
+    // --- fin B: seguimiento ---
 
     async examBoards(filter) {
       const rows = await list<ExamBoardRow>('mesas', (s) => {

@@ -32,7 +32,12 @@ export default async function NewTaskPage({ params, searchParams }: { params: Pa
     <>
       <TaskHeader subject={list.subject} role={list.role} sections={[]} backHref={back} />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <SubjectTabs subjectId={subjectId} current='tareas' comision={list.sectionId} />
+        <SubjectTabs
+          subjectId={subjectId}
+          current='tareas'
+          comision={list.sections.length > 1 ? list.sectionId : undefined}
+          role={list.role}
+        />
         <div className='w-full max-w-3xl'>
           <NewTaskForm subjectId={subjectId} sections={list.sections} selectedId={list.sectionId} cancelHref={back} />
         </div>

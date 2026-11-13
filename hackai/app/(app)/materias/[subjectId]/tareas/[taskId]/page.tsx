@@ -109,7 +109,12 @@ export default async function TaskPage({ params, searchParams }: { params: Param
     <>
       <TaskHeader subject={task.subject} role={task.role} sections={shown} backHref={back} />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <SubjectTabs subjectId={subjectId} current='tareas' comision={comision} />
+        <SubjectTabs
+          subjectId={subjectId}
+          current='tareas'
+          comision={task.sections.length > 1 ? comision : undefined}
+          role={task.role}
+        />
         {task.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(task.staleSince)}: puede estar

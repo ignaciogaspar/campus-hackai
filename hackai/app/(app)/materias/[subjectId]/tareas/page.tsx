@@ -11,11 +11,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cache } from 'react'
 import { newTaskHref, tasksHref } from '@/components/coursework/format'
-import { SectionPicker } from '@/components/coursework/section-picker'
 import { TaskError } from '@/components/coursework/task-error'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { TaskList } from '@/components/coursework/task-list'
 import { messageTime } from '@/components/spaces/format'
+import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import { buttonVariants } from '@/components/ui/button'
 import { StaleNotice } from '@/components/ui/states'
@@ -57,12 +57,18 @@ export default async function TasksPage({ params, searchParams }: { params: Para
   if (!result.ok) return <TaskError error={result.error} retryHref={tasksHref(subjectId, comision)} />
   const list = result.value
   const selected = list.sections.find((s) => s.sectionId === list.sectionId)
+  const several = list.sections.length > 1
 
   return (
     <>
       <TaskHeader subject={list.subject} role={list.role} sections={selected ? [selected] : []} backHref='/materias' />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <SubjectTabs subjectId={subjectId} current='tareas' comision={list.sectionId} />
+        <SubjectTabs
+          subjectId={subjectId}
+          current='tareas'
+          comision={several ? list.sectionId : undefined}
+          role={list.role}
+        />
         {list.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(list.staleSince)}: puede estar
@@ -70,7 +76,11 @@ export default async function TasksPage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
         {list.role === 'profesor' && (
-          <SectionPicker subjectId={subjectId} sections={list.sections} selectedId={list.sectionId} />
+          <SectionPicker
+            sections={list.sections}
+            selectedId={list.sectionId}
+            hrefFor={(sectionId) => tasksHref(subjectId, sectionId)}
+          />
         )}
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <h2 className='text-lg font-extrabold'>Tareas</h2>

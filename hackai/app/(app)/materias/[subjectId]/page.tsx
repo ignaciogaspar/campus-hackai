@@ -14,6 +14,9 @@
    del canal externo o de otros aparece sin recargar. Al leer un canal, la
    barra lateral baja sus no leídos (UnreadRefresh, en el layout).
 
+   Arriba de todo, la barra de pestañas de la materia (Espacio, Tareas y, para el
+   docente, Alumnos) que conserva `?comision=`.
+
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
 
@@ -406,6 +409,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const raw = await searchParams
   const query = readQuery(raw)
   const notice = singleParam(raw.discord)
+  const comision = singleParam(raw.comision)
 
   const opened = await openSpace(session.personId, subjectId)
   if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} />
@@ -439,13 +443,14 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         data-just-read={hadUnread ? '' : undefined}
         className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8'
       >
-        <SubjectTabs subjectId={subjectId} current='espacio' />
         {view.staleSince && (
           <StaleNotice>
             El SIU no responde. Las comisiones salen de lo que trajimos el {messageTime(view.staleSince)}: puede estar
             desactualizado.
           </StaleNotice>
         )}
+
+        <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} role={view.viewer.role} />
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs

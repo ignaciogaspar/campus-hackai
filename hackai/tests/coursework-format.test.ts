@@ -9,7 +9,7 @@ import {
   taskHref,
   tasksHref
 } from '@/components/coursework/format'
-import { subjectTabs } from '@/components/subjects/subject-tabs-model'
+import { subjectTabHref, tabsFor } from '@/components/subjects/subject-nav'
 
 test('los enlaces de Seguimiento conservan la comisión elegida y escapan los ids', () => {
   assert.equal(tasksHref('am1'), '/materias/am1/tareas')
@@ -19,18 +19,18 @@ test('los enlaces de Seguimiento conservan la comisión elegida y escapan los id
   assert.equal(tasksHref('a/b'), '/materias/a%2Fb/tareas')
 })
 
-test('las pestañas de la materia marcan la actual y llevan la comisión solo a Tareas', () => {
-  assert.deepEqual(subjectTabs('am1', 'tareas', 'sec-am1-fi-b'), [
-    { key: 'espacio', label: 'Espacio', href: '/materias/am1', current: false },
-    { key: 'tareas', label: 'Tareas', href: '/materias/am1/tareas?comision=sec-am1-fi-b', current: true }
-  ])
+test('el alumno ve las pestañas Espacio y Tareas y el docente además Alumnos', () => {
   assert.deepEqual(
-    subjectTabs('am1', 'espacio').map((t) => [t.key, t.href, t.current]),
-    [
-      ['espacio', '/materias/am1', true],
-      ['tareas', '/materias/am1/tareas', false]
-    ]
+    tabsFor('alumno').map((t) => t.id),
+    ['espacio', 'tareas']
   )
+  assert.deepEqual(
+    tabsFor('profesor').map((t) => t.id),
+    ['espacio', 'alumnos', 'tareas']
+  )
+  const tareas = tabsFor('alumno')[1]
+  assert.equal(subjectTabHref('am1', tareas), '/materias/am1/tareas')
+  assert.equal(subjectTabHref('am1', tareas, 'sec-am1-fi-b'), '/materias/am1/tareas?comision=sec-am1-fi-b')
 })
 
 test('la fecha límite dice si vence o venció, en la hora de Buenos Aires', () => {

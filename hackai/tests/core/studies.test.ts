@@ -2515,3 +2515,62 @@ test('si el SIU no deja inscribir por API, la mesa devuelve «requiere autogesti
   assert.deepEqual(await siuBoards(siu, VALENTINA.siu), [])
   assert.deepEqual(await siuBoards(siu, TOMAS.siu), ['mesa-aga-fi-dic'])
 })
+
+test('sectionStudents: un docente ve legajo, nombre y mail de los alumnos de su comisión, por apellido', async () => {
+  const { studies } = build()
+  const result = await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a')
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.deepEqual(
+    result.value.data.map((s) => [s.personId, s.name]),
+    [
+      ['p-taguirre', 'Aguirre, Tomás'],
+      ['p-lbenitez', 'Benítez, Lucía'],
+      ['p-jescobar', 'Escobar, Joaquín']
+    ]
+  )
+  assert.deepEqual(result.value.data[0], {
+    personId: 'p-taguirre',
+    legajo: '30101',
+    name: 'Aguirre, Tomás',
+    email: 'tomas.aguirre@alumnos.example.edu.ar'
+  })
+})
+
+test('sectionStudents: un alumno o un docente de otra comisión no ven los alumnos', async () => {
+  const { studies } = build()
+  assert.deepEqual(await studies.sectionStudents('p-taguirre', 'sec-am1-fi-a'), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await studies.sectionStudents('p-gferreyra', 'sec-am1-fi-a'), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await studies.sectionStudents('p-mledesma', 'sec-inexistente'), { ok: false, error: 'sin-acceso' })
+})
+
+test('sectionStudents: una comisión sin inscriptos devuelve la lista vacía', async () => {
+  const { studies } = build()
+  const result = await studies.sectionStudents('p-gferreyra', 'sec-fi1-fi-vt')
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.data, [])
+})
+
+test('sectionStudents: no cuenta a quien dio de baja la cursada', async () => {
+  const data = structuredClone(syntheticData)
+  data.siu.courseEnrollments.find((e) => e.personId === '30101' && e.sectionId === 'sec-am1-fi-a')!.status = 'baja'
+  const { studies } = build(data)
+  const result = await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a')
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.map((s) => s.personId),
+    ['p-lbenitez', 'p-jescobar']
+  )
+})
+
+test('sectionStudents: con el SIU caído devuelve lo último leído, desactualizado; sin lectura previa, falla', async () => {
+  const { studies, siuState } = build()
+  siuState.down = true
+  assert.deepEqual(await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a'), { ok: false, error: 'falla-externa' })
+  siuState.down = false
+  const first = await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a')
+  assert.ok(first.ok)
+  siuState.down = true
+  const stale = await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a')
+  assert.deepEqual(stale, { ok: true, value: { data: first.value.data, readAt: NOW, stale: true } })
+})
