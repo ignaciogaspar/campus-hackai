@@ -276,6 +276,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 34. ¿El selector de comisión filtra los canales del espacio del docente que dicta varias?
+
+- **Por qué importa:** con dos comisiones de la misma materia, el espacio mostraba los canales de las dos con sufijo («Avisos · A», «Avisos · Verano») y el selector no los gobernaba: la Comisión Verano abría la A y la docente publicaba en la comisión equivocada sin darse cuenta (#124, U-1).
+- **Hipótesis (13/11/2026):** el selector filtra el riel: se ven los canales de la comisión elegida, los de la materia (Material y los que se crean para toda la materia) y los directos, sin sufijo. Sin `?canal=` se abren los Avisos de la comisión elegida, y abrir un canal de otra comisión (desde Hoy o Novedades) pone el selector en esa. Los canales de una comisión archivada de la misma materia, que no está en el selector, siguen a la vista.
+- **Opciones:** lo de la hipótesis; mostrar los canales de todas las comisiones y que el selector solo elija cuál se abre; un espacio aparte por comisión.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

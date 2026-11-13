@@ -16,8 +16,10 @@
 
    Arriba de todo, la barra de pestañas de la materia (Espacio, Tareas y, para el
    docente, Alumnos) que conserva `?comision=`. Si el docente dicta más de una
-   comisión, también el selector: la comisión elegida la llevan las otras
-   pestañas; el espacio muestra los canales de todas sus comisiones igual que antes.
+   comisión, también el selector, que gobierna el espacio (section-focus.ts): el
+   riel muestra solo los canales de la comisión elegida, sin `?canal=` se abren
+   sus Avisos y abrir un canal de otra comisión pone el selector en esa. Los
+   enlaces del riel, Directos y el canal nuevo llevan `?comision=`.
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
@@ -55,13 +57,14 @@ import {
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
+import { focusSection, type SectionFocus } from '@/components/spaces/section-focus'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
-import { chooseSection, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
+import { SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
 import { SUBJECT_WIDTH, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { AccessError, Channel, ChannelView, Spaces, SpaceView } from '@/lib/core/spaces'
+import type { AccessError, Channel, ChannelView, SpaceSection, Spaces, SpaceView } from '@/lib/core/spaces'
 import type { Fail } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -126,7 +129,8 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
     filtro: singleParam(raw.filtro),
     nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined,
     vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined,
-    buscar: singleParam(raw.buscar)?.trim() || undefined
+    buscar: singleParam(raw.buscar)?.trim() || undefined,
+    comision: singleParam(raw.comision)
   }
 }
 
@@ -176,10 +180,13 @@ function SpaceError({ error, retryHref }: { error: AccessError; retryHref: strin
 
 type ChannelResult = { ok: true; value: ChannelView } | { ok: false; error: ChannelError }
 
-/** Lo de la pestaña elegida: el hilo si hay `?hilo=`, o el panel según el tipo de canal. */
+/** Lo de la pestaña elegida: el hilo si hay `?hilo=`, o el panel según el tipo de canal. `channels` son los del
+    riel y `comision`, la elegida en el selector si hay varias. */
 function ChannelArea({
   subjectId,
   view,
+  channels,
+  comision,
   opened,
   query,
   search,
@@ -187,6 +194,8 @@ function ChannelArea({
 }: {
   subjectId: string
   view: SpaceView
+  channels: Channel[]
+  comision: string | undefined
   opened: ChannelResult
   query: SpaceQuery
   search: MaterialSearchResult | null
@@ -197,7 +206,10 @@ function ChannelArea({
       <ErrorNotice>
         <p>{CHANNEL_ERRORS[opened.error]}</p>
         {opened.error === 'falla-externa' && <RetryLink href={spaceHref(subjectId, query)} />}
-        <Link href={spaceHref(subjectId)} className='inline-flex min-h-10 items-center gap-1 font-bold underline'>
+        <Link
+          href={spaceHref(subjectId, { comision })}
+          className='inline-flex min-h-10 items-center gap-1 font-bold underline'
+        >
           Volver al espacio
           <ChevronRight aria-hidden='true' className='size-4' />
         </Link>
@@ -209,7 +221,7 @@ function ChannelArea({
   // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
   const updates = <ChannelUpdates channelId={channel.id} version={version} />
   if (query.hilo && channel.kind !== 'directo') {
-    const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
+    const backLabel = channelLabel(channel, hasSeveralSections(channels))
     return (
       <>
         {updates}
@@ -221,7 +233,14 @@ function ChannelArea({
     <>
       {updates}
       <DiscordLink subjectId={subjectId} channel={channel} choices={discord.choices} />
-      <ChannelPanel subjectId={subjectId} view={view} opened={opened.value} query={query} search={search} />
+      <ChannelPanel
+        subjectId={subjectId}
+        view={view}
+        comision={comision}
+        opened={opened.value}
+        query={query}
+        search={search}
+      />
     </>
   )
 }
@@ -230,18 +249,20 @@ function ChannelArea({
 function ChannelPanel({
   subjectId,
   view,
+  comision,
   opened,
   query,
   search
 }: {
   subjectId: string
   view: SpaceView
+  comision: string | undefined
   opened: ChannelView
   query: SpaceQuery
   search: MaterialSearchResult | null
 }) {
   const { channel, threads, material } = opened
-  const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
+  const props = { subjectId, channel, threads, viewerId: view.viewer.personId, comision }
   switch (channel.kind) {
     case 'material':
       return (
@@ -252,6 +273,7 @@ function ChannelPanel({
           material={material ?? view.material}
           canManage={view.viewer.canManage}
           search={search}
+          comision={comision}
         />
       )
     case 'avisos':
@@ -265,13 +287,9 @@ function ChannelPanel({
   }
 }
 
-/** Abre el canal elegido, o el primero. Un canal de otro espacio es un canal desconocido acá. */
-async function openChannel(
-  personId: string,
-  view: SpaceView,
-  canal: string | undefined
-): Promise<ChannelResult | null> {
-  const channelId = canal ?? view.channels[0]?.id
+/** Abre el canal elegido: el de `?canal=` o el que corresponde a la comisión elegida (`SectionFocus`). Un canal
+    de otro espacio es un canal desconocido acá. */
+async function openChannel(personId: string, view: SpaceView, channelId: string | null): Promise<ChannelResult | null> {
   if (!channelId) return null
   const opened = await system().spaces.channel(personId, channelId)
   if (opened.ok && opened.value.space.id !== view.space.id) return { ok: false, error: 'canal-desconocido' }
@@ -298,10 +316,10 @@ async function searchIn(
 
 /** Con el formulario de canal nuevo o la lista de directos a la vista no se abre ningún canal, así no se
     marca leído lo que no se vio. */
-async function paneFor(personId: string, view: SpaceView, query: SpaceQuery): Promise<Pane> {
+async function paneFor(personId: string, view: SpaceView, query: SpaceQuery, focus: SectionFocus): Promise<Pane> {
   if (query.nuevo === 'canal' && view.viewer.canManage) return { kind: 'nuevo' }
   if (query.vista === 'directos') return { kind: 'directos' }
-  const opened = await openChannel(personId, view, query.canal)
+  const opened = await openChannel(personId, view, focus.channelId)
   return { kind: 'canal', opened, search: await searchIn(personId, view, opened, query.buscar) }
 }
 
@@ -351,13 +369,17 @@ function CenterContent({
   subjectId,
   view,
   channels,
+  comision,
   pane,
   query,
   discord
 }: {
   subjectId: string
   view: SpaceView
+  /** Los del riel: con varias comisiones, los de la elegida. */
   channels: Channel[]
+  /** La comisión elegida en el selector, si el docente dicta varias: la llevan los enlaces. */
+  comision: string | undefined
   pane: Pane
   query: SpaceQuery
   discord: DiscordContext
@@ -368,7 +390,7 @@ function CenterContent({
         subjectId={subjectId}
         spaceId={view.space.id}
         sections={shownSections(view.viewer.sections)}
-        cancelHref={spaceHref(subjectId, { canal: query.canal })}
+        cancelHref={spaceHref(subjectId, { canal: query.canal, comision })}
       />
     )
   }
@@ -379,6 +401,7 @@ function CenterContent({
         role={view.viewer.role}
         directs={channels.filter(isDirect)}
         contacts={view.viewer.directContacts}
+        comision={comision}
       />
     )
   }
@@ -387,6 +410,8 @@ function CenterContent({
     <ChannelArea
       subjectId={subjectId}
       view={view}
+      channels={channels}
+      comision={comision}
       opened={pane.opened}
       query={query}
       search={pane.search}
@@ -407,20 +432,9 @@ function CenterPane(props: Parameters<typeof CenterContent>[0]) {
   )
 }
 
-/** Pestañas de la materia y selector de comisión del docente. Solo vale una comisión vigente suya. */
-function TeacherNav({ subjectId, view, requested }: { subjectId: string; view: SpaceView; requested?: string }) {
-  const taught = view.viewer.sections.filter((s) => s.current)
-  const section = chooseSection(taught, requested)
-  return (
-    <SubjectToolbar
-      subjectId={subjectId}
-      current='espacio'
-      viewer='profesor'
-      sections={taught}
-      selectedId={section?.sectionId ?? ''}
-      hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
-    />
-  )
+/** Las comisiones del selector: las vigentes que dicta el docente. El alumno no tiene selector. */
+function taughtSections(view: SpaceView): SpaceSection[] {
+  return view.viewer.role === 'profesor' ? view.viewer.sections.filter((s) => s.current) : []
 }
 
 export default async function SpacePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
@@ -429,17 +443,24 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const raw = await searchParams
   const query = readQuery(raw)
   const notice = singleParam(raw.discord)
-  const comision = singleParam(raw.comision)
 
   const opened = await openSpace(session.personId, subjectId)
   if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} />
   const view = opened.value
-  const pane = await paneFor(session.personId, view, query)
+  const taught = taughtSections(view)
+  const focus = focusSection(
+    view.channels,
+    taught.map((s) => s.sectionId),
+    query
+  )
+  // Solo con el selector a la vista los enlaces llevan la comisión.
+  const comision = taught.length > 1 ? (focus.sectionId ?? undefined) : undefined
+  const pane = await paneFor(session.personId, view, query, focus)
   const discord = await discordFor(session.personId, subjectId, view, pane, isDiscordNotice(notice) ? notice : null)
 
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
   const selected = pane.kind === 'canal' && pane.opened?.ok ? pane.opened.value.channel : null
-  const channels = view.channels.map((c) => (c.id === selected?.id ? selected : c))
+  const channels = focus.channels.map((c) => (c.id === selected?.id ? selected : c))
   // Si tenía no leídos, los de la barra lateral quedaron viejos: con `data-just-read` en <main>,
   // UnreadRefresh la vuelve a leer.
   const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
@@ -471,24 +492,21 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        {view.viewer.role === 'profesor' ? (
-          <TeacherNav subjectId={subjectId} view={view} requested={comision} />
-        ) : (
-          <SubjectToolbar
-            subjectId={subjectId}
-            current='espacio'
-            viewer={view.viewer.role}
-            sections={[]}
-            selectedId={comision ?? ''}
-            hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
-          />
-        )}
+        <SubjectToolbar
+          subjectId={subjectId}
+          current='espacio'
+          viewer={view.viewer.role}
+          sections={taught}
+          selectedId={focus.sectionId ?? ''}
+          hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+        />
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}
-            selectedId={pane.kind === 'canal' ? (query.canal ?? selected?.id ?? channels[0]?.id ?? null) : null}
+            comision={comision}
+            selectedId={pane.kind === 'canal' ? focus.channelId : null}
             canManage={view.viewer.canManage}
             creating={pane.kind === 'nuevo'}
             showingDirects={pane.kind === 'directos'}
@@ -502,6 +520,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
               subjectId={subjectId}
               view={view}
               channels={channels}
+              comision={comision}
               pane={pane}
               query={query}
               discord={discord}

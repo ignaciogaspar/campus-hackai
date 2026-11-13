@@ -3,7 +3,8 @@
    archivadas) usan la misma tarjeta, del mismo tamaño y con las mismas
    partes: cabecera con ícono, nombre y estado; dos datos; un aviso opcional;
    y abajo, una acción secundaria. Toda la tarjeta lleva al espacio de la
-   materia (el título es el enlace y se estira sobre la tarjeta); la acción
+   materia (el título es el enlace y se estira sobre la tarjeta) y, en la de
+   una comisión que dicta el docente, a esa comisión (`?comision=`); la acción
    secundaria queda por encima y lleva a otro lado. Solo muestra lo que le da
    Cursada: qué es actual, qué está regular y qué está aprobado lo decide
    Cursada. */
@@ -63,6 +64,7 @@ const SECONDARY =
    es el enlace al espacio y cubre toda la tarjeta. */
 function SubjectCard({
   subjectId,
+  comision,
   name,
   detail,
   status,
@@ -72,6 +74,8 @@ function SubjectCard({
   secondary
 }: {
   subjectId: string
+  /** La comisión que abre el espacio: la del docente, para que la Comisión Verano no abra la A. */
+  comision?: string
   name: string
   detail: string
   status: SubjectStatus | null
@@ -87,7 +91,7 @@ function SubjectCard({
         <div className='min-w-0 flex-1'>
           <h3 className='line-clamp-2 text-[0.9375rem] leading-snug font-bold text-ink lg:text-base'>
             <Link
-              href={spaceHref(subjectId)}
+              href={spaceHref(subjectId, { comision })}
               className='stretched text-ink outline-none transition-colors group-hover:text-blue after:absolute after:inset-0 after:rounded-2xl after:content-[""]'
             >
               <LinkPending overlay>{name}</LinkPending>
@@ -140,6 +144,7 @@ export function CourseCard({
   return (
     <SubjectCard
       subjectId={subject.subjectId}
+      comision={subject.role === 'profesor' ? subject.sectionId : undefined}
       name={subject.name}
       detail={detailOf(subject)}
       // «En curso» no va: la vista ya es la de las materias en curso. Si ya cambió (por ejemplo, promocionada), se ve.
