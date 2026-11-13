@@ -4,6 +4,7 @@ import { NewsLink } from '@/components/shell/news-link'
 import { UnreadCount } from '@/components/ui/unread-count'
 import { getSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { classChangesFor } from '@/lib/new-class-changes'
 import { newGradesFor } from '@/lib/new-grades'
 import { cn } from '@/lib/utils'
 
@@ -61,6 +62,10 @@ export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; t
 export async function SessionBell({ tone }: { tone?: 'navy' | 'light' } = {}) {
   const session = await getSession()
   if (!session) return null
-  const [read, grades] = await Promise.all([system().spaces.unreadFor(session.personId), newGradesFor(session)])
-  return <NotificationsBell unread={newsTotal(read.ok ? read.value : [], grades.length)} tone={tone} />
+  const [read, grades, changes] = await Promise.all([
+    system().spaces.unreadFor(session.personId),
+    newGradesFor(session),
+    classChangesFor(session)
+  ])
+  return <NotificationsBell unread={newsTotal(read.ok ? read.value : [], grades.length + changes.length)} tone={tone} />
 }

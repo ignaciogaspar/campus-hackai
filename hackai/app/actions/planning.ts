@@ -10,7 +10,15 @@ import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { Planning, PlanningCell, PlanningMode, PlanningPreview } from '@/lib/core/planning'
+import type {
+  Planning,
+  PlanningApplyError,
+  PlanningAssistError,
+  PlanningCell,
+  PlanningMode,
+  PlanningPreview,
+  PlanningProposal
+} from '@/lib/core/planning'
 import { rowsFromText } from '@/lib/delimited-text'
 import { formText } from '@/lib/form-data'
 import type { ErrorOf } from '@/lib/result'
@@ -134,4 +142,69 @@ export async function removePlanningClass(_prev: SpaceActionState, form: FormDat
   revalidatePath('/planning')
   revalidatePath('/cargar-clases')
   return { status: 'ok', message: 'Listo, la borramos del planning.', at: Date.now() }
+}
+
+const ASSIST_ERRORS: Record<PlanningAssistError | PlanningApplyError, string> = {
+  'solo-secretaria': 'Solo secretaría usa el asistente.',
+  'sin-asistente': 'El asistente no está configurado. Cargá la clase a mano.',
+  'mensaje-vacio': 'Escribí qué querés cambiar del planning.',
+  'tope-diario': 'Ya usaste los pedidos al asistente de hoy. Cargá la clase a mano o probá mañana.',
+  'asistente-caido': 'El asistente no responde. Probá de nuevo en un rato o cargá la clase a mano.',
+  'asistente-rechazo': 'El asistente no pudo responder ese pedido. Escribilo de otra forma o cargá la clase a mano.',
+  'no-entendi': 'El asistente no entendió el pedido. Escribilo de otra forma, con la materia, la comisión y el día.',
+  'con-errores': 'No se guardó nada: alguna clase choca con lo cargado. Revisá la propuesta.',
+  'sin-cambios': 'No hay cambios para guardar: lo que propuso ya estaba cargado.',
+  'clase-desconocida': 'Alguna clase para sacar ya no está en el planning. Volvé a pedirlo.',
+  'persona-desconocida': 'No encontramos tus datos. Salí y volvé a entrar.',
+  'falla-externa': 'No pudimos guardarlo porque la base no responde. Probá de nuevo en un rato.'
+}
+
+export type AssistantState =
+  | { status: 'idle' }
+  | { status: 'error'; message: string; at: number }
+  | { status: 'proposal'; proposal: PlanningProposal; rows: string; removals: string; at: number }
+
+/** Le pasa el pedido de secretaría al asistente y devuelve lo que propone, chequeado. No guarda nada. */
+export async function askPlanningAssistant(_prev: AssistantState, form: FormData): Promise<AssistantState> {
+  const session = await requireSession('secretaria')
+  const result = await system().planning.interpret(session.personId, formText(form, 'message'))
+  if (!result.ok) return failed(ASSIST_ERRORS[result.error])
+  const proposal = result.value
+  return {
+    status: 'proposal',
+    proposal,
+    rows: JSON.stringify(proposal.rows),
+    removals: JSON.stringify(proposal.removals.map((e) => e.id)),
+    at: Date.now()
+  }
+}
+
+/** Los ids de las bajas que volvieron de la propuesta, si son una lista de textos. */
+function parsedIds(raw: string): string[] | null {
+  try {
+    const ids: unknown = JSON.parse(raw)
+    return Array.isArray(ids) && ids.every((id) => typeof id === 'string') ? ids : null
+  } catch {
+    return null
+  }
+}
+
+const count = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`)
+
+/** Guarda lo que propuso el asistente y confirmó secretaría. */
+export async function applyPlanningProposal(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession('secretaria')
+  const rows = parsedRows(formText(form, 'rows'))
+  const ids = parsedIds(formText(form, 'removals'))
+  if (!rows || !ids) return failed(UNEXPECTED)
+  const result = await system().planning.apply(session.personId, rows, ids)
+  if (!result.ok)
+    return failed(result.error === 'falla-externa' ? ERRORS['falla-externa'] : ASSIST_ERRORS[result.error])
+  revalidatePath('/planning')
+  revalidatePath('/cargar-clases')
+  const done = [
+    result.value.saved > 0 && `sumamos ${count(result.value.saved, 'clase', 'clases')}`,
+    result.value.removed > 0 && `sacamos ${count(result.value.removed, 'clase', 'clases')}`
+  ].filter(Boolean)
+  return { status: 'ok', message: `Listo, ${done.join(' y ')}. Ya se ve en el Planning.`, at: Date.now() }
 }

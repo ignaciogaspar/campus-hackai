@@ -238,11 +238,27 @@ function firstPlace(classes: PlanningClass[], fixed: Partial<Place>): Place {
   return { school, campus, building, wing: pick(ofBuilding, (c) => c.wing, fixed.wing) }
 }
 
+/** El filtro con que abre: el lugar de la facultad o, con `focus`, el de la clase de esa materia ese día. */
+function initialFilters(
+  classes: PlanningClass[],
+  school: string,
+  focus: { day: string; subject: string } | undefined
+): PlanningFilters {
+  const target =
+    focus &&
+    (classes.find((c) => c.day === focus.day && c.subject === focus.subject) ??
+      classes.find((c) => c.subject === focus.subject))
+  if (!target) return { ...NO_FILTERS, ...firstPlace(classes, { school }) }
+  const { campus, building, wing } = target
+  return { ...NO_FILTERS, school: target.school, campus, building, wing, subject: target.subject }
+}
+
 export function PlanningCalendar({
   classes,
   now,
   mine,
-  defaultSchool
+  defaultSchool,
+  focus
 }: {
   /** Las clases de los días que se pueden recorrer, ya con los cambios de cada día. */
   classes: PlanningClass[]
@@ -251,14 +267,15 @@ export function PlanningCalendar({
   mine: string[]
   /** La facultad que se ve al abrir, si tiene clases cargadas. */
   defaultSchool: string | null
+  /** Abrir en ese día y en esa materia, en su sede, edificio y módulo: lo usa el aviso de un cambio de clase. */
+  focus?: { day: string; subject: string }
 }) {
   const today = dayKey(now)
-  const [day, setDay] = useState(today)
+  const [day, setDay] = useState(focus?.day ?? today)
   const schools = optionsOf(classes, (c) => c.school)
-  const [filters, setFilters] = useState<PlanningFilters>({
-    ...NO_FILTERS,
-    ...firstPlace(classes, { school: defaultSchool && schools.includes(defaultSchool) ? defaultSchool : '' })
-  })
+  const [filters, setFilters] = useState<PlanningFilters>(() =>
+    initialFilters(classes, defaultSchool && schools.includes(defaultSchool) ? defaultSchool : '', focus)
+  )
   const mineSet = new Set(mine.map(plainName))
   const set = (patch: Partial<PlanningFilters>) => setFilters((f) => ({ ...f, ...patch }))
   /** Cambia un lugar y vuelve a elegir los de abajo. */
@@ -269,8 +286,9 @@ export function PlanningCalendar({
   const ofCampus = within({ school: filters.school, campus: filters.campus })
   const ofBuilding = within({ school: filters.school, campus: filters.campus, building: filters.building })
   const wings = optionsOf(ofBuilding, (c) => c.wing)
-  // Las aulas no dependen del día ni de la materia: las columnas quedan fijas al cambiar de día.
-  const rooms = roomColumns(within({ ...filters, subject: '', onlyMine: false }))
+  // Las aulas no dependen del día: las columnas quedan fijas al cambiar de día. Con una materia elegida van solo las
+  // aulas que usa esa materia, así su clase queda a la vista sin desplazarse.
+  const rooms = roomColumns(within({ ...filters, onlyMine: false }))
   const filtered = classes.filter((c) => matches(c, filters, mineSet))
   const ofDay = filtered.filter((c) => c.day === day)
   const subjects = optionsOf(

@@ -6,6 +6,7 @@ import { Trash2 } from 'lucide-react'
 import type { Metadata } from 'next'
 import { addPlanningClass, removePlanningClass } from '@/app/actions/planning'
 import { placeOf, whenLabel } from '@/components/planning/format'
+import { PlanningAssistant } from '@/components/planning/planning-assistant'
 import { PlanningUpload } from '@/components/planning/planning-upload'
 import { PageHeader } from '@/components/shell/page-header'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -155,6 +156,8 @@ export default async function CargarPlanningPage({
           </p>
         )}
         <PlanningUpload loaded={entries.ok ? entries.value.length : 0} />
+        {/* Solo si hay asistente configurado (HACKAI_ASSISTANT=claude): si no, queda la carga a mano. */}
+        {system().planning.assistantEnabled && <PlanningAssistant />}
         <ManualEntry />
         <section aria-labelledby='cargadas' className='flex flex-col gap-3'>
           <h2 id='cargadas' className='text-lg font-extrabold'>

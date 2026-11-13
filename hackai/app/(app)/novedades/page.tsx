@@ -14,6 +14,7 @@
    un mismo hilo lo dice Espacios; qué nota es nueva, Cursada. */
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { ClassChangeNews } from '@/components/news/class-change-news'
 import { newsTotal } from '@/components/news/format'
 import { GradeNews } from '@/components/news/grade-news'
 import { NewsFilter } from '@/components/news/news-filter'
@@ -23,6 +24,7 @@ import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Spaces } from '@/lib/core/spaces'
 import { backFor } from '@/lib/home'
+import { classChangesFor } from '@/lib/new-class-changes'
 import { newGradesFor } from '@/lib/new-grades'
 import type { ErrorOf } from '@/lib/result'
 
@@ -42,12 +44,13 @@ export default async function NovedadesPage({
   searchParams: Promise<{ desde?: string | string[] }>
 }) {
   const session = await requireSession()
-  const [read, grades, { desde }] = await Promise.all([
+  const [read, grades, changes, { desde }] = await Promise.all([
     system().spaces.unreadFor(session.personId),
     newGradesFor(session),
+    classChangesFor(session),
     searchParams
   ])
-  const total = newsTotal(read.ok ? read.value : [], grades.length)
+  const total = newsTotal(read.ok ? read.value : [], grades.length + changes.length)
 
   return (
     <>
@@ -63,6 +66,8 @@ export default async function NovedadesPage({
 
       <main className='flex w-full flex-col px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         <div className='mx-auto flex w-full max-w-3xl flex-col gap-6'>
+          {/* Los cambios de clase van primero y fuera del filtro: son de los próximos días y cambian a dónde ir. */}
+          {changes.length > 0 && <ClassChangeNews changes={changes} />}
           {read.ok ? (
             <Suspense>
               <NewsFilter

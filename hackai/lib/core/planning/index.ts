@@ -8,10 +8,15 @@
 
    Usa Personas para saber si quien carga es de secretaría, y su almacén. */
 import type { People, PeopleError, PersonId } from '@/lib/core/people'
+import { catalogOf, DAILY_LIMIT, MAX_MESSAGE_CHARS, removalsOf, rowsOf } from '@/lib/core/planning/assistant'
+import { isChangeOf } from '@/lib/core/planning/changes'
 import { checkRows } from '@/lib/core/planning/checks'
 import { classesBetween } from '@/lib/core/planning/schedule'
 import { COLUMNS, type PlanningColumn, parseRows } from '@/lib/core/planning/sheet'
 import type { PlanningStore } from '@/lib/core/planning/store'
+import { dayKey, weekdayIndex } from '@/lib/dates'
+import type { ClockPort } from '@/lib/ports/clock'
+import type { AssistantAnswer, AssistantError, PlanningAssistantPort } from '@/lib/ports/planning-assistant'
 import { type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 
 export type Weekday = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado'
@@ -84,6 +89,34 @@ export type PlanningMode = 'reemplazar' | 'agregar'
 
 export type PlanningLoadError = 'solo-secretaria' | 'con-errores' | 'sin-clases' | PeopleError
 
+/** Lo que propone el asistente a partir de un mensaje de secretaría, ya chequeado y sin guardar. */
+export type PlanningProposal = {
+  /** Las altas, chequeadas contra lo cargado sin las bajas (así mudar una clase no choca consigo misma). */
+  preview: PlanningPreview
+  /** Las clases que se sacarían del Planning. */
+  removals: PlanningEntry[]
+  /** Las altas como filas de la planilla, para confirmarlas con `apply`. */
+  rows: PlanningCell[][]
+  /** Si el asistente necesita un dato: la pregunta para secretaría. Entonces no hay altas ni bajas. */
+  question: string | null
+  /** Cuántos pedidos al asistente le quedan hoy. */
+  remaining: number
+}
+
+/** `sin-asistente`: no está configurado. `tope-diario`: ya hizo los pedidos del día. `asistente-caido`: no respondió.
+    `asistente-rechazo`: se negó. `no-entendi`: la respuesta no se pudo usar. */
+export type PlanningAssistError =
+  | 'solo-secretaria'
+  | 'sin-asistente'
+  | 'mensaje-vacio'
+  | 'tope-diario'
+  | 'asistente-caido'
+  | 'asistente-rechazo'
+  | 'no-entendi'
+  | PeopleError
+
+export type PlanningApplyError = 'solo-secretaria' | 'con-errores' | 'sin-cambios' | 'clase-desconocida' | PeopleError
+
 export type { PlanningColumn }
 
 export type Planning = {
@@ -111,7 +144,29 @@ export type Planning = {
     personId: PersonId,
     entryId: string
   ): Promise<Result<void, 'solo-secretaria' | 'clase-desconocida' | PeopleError>>
+  /** Las clases de esas comisiones que entre esos días (`AAAA-MM-DD`, los dos incluidos) cambiaron de aula u horario
+      o se suspendieron, por día y hora: lo que se le avisa a quien las cursa o las dicta. Se reconocen por materia,
+      comisión y facultad, sin importar tildes ni mayúsculas; una clase del Planning sin facultad vale para todas. */
+  changesFor(sections: PlanningSection[], from: string, to: string): Promise<Result<PlanningClass[], ExternalFailure>>
+  /** Si hay asistente: sin él, `interpret` devuelve `sin-asistente` y la pantalla no lo muestra. */
+  assistantEnabled: boolean
+  /** Le pasa a un modelo de lenguaje lo que escribió secretaría y devuelve los cambios que propone, chequeados como una
+      planilla y sin guardar nada. Solo secretaría: el rol se chequea antes de llamar al modelo. Una llamada por
+      mensaje, sin historial, con un tope de pedidos por día por persona (`DAILY_LIMIT`). */
+  interpret(personId: PersonId, message: string): Promise<Result<PlanningProposal, PlanningAssistError>>
+  /** Guarda lo que propuso el asistente y confirmó secretaría: saca las bajas y suma las altas, si nada choca con lo
+      cargado (sin las bajas). Si alguna baja ya no está, `clase-desconocida`; si no hay nada para cambiar,
+      `sin-cambios`. Solo secretaría. */
+  apply(
+    personId: PersonId,
+    rows: PlanningCell[][],
+    removalIds: string[]
+  ): Promise<Result<{ saved: number; removed: number; duplicates: number }, PlanningApplyError>>
 }
+
+/** Una comisión, como la ve el SIU, para buscar sus clases en el Planning: el nombre de la materia, el de la
+    comisión y la facultad (su id o su sigla). */
+export type PlanningSection = { subject: string; section: string | null; school: string }
 
 const DAY_ORDER = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
 
@@ -121,27 +176,130 @@ const byWhen = (a: PlanningEntry, b: PlanningEntry) =>
   a.start - b.start ||
   a.subject.localeCompare(b.subject, 'es')
 
-export function createPlanning({ people, store }: { people: People; store: PlanningStore }): Planning {
+export type PlanningDeps = {
+  people: People
+  store: PlanningStore
+  /** El asistente y el reloj para el tope diario. Sin él, no hay asistente. */
+  assistant?: { port: PlanningAssistantPort; clock: ClockPort }
+}
+
+const DAY_NAMES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+const ASSISTANT_ERRORS: Record<AssistantError, PlanningAssistError> = {
+  'falla-externa': 'asistente-caido',
+  rechazado: 'asistente-rechazo',
+  'respuesta-invalida': 'no-entendi'
+}
+
+export function createPlanning({ people, store, assistant }: PlanningDeps): Planning {
+  /** Cuántos pedidos al asistente hizo cada persona cada día, en la memoria del proceso: alcanza para la demo, que
+      corre en una sola instancia. */
+  const uses = new Map<string, number>()
+
   async function secretary(personId: PersonId): Promise<Result<true, 'solo-secretaria' | PeopleError>> {
     const person = await people.get(personId)
     if (!person.ok) return person
     return person.value.role === 'secretaria' ? ok(true) : fail('solo-secretaria')
   }
 
+  /** Las filas chequeadas contra lo que tiene que seguir valiendo. */
+  function previewAgainst(rows: PlanningCell[][], existing: PlanningEntry[]): PlanningPreview {
+    const parsed = parseRows(rows)
+    const checked = checkRows(parsed.rows, existing)
+    const count = (status: PlanningPreviewRow['status']) => checked.filter((r) => r.status === status).length
+    return {
+      rows: checked,
+      counts: { ok: count('ok'), duplicates: count('repetida'), errors: count('error') },
+      header: parsed.header
+    }
+  }
+
   async function preview(
     rows: PlanningCell[][],
     mode: PlanningMode
   ): Promise<Result<PlanningPreview, ExternalFailure>> {
-    const parsed = parseRows(rows)
     const existing = mode === 'agregar' ? await store.entries() : ok([])
     if (!existing.ok) return existing
-    const checked = checkRows(parsed.rows, existing.value)
-    const count = (status: PlanningPreviewRow['status']) => checked.filter((r) => r.status === status).length
-    return ok({
-      rows: checked,
-      counts: { ok: count('ok'), duplicates: count('repetida'), errors: count('error') },
-      header: parsed.header
+    return ok(previewAgainst(rows, existing.value))
+  }
+
+  /** Cuenta un pedido al asistente si quedan en el día; devuelve cuántos le quedan, o `null` si ya no. */
+  function takeUse(personId: PersonId, clock: ClockPort): number | null {
+    const key = `${personId}|${dayKey(clock.now().toISOString())}`
+    const used = uses.get(key) ?? 0
+    if (used >= DAILY_LIMIT) return null
+    uses.set(key, used + 1)
+    return DAILY_LIMIT - used - 1
+  }
+
+  /** Primero las bajas, así mudar una clase no choca consigo misma; después las altas. Si sumar falla después, las bajas
+      ya se hicieron: el error lo dice y secretaría vuelve a cargar la clase. */
+  async function applyChanges(
+    ids: string[],
+    additions: PlanningEntryInput[]
+  ): Promise<Result<number, 'falla-externa'>> {
+    for (const id of ids) {
+      const removed = await store.remove(id)
+      if (!removed.ok) return removed
+    }
+    return additions.length > 0 ? store.add(additions) : ok(0)
+  }
+
+  /** Lo que propone el asistente a partir de su respuesta: una pregunta, o las altas chequeadas y las bajas. */
+  function proposalOf(
+    answer: AssistantAnswer,
+    entries: PlanningEntry[],
+    shown: PlanningEntry[],
+    remaining: number
+  ): Result<PlanningProposal, PlanningAssistError> {
+    const question = answer.pregunta.trim() || null
+    if (question) return ok({ preview: previewAgainst([], entries), removals: [], rows: [], question, remaining })
+    const removals = removalsOf(answer, shown)
+    if (removals === null) return fail('no-entendi')
+    const rows = rowsOf(answer)
+    const kept = entries.filter((e) => !removals.includes(e))
+    return ok({ preview: previewAgainst(rows, kept), removals, rows, question: null, remaining })
+  }
+
+  /** Lo que hace falta antes de llamar al modelo: el rol (primero, así nadie más gasta una llamada), el asistente, el
+      mensaje, lo cargado y un pedido del tope del día. */
+  async function readyToAsk(
+    personId: PersonId,
+    message: string
+  ): Promise<
+    Result<
+      { text: string; entries: PlanningEntry[]; remaining: number; ask: NonNullable<typeof assistant> },
+      PlanningAssistError
+    >
+  > {
+    const allowed = await secretary(personId)
+    if (!allowed.ok) return allowed
+    if (!assistant) return fail('sin-asistente')
+    const text = message.trim().slice(0, MAX_MESSAGE_CHARS)
+    if (!text) return fail('mensaje-vacio')
+    const entries = await store.entries()
+    if (!entries.ok) return fail('asistente-caido')
+    const remaining = takeUse(personId, assistant.clock)
+    if (remaining === null) return fail('tope-diario')
+    return ok({ text, entries: entries.value, remaining, ask: assistant })
+  }
+
+  async function interpret(
+    personId: PersonId,
+    message: string
+  ): Promise<Result<PlanningProposal, PlanningAssistError>> {
+    const ready = await readyToAsk(personId, message)
+    if (!ready.ok) return ready
+    const { text, entries, remaining, ask } = ready.value
+    const today = dayKey(ask.clock.now().toISOString())
+    const catalog = catalogOf([...entries].sort(byWhen), text)
+    const answer = await ask.port.interpret({
+      message: text,
+      today: `${DAY_NAMES[weekdayIndex(today)]} ${today}`,
+      catalog: catalog.text
     })
+    if (!answer.ok) return fail(ASSISTANT_ERRORS[answer.error])
+    return proposalOf(answer.value, entries, catalog.shown, remaining)
   }
 
   return {
@@ -159,6 +317,28 @@ export function createPlanning({ people, store }: { people: People; store: Plann
 
     preview,
 
+    assistantEnabled: assistant !== undefined,
+
+    interpret,
+
+    async apply(personId, rows, removalIds) {
+      const allowed = await secretary(personId)
+      if (!allowed.ok) return allowed
+      const entries = await store.entries()
+      if (!entries.ok) return entries
+      const ids = [...new Set(removalIds)]
+      if (!ids.every((id) => entries.value.some((e) => e.id === id))) return fail('clase-desconocida')
+      const checked = previewAgainst(
+        rows,
+        entries.value.filter((e) => !ids.includes(e.id))
+      )
+      if (checked.counts.errors > 0) return fail('con-errores')
+      const additions = checked.rows.flatMap((r) => (r.status === 'ok' ? [r.entry] : []))
+      if (additions.length === 0 && ids.length === 0) return fail('sin-cambios')
+      const saved = await applyChanges(ids, additions)
+      return saved.ok ? ok({ saved: saved.value, removed: ids.length, duplicates: checked.counts.duplicates }) : saved
+    },
+
     async load(personId, rows, mode) {
       const allowed = await secretary(personId)
       if (!allowed.ok) return allowed
@@ -169,6 +349,12 @@ export function createPlanning({ people, store }: { people: People; store: Plann
       if (entries.length === 0) return fail('sin-clases')
       const saved = mode === 'reemplazar' ? await store.replace(entries) : await store.add(entries)
       return saved.ok ? ok({ saved: saved.value, duplicates: checked.value.counts.duplicates }) : saved
+    },
+
+    async changesFor(sections, from, to) {
+      const entries = await store.entries()
+      if (!entries.ok) return entries
+      return ok(classesBetween(entries.value, from, to).filter((c) => isChangeOf(c, sections)))
     },
 
     async remove(personId, entryId) {

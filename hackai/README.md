@@ -273,7 +273,8 @@ La demo corre en Vercel con el plan Hobby. Vercel compila Next.js por su cuenta;
    | `HACKAI_SIU`, `HACKAI_CLASSROOM` | `simulado` |
    | `HACKAI_CLOCK` | `sistema` |
    | `HACKAI_EXTERNAL_CHANNEL`, `DISCORD_BOT_TOKEN` | `discord` y el token del bot, si la demo muestra Discord |
-   | `HACKAI_CAIDAS` | `si` solo si se muestra la caída (ver abajo) |
+   | `HACKAI_ASSISTANT`, `ANTHROPIC_API_KEY` | El asistente de secretaría en `/cargar-clases` (ADR 0010): con `HACKAI_ASSISTANT=claude` y la API key de Anthropic, secretaría escribe el cambio («suspendé Termodinámica del viernes 13») y Claude propone las altas y bajas, que se revisan y se confirman. Vacía o `no` (por defecto): no hay asistente y queda la carga a mano. Usa `claude-sonnet-5-5` con esfuerzo `high`, una llamada por mensaje y hasta 50 pedidos por día por persona. |
+| `HACKAI_CAIDAS` | `si` solo si se muestra la caída (ver abajo) |
    | `HACKAI_CACHE_SEGUNDOS` | Vacía (300) en la demo; `0` si se va a editar el seed o las notas en vivo |
 
    `DATABASE_URL`, `HACKAI_DEMO_SUPABASE_REF` y las `HACKAI_TEST_*` no van: son de los scripts y de los tests, que corren en tu máquina.

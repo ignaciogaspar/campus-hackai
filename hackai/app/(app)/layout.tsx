@@ -22,6 +22,7 @@ import { UnreadRefresh } from '@/components/spaces/unread-refresh'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Person } from '@/lib/core/people'
+import { classChangesFor } from '@/lib/new-class-changes'
 import { newGradesFor } from '@/lib/new-grades'
 import type { Session } from '@/lib/session-token'
 
@@ -63,6 +64,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 }
 
 async function NavNews({ session }: { session: Session }) {
-  const [unread, grades] = await Promise.all([system().spaces.unreadFor(session.personId), newGradesFor(session)])
-  return <SidebarNews unread={newsTotal(unread.ok ? unread.value : [], grades.length)} />
+  const [unread, grades, changes] = await Promise.all([
+    system().spaces.unreadFor(session.personId),
+    newGradesFor(session),
+    classChangesFor(session)
+  ])
+  return <SidebarNews unread={newsTotal(unread.ok ? unread.value : [], grades.length + changes.length)} />
 }

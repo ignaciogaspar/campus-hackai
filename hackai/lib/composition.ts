@@ -63,6 +63,7 @@ import { after } from 'next/server'
 import { cache as reactCache } from 'react'
 import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
+import { createClaudePlanningAssistant } from '@/lib/adapters/claude/planning-assistant'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createDiscordOAuth, type DiscordOAuth } from '@/lib/adapters/discord/oauth'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
@@ -307,6 +308,16 @@ const studiesStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseC
 const courseworkStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
   store === 'supabase' ? createSupabaseCourseworkStore({ client: supabase() }) : createMemoryCourseworkStore()
 
+/** El asistente del Planning (ADR 0010): con `HACKAI_ASSISTANT=claude` y `ANTHROPIC_API_KEY`, Claude; vacía o `no`, no
+    hay asistente y la pantalla de carga no lo muestra. El reloj es el del tope de pedidos por día. */
+function assistantOf(env: Env, clock: ClockPort) {
+  const value = env.HACKAI_ASSISTANT?.trim() || 'no'
+  if (value !== 'claude' && value !== 'no') throw new Error('HACKAI_ASSISTANT tiene que ser claude o no')
+  if (value === 'no') return undefined
+  const apiKey = required(env, 'ANTHROPIC_API_KEY', 'HACKAI_ASSISTANT=claude')
+  return { port: createClaudePlanningAssistant({ apiKey }), clock }
+}
+
 /** El almacén de Planning: en Supabase arranca vacío y lo carga secretaría; en memoria, con el planning sintético. */
 const planningStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient, data: SyntheticData) =>
   store === 'supabase' ? createSupabasePlanningStore({ client: supabase() }) : createMemoryPlanningStore(data.planning)
@@ -412,8 +423,12 @@ export function compose(
     clock,
     store: courseworkStoreOf(adapters.store, supabase)
   })
-  const today = createToday({ studies, spaces, coursework, clock })
-  const planning = createPlanning({ people, store: planningStoreOf(adapters.store, supabase, data) })
+  const planning = createPlanning({
+    people,
+    store: planningStoreOf(adapters.store, supabase, data),
+    assistant: assistantOf(env, clock)
+  })
+  const today = createToday({ studies, spaces, coursework, clock, planning })
 
   const now = () => clock.now().toISOString()
   return {

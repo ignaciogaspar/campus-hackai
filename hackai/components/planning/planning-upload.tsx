@@ -45,7 +45,7 @@ function kindPill(e: PlanningEntryInput) {
   return e.date ? <StatusPill tone='info'>Ese día</StatusPill> : <StatusPill tone='success'>Semanal</StatusPill>
 }
 
-function PreviewRow({ row }: { row: PlanningPreviewRow }) {
+export function PreviewRow({ row }: { row: PlanningPreviewRow }) {
   if (row.status === 'error') {
     return (
       <ListItem
