@@ -8,6 +8,7 @@ import { CircleCheck, Clock, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
 import { submitTask } from '@/app/actions/coursework'
 import { FileRow } from '@/components/coursework/file-row'
+import { FilesField } from '@/components/coursework/files-field'
 import { gradeInputValue, subjectNotesHref, submissionStatus } from '@/components/coursework/format'
 import { dueTime } from '@/components/dates'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -91,24 +92,11 @@ function GradeNote({ task }: { task: Task }) {
 
 function SubmitForm({ task, replacing }: { task: Task; replacing: boolean }) {
   return (
-    // El resultado va arriba, junto a lo entregado: debajo del archivo y del botón queda fuera de la pantalla.
-    <ActionForm action={submitTask} resetOnSuccess feedbackFirst className='flex flex-col gap-3'>
+    // El resultado va arriba, junto a lo entregado: debajo del archivo y del botón queda fuera de la pantalla. Sin la
+    // validación del navegador: si no eligió archivos, el aviso es el de Seguimiento, en voseo y junto al campo.
+    <ActionForm action={submitTask} resetOnSuccess feedbackFirst noValidate className='flex flex-col gap-3'>
       <input type='hidden' name='taskId' value={task.id} />
-      <label className='flex flex-col gap-1 text-[0.8125rem] font-semibold'>
-        {replacing ? 'Archivos nuevos' : 'Tus archivos'}
-        <input
-          type='file'
-          name='files'
-          multiple
-          required
-          aria-describedby='entrega-ayuda'
-          className='text-[0.8125rem] font-normal file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-[10px] file:border-0 file:bg-ice file:px-3 file:font-semibold file:text-blue focus-visible:outline-3 focus-visible:outline-ring'
-        />
-        <span id='entrega-ayuda' className='font-normal text-muted-foreground'>
-          Hasta 10 archivos y 10 MB en total.
-          {replacing && ' Reemplazan a los que ya entregaste.'}
-        </span>
-      </label>
+      <FilesField replacing={replacing} />
       <SubmitButton
         // Con la entrega hecha, reemplazarla es lo secundario.
         className={cn(

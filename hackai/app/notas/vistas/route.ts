@@ -8,13 +8,12 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { NextRequest } from 'next/server'
-import { getSession, setServerCookie } from '@/lib/auth'
+import { requireSession, setServerCookie } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { GRADES_SEEN_COOKIE, GRADES_SEEN_MAX_AGE, seenValue, withSeen } from '@/lib/grades-seen'
 
 export async function GET(request: NextRequest) {
-  const session = await getSession()
-  if (!session) redirect('/')
+  const session = await requireSession()
   const params = request.nextUrl.searchParams
   const key = params.get('nota')
   if (!key) {

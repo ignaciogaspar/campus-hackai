@@ -2,23 +2,32 @@ import { CircleAlert, CircleCheck, Clock, type LucideIcon, WifiOff } from 'lucid
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-/* Vacío: dice por qué está vacío o qué es lo próximo. `compact` es una franja
-   baja, con el ícono a la izquierda, para un vacío que no tiene que empujar lo
-   que sigue fuera de la pantalla. */
+/* Vacío: dice por qué está vacío o qué es lo próximo. Va en tarjeta, con el mismo filo y sombra que Card, para
+   que se vea igual sobre el gris del celular y sobre el panel blanco de compu. Adentro de una Card va sin
+   superficie propia (`inCard`), así no queda doble borde. `compact` es una franja baja, con el ícono a la
+   izquierda, para un vacío que no tiene que empujar lo que sigue fuera de la pantalla. */
 export function EmptyState({
   icon: Icon,
   title,
+  inCard = false,
   compact = false,
   children
 }: {
   icon: LucideIcon
   title: string
+  inCard?: boolean
   compact?: boolean
   children: ReactNode
 }) {
+  const surface = !inCard && 'bg-card shadow-card'
   if (compact) {
     return (
-      <div className='flex items-start gap-3 rounded-[18px] bg-card px-4 py-3 text-[0.8125rem] text-muted-foreground'>
+      <div
+        className={cn(
+          'flex items-start gap-3 rounded-[18px] px-4 py-3 text-[0.8125rem] text-muted-foreground',
+          surface
+        )}
+      >
         <Icon aria-hidden='true' className='mt-0.5 size-5 flex-none text-gray-light' strokeWidth={1.8} />
         <div className='flex min-w-0 flex-col gap-0.5'>
           <strong className='text-[0.9375rem] text-foreground'>{title}</strong>
@@ -28,7 +37,12 @@ export function EmptyState({
     )
   }
   return (
-    <div className='flex flex-col items-center gap-2 rounded-[22px] bg-card px-4 py-6 text-center text-[0.8125rem] text-muted-foreground'>
+    <div
+      className={cn(
+        'flex flex-col items-center gap-2 rounded-[22px] px-4 py-6 text-center text-[0.8125rem] text-muted-foreground',
+        surface
+      )}
+    >
       <Icon aria-hidden='true' className='size-7 text-gray-light' strokeWidth={1.8} />
       <strong className='text-[0.9375rem] text-foreground'>{title}</strong>
       <p className='max-w-[48ch] text-pretty'>{children}</p>
