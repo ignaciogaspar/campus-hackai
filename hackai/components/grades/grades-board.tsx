@@ -3,10 +3,10 @@
    lectivo (el más reciente primero) o por año de la carrera. Tocar una abre el
    panel con su detalle (a la derecha en compu, desde abajo en el celular). Los
    filtros, el agrupamiento y la materia abierta se guardan en la URL. */
-import { ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
+import { CalendarCheck2, ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { termLabel } from '@/components/academic/format'
+import { gradeDate, termLabel } from '@/components/academic/format'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import {
   applyFilters,
@@ -108,7 +108,7 @@ function Progress({ subject }: { subject: SubjectStanding }) {
 }
 
 /* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea; en curso,
-   sus notas. */
+   sus notas, y con el final pendiente, la mesa a la que está inscripto. */
 function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: () => void }) {
   return (
     <li className='min-w-0'>
@@ -128,6 +128,12 @@ function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: ()
             </span>
           </span>
           <Progress subject={subject} />
+          {subject.status === 'regular' && subject.examDate && (
+            <span className='inline-flex items-center gap-1.5 text-[0.75rem] font-semibold text-ink'>
+              <CalendarCheck2 aria-hidden='true' className='size-3.5 flex-none text-blue' strokeWidth={2} />
+              Inscripto al final del {gradeDate(subject.examDate)}
+            </span>
+          )}
         </span>
         <Summary subject={subject} />
       </button>
@@ -330,9 +336,16 @@ export function GradesBoard({
 
       {shown.length === 0 ? (
         <div className='flex flex-col items-center gap-3'>
-          <EmptyState icon={SearchX} title='Ninguna materia coincide'>
-            Probá con otro estado o con otro tipo.
-          </EmptyState>
+          {/* Sin finales pendientes y sin otro filtro, es una buena noticia, no una búsqueda fallida. */}
+          {filters.estado === 'final-pendiente' && filtersQuery({ ...filters, estado: 'todos' }) === '' ? (
+            <EmptyState icon={CircleCheck} title='No debés ningún final'>
+              Ninguna de tus cursadas regulares espera el final.
+            </EmptyState>
+          ) : (
+            <EmptyState icon={SearchX} title='Ninguna materia coincide'>
+              Probá con otro estado o con otro tipo.
+            </EmptyState>
+          )}
           {filtered && (
             <button
               type='button'

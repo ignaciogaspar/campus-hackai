@@ -8,6 +8,16 @@ export function gradeText(grade: number): string {
   return grade.toLocaleString('es-AR', { maximumFractionDigits: 2 })
 }
 
+/** El detalle de una materia en Notas: abre su hoja. */
+export function notesHref(subjectId: string): string {
+  return `/notas?materia=${encodeURIComponent(subjectId)}`
+}
+
+/** «0 de 1 aprobada», «2 de 5 aprobadas»: concuerda con el total, no con las aprobadas. */
+export function approvedOf(approved: number, total: number): string {
+  return `${approved} de ${total} ${total === 1 ? 'aprobada' : 'aprobadas'}`
+}
+
 export type AssessmentsProgress = {
   /** Cada evaluación con su nota: «7», «Ausente» o «—» si todavía no está. */
   items: { name: string; result: string }[]

@@ -1,7 +1,7 @@
 /* Cómo se resume en la lista de Notas el avance de una materia en curso. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { assessmentsProgress } from '@/components/grades/format'
+import { approvedOf, assessmentsProgress, notesHref } from '@/components/grades/format'
 import type { SubjectAssessment } from '@/lib/core/studies'
 
 const assessment = (name: string, fields: Partial<SubjectAssessment>): SubjectAssessment => ({
@@ -51,4 +51,15 @@ test('un recuperatorio rendido cuenta, un ausente se nombra sin nota y las notas
 test('sin evaluaciones no hay nada que resumir', () => {
   assert.equal(assessmentsProgress([]), null)
   assert.equal(assessmentsProgress([assessment('Recuperatorio', { kind: 'recuperatorio' })]), null)
+})
+
+test('cada materia del plan lleva a su detalle en Notas', () => {
+  assert.equal(notesHref('am1'), '/notas?materia=am1')
+  assert.equal(notesHref('vida u/1'), '/notas?materia=vida%20u%2F1')
+})
+
+test('cuántas de un grupo están aprobadas concuerda con el total', () => {
+  assert.equal(approvedOf(0, 1), '0 de 1 aprobada')
+  assert.equal(approvedOf(1, 1), '1 de 1 aprobada')
+  assert.equal(approvedOf(2, 5), '2 de 5 aprobadas')
 })

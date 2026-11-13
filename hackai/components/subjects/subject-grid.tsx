@@ -24,6 +24,7 @@ import { gradesHref } from '@/components/coursework/format'
 import { dueTime, longDay, shortDate, timeOf } from '@/components/dates'
 import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
+import { notesHref } from '@/components/grades/format'
 import { gradeText, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
@@ -259,7 +260,7 @@ export function ArchivedCard({ subject, standing }: { subject: MySubject; standi
         </>
       }
       secondary={
-        <Link href={`/notas?materia=${encodeURIComponent(subject.subjectId)}`} className={SECONDARY}>
+        <Link href={notesHref(subject.subjectId)} className={SECONDARY}>
           <NotebookPen aria-hidden='true' className='size-3.5' />
           Ver notas
         </Link>
