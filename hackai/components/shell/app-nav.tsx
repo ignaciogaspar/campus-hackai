@@ -78,12 +78,19 @@ const ROW =
 const ROW_SELECTED = 'bg-white font-semibold shadow-[0_1px_2px_rgb(16_20_44/0.04)] hover:bg-white'
 const ICON = 'size-[1.125rem] flex-none'
 
-/* El título de un grupo: «Menú principal», «Tus materias», «Cuenta». */
+/* Lo que se apaga al plegar y además puede ocupar dos líneas, como el nombre de quien entró: plegada la barra no
+   ocupa lugar (si no, en el ancho del ícono, cada palabra iría en su línea) y, al desplegar, aparece apagado y se
+   enciende (@starting-style). */
+const WRAPS = 'whitespace-normal group-data-[sidebar=plegada]/nav:hidden starting:opacity-0'
+
+/* El título de un grupo: «Menú principal», «Tu carrera», «Cuenta». En gris
+   oscuro, que se lee sobre el vidrio de la barra (4,5:1 o más). */
 function GroupLabel({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn('px-3 pt-6 pb-2 text-[0.75rem] text-gray-light', FADES, className)}>{children}</p>
+  return <p className={cn('px-3 pt-6 pb-2 text-[0.75rem] text-muted-foreground', FADES, className)}>{children}</p>
 }
 
-/* Al pie de la barra lateral, en compu: quién entró. El avatar y el nombre
+/* Al pie de la barra lateral, en compu: quién entró, su carrera (o «Docente»)
+   y su facultad, sin cortarse: el nombre y la carrera en dos líneas como mucho. El avatar y el nombre
    abren el menú de la cuenta, con el nombre completo, la carrera o «Docente»,
    la facultad y «Cerrar sesión» escrito. Plegada la barra queda el avatar, que
    abre el mismo menú. Al abrirse, el foco va al menú y no a «Cerrar sesión»,
@@ -101,9 +108,16 @@ function SidebarAccount({ person, detail }: { person: Person; detail?: string })
           className='flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-150 hover:bg-white/55 focus-ring data-[state=open]:bg-white group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:px-0'
         >
           <Avatar person={person} className='size-10 ring-2 ring-white/80' />
-          <span className={cn('flex min-w-0 flex-1 flex-col', FADES)}>
-            <span className='truncate text-[0.875rem] leading-snug font-semibold text-ink'>{person.name}</span>
-            {detail && <span className='truncate text-[0.8125rem] leading-snug text-gray-light'>{detail}</span>}
+          <span className={cn('flex min-w-0 flex-1 flex-col', FADES, WRAPS)}>
+            <span className='line-clamp-2 text-[0.875rem] leading-snug font-semibold break-words text-ink'>
+              {person.name}
+            </span>
+            {detail && (
+              <span className='line-clamp-2 text-[0.8125rem] leading-snug text-muted-foreground'>{detail}</span>
+            )}
+            <span className='mt-0.5 text-[0.75rem] leading-snug text-pretty text-muted-foreground'>
+              {person.school.name}
+            </span>
           </span>
         </PopoverTrigger>
         <PopoverContent
