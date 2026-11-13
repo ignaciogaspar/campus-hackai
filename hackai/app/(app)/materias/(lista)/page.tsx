@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { type ReactNode, Suspense } from 'react'
 import { unreadBySubject } from '@/components/news/format'
 import { PageHeader } from '@/components/shell/page-header'
+import { SkeletonRows } from '@/components/shell/screen-skeleton'
 import { ArchivedCard, CourseCard, PendingFinalCard } from '@/components/subjects/subject-grid'
 import { SubjectViews } from '@/components/subjects/subject-views'
 import { StaleBanner } from '@/components/ui/stale-banner'
@@ -97,13 +98,7 @@ export default async function MateriasPage() {
       </PageHeader>
 
       <main className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <Suspense
-          fallback={
-            <div role='status' className='min-h-64 text-sm text-muted-foreground'>
-              Cargando materias…
-            </div>
-          }
-        >
+        <Suspense fallback={<SkeletonRows label='Cargando materias…' tiles />}>
           <SubjectsContent personId={session.personId} student={student} />
         </Suspense>
       </main>

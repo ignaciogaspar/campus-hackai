@@ -28,6 +28,13 @@ export function HeaderBrand({ school }: { school?: string }) {
   return <Brand school={school ?? shell?.person?.school.name} />
 }
 
+/* Lo que solo ve el alumno, donde no se puede leer la sesión: los loading.tsx,
+   que se arman antes de saber quién entra. */
+export function ForStudents({ children }: { children: ReactNode }) {
+  const shell = useContext(ShellContext)
+  return shell?.person?.role === 'alumno' ? children : null
+}
+
 /* Arriba a la derecha del encabezado, en el celular: el avatar que abre el
    perfil. En compu el perfil está al pie de la barra lateral. */
 export function HeaderSessionActions() {

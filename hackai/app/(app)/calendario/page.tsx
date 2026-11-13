@@ -12,6 +12,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { dueTime } from '@/components/dates'
 import { PageHeader } from '@/components/shell/page-header'
+import { SkeletonRows } from '@/components/shell/screen-skeleton'
 import { TodayCalendar } from '@/components/today/calendar'
 import { classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
@@ -74,13 +75,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
         hideBackOnDesktop
       />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
-        <Suspense
-          fallback={
-            <div role='status' className='min-h-[32rem] text-sm text-muted-foreground'>
-              Cargando calendario…
-            </div>
-          }
-        >
+        <Suspense fallback={<SkeletonRows label='Cargando calendario…' />}>
           <CalendarContent personId={session.personId} searchParams={searchParams} />
         </Suspense>
       </main>
