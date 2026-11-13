@@ -31,6 +31,7 @@ test('declara que puede inscribir y que tiene cronograma', () => {
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
+    canRecordAttendance: true,
     canWriteGrades: true
   })
 })
@@ -61,6 +62,52 @@ test('si la red falla, cada operación devuelve «falla externa» sin tirar', as
     'los logs no llevan ids de personas'
   )
 })
+
+// --- A: asistencia ---
+test('pasa la asistencia con una sola función de la base, que reemplaza la lista de la clase', async () => {
+  const calls: { url: string; body: unknown }[] = []
+  let rpcFails = false
+  const { siu } = siuWith(async (input, init) => {
+    const url = String(input instanceof Request ? input.url : input)
+    if (url.includes('/rpc/')) {
+      calls.push({ url, body: JSON.parse(String(init?.body)) })
+      return rpcFails
+        ? new Response('{"code":"XX000","message":"caída"}', { status: 400 })
+        : new Response(null, { status: 204 })
+    }
+    if (url.includes('siu_sections')) return new Response('[{"id":"sec-am1-fi-b"}]')
+    if (url.includes('siu_persons')) return new Response('[{"id":"30103"},{"id":"30104"}]')
+    return new Response('[]')
+  })
+
+  const written = await siu.recordAttendance('sec-am1-fi-b', '2026-11-10T17:00:00.000Z', ['30103', '30104', '30103'])
+
+  assert.deepEqual(written, { ok: true, value: { date: syntheticData.now } })
+  assert.equal(calls.length, 1)
+  assert.ok(calls[0].url.endsWith('/rpc/siu_record_attendance'))
+  assert.deepEqual(calls[0].body, {
+    p_section_id: 'sec-am1-fi-b',
+    p_class_at: '2026-11-10T17:00:00.000Z',
+    p_absent: ['30103', '30104']
+  })
+
+  // Un ausente que el SIU no conoce no escribe nada.
+  assert.deepEqual(
+    await siu.recordAttendance('sec-am1-fi-b', '2026-11-10T17:00:00.000Z', ['30103', '30104', '99999']),
+    {
+      ok: false,
+      error: 'no-encontrado'
+    }
+  )
+  assert.equal(calls.length, 1)
+
+  rpcFails = true
+  assert.deepEqual(await siu.recordAttendance('sec-am1-fi-b', '2026-11-10T17:00:00.000Z', ['30103', '30104']), {
+    ok: false,
+    error: 'falla-externa'
+  })
+})
+// --- fin A: asistencia ---
 
 test('lee cuándo se cargó cada nota, y `null` si la columna viene vacía', async () => {
   const tables: Record<string, unknown[]> = {

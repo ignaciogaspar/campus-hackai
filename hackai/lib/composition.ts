@@ -27,8 +27,9 @@
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
    necesita las mismas dos variables. Lo usan Personas, para los vínculos con
-   cada sistema, Espacios, para espacios, canales, mensajes, material y lo
-   leído, y Seguimiento, para las tareas.
+   cada sistema, Cursada, para las listas que toma el docente, Espacios, para
+   espacios, canales, mensajes, material y lo leído, y Seguimiento, para las
+   tareas.
 
    Archivos con `supabase` guarda en el bucket privado de Supabase Storage
    (supabase/migrations/0003_files.sql), con las mismas dos variables.
@@ -73,6 +74,7 @@ import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { createRealSiu, identifySession, type RealSiu } from '@/lib/adapters/siu-real'
@@ -90,6 +92,7 @@ import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursewor
 import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
+import { createSupabaseStudiesStore } from '@/lib/adapters/supabase/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { type Coursework, createCoursework } from '@/lib/core/coursework'
 import { createPeople, type People, type PeopleStore, type PersonId } from '@/lib/core/people'
@@ -292,6 +295,10 @@ export const REAL_PERSON: RealPerson = {
   accounts: { siu: 'real-alumno' }
 }
 
+/** El almacén de Cursada (las listas que toma el docente): en Supabase o en memoria. */
+const studiesStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
+  store === 'supabase' ? createSupabaseStudiesStore({ client: supabase() }) : createMemoryStudiesStore()
+
 /** El almacén de Seguimiento: en Supabase o en memoria, como el resto de los módulos. */
 const courseworkStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
   store === 'supabase' ? createSupabaseCourseworkStore({ client: supabase() }) : createMemoryCourseworkStore()
@@ -366,7 +373,13 @@ export function compose(
     requestScope
   )
   const studies = memoStudies(
-    createStudies({ people, siu: ports.siu, classroom: ports.classroom, clock }),
+    createStudies({
+      people,
+      siu: ports.siu,
+      classroom: ports.classroom,
+      clock,
+      store: studiesStoreOf(adapters.store, supabase)
+    }),
     requestScope
   )
   const spaces = memoSpaces(
@@ -458,6 +471,7 @@ function memoStudies(studies: Studies, scope: RequestScope | undefined): Studies
     sectionsOf: memoRead(scope, 'studies.sectionsOf', studies.sectionsOf),
     enroll: clearAfter(studies.enroll, () => scope?.()?.clear()),
     drop: clearAfter(studies.drop, () => scope?.()?.clear()),
+    takeAttendance: clearAfter(studies.takeAttendance, () => scope?.()?.clear()),
     requestCertificate: clearAfter(studies.requestCertificate, () => scope?.()?.clear())
   }
 }

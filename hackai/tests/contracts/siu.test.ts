@@ -27,6 +27,7 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       canEnroll: true,
       hasAssessmentSchedule: true,
       enrolsInClassroom: false,
+      canRecordAttendance: true,
       canWriteGrades: true
     })
   })
@@ -446,6 +447,85 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
       `${base}/constancias/solicitar?tipo=alumno-regular`
     )
   })
+
+  // --- A: asistencia ---
+  const CLASS_AT = '2026-11-10T17:00:00.000Z'
+  const OTHER_CLASS_AT = '2026-11-12T17:00:00.000Z'
+  const ATTENDANCE_SECTION = 'sec-am1-fi-b'
+
+  /** Las faltas que el SIU tiene de la alumna en esa clase. */
+  async function absencesOfClass(siu: SiuPort, personId: string, classAt: string) {
+    const read = await siu.absences(personId)
+    assert.ok(read.ok)
+    return read.value.absences.filter((a) => a.sectionId === ATTENDANCE_SECTION && a.date === classAt)
+  }
+
+  it('escribe la asistencia de una clase y la lee de vuelta como inasistencias', async (siu) => {
+    const mcabrera = siuId('p-mcabrera')
+    const sdominguez = siuId('p-sdominguez')
+    try {
+      const written = await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [mcabrera])
+      assert.ok(written.ok)
+      assert.equal(written.value.date, syntheticData.now)
+      const mine = await absencesOfClass(siu, mcabrera, CLASS_AT)
+      assert.equal(mine.length, 1)
+      assert.equal(mine[0].justified, false)
+      assert.equal(mine[0].personId, mcabrera)
+      assert.deepEqual(await absencesOfClass(siu, sdominguez, CLASS_AT), [])
+      // Lo que ya tenía el SIU de otros días sigue ahí.
+      const all = await siu.absences(mcabrera)
+      assert.ok(all.ok)
+      assert.ok(all.value.absences.some((a) => a.id === 'in-8'))
+    } finally {
+      await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [])
+    }
+  })
+
+  it('reemplaza la lista de la clase: una corrección no deja restos y repetirla no duplica', async (siu) => {
+    const mcabrera = siuId('p-mcabrera')
+    const sdominguez = siuId('p-sdominguez')
+    try {
+      assert.ok((await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [mcabrera])).ok)
+      assert.ok((await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [mcabrera])).ok)
+      assert.equal((await absencesOfClass(siu, mcabrera, CLASS_AT)).length, 1)
+
+      assert.ok((await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [sdominguez, sdominguez])).ok)
+      assert.deepEqual(await absencesOfClass(siu, mcabrera, CLASS_AT), [])
+      assert.equal((await absencesOfClass(siu, sdominguez, CLASS_AT)).length, 1)
+    } finally {
+      await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [])
+    }
+  })
+
+  it('una lista vacía deja a todos presentes y no toca las otras clases', async (siu) => {
+    const mcabrera = siuId('p-mcabrera')
+    try {
+      assert.ok((await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [mcabrera])).ok)
+      assert.ok((await siu.recordAttendance(ATTENDANCE_SECTION, OTHER_CLASS_AT, [mcabrera])).ok)
+
+      assert.ok((await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [])).ok)
+
+      assert.deepEqual(await absencesOfClass(siu, mcabrera, CLASS_AT), [])
+      assert.equal((await absencesOfClass(siu, mcabrera, OTHER_CLASS_AT)).length, 1)
+    } finally {
+      await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [])
+      await siu.recordAttendance(ATTENDANCE_SECTION, OTHER_CLASS_AT, [])
+    }
+  })
+
+  it('la asistencia de una comisión que no existe o de una persona que no existe es «no encontrado» y no escribe nada', async (siu) => {
+    const mcabrera = siuId('p-mcabrera')
+    assert.deepEqual(await siu.recordAttendance('sec-no-existe', CLASS_AT, [mcabrera]), {
+      ok: false,
+      error: 'no-encontrado'
+    })
+    assert.deepEqual(await siu.recordAttendance(ATTENDANCE_SECTION, CLASS_AT, [mcabrera, '99999']), {
+      ok: false,
+      error: 'no-encontrado'
+    })
+    assert.deepEqual(await absencesOfClass(siu, mcabrera, CLASS_AT), [])
+  })
+  // --- fin A: asistencia ---
 }
 
 const clock = () => createFixedClock(syntheticData.now)
@@ -508,3 +588,21 @@ siuContract(
     }),
   url && key ? false : 'sin base de prueba: definí HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY'
 )
+
+// --- A: asistencia ---
+test('SIU sin permiso para escribir: la asistencia es «no soportado» y no se escribe', async () => {
+  const siu = createMemorySiu(syntheticData, clock(), { capabilities: { canRecordAttendance: false } })
+  const classAt = '2026-11-10T17:00:00.000Z'
+  assert.equal(siu.capabilities.canRecordAttendance, false)
+  assert.deepEqual(await siu.recordAttendance('sec-am1-fi-b', classAt, [siuId('p-mcabrera')]), {
+    ok: false,
+    error: 'no-soportado'
+  })
+  const read = await siu.absences(siuId('p-mcabrera'))
+  assert.ok(read.ok)
+  assert.equal(
+    read.value.absences.some((a) => a.date === classAt),
+    false
+  )
+})
+// --- fin A: asistencia ---

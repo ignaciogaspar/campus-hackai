@@ -6,6 +6,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createCoursework, type NewTask } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
@@ -34,7 +35,13 @@ function build(data: SyntheticData = syntheticData, wrapFiles: (files: FilesPort
   const { clock, advance } = movableClock(data.now)
   const { port: siu, state: siuState } = fallible(createMemorySiu(data, clock))
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
-  const studies = createStudies({ people, siu, classroom: createMemoryClassroom(data), clock })
+  const studies = createStudies({
+    people,
+    siu,
+    classroom: createMemoryClassroom(data),
+    clock,
+    store: createMemoryStudiesStore()
+  })
   const files = wrapFiles(createMemoryFiles())
   const store = createMemoryCourseworkStore()
   const coursework = createCoursework({ studies, files, clock, store })
@@ -315,7 +322,13 @@ test('si la base no guarda la tarea, el archivo que se había guardado se borra'
     siu,
     store: createMemoryPeopleStore(syntheticData)
   })
-  const studies = createStudies({ people, siu, classroom: createMemoryClassroom(syntheticData), clock })
+  const studies = createStudies({
+    people,
+    siu,
+    classroom: createMemoryClassroom(syntheticData),
+    clock,
+    store: createMemoryStudiesStore()
+  })
   const real = createMemoryFiles()
   const saved: string[] = []
   const deleted: string[] = []

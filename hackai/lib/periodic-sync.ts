@@ -5,11 +5,14 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import type { Coursework } from '@/lib/core/coursework'
 import type { Spaces } from '@/lib/core/spaces'
+import type { Studies } from '@/lib/core/studies'
 
 export type PeriodicSyncDeps = {
   /** El valor de `CRON_SECRET`, o nada si falta en el entorno. */
   secret: string | undefined
   syncAll: Spaces['syncAll']
+  /** Reintenta pasar al SIU las listas de asistencia pendientes (Cursada). Si falla, no corta la corrida. */
+  retryAttendancePass?: Studies['retryAttendancePass']
   /** Reintenta el pase al SIU de las notas pendientes de Seguimiento. Sin esto, la corrida solo sincroniza espacios. */
   retryPass?: Coursework['retryPass']
   log?: (message: string) => void
@@ -44,12 +47,24 @@ async function retryGrades(retryPass: Coursework['retryPass'], log: (message: st
   return retried.value
 }
 
+/** Reintenta pasar al SIU las listas de asistencia pendientes y lo cuenta en el log. Nada de lo que pase acá, ni
+    siquiera una excepción del almacén, corta la sincronización de los espacios: las listas siguen pendientes. */
+async function retryAttendance(retry: Studies['retryAttendancePass'], log: (message: string) => void) {
+  try {
+    const retried = await retry()
+    if (!retried.ok) log(`[corrida-periodica] pases al SIU: ${retried.error}`)
+    else log(`[corrida-periodica] pases al SIU: ${retried.value.passed} pasados, ${retried.value.pending} pendientes`)
+  } catch (error) {
+    log(`[corrida-periodica] pases al SIU: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 /** Valida el secreto y sincroniza. Responde 200 con el resumen (más `grades`, cuántas notas pasaron al SIU y cuántas
     siguen pendientes, si la corrida reintenta el pase), 401 sin el secreto, 503 si falta `CRON_SECRET` y el error de
     Espacios si no pudo. */
 export async function handlePeriodicSync(
   request: Request,
-  { secret, syncAll, retryPass, log = console.log }: PeriodicSyncDeps
+  { secret, syncAll, retryAttendancePass, retryPass, log = console.log }: PeriodicSyncDeps
 ): Promise<Response> {
   const configured = secret?.trim()
   if (!configured) {
@@ -58,6 +73,8 @@ export async function handlePeriodicSync(
     return Response.json({ error: 'sin-configurar' }, { status: 503 })
   }
   if (!authorized(request, configured)) return Response.json({ error: 'no-autorizado' }, { status: 401 })
+
+  if (retryAttendancePass) await retryAttendance(retryAttendancePass, log)
 
   const result = await syncAll()
   const grades = retryPass ? await retryGrades(retryPass, log) : null

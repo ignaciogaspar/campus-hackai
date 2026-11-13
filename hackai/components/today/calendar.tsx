@@ -11,6 +11,7 @@
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import { Fragment, type ReactNode, useState } from 'react'
+import { ZoomLink } from '@/components/subjects/zoom-link'
 import {
   type CalendarEvent,
   type CalendarTone,
@@ -119,6 +120,23 @@ function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: bo
 const SLOT_REM = 8
 const remAt = (minutes: number) => `${(minutes / SLOT_MINUTES) * SLOT_REM}rem`
 
+/* El enlace de Zoom de una clase virtual o híbrida, en un bloque propio debajo del evento: va afuera del bloque
+   para que no haya un enlace dentro de otro y para que el toque tenga el tamaño de un botón. En la grilla de la
+   semana (`compact`) el bloque mide lo que dura la clase, así que el enlace va más bajo para que entre. */
+function EventZoom({ e, compact = false }: { e: CalendarEvent; compact?: boolean }) {
+  if (!e.zoomUrl || e.past) return null
+  return (
+    <ZoomLink
+      url={e.zoomUrl}
+      subjectName={e.title}
+      className={cn(
+        'inline-flex items-center gap-1.5 self-start rounded-md px-1 text-[0.75rem] font-semibold text-blue hover:underline focus-ring',
+        compact ? 'min-h-7 flex-none' : 'min-h-11'
+      )}
+    />
+  )
+}
+
 const GRID = 'grid grid-cols-[3.75rem_repeat(7,minmax(6.25rem,1fr))]'
 
 /* La hora actual: una línea azul de lado a lado, con la hora en la columna de las horas. */
@@ -179,7 +197,7 @@ function DayColumn({
         .map(({ event, start, end, lane, lanes }) => (
           <div
             key={event.id}
-            className='absolute z-[1] flex p-0.5'
+            className='absolute z-[1] flex flex-col p-0.5'
             style={{
               top: remAt(start - from),
               height: remAt(end - start),
@@ -189,6 +207,7 @@ function DayColumn({
           >
             {/* En la grilla el bloque mide lo que dura: si es menos de hora y media, va el nombre y la hora. */}
             <Block e={event} fill short={end - start < 90} />
+            <EventZoom e={event} compact />
           </div>
         ))}
     </div>
@@ -294,7 +313,10 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
             ) : (
               <div className='flex min-w-0 flex-1 flex-col gap-2'>
                 {ofDay.map((e) => (
-                  <Block key={e.id} e={e} />
+                  <div key={e.id} className='flex min-w-0 flex-col'>
+                    <Block e={e} />
+                    <EventZoom e={e} />
+                  </div>
                 ))}
               </div>
             )}

@@ -9,6 +9,7 @@ import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { createCoursework } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
@@ -181,7 +182,13 @@ function systemAt(now: string) {
     siu: siuPort,
     store: createMemoryPeopleStore(syntheticData)
   })
-  const studies = createStudies({ people: peopleModule, siu: siuPort, classroom, clock })
+  const studies = createStudies({
+    people: peopleModule,
+    siu: siuPort,
+    classroom,
+    clock,
+    store: createMemoryStudiesStore()
+  })
   const spaces = createSpaces({
     people: peopleModule,
     studies,

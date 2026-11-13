@@ -4,6 +4,7 @@ import { createMemoryClassroom, type MemoryClassroomOptions } from '@/lib/adapte
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu, type MemorySiuOptions } from '@/lib/adapters/memoria/siu'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
 import {
@@ -41,7 +42,7 @@ function build(
     ...options.classroomOverrides
   })
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
-  const studies = createStudies({ people, siu, classroom, clock })
+  const studies = createStudies({ people, siu, classroom, clock, store: createMemoryStudiesStore() })
   return { studies, siu, classroom, siuState: state, classroomState, advance }
 }
 
@@ -93,6 +94,8 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     location: 'Campus Pilar, aula 12',
     modality: 'presencial',
     role: 'alumno',
+    zoomUrl: null,
+    classToday: false,
     classrooms: [
       {
         courseId: 'c-am1-fi-a',

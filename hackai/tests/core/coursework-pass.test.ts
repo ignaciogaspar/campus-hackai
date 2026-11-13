@@ -9,6 +9,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { createCoursework, type NewGrade, type NewTask } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
@@ -39,7 +40,13 @@ function build(capabilities: Partial<SiuCapabilities> = {}) {
     siu,
     store: createMemoryPeopleStore(syntheticData)
   })
-  const studies = createStudies({ people, siu, classroom: createMemoryClassroom(syntheticData), clock })
+  const studies = createStudies({
+    people,
+    siu,
+    classroom: createMemoryClassroom(syntheticData),
+    clock,
+    store: createMemoryStudiesStore()
+  })
   const coursework = createCoursework({
     studies,
     files: createMemoryFiles(),
@@ -282,5 +289,11 @@ function createStudiesFor(siu: SiuPort = build().siu) {
     siu,
     store: createMemoryPeopleStore(syntheticData)
   })
-  return createStudies({ people, siu, classroom: createMemoryClassroom(syntheticData), clock })
+  return createStudies({
+    people,
+    siu,
+    classroom: createMemoryClassroom(syntheticData),
+    clock,
+    store: createMemoryStudiesStore()
+  })
 }

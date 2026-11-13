@@ -28,6 +28,8 @@ export type CalendarEvent = {
   origin: Origin
   past: boolean
   next: boolean
+  /** El enlace de Zoom de una clase virtual o híbrida, si el docente lo cargó. */
+  zoomUrl?: string | null
 }
 
 /** Los días y horarios de clase de una comisión, entre el inicio y el fin de su período. */
@@ -44,6 +46,8 @@ export type ClassSlot = {
   from: string
   to: string
   location: string
+  /** El enlace de Zoom de la comisión: solo si es virtual o híbrida y el docente lo cargó. */
+  zoomUrl?: string | null
 }
 
 /** El lunes de la semana de un día `AAAA-MM-DD`. */
@@ -169,7 +173,8 @@ export function classSlotsOf(subjects: MySubject[]): ClassSlot[] {
         end: toMinutes(slot.end),
         from: dayKey(s.termStart),
         to: dayKey(s.termEnd),
-        location: s.location
+        location: s.location,
+        zoomUrl: s.zoomUrl
       })
     )
   )
@@ -194,7 +199,8 @@ export function classesIn(days: string[], slots: ClassSlot[], today: string): Ca
           tone: 'clase',
           origin: 'siu',
           past: day < today,
-          next: false
+          next: false,
+          zoomUrl: slot.zoomUrl
         })
       )
   )

@@ -69,6 +69,7 @@ test('HACKAI_SIU=simulado usa el SIU simulado sobre Supabase, que declara sus ca
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
+    canRecordAttendance: true,
     canWriteGrades: true
   })
 })
@@ -152,6 +153,7 @@ test('los adaptadores en memoria declaran sus capacidades', () => {
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
+    canRecordAttendance: true,
     canWriteGrades: true
   })
   assert.deepEqual(ports.classroom.capabilities, { canEnrol: true, hasAssignments: true })

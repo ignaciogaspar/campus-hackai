@@ -10,10 +10,13 @@ export type SubjectTab = { id: string; label: string; path: string; teachersOnly
     `teachersOnly`. */
 export const SUBJECT_TABS: SubjectTab[] = [
   { id: 'espacio', label: 'Espacio', path: '' },
-  { id: 'alumnos', label: 'Alumnos', path: '/alumnos', teachersOnly: true },
+  { id: 'alumnos', label: 'Alumnos y clases', path: '/alumnos', teachersOnly: true },
   { id: 'tareas', label: 'Tareas', path: '/tareas' },
   { id: 'calificaciones', label: 'Calificaciones', path: '/calificaciones', teachersOnly: true }
 ]
+
+/** La pestaña «Alumnos y clases»: ahí se toma lista y se carga el Zoom. */
+export const ALUMNOS_TAB: SubjectTab = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
 
 /** Las pestañas que ve cada uno: el docente todas y el alumno, el espacio y las tareas. */
 export const tabsFor = (role: 'alumno' | 'profesor'): SubjectTab[] =>
