@@ -65,7 +65,7 @@ function Filter({
     ...options.map((o) => ({ value: o, label: o }))
   ]
   return (
-    <div className='min-w-0 max-sm:w-full sm:w-52'>
+    <div className='min-w-0 sm:w-52'>
       <Select
         aria-label={label}
         value={value}
@@ -281,7 +281,8 @@ export function PlanningCalendar({
   return (
     <section aria-label='Planning del día' className='min-w-0 overflow-hidden rounded-2xl border border-border bg-card'>
       <DayToolbar day={day} today={today} onDay={setDay} />
-      <div className='flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5'>
+      {/* En el celular, los filtros de a dos por fila: uno debajo del otro empujaban la grilla fuera de la pantalla. */}
+      <div className='grid grid-cols-2 gap-2 border-b border-border px-3 py-2.5 sm:flex sm:flex-wrap sm:items-center'>
         <Filter
           label='Facultad'
           all='Todas las facultades'
