@@ -202,7 +202,7 @@ En qué aula y a qué hora se dicta cada clase, de todas las materias. Lo carga 
 | `load(persona, filas, modo)` | Guarda la planilla solo si ninguna fila tiene error (si no, `con-errores` y no toca nada): `reemplazar` cambia todo el planning, `agregar` suma (un cambio de último momento o una clase a mano). Las repetidas se guardan una vez. Sin clases nuevas, `sin-clases`. Solo secretaría (`solo-secretaria`) |
 | `remove(persona, clase)` | Borra una clase cargada. Solo secretaría |
 
-Usa Personas para el rol y su almacén (`planning_entries`, `supabase/migrations/0013_planning.sql`). En Supabase reemplazar inserta la carga nueva y recién después borra las otras, así una falla a la mitad deja el planning anterior. En memoria arranca con el planning sintético (`syntheticData.planning`); en Supabase, vacío. La planilla se pega (texto con tabulaciones, `lib/delimited-text.ts`) o se sube como .xlsx (`lib/xlsx-read.ts`, sin dependencias, con `node:zlib`) o .csv.
+Usa Personas para el rol y su almacén (`planning_entries`, `supabase/migrations/0013_planning.sql`). En Supabase reemplazar inserta la carga nueva y recién después borra las otras, así una falla a la mitad deja el planning anterior. En memoria arranca con el planning sintético (`syntheticData.planning`); en Supabase, vacío. En `/cargar-clases` la planilla del cuatrimestre se sube como .xlsx (`lib/xlsx-read.ts`, sin dependencias, con `node:zlib`) o .csv (`lib/delimited-text.ts`) y reemplaza lo cargado (`reemplazar`); los cambios sueltos (otra aula, una suspensión, una clase extra) se cargan a mano de a una y se suman (`agregar`).
 
 No guarda personas: solo materia, comisión, facultad, edificio y aula. El Planning de Aulas real trae nombres de docentes y responsables; no se cargan.
 

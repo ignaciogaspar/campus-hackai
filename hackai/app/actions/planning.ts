@@ -22,7 +22,7 @@ const ERRORS: Record<LoadError, string> = {
   'solo-secretaria': 'Solo secretaría carga el planning.',
   'con-errores':
     'No se guardó nada: hay filas con problemas. Cada una dice qué le pasa; corregilas y volvé a ver la vista previa.',
-  'sin-clases': 'No hay clases nuevas para guardar: las de la planilla ya estaban cargadas.',
+  'sin-clases': 'No hay clases para guardar: revisá que la planilla tenga filas con materia, aula y horario.',
   'clase-desconocida': 'Esa clase ya no está en el planning.',
   'persona-desconocida': 'No encontramos tus datos. Salí y volvé a entrar.',
   'falla-externa': 'No pudimos guardarlo porque la base no responde. Probá de nuevo en un rato.'
@@ -36,16 +36,18 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024
 export type PlanningPreviewState =
   | { status: 'idle' }
   | { status: 'error'; message: string; at: number }
-  | { status: 'preview'; preview: PlanningPreview; rows: string; source: string; mode: PlanningMode; at: number }
+  | { status: 'preview'; preview: PlanningPreview; rows: string; source: string; at: number }
 
 const failed = (message: string) => ({ status: 'error' as const, message, at: Date.now() })
 
-const modeOf = (form: FormData): PlanningMode => (formText(form, 'mode') === 'reemplazar' ? 'reemplazar' : 'agregar')
+/** La planilla es el planning del cuatrimestre: reemplaza lo cargado. Los cambios sueltos se suman con «Cargar una
+    clase» (`addPlanningClass`). */
+const SHEET_MODE: PlanningMode = 'reemplazar'
 
 const isSheet = (name: string) => /\.xlsx$/i.test(name)
 const isText = (name: string) => /\.(csv|tsv|txt)$/i.test(name)
 
-/** Las filas del archivo subido o, si no hay archivo, del texto pegado. */
+/** Las filas del archivo subido: un .xlsx de Excel o un .csv. */
 async function rowsOf(form: FormData): Promise<{ rows: PlanningCell[][]; source: string } | string> {
   const file = form.get('file')
   if (file instanceof File && file.size > 0) {
@@ -60,9 +62,7 @@ async function rowsOf(form: FormData): Promise<{ rows: PlanningCell[][]; source:
     if (isText(file.name)) return { rows: rowsFromText(bytes.toString('utf8')), source: file.name }
     return 'Subí la planilla como .xlsx o .csv.'
   }
-  const text = formText(form, 'text')
-  if (!text.trim()) return 'Pegá las filas de tu planilla o elegí el archivo.'
-  return { rows: rowsFromText(text), source: 'lo que pegaste' }
+  return 'Elegí el archivo de la planilla.'
 }
 
 /** Lee la planilla y devuelve la vista previa. No guarda nada. */
@@ -70,12 +70,11 @@ export async function previewPlanning(_prev: PlanningPreviewState, form: FormDat
   await requireSession('secretaria')
   const read = await rowsOf(form)
   if (typeof read === 'string') return failed(read)
-  const mode = modeOf(form)
-  const preview = await system().planning.preview(read.rows, mode)
+  const preview = await system().planning.preview(read.rows, SHEET_MODE)
   if (!preview.ok) return failed(ERRORS[preview.error])
   if (preview.value.rows.length === 0) return failed('La planilla está vacía.')
   const rows = JSON.stringify(read.rows)
-  return { status: 'preview', preview: preview.value, rows, source: read.source, mode, at: Date.now() }
+  return { status: 'preview', preview: preview.value, rows, source: read.source, at: Date.now() }
 }
 
 /** Las filas que volvieron de la vista previa, si tienen la forma de una planilla. */
@@ -91,12 +90,12 @@ function parsedRows(raw: string): PlanningCell[][] | null {
   }
 }
 
-/** Guarda la planilla ya vista: reemplaza el planning o le suma las clases. */
+/** Guarda la planilla ya vista: reemplaza el planning. */
 export async function savePlanning(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession('secretaria')
   const rows = parsedRows(formText(form, 'rows'))
   if (!rows) return failed(UNEXPECTED)
-  const result = await system().planning.load(session.personId, rows, modeOf(form))
+  const result = await system().planning.load(session.personId, rows, SHEET_MODE)
   if (!result.ok) return failed(ERRORS[result.error])
   revalidatePath('/planning')
   redirect(`/cargar-clases?guardadas=${result.value.saved}&repetidas=${result.value.duplicates}`)

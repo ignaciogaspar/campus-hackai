@@ -1,5 +1,5 @@
 -- Planning: en qué aula y a qué hora se dicta cada clase, de todas las
--- materias. Lo carga secretaría pegando su planilla, subiendo el .xlsx o una
+-- materias. Lo carga secretaría subiendo la planilla (.xlsx o .csv) o una
 -- clase a mano. Es el almacén propio del módulo Planning (lib/core/planning):
 -- solo lo lee y escribe su adaptador lib/adapters/supabase/planning-store.ts.
 --

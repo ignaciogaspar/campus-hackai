@@ -1,4 +1,4 @@
-/* Cargar el planning, solo secretaría: subir o pegar la planilla de clases,
+/* Cargar el planning, solo secretaría: subir la planilla de clases,
    cargar una clase a mano (un cambio de último momento, una clase extra o una
    suspendida) y ver y borrar lo cargado. Sin reglas de negocio: qué se entiende
    de cada fila y quién puede cargar lo decide Planning. */
@@ -154,7 +154,7 @@ export default async function CargarPlanningPage({
               ` ${skipped === 1 ? 'Una venía repetida y se cargó' : `${skipped} venían repetidas y se cargaron`} una sola vez.`}
           </p>
         )}
-        <PlanningUpload />
+        <PlanningUpload loaded={entries.ok ? entries.value.length : 0} />
         <ManualEntry />
         <section aria-labelledby='cargadas' className='flex flex-col gap-3'>
           <h2 id='cargadas' className='text-lg font-extrabold'>

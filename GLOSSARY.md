@@ -277,7 +277,7 @@ Persona sin login que responde una encuesta por QR con un nombre.
 ### HackAI
 
 **Planning (Planning)**:
-Dónde y a qué hora se dicta cada clase de todas las materias: materia, comisión, facultad, edificio, aula y horario. Lo carga secretaría en HackAI pegando su planilla o subiéndola. Toma el nombre del «Planning Aulas» del Campus Virtual, que muestra lo mismo para todas las sedes juntas.
+Dónde y a qué hora se dicta cada clase de todas las materias: materia, comisión, facultad, sede, edificio, módulo, aula y horario. Lo carga secretaría en HackAI: sube la planilla del cuatrimestre (que reemplaza lo cargado) y carga a mano los cambios sueltos. Toma el nombre del «Planning Aulas» del Campus Virtual, que muestra lo mismo para todas las sedes juntas.
 _Avoid_: «calendario» (ese es el de cada alumno), «horario» a secas.
 
 **Aula física (Room)**:
