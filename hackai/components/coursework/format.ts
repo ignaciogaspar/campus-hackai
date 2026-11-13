@@ -115,6 +115,12 @@ export function gradeFromInput(value: string): number | null {
 /** La nota como se escribe en un campo y se lee en pantalla: con coma decimal, sin ceros de más («8,5»). */
 export const gradeInputValue = (value: number | null) => (value === null ? '' : String(value).replace('.', ','))
 
+/** La nota que el docente cargó en una tarea, y si el alumno todavía no la ve: «Nota 8,5», «Ausente · sin publicar». */
+export function taskGradeLabel(grade: { value: number | null; absent: boolean; published: boolean }): string {
+  const text = grade.absent ? 'Ausente' : `Nota ${gradeInputValue(grade.value)}`
+  return grade.published ? text : `${text} · sin publicar`
+}
+
 /** A quién se califica después: el que sigue de `current` en la lista, o `null` si es el último (o no está). Solo
     cuentan los que se pueden calificar. */
 export function nextStudent(ids: string[], current: string): string | null {

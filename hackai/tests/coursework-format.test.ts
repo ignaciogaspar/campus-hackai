@@ -21,6 +21,7 @@ import {
   subjectNotesHref,
   submissionHref,
   submissionStatus,
+  taskGradeLabel,
   taskHref,
   tasksHref
 } from '@/components/coursework/format'
@@ -189,4 +190,12 @@ test('cuánto falta para una fecha límite se dice en días de Buenos Aires', ()
 test('la nota de una tarea se busca en Notas, con la materia elegida', () => {
   assert.equal(subjectNotesHref('am1'), '/notas?materia=am1')
   assert.equal(subjectNotesHref('a/b'), '/notas?materia=a%2Fb')
+})
+
+test('la nota que el docente cargó en una tarea dice si el alumno ya la ve', () => {
+  const grade = { value: 8.5, absent: false, comment: '', published: true }
+  assert.equal(taskGradeLabel(grade), 'Nota 8,5')
+  assert.equal(taskGradeLabel({ ...grade, published: false }), 'Nota 8,5 · sin publicar')
+  assert.equal(taskGradeLabel({ ...grade, value: null, absent: true }), 'Ausente')
+  assert.equal(taskGradeLabel({ ...grade, value: null, absent: true, published: false }), 'Ausente · sin publicar')
 })
