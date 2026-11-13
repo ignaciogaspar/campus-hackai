@@ -49,6 +49,9 @@ export function gradesHref(subjectId: string, view: GradesView = {}): string {
   return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
 }
 
+/** El Excel de la materia: se baja un .xlsx con una hoja por comisión del docente. */
+export const gradesExcelHref = (subjectId: string) => `${subjectPath(subjectId)}/calificaciones/excel`
+
 /** Pegar notas desde una planilla en una columna de Calificaciones. */
 export function pasteGradesHref(subjectId: string, view: { comision?: string; columna?: string } = {}): string {
   const params = new URLSearchParams()

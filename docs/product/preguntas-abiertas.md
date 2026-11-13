@@ -211,6 +211,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 26. ¿Excel y Google Sheets abren el .xlsx sin comprimir que arma HackAI?
+
+- **Por qué importa:** el Excel de la materia (Calificaciones, issue #104) lo arma HackAI sin dependencias nuevas (ADR 0002): un ZIP sin comprimir (método «stored») con el CRC32 de `node:zlib` y las hojas como XML con textos en línea. Si Excel o Google Sheets lo rechazan, el docente no puede bajar sus notas y hay que sumar una librería con una ADR.
+- **Hipótesis (12/11/2026):** Excel, Google Sheets y LibreOffice abren un .xlsx sin comprimir, porque el formato de paquete (OPC) solo pide un ZIP válido y no obliga a comprimir. Los tests de HackAI abren el ZIP a mano y verifican el CRC32 y las hojas, pero no se probó en Excel ni en Google Sheets.
+- **Opciones:** como está; comprimir con `zlib.deflateRawSync` (también sin dependencias) si alguno lo rechaza; una librería de planillas con una ADR.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
