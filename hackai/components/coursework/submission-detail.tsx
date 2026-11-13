@@ -29,9 +29,9 @@ export function SubmissionDetailCard({ detail }: { detail: SubmissionDetail }) {
       </div>
       <p className='flex items-center gap-2 text-[0.9375rem]'>
         {submission.late ? (
-          <Clock aria-hidden='true' className='size-5 flex-none text-kind-recuperatorio' strokeWidth={1.8} />
+          <Clock aria-hidden='true' className='size-5 flex-none text-kind-recuperatorio' strokeWidth={2} />
         ) : (
-          <CircleCheck aria-hidden='true' className='size-5 flex-none text-success' strokeWidth={1.8} />
+          <CircleCheck aria-hidden='true' className='size-5 flex-none text-success' strokeWidth={2} />
         )}
         <span>
           Entregó el <time dateTime={submission.submittedAt}>{dueTime(submission.submittedAt)}</time>.

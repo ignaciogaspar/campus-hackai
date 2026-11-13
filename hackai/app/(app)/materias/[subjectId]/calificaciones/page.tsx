@@ -155,7 +155,7 @@ function Done({ children }: { children: ReactNode }) {
   return (
     <p
       role='status'
-      className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-2.5 text-[0.875rem] font-semibold text-success'
+      className='flex items-center gap-2 rounded-xl bg-success-background px-3 py-3 text-[0.875rem] font-semibold text-success'
     >
       <CheckCircle2 aria-hidden='true' className='size-5 flex-none' strokeWidth={2} />
       {children}
@@ -259,6 +259,7 @@ function ColumnView({
           students={book.students.length}
           page={page}
           selectedId={editing?.personId}
+          columnPublished={column.publishedAt !== null}
         />
       </div>
     </Split>

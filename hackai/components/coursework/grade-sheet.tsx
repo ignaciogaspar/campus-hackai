@@ -7,42 +7,44 @@
 import { MessageSquareText, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
 import { saveGradeSheet } from '@/app/actions/coursework'
-import { PRIMARY } from '@/components/coursework/fields'
+import { GRADE_BOX, PRIMARY } from '@/components/coursework/fields'
 import { gradesHref, sheetValue } from '@/components/coursework/format'
-import { PassPill } from '@/components/coursework/gradebook'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { Card } from '@/components/ui/card'
 import { Pagination } from '@/components/ui/pagination'
 import { EmptyState } from '@/components/ui/states'
-import { StatusPill } from '@/components/ui/status-pill'
 import type { GradebookStudent, GradeCell } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
 type Page = { page: number; pages: number; items: GradebookStudent[] }
 
-function CellState({ cell }: { cell: GradeCell | undefined }) {
+const PASS_NOTE = { pendiente: 'pendiente de pasar al SIU', 'no-permitido': 'sin pasar al SIU' } as const
+
+/** Lo que la fila dice de más, solo cuando se aparta de la columna: una nota nueva en una columna ya publicada, o una
+    nota que no llegó al SIU. Lo demás lo cuenta el estado de la columna. */
+function cellNote(cell: GradeCell | undefined, columnPublished: boolean): string | null {
   if (!cell) return null
-  return (
-    <>
-      <StatusPill tone={cell.published ? 'success' : 'neutral'}>{cell.published ? 'Publicada' : 'Borrador'}</StatusPill>
-      {cell.pass && <PassPill status={cell.pass} />}
-    </>
-  )
+  if (columnPublished && !cell.published) return 'sin publicar'
+  if (cell.pass === 'pendiente' || cell.pass === 'no-permitido') return PASS_NOTE[cell.pass]
+  return null
 }
 
 function SheetRow({
   student,
   cell,
   commentHref,
-  selected
+  selected,
+  columnPublished
 }: {
   student: GradebookStudent
   cell: GradeCell | undefined
   commentHref: string | null
   selected: boolean
+  columnPublished: boolean
 }) {
   const inputId = `nota-${student.legajo}`
   const disabled = student.personId === null
+  const note = disabled ? 'todavía no entró a HackAI' : cellNote(cell, columnPublished)
   return (
     <li
       className={cn(
@@ -54,9 +56,9 @@ function SheetRow({
         <label htmlFor={inputId} className='truncate text-[0.9375rem] font-semibold text-ink'>
           {student.name}
         </label>
-        <p className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
+        <p className='text-xs text-muted-foreground'>
           <span className='tabular-nums'>Legajo {student.legajo}</span>
-          {disabled ? <span>· Todavía no entró a HackAI</span> : <CellState cell={cell} />}
+          {note && <span> · {note}</span>}
         </p>
         {cell?.comment && <p className='line-clamp-1 text-[0.8125rem] text-muted-foreground'>{cell.comment}</p>}
       </div>
@@ -78,15 +80,21 @@ function SheetRow({
           autoComplete='off'
           placeholder='—'
           aria-describedby='planilla-ayuda'
-          className='h-11 w-[4.5rem] rounded-[10px] border border-border bg-card text-center text-base font-bold tabular-nums text-ink outline-none placeholder:font-normal placeholder:text-gray-light focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:bg-ice/60'
+          className={cn(
+            GRADE_BOX,
+            'outline-none placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:bg-ice/60'
+          )}
         />
         {commentHref ? (
           <Link
             href={commentHref}
             aria-label={`Comentario para ${student.name}`}
-            className='grid size-11 place-items-center rounded-[10px] text-blue transition-colors hover:bg-ink/5 focus-ring'
+            className={cn(
+              'grid size-11 place-items-center rounded-[10px] transition-colors hover:bg-ink/5 hover:text-ink focus-ring',
+              cell?.comment ? 'text-ink' : 'text-muted-foreground'
+            )}
           >
-            <MessageSquareText aria-hidden='true' className='size-5' strokeWidth={1.9} />
+            <MessageSquareText aria-hidden='true' className='size-5' strokeWidth={2} />
           </Link>
         ) : (
           <span aria-hidden='true' className='size-11' />
@@ -103,7 +111,8 @@ export function GradeSheet({
   columnId,
   students,
   page,
-  selectedId
+  selectedId,
+  columnPublished
 }: {
   subjectId: string
   sectionId: string
@@ -111,6 +120,8 @@ export function GradeSheet({
   students: number
   page: Page
   selectedId?: string
+  /** Si la columna ya se publicó: desde ahí, una nota nueva se marca «sin publicar» en su fila. */
+  columnPublished: boolean
 }) {
   if (students === 0) {
     return (
@@ -128,7 +139,7 @@ export function GradeSheet({
       <input type='hidden' name='sectionId' value={sectionId} />
       <input type='hidden' name='columnId' value={columnId} />
       <Card>
-        <div className='flex items-baseline justify-between gap-3 border-b border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground'>
+        <div className='flex items-baseline justify-between gap-3 border-b border-border px-4 py-2 text-xs font-semibold text-muted-foreground'>
           <span>{students === 1 ? '1 alumno' : `${students} alumnos`}</span>
           <span>Nota</span>
         </div>
@@ -139,6 +150,7 @@ export function GradeSheet({
               student={s}
               cell={s.cells[columnId]}
               selected={s.personId !== null && s.personId === selectedId}
+              columnPublished={columnPublished}
               commentHref={
                 s.personId ? gradesHref(subjectId, { ...view, alumno: s.personId, pagina: page.page }) : null
               }

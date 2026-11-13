@@ -2,15 +2,13 @@
    del SIU, a las que les puede corregir el nombre, el tipo y la fecha, y las que
    suma en HackAI), y si la materia se promociona. Cada instancia se edita en el
    lugar, desplegándola: sin ventanas encima. */
-import { CalendarClock, ChevronDown, GraduationCap, Plus, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { deleteExam, saveExam, savePromotion } from '@/app/actions/coursework'
 import { BOX, GHOST, HELP, INPUT, LABEL, PRIMARY } from '@/components/coursework/fields'
 import { dueTime, gradeInputValue, inputValueOf } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { Card } from '@/components/ui/card'
-import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
-import { StatusPill } from '@/components/ui/status-pill'
 import type { ExamInstance, ExamKind, Promotion } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +26,10 @@ const KIND_LABEL: Record<ExamInstance['kind'], string> = {
 }
 
 type Ids = { subjectId: string; sectionId: string }
+
+/** De dónde viene la instancia, en texto: del SIU (y si se le corrigió algo) o propia. */
+const sourceNote = (exam: ExamInstance) =>
+  exam.source === 'hackai' ? 'propia, queda en HackAI' : exam.edited ? 'del SIU, corregida en HackAI' : 'del SIU'
 
 /** Nombre, tipo y fecha: los mismos campos para sumar una instancia o corregir una. */
 function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string }) {
@@ -72,7 +74,7 @@ function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string 
           />
         </span>
         <span id={`${idPrefix}-fecha`} className={HELP}>
-          En hora de Buenos Aires.
+          En hora de Buenos Aires
         </span>
       </label>
     </div>
@@ -85,17 +87,14 @@ function ExamRow({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
     <li>
       <details className='group'>
         <summary className='flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition-colors hover:bg-ink/[0.03] focus-ring-inset [&::-webkit-details-marker]:hidden'>
-          <span className='grid size-10 flex-none place-items-center rounded-full bg-accent text-blue-light'>
-            <CalendarClock aria-hidden='true' className='size-5' strokeWidth={1.8} />
-          </span>
           <span className='flex min-w-0 flex-1 flex-col gap-1'>
             <span className='truncate text-[0.9375rem] font-semibold text-ink'>{exam.name}</span>
-            <span className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
-              <OriginBadge origin={exam.source} />
-              <span>{KIND_LABEL[exam.kind]}</span>
-              <time dateTime={exam.date}>· {dueTime(exam.date)}</time>
-              {exam.graded > 0 && <span>· {exam.graded === 1 ? '1 nota' : `${exam.graded} notas`}</span>}
-              {exam.edited && <StatusPill tone='info'>Corregida en HackAI</StatusPill>}
+            <span className='text-xs text-muted-foreground'>
+              {KIND_LABEL[exam.kind]} · <time dateTime={exam.date}>{dueTime(exam.date)}</time>
+              {exam.graded > 0 && (
+                <span className='tabular-nums'> · {exam.graded === 1 ? '1 nota' : `${exam.graded} notas`}</span>
+              )}
+              <span> · {sourceNote(exam)}</span>
             </span>
           </span>
           <ChevronDown
@@ -112,7 +111,7 @@ function ExamRow({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
             <ExamFields exam={exam} idPrefix={prefix} />
             {exam.source === 'siu' && (
               <p className={cn('text-[0.8125rem]', HELP)}>
-                El cambio queda en HackAI: el SIU sigue con su cronograma, y las notas se le pasan igual.
+                El cambio queda en HackAI: el SIU sigue con su cronograma, y las notas se le pasan igual
               </p>
             )}
             <div className='flex flex-wrap gap-2'>
@@ -172,7 +171,7 @@ export function NewExamForm({ ids }: { ids: Ids }) {
           <input type='hidden' name='sectionId' value={ids.sectionId} />
           <ExamFields idPrefix='examen-nuevo' />
           <p className={cn('text-[0.8125rem]', HELP)}>
-            Una instancia que sumás acá no existe en el SIU: sus notas quedan en HackAI.
+            Una instancia que sumás acá no existe en el SIU: sus notas quedan en HackAI
           </p>
           <div className='flex flex-wrap gap-2'>
             <SubmitButton className={PRIMARY}>Sumar instancia</SubmitButton>
@@ -188,10 +187,7 @@ export function PromotionForm({ promotion, ids }: { promotion: Promotion; ids: I
   return (
     <Card className='flex flex-col gap-3 p-4'>
       <div className='flex flex-col gap-1'>
-        <h2 className='flex items-center gap-2 text-base font-extrabold'>
-          <GraduationCap aria-hidden='true' className='size-5 text-blue' strokeWidth={2} />
-          Promoción
-        </h2>
+        <h2 className='text-base font-extrabold'>Promoción</h2>
         <p className={cn('text-[0.8125rem]', HELP)}>
           Si la materia se promociona, quien llega a la nota mínima de cursada la aprueba sin final y pasa al SIU como
           promocionado.
@@ -222,7 +218,7 @@ export function PromotionForm({ promotion, ids }: { promotion: Promotion; ids: I
             />
           </span>
           <span id='promocion-ayuda' className={HELP}>
-            De 4 a 10. Regulariza desde 4.
+            De 4 a 10; se regulariza desde 4
           </span>
         </label>
         <div className='flex flex-wrap gap-2'>

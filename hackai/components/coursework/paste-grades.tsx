@@ -80,7 +80,7 @@ function PreviewRow({ row, scale }: { row: PasteRow; scale: GradeScale }) {
 function Summary({ preview }: { preview: PastePreview }) {
   const { ready, absent, unmatched, invalid, skipped } = preview.counts
   return (
-    <div className='flex flex-wrap gap-1.5'>
+    <div className='flex flex-wrap gap-2'>
       <StatusPill tone='success'>{ready === 1 ? '1 nota' : `${ready} notas`}</StatusPill>
       {absent > 0 && <StatusPill tone='info'>{absent === 1 ? '1 ausente' : `${absent} ausentes`}</StatusPill>}
       {unmatched > 0 && (
@@ -196,7 +196,7 @@ export function PasteGrades({
             </p>
             {published && (
               <p className='rounded-xl bg-ice/70 px-3 py-2 text-[0.8125rem] text-ink'>
-                Esta columna ya está publicada: los alumnos ven las notas que guardes al toque.
+                Esta columna ya está publicada: los alumnos ven las notas que guardes al toque
               </p>
             )}
             {stale && (
@@ -204,7 +204,7 @@ export function PasteGrades({
                 role='status'
                 className='rounded-xl bg-error-background px-3 py-2 text-[0.8125rem] font-semibold text-destructive'
               >
-                Cambiaste el texto o la escala: volvé a ver la vista previa antes de guardar.
+                Cambiaste el texto o la escala: volvé a ver la vista previa antes de guardar
               </p>
             )}
             <ActionForm action={savePastedGrades} className='flex flex-col gap-2'>

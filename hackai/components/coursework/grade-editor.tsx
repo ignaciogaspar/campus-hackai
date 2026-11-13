@@ -49,7 +49,7 @@ export function GradeEditor({
       <p className='text-[0.8125rem] text-muted-foreground'>Legajo {student.legajo}</p>
       {column.publishedAt && (
         <p className='mt-2 rounded-xl bg-ice/70 px-3 py-2 text-[0.8125rem] text-ink'>
-          Esta columna ya está publicada: el alumno ve cualquier cambio al toque.
+          Esta columna ya está publicada: el alumno ve cualquier cambio al toque
         </p>
       )}
       <ActionForm key={student.personId} action={gradeStudent} className='mt-3 flex flex-col gap-4'>

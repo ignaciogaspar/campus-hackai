@@ -5,9 +5,9 @@
 import { ClipboardList, ClipboardPaste } from 'lucide-react'
 import Link from 'next/link'
 import { publishColumn, retryGradePass } from '@/app/actions/coursework'
+import { GHOST, PRIMARY, SECONDARY } from '@/components/coursework/fields'
 import { COURSE_COLUMN, dueTime, gradeInputValue, gradesHref, pasteGradesHref } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
-import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { railItem, railTrack } from '@/components/ui/rail'
@@ -42,7 +42,7 @@ export function ColumnPicker({
   selectedId: string
 }) {
   return (
-    <nav aria-label='Columna' className='flex min-w-0 flex-col gap-1.5'>
+    <nav aria-label='Columna' className='flex min-w-0 flex-col gap-2'>
       <span aria-hidden='true' className='px-1 text-xs font-semibold text-muted-foreground'>
         Columna
       </span>
@@ -91,19 +91,19 @@ export function ColumnSummary({
   const everythingPublished = column.graded > 0 && column.unpublished === 0
   return (
     <Card className='flex flex-col gap-3 p-4'>
-      <div className='flex flex-col gap-1.5'>
+      <div className='flex flex-col gap-2'>
         <div className='flex flex-wrap items-center gap-2'>
           <h2 className='text-lg font-extrabold text-balance'>{column.name}</h2>
           <StatusPill tone={column.publishedAt ? 'success' : 'neutral'}>
             {column.publishedAt ? 'Publicada' : 'Sin publicar'}
           </StatusPill>
         </div>
-        <p className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
+        <p className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
           <OriginBadge origin={column.kind === 'evaluacion' ? 'siu' : 'hackai'} />
           <time dateTime={column.date}>{dueTime(column.date)}</time>
           <span>· {column.weight === null ? 'Sin peso' : `Peso ${gradeInputValue(column.weight)}`}</span>
         </p>
-        <p className='text-[0.8125rem] text-ink'>
+        <p className='text-[0.8125rem] text-ink tabular-nums'>
           {column.graded} de {students} con nota
           {column.unpublished > 0 && column.graded > 0 ? ` · ${column.unpublished} sin publicar` : ''}
         </p>
@@ -113,23 +113,17 @@ export function ColumnSummary({
         <input type='hidden' name='sectionId' value={sectionId} />
         <input type='hidden' name='columnId' value={column.id} />
         <div className='flex flex-wrap gap-2'>
-          <SubmitButton
-            disabled={column.graded === 0 || everythingPublished}
-            className={cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')}
-          >
+          <SubmitButton disabled={column.graded === 0 || everythingPublished} className={PRIMARY}>
             {everythingPublished ? 'Todo publicado' : publishLabel(column)}
           </SubmitButton>
-          <Link
-            href={pasteGradesHref(subjectId, { comision: sectionId, columna: column.id })}
-            className={cn(buttonVariants({ variant: 'ghost' }), 'rounded-[10px] px-4 text-[0.9375rem]')}
-          >
+          <Link href={pasteGradesHref(subjectId, { comision: sectionId, columna: column.id })} className={GHOST}>
             <ClipboardPaste aria-hidden='true' className='size-4' strokeWidth={2} />
-            Pegar notas de una planilla
+            Pegar de una planilla
           </Link>
         </div>
         {column.publishedAt === null && column.graded > 0 && (
           <p className='text-[0.8125rem] text-muted-foreground'>
-            Al publicar, cada alumno ve su nota y tu comentario, y le llega el aviso.
+            Al publicar, cada alumno ve su nota y tu comentario, y le llega el aviso
           </p>
         )}
       </ActionForm>
@@ -150,6 +144,15 @@ export function PassPill({ status }: { status: PassStatus }) {
   return <StatusPill tone={tone}>{label}</StatusPill>
 }
 
+/** Lo que ya se resolvió del pase, en una línea: «Pasaron 12 al SIU · 1 sin pasar». Lo pendiente va aparte. */
+function passLine(pass: PassCounts): string {
+  const parts = [
+    pass.passed > 0 ? `Pasaron ${pass.passed} al SIU` : null,
+    pass.refused > 0 ? `${pass.refused} sin pasar al SIU` : null
+  ].filter(Boolean)
+  return parts.join(' · ')
+}
+
 /** Cómo va el pase al SIU de una evaluación del SIU, con el botón para reintentar lo pendiente. */
 export function PassSummary({
   subjectId,
@@ -165,35 +168,27 @@ export function PassSummary({
     <ActionForm action={retryGradePass} className='flex flex-col gap-2'>
       <input type='hidden' name='subjectId' value={subjectId} />
       <input type='hidden' name='sectionId' value={sectionId} />
-      <div className='flex flex-wrap items-center gap-1.5'>
-        {pass.passed > 0 && <StatusPill tone='success'>{pass.passed} pasadas al SIU</StatusPill>}
+      <p className='flex flex-wrap items-center gap-2 text-[0.8125rem] text-muted-foreground tabular-nums'>
+        <span>{passLine(pass)}</span>
         {pass.pending > 0 && (
           <StatusPill tone='warning'>
             {pass.pending === 1 ? '1 pendiente de pasar' : `${pass.pending} pendientes de pasar`}
           </StatusPill>
         )}
-        {pass.refused > 0 && <StatusPill tone='neutral'>{pass.refused} sin pasar al SIU</StatusPill>}
-      </div>
+      </p>
       {pass.pending > 0 && (
         <>
           <p className='text-[0.8125rem] text-muted-foreground'>
             El SIU no respondió. Las notas ya las ven los alumnos y las reintentamos solas.
           </p>
           <div className='flex flex-wrap gap-2'>
-            <SubmitButton
-              className={cn(
-                buttonVariants({ variant: 'outline' }),
-                'min-h-11 rounded-[10px] px-4 text-[0.9375rem] font-bold'
-              )}
-            >
-              Reintentar el pase
-            </SubmitButton>
+            <SubmitButton className={SECONDARY}>Reintentar el pase</SubmitButton>
           </div>
         </>
       )}
       {pass.refused > 0 && (
         <p className='text-[0.8125rem] text-muted-foreground'>
-          El SIU no permite cargar notas desde HackAI: esas notas quedan solo acá, y los alumnos las ven igual.
+          El SIU no permite cargar notas desde HackAI: esas notas quedan solo acá, y los alumnos las ven igual
         </p>
       )}
     </ActionForm>

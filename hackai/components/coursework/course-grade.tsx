@@ -7,9 +7,9 @@
 import { GraduationCap, Scale } from 'lucide-react'
 import Link from 'next/link'
 import { publishCourse, saveCourseGrade, saveWeights } from '@/app/actions/coursework'
-import { GradeBadge } from '@/components/academic/grade-badge'
+import { GHOST, GRADE_BOX, PRIMARY } from '@/components/coursework/fields'
 import { COURSE_COLUMN, evaluationHref, gradeInputValue, gradesHref } from '@/components/coursework/format'
-import { PassPill, PassSummary } from '@/components/coursework/gradebook'
+import { PassSummary } from '@/components/coursework/gradebook'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -55,19 +55,19 @@ export function CourseSummary({
   const everythingPublished = course.graded > 0 && course.unpublished === 0
   return (
     <Card className='flex flex-col gap-3 p-4'>
-      <div className='flex flex-col gap-1.5'>
+      <div className='flex flex-col gap-2'>
         <div className='flex flex-wrap items-center gap-2'>
           <h2 className='text-lg font-extrabold text-balance'>Nota de cursada</h2>
           <StatusPill tone={everythingPublished ? 'success' : 'neutral'}>
             {everythingPublished ? 'Publicada' : 'Sin publicar'}
           </StatusPill>
         </div>
-        <p className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
+        <p className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
           <OriginBadge origin='siu' />
           <span>Promedio ponderado de las columnas</span>
         </p>
-        <p className='flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-ink'>
-          <GraduationCap aria-hidden='true' className='size-4 text-blue' strokeWidth={2} />
+        <p className='flex flex-wrap items-center gap-2 text-[0.8125rem] text-ink'>
+          <GraduationCap aria-hidden='true' className='size-4 text-muted-foreground' strokeWidth={2} />
           {course.promotion.promotable
             ? `Promociona desde ${gradeInputValue(course.promotion.minimum)}`
             : 'Sin promoción: va a final'}
@@ -88,16 +88,13 @@ export function CourseSummary({
         <input type='hidden' name='subjectId' value={subjectId} />
         <input type='hidden' name='sectionId' value={sectionId} />
         <div className='flex flex-wrap gap-2'>
-          <SubmitButton
-            disabled={course.graded === 0 || everythingPublished}
-            className={cn(buttonVariants(), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem] font-bold')}
-          >
+          <SubmitButton disabled={course.graded === 0 || everythingPublished} className={PRIMARY}>
             {everythingPublished ? 'Todo publicado' : publishLabel(course)}
           </SubmitButton>
         </div>
         {course.unpublished > 0 && (
           <p className='text-[0.8125rem] text-muted-foreground'>
-            Al publicar, cada alumno ve su nota y su condición, y la nota pasa al SIU.
+            Al publicar, cada alumno ve su nota y su condición, y la nota pasa al SIU
           </p>
         )}
       </ActionForm>
@@ -121,10 +118,7 @@ export function WeightsForm({
   return (
     <Card className='flex flex-col gap-3 p-4'>
       <div className='flex flex-col gap-1'>
-        <h2 className='flex items-center gap-2 text-base font-extrabold'>
-          <Scale aria-hidden='true' className='size-5 text-blue' strokeWidth={2} />
-          Pesos de las columnas
-        </h2>
+        <h2 className='text-base font-extrabold'>Pesos de las columnas</h2>
         <p className='text-[0.8125rem] text-muted-foreground'>
           Cuenta cada columna según su peso y solo en los alumnos que tienen nota en ella. No hace falta que sumen 100.
         </p>
@@ -137,7 +131,7 @@ export function WeightsForm({
             <li key={c.id} className='flex items-center justify-between gap-3'>
               <label htmlFor={`peso-${c.id}`} className='flex min-w-0 flex-1 flex-col gap-0.5 text-[0.9375rem]'>
                 <span className='truncate font-semibold'>{c.name}</span>
-                <span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                <span className='flex items-center gap-2 text-xs text-muted-foreground'>
                   <OriginBadge origin={c.kind === 'evaluacion' ? 'siu' : 'hackai'} />
                   {c.graded} con nota
                 </span>
@@ -163,9 +157,7 @@ export function WeightsForm({
           De 0 a 100. Los pesos suman {gradeInputValue(weightTotal) || '0'}.
         </p>
         <div className='flex flex-wrap gap-2'>
-          <SubmitButton className={cn(buttonVariants(), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem] font-bold')}>
-            Guardar los pesos
-          </SubmitButton>
+          <SubmitButton className={PRIMARY}>Guardar los pesos</SubmitButton>
         </div>
       </ActionForm>
     </Card>
@@ -208,15 +200,11 @@ export function CourseStudentList({
             const meta = (
               <>
                 <span>Legajo {s.legajo}</span>
-                {s.personId === null && <span>· Todavía no entró a HackAI</span>}
+                {s.personId === null && <span>· todavía no entró a HackAI</span>}
                 {course.condition && (
                   <StatusPill tone={CONDITION[course.condition].tone}>{CONDITION[course.condition].label}</StatusPill>
                 )}
-                {course.edited && <StatusPill tone='neutral'>Editada</StatusPill>}
-                {course.value !== null && (
-                  <span>· {course.published === course.value ? 'Publicada' : 'Sin publicar'}</span>
-                )}
-                {course.pass && <PassPill status={course.pass} />}
+                {courseNote(course) && <span>· {courseNote(course)}</span>}
               </>
             )
             return (
@@ -246,9 +234,25 @@ export function CourseStudentList({
   )
 }
 
+/** Lo que la fila dice de más, solo si se aparta de lo esperable: la pisó el docente, cambió después de publicarla
+    o no llegó al SIU. */
+function courseNote(course: CourseGradeCell): string | null {
+  const notes = [
+    course.edited ? 'editada' : null,
+    course.published !== null && course.published !== course.value ? 'cambió: sin publicar' : null,
+    course.pass === 'pendiente' ? 'pendiente de pasar al SIU' : null,
+    course.pass === 'no-permitido' ? 'sin pasar al SIU' : null
+  ].filter(Boolean)
+  return notes.length > 0 ? notes.join(' · ') : null
+}
+
+/** La nota de cursada en su casillero, como en la planilla. */
 function CourseResult({ course }: { course: CourseGradeCell }) {
-  if (course.value !== null) return <GradeBadge grade={course.value} />
-  return <StatusPill tone='neutral'>Sin nota</StatusPill>
+  return (
+    <span className={cn(GRADE_BOX, course.value === null && 'font-normal text-muted-foreground')}>
+      {course.value === null ? '—' : gradeInputValue(course.value)}
+    </span>
+  )
 }
 
 /** La nota de cursada de un alumno: la que se calculó, la que vale y los botones para pisarla o volver al cálculo. */
@@ -308,7 +312,7 @@ export function CourseGradeEditor({
           </span>
         </label>
         <div className='flex flex-wrap gap-2'>
-          <SubmitButton className={cn(buttonVariants(), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem] font-bold')}>
+          <SubmitButton className={PRIMARY}>
             {nextId ? 'Guardar y pasar al siguiente' : 'Guardar y terminar'}
           </SubmitButton>
           {course.edited && (
@@ -323,10 +327,7 @@ export function CourseGradeEditor({
               Volver al cálculo
             </SubmitButton>
           )}
-          <Link
-            href={closeHref}
-            className={cn(buttonVariants({ variant: 'ghost' }), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem]')}
-          >
+          <Link href={closeHref} className={GHOST}>
             Volver a la lista
           </Link>
         </div>

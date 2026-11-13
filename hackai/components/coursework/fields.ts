@@ -11,4 +11,7 @@ export const INPUT = 'min-h-11 w-full bg-transparent px-3 text-[0.9375rem] font-
 export const HELP = 'font-normal text-muted-foreground'
 export const PRIMARY = cn(buttonVariants(), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem] font-bold')
 export const SECONDARY = cn(buttonVariants({ variant: 'outline' }), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem]')
+/** El casillero de la nota: la misma caja para escribirla y para mostrarla, con cifras tabulares. */
+export const GRADE_BOX =
+  'inline-grid h-11 w-18 place-items-center rounded-[10px] border border-border bg-card text-center text-base font-semibold tabular-nums text-ink'
 export const GHOST = cn(buttonVariants({ variant: 'ghost' }), 'min-h-11 rounded-[10px] px-4 text-[0.9375rem]')

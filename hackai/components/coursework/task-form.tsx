@@ -51,7 +51,7 @@ function Fields({ task }: { task?: Task }) {
           />
         </span>
         <span id='tarea-consigna-ayuda' className={HELP}>
-          Podés sumar un archivo con los enunciados.
+          Podés sumar un archivo con los enunciados
         </span>
       </label>
       <label className={LABEL}>
@@ -67,7 +67,7 @@ function Fields({ task }: { task?: Task }) {
           />
         </span>
         <span id='tarea-fecha-ayuda' className={HELP}>
-          En hora de Buenos Aires.
+          En hora de Buenos Aires
         </span>
       </label>
     </>

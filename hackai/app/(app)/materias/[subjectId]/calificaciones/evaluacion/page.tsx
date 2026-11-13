@@ -64,7 +64,7 @@ export default async function EvaluationPage({ params, searchParams }: { params:
         <div className='flex flex-col gap-1'>
           <Link
             href={back}
-            className='inline-flex min-h-11 w-fit items-center gap-1.5 text-[0.875rem] font-semibold text-blue underline-offset-2 hover:underline focus-ring'
+            className='inline-flex min-h-11 w-fit items-center gap-2 text-[0.875rem] font-semibold text-blue underline-offset-2 hover:underline focus-ring'
           >
             <ArrowLeft aria-hidden='true' className='size-4' strokeWidth={2} />
             Volver a Calificaciones

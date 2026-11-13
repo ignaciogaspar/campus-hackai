@@ -17,7 +17,7 @@ export function SectionPicker({
 }) {
   if (sections.length < 2) return null
   return (
-    <nav aria-label='Comisión' className='flex min-w-0 flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-3'>
+    <nav aria-label='Comisión' className='flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-3'>
       <span aria-hidden='true' className='px-1 text-xs font-semibold text-muted-foreground lg:px-0'>
         Comisión
       </span>
