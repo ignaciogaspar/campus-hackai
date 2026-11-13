@@ -72,7 +72,7 @@ Cuando la review termina bien, le pone al PR la label `revisado-por-claude`, y c
 
 ## Ingreso de demo
 
-En `/` se entra eligiendo una persona sintética de la lista, alumno o docente, sin clave. La sesión queda en la cookie firmada `hackai_session` y lleva a `/hoy`, el inicio de los dos roles. Se sale con «Salir», que en el celular está en la hoja que abre el avatar. En producción se entra con la cuenta de Microsoft de la Austral: cambia el adaptador del puerto de identidad, no el núcleo.
+En `/` se entra eligiendo una persona sintética de la lista, alumno o docente, sin clave. La sesión queda en la cookie firmada `hackai_session` y lleva a `/hoy`, el inicio de los dos roles. Se sale con «Cerrar sesión», que en el celular está en la hoja que abre el avatar y en compu en el menú de la cuenta, al pie de la barra lateral; el ingreso avisa «Cerraste sesión». En producción se entra con la cuenta de Microsoft de la Austral: cambia el adaptador del puerto de identidad, no el núcleo.
 
 Tomás Aguirre y Mariana Ledesma, las personas del guion, van primeras en la lista (`components/session/person-order.ts`). En la compu, arriba de la lista hay un QR para seguir en el celular; en el celular no aparece (se ve desde 768 px de ancho). Apunta siempre al deploy, https://campus-hackai.vercel.app/ (`DEPLOY_URL` en `components/session/sign-in-qr.ts`), también corriendo en local, porque el celular no abre `localhost`. Se genera en el servidor con `qrcode` (ADR 0008).
 
@@ -80,7 +80,7 @@ Para abrir sesiones hace falta `SESSION_SECRET` en el entorno. Sin esa variable 
 
 El ingreso de demo queda abierto a propósito. La identidad en memoria es el único adaptador que hay, y el que se usa si falta `HACKAI_IDENTITY`: cualquiera que llegue a `/` entra como cualquier persona de la lista, también en el deploy público. Para la demo alcanza, porque todos los datos son sintéticos. Antes de cargar datos reales tiene que estar el adaptador de Microsoft.
 
-La cookie va marcada `Secure` solo si el pedido llegó por HTTPS, y eso se sabe por el header `x-forwarded-proto`. Si el hosting no lo manda, la cookie sale sin `Secure` y no avisa. La sesión no se guarda en el servidor: «Salir» borra la cookie, pero una copia de la cookie sigue valiendo hasta que vence, a los 30 días.
+La cookie va marcada `Secure` solo si el pedido llegó por HTTPS, y eso se sabe por el header `x-forwarded-proto`. Si el hosting no lo manda, la cookie sale sin `Secure` y no avisa. La sesión no se guarda en el servidor: «Cerrar sesión» borra la cookie, pero una copia de la cookie sigue valiendo hasta que vence, a los 30 días.
 
 ## Datos y fecha de la demo
 
@@ -93,6 +93,23 @@ El set está pensado para el ensayo del jueves 12/11 y la demo del viernes 13/11
 - a la mesa de diciembre de Sistemas de Representación, que desaprobó en febrero, le queda un solo lugar;
 - Análisis Matemático I y Programación I tienen avisos, material y tareas con fecha en Moodle;
 - tiene dos notas nuevas en la campana y en Novedades: el TP integrador de Programación I (historia académica, cargado el 9/11) y el primer parcial de Análisis Matemático I (actuación provisoria, cargado el 10/11). Tocar una lleva a Notas y deja de contarlas en ese navegador (cookie `hackai_notas_vistas`); para volver a verlas, borrá la cookie o entrá desde otro navegador.
+
+Un alumno de Ciencias Empresariales, Nicolás Herrera (`p-nherrera`), también tiene a qué inscribirse: Finanzas de verano, con la comisión de la mañana sin cupo y la de la noche con lugar; Negocios Digitales, la optativa de su plan, y Voluntariado Universitario, que da créditos.
+
+**Tomar lista** se puede el día de la clase, aunque ya haya terminado: «Tu clase de ahora» de Hoy lleva a la lista mientras la clase no terminó, y después la clase de hoy sigue en la pestaña «Alumnos y clases» de la materia, con «Tomar lista». Quién tiene clase cada día en el cuatrimestre actual:
+
+| Día | Docente | Comisión | Horario |
+|---|---|---|---|
+| Lunes | Mariana Ledesma (`p-mledesma`) | Análisis Matemático I, A (FI) | 08:00 a 10:00 |
+| Lunes | Carolina Bustos (`p-cbustos`) | Análisis Matemático I, A (FCE) | 18:00 a 20:00 |
+| Martes | Gustavo Ferreyra (`p-gferreyra`) | Análisis Matemático I, B (FI) | 14:00 a 16:00 |
+| Martes | Silvina Rosales (`p-srosales`) | Contabilidad I, A (FCE) | 18:00 a 21:00 |
+| Miércoles | Mariana Ledesma (`p-mledesma`) | Análisis Matemático I, A (FI) | 08:00 a 10:00 |
+| Jueves | Gustavo Ferreyra (`p-gferreyra`) | Análisis Matemático I, B (FI) | 14:00 a 16:00 |
+| Jueves | Carolina Bustos (`p-cbustos`) | Análisis Matemático I, A (FCE) | 18:00 a 20:00 |
+| Viernes | Diego Arrieta (`p-darrieta`) | Programación I, A (FI), híbrida con Zoom | 09:00 a 12:00 |
+
+El viernes 13/11, con `HACKAI_CLOCK=sistema`, la lista se muestra con Diego Arrieta: de 9 a 12 desde Hoy, y a la tarde desde Programación I › «Alumnos y clases». Con el reloj fijo (martes 10/11 a las 12), la clase del día es la de Gustavo Ferreyra a las 14, y Hoy ya ofrece «Tomar lista».
 
 Los enlaces a Moodle y a la Autogestión del SIU («Ir al aula», el material, las constancias, «Seguir en la Autogestión») no salen de HackAI: van a `/simulado/<moodle|siu>/<ruta del sistema real>` (`app/simulado/`), una página que dice que el sistema está simulado y qué abriría el enlace en producción. No pide sesión ni lee datos.
 
@@ -137,7 +154,7 @@ Los archivos se abren por `/archivos/<id>/<nombre>` (`app/archivos/[id]/[name]/r
 - **Sin sesión** lleva al ingreso con `?next=<ruta del archivo>`, y al entrar vuelve al archivo. `lib/return-to.ts` deja volver solo a rutas de la app, nunca a otro sitio.
 - **Con sesión** le pide el archivo a Espacios, que chequea que la persona vea el espacio del material o el canal del adjunto. Si no lo ve, o el archivo no existe, muestra la misma página corta («Este archivo no está disponible», 404), así no se sabe si existe. Si el almacenamiento no responde, otra página propone probar de nuevo (502).
 - **Se muestran** PDF, imágenes y texto plano; el resto se descarga, con el nombre original aunque tenga tildes. PDF e imágenes van sin CSP, porque los abre el visor del navegador y una CSP cerrada se lo arruina (en Chrome, la imagen pierde los estilos del visor). Todo lo demás va con `default-src 'none'; sandbox`, que no deja correr nada. Todo va con `nosniff`.
-- **Caché:** cada archivo lleva su id como `ETag` y `Cache-Control: private, no-cache`. El navegador lo guarda y, al volver a abrirlo, pregunta: si la persona lo sigue viendo recibe un 304 sin cuerpo, no el archivo entero. Como cada pregunta pasa por la sesión y por Espacios, después de «Salir» la copia guardada no se vuelve a mostrar. El 304 le ahorra la bajada al navegador, no al servidor: `file` de Espacios igual trae los bytes de Storage en cada pregunta.
+- **Caché:** cada archivo lleva su id como `ETag` y `Cache-Control: private, no-cache`. El navegador lo guarda y, al volver a abrirlo, pregunta: si la persona lo sigue viendo recibe un 304 sin cuerpo, no el archivo entero. Como cada pregunta pasa por la sesión y por Espacios, después de «Cerrar sesión» la copia guardada no se vuelve a mostrar. El 304 le ahorra la bajada al navegador, no al servidor: `file` de Espacios igual trae los bytes de Storage en cada pregunta.
 
 Las baterías de contrato del almacén (`tests/contracts/spaces-store.test.ts`) y de Archivos (`tests/contracts/files.test.ts`) corren siempre contra memoria y contra Supabase con un PostgREST o un Storage de mentira, sin red, y contra una base de prueba solo con `HACKAI_TEST_SUPABASE_URL` y `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -345,7 +362,7 @@ Se usa desde la compu: en el celular (por el User-Agent, `lib/device.ts`) el ing
 3. En las herramientas del navegador, Application > Cookies > `https://siu.austral.edu.ar`, copiá el valor de `siu_sess__portal_ua_UA` y pegalo.
 4. Aceptá cómo se usa la sesión. HackAI te reconoce y entrás a tu inicio.
 
-Cómo se cuida la sesión: viaja cifrada (AES-256-GCM con una clave derivada de `SESSION_SECRET`) en una cookie de tu navegador (`hackai_siu`), y en cada pedido se arma tu cuenta en el servidor con ella; no va a la base ni a logs. A cada persona la reconoce un HMAC de su documento, que no se guarda. «Salir» borra las dos cookies. Cada cuenta tiene sus propios ids (`real-<clave>-…`), así dos alumnos no se cruzan (`lib/adapters/siu-real/registry.ts`).
+Cómo se cuida la sesión: viaja cifrada (AES-256-GCM con una clave derivada de `SESSION_SECRET`) en una cookie de tu navegador (`hackai_siu`), y en cada pedido se arma tu cuenta en el servidor con ella; no va a la base ni a logs. A cada persona la reconoce un HMAC de su documento, que no se guarda. «Cerrar sesión» borra las dos cookies. Cada cuenta tiene sus propios ids (`real-<clave>-…`), así dos alumnos no se cruzan (`lib/adapters/siu-real/registry.ts`).
 
 **Una sola cuenta desde el `.env.local`** (opcional, para correr local sin pasar por el ingreso): `HACKAI_SIU_REAL=si` y `SIU_SESION=<el valor>`; esa persona aparece primera en el ingreso de demo.
 

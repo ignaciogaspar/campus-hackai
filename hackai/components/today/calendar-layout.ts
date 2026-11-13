@@ -3,7 +3,11 @@
    hay cada semana y cómo se agrupa lo que se pisa. Todo en la hora de Buenos
    Aires y con semanas de lunes a domingo. Qué es un parcial, qué pasó y cuál
    es el próximo lo decide Hoy: acá solo se ubica. */
+import { offerHref } from '@/components/enrollment/offer-href'
+import { spaceHref } from '@/components/spaces/format'
+import { calendarHref } from '@/components/today/agenda'
 import type { Origin } from '@/components/ui/origin-badge'
+import type { Role } from '@/lib/core/people'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE, weekdayIndex } from '@/lib/dates'
 
@@ -21,7 +25,10 @@ export type CalendarEvent = {
   time: string | null
   code: string | null
   title: string
+  /** La materia y, en un final, su turno; en una clase, la comisión. */
   subject: string
+  /** El nombre de la materia, sin el turno ni la comisión: para el filtro y para nombrar un final. */
+  subjectName: string
   /** Dónde: el aula de una clase o el lugar de un final, si el SIU lo da. */
   place: string | null
   tone: CalendarTone
@@ -30,11 +37,51 @@ export type CalendarEvent = {
   next: boolean
   /** El enlace de Zoom de una clase virtual o híbrida, si el docente lo cargó. */
   zoomUrl?: string | null
+  /** A dónde lleva tocarlo: el mismo destino que la fecha en Hoy. Sin destino, no se toca. */
+  href?: string
+}
+
+/** Qué se puede ver solo en Calendario: los parciales, recuperatorios y TP van juntos. */
+export type CalendarGroup = 'clases' | 'evaluaciones' | 'finales' | 'entregas' | 'inscripciones'
+
+export const CALENDAR_GROUPS: { group: CalendarGroup; label: string; tones: CalendarTone[] }[] = [
+  { group: 'clases', label: 'Clases', tones: ['clase'] },
+  { group: 'evaluaciones', label: 'Parciales y TP', tones: ['parcial', 'recuperatorio', 'tp'] },
+  { group: 'finales', label: 'Finales', tones: ['final'] },
+  { group: 'entregas', label: 'Entregas', tones: ['entrega'] },
+  { group: 'inscripciones', label: 'Inscripciones', tones: ['inscripcion'] }
+]
+
+export const groupOf = (tone: CalendarTone): CalendarGroup =>
+  CALENDAR_GROUPS.find((g) => g.tones.includes(tone))?.group ?? 'clases'
+
+/** Qué se ve en Calendario: todo o un solo tipo, de todas las materias o de una (por sigla). */
+export type CalendarFilters = { kind: CalendarGroup | 'todo'; subject: string }
+
+/** Los filtros de `?ver=` y `?materia=`. Un tipo que no existe es «Todo». */
+export function calendarFiltersFrom(params: { ver?: string; materia?: string }): CalendarFilters {
+  return {
+    kind: CALENDAR_GROUPS.find((g) => g.group === params.ver)?.group ?? 'todo',
+    subject: params.materia ?? ''
+  }
+}
+
+/** La query de la página con los filtros en `?ver=` y `?materia=`, sin tocar lo demás (como `?semana=`). */
+export function withCalendarFilters(search: string, { kind, subject }: CalendarFilters): string {
+  const query = new URLSearchParams(search)
+  if (kind === 'todo') query.delete('ver')
+  else query.set('ver', kind)
+  if (subject) query.set('materia', subject)
+  else query.delete('materia')
+  const text = query.toString()
+  return text ? `?${text}` : ''
 }
 
 /** Los días y horarios de clase de una comisión, entre el inicio y el fin de su período. */
 export type ClassSlot = {
   id: string
+  subjectId: string
+  sectionId: string
   code: string
   subject: string
   section: string
@@ -55,6 +102,22 @@ export const mondayOf = (day: string) => addDays(day, -weekdayIndex(day))
 
 /** Los 7 días de la semana que empieza en `monday`. */
 export const weekOf = (monday: string) => Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+
+/** Una fila de la agenda del celular: un día con algo, o varios vacíos seguidos. */
+export type AgendaRow = { days: string[]; empty: boolean }
+
+/** Los días de la agenda en filas: los vacíos seguidos van juntos en una sola, salvo hoy, que va solo. */
+export function agendaRows(days: string[], busy: (day: string) => boolean, today: string): AgendaRow[] {
+  const rows: AgendaRow[] = []
+  for (const day of days) {
+    const empty = !busy(day)
+    const last = rows.at(-1)
+    const joins = empty && last?.empty && day !== today && !last.days.includes(today)
+    if (joins) last.days.push(day)
+    else rows.push({ days: [day], empty })
+  }
+  return rows
+}
 
 /** Las semanas completas, de lunes a domingo, que cubren el mes de un día `AAAA-MM-DD`. */
 export function monthOf(day: string): string[] {
@@ -99,13 +162,20 @@ const CLOSING: Record<OpenEnrollment['kind'], string> = {
   examen: 'al final'
 }
 
+/** El docente no rinde el final: integra la mesa. «Final» se lee como la mesa; otro nombre queda como está. */
+const titleOf = (item: UpcomingItem, viewer: Role) =>
+  viewer === 'profesor' && item.kind === 'final' && item.name === 'Final' ? 'Mesa de final' : item.name
+
 /** Las fechas de Hoy como eventos. Los parciales y finales van en su hora; las
-    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. */
+    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. Para el docente
+    (`viewer`), el final se titula como la mesa que integra. Cada una lleva a donde lleva en Hoy (`calendarHref`);
+    un cierre, a la oferta de la materia. */
 export function eventsOf(
   upcoming: UpcomingItem[],
   enrollments: OpenEnrollment[],
   nextId: string | null,
-  now: string
+  now: string,
+  viewer: Role = 'alumno'
 ): CalendarEvent[] {
   const dates = upcoming.map((item): CalendarEvent => {
     const minutes = minutesOf(item.date)
@@ -116,13 +186,15 @@ export function eventsOf(
       end: null,
       time: hhmm(minutes),
       code: item.subjectCode,
-      title: item.name,
+      title: titleOf(item, viewer),
       subject: item.examPeriod ? `${item.subjectName} · ${item.examPeriod}` : item.subjectName,
+      subjectName: item.subjectName,
       place: item.location,
       tone: item.kind,
       origin: item.source,
       past: item.past,
-      next: item.id === nextId
+      next: item.id === nextId,
+      href: calendarHref(item, viewer)
     }
   })
   // Una inscripción sin fecha de cierre informada no tiene día en el calendario.
@@ -142,11 +214,13 @@ function closingEvent(e: OpenEnrollment, closesAt: string, now: string): Calenda
     code: null,
     title: `Cierra la inscripción ${CLOSING[e.kind]}`,
     subject: e.subjectName,
+    subjectName: e.subjectName,
     place: null,
     tone: 'inscripcion',
     origin: 'siu',
     past: closesAt < now,
-    next: false
+    next: false,
+    href: offerHref(e.subjectId, e.kind)
   }
 }
 
@@ -165,6 +239,8 @@ export function classSlotsOf(subjects: MySubject[]): ClassSlot[] {
     s.schedule.map(
       (slot, i): ClassSlot => ({
         id: `clase:${s.sectionId}:${i}`,
+        subjectId: s.subjectId,
+        sectionId: s.sectionId,
         code: s.code,
         subject: s.name,
         section: s.sectionName,
@@ -195,12 +271,14 @@ export function classesIn(days: string[], slots: ClassSlot[], today: string): Ca
           code: slot.code,
           title: slot.subject,
           subject: `Comisión ${slot.section}`,
+          subjectName: slot.subject,
           place: slot.location,
           tone: 'clase',
           origin: 'siu',
           past: day < today,
           next: false,
-          zoomUrl: slot.zoomUrl
+          zoomUrl: slot.zoomUrl,
+          href: spaceHref(slot.subjectId, { comision: slot.sectionId })
         })
       )
   )
@@ -253,16 +331,20 @@ export function clustersOf(events: CalendarEvent[]): Cluster[] {
 /** Cuánto mide cada franja de la grilla de la semana: dos horas. */
 export const SLOT_MINUTES = 120
 
-/** Desde y hasta qué minuto va la grilla: al menos de 8 a 20 y, si algo empieza
-    antes o termina después, se estira hasta la franja de dos horas que lo cubre.
-    Las franjas arrancan en hora par (8, 10, 12…). */
-export function rangeOf(clusters: Cluster[], first = 8 * 60, last = 20 * 60): { from: number; to: number } {
-  const start = Math.min(first, ...clusters.map((c) => c.start))
-  const end = Math.max(last, ...clusters.map((c) => c.end))
-  return {
-    from: Math.floor(start / SLOT_MINUTES) * SLOT_MINUTES,
-    to: Math.ceil(end / SLOT_MINUTES) * SLOT_MINUTES
-  }
+/** Cuánto se ve, como mínimo, de la grilla de una semana con eventos: ocho horas. */
+const MIN_SPAN = 8 * 60
+const DAY_END = 24 * 60
+
+/** Desde y hasta qué minuto va la grilla: de la franja de dos horas del primer
+    evento de la semana a la del último, con al menos ocho horas (si no entran
+    antes de la medianoche, empieza antes). Sin eventos, de 8 a 20. Las franjas
+    arrancan en hora par (8, 10, 12…). Así la grilla abre donde hay algo. */
+export function rangeOf(clusters: Cluster[]): { from: number; to: number } {
+  if (clusters.length === 0) return { from: 8 * 60, to: 20 * 60 }
+  const start = Math.floor(Math.min(...clusters.map((c) => c.start)) / SLOT_MINUTES) * SLOT_MINUTES
+  const end = Math.ceil(Math.max(...clusters.map((c) => c.end)) / SLOT_MINUTES) * SLOT_MINUTES
+  const to = Math.min(DAY_END, Math.max(end, start + MIN_SPAN))
+  return { from: Math.max(0, Math.min(start, to - MIN_SPAN)), to }
 }
 
 /** Un evento de un grupo con su carril: lo que se pisa va lado a lado, cada uno en su carril. */

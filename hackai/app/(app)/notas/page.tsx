@@ -19,6 +19,7 @@ import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError } from '@/lib/core/studies'
+import { newGradesFor } from '@/lib/new-grades'
 
 export const metadata: Metadata = { title: 'Notas · Campus HackAI' }
 
@@ -33,7 +34,11 @@ export default async function NotasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const session = await requireSession('alumno')
-  const [result, params] = await Promise.all([system().today.grades(session.personId), searchParams])
+  const [result, params, newGrades] = await Promise.all([
+    system().today.grades(session.personId),
+    searchParams,
+    newGradesFor(session)
+  ])
   const career = result.ok ? result.value.data : null
   const taken = career?.subjects.filter((s) => s.status !== 'pendiente') ?? []
 
@@ -73,6 +78,8 @@ export default async function NotasPage({
                 initialFilters={filtersFrom(params)}
                 initialGrouping={groupingFrom(params)}
                 initialOpen={typeof params.materia === 'string' ? params.materia : undefined}
+                highlight={typeof params.evaluacion === 'string' ? params.evaluacion : undefined}
+                withNewGrades={[...new Set(newGrades.flatMap((g) => g.subjectId ?? []))]}
               />
             )}
           </>

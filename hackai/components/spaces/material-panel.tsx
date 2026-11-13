@@ -1,15 +1,18 @@
-/* El material de la materia, en secciones plegables (la primera abierta) según
+/* El material de la materia, en secciones plegables según
    cómo lo organiza el docente: por unidad o tema, por semana o sin secciones.
    Junta lo que se sube en HackAI, en Moodle y en el canal externo, cada archivo
    con su origen. El docente de la materia ve además el selector para
    organizarlo y el formulario para subir; quién es docente lo dice
    `viewer.canManage`. Las secciones son <details>: se pliegan sin JavaScript.
    Arriba, el campo para buscar; con algo buscado, los resultados reemplazan a
-   las secciones (material-search). */
+   las secciones (material-search). Sin buscar, primero «Lo último» y después
+   las secciones, abiertas la del archivo más nuevo y las que tienen algo sin
+   ver. */
 
 import { ChevronRight, FileText, Upload } from 'lucide-react'
 import { addMaterial, organizeMaterial } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import { openMaterialSections } from '@/components/spaces/format'
 import { MaterialRow } from '@/components/spaces/material-row'
 import {
   MaterialSearchForm,
@@ -19,7 +22,7 @@ import {
 import { buttonVariants } from '@/components/ui/button'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
-import type { MaterialLayout, MaterialView } from '@/lib/core/spaces'
+import type { MaterialItem, MaterialLayout, MaterialView } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
 const LAYOUTS: [MaterialLayout, string][] = [
@@ -117,23 +120,49 @@ type Props = {
   canManage: boolean
   /** Lo que devolvió la búsqueda de `?buscar=`, o `null` si no se buscó nada. */
   search: MaterialSearchResult | null
+  /** La comisión elegida en el selector del docente que dicta varias: la conserva la búsqueda. */
+  comision?: string
+}
+
+/** Los últimos archivos, arriba de las secciones: lo nuevo se ve sin desplegar nada. En compu grande ya están en
+    el panel de contexto. */
+function Latest({ recent }: { recent: MaterialItem[] }) {
+  if (recent.length === 0) return null
+  return (
+    <section
+      aria-labelledby='material-ultimo'
+      className='overflow-hidden rounded-[22px] bg-card shadow-card 2xl:hidden'
+    >
+      <h2 id='material-ultimo' className='px-4 pt-4 pb-1 font-bold lg:px-5 lg:text-[1.0625rem]'>
+        Lo último
+      </h2>
+      <ul className='divide-y divide-border'>
+        {recent.map((item) => (
+          <MaterialRow key={item.id} item={item} showSection />
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 function MaterialSections({ material }: { material: MaterialView }) {
   if (material.sections.length === 0) {
     return (
       <EmptyState icon={FileText} title='Todavía no hay material'>
-        Cuando la cátedra suba algo acá, en Moodle o en Discord, aparece en esta lista con su origen.
+        Cuando la cátedra suba algo acá, en Moodle o en Discord, aparece en esta lista con su origen. Los archivos
+        adjuntos a un aviso quedan en Avisos.
       </EmptyState>
     )
   }
+  const open = new Set(openMaterialSections(material))
   return (
     <>
+      <Latest recent={material.recent} />
       <div className='flex flex-col gap-3'>
-        {material.sections.map((section, i) => (
+        {material.sections.map((section) => (
           <details
             key={section.title}
-            open={i === 0}
+            open={open.has(section.title)}
             className='group overflow-hidden rounded-[22px] bg-card shadow-card'
           >
             <summary className='flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 py-3 font-bold focus-ring-inset lg:min-h-14 lg:px-5 lg:text-[1.0625rem] [&::-webkit-details-marker]:hidden'>
@@ -161,7 +190,7 @@ function MaterialSections({ material }: { material: MaterialView }) {
   )
 }
 
-export function MaterialPanel({ subjectId, spaceId, channelId, material, canManage, search }: Props) {
+export function MaterialPanel({ subjectId, spaceId, channelId, material, canManage, search, comision }: Props) {
   const query = search?.query ?? ''
   return (
     <>
@@ -171,9 +200,9 @@ export function MaterialPanel({ subjectId, spaceId, channelId, material, canMana
           <UploadForm subjectId={subjectId} spaceId={spaceId} sectionNames={material.sectionNames} />
         </div>
       )}
-      <MaterialSearchForm subjectId={subjectId} channelId={channelId} query={query} />
+      <MaterialSearchForm subjectId={subjectId} channelId={channelId} query={query} comision={comision} />
       {search ? (
-        <MaterialSearchResults subjectId={subjectId} channelId={channelId} search={search} />
+        <MaterialSearchResults subjectId={subjectId} channelId={channelId} search={search} comision={comision} />
       ) : (
         <MaterialSections material={material} />
       )}

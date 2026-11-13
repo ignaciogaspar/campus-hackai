@@ -1,7 +1,9 @@
 /* Cómo se dicen las clases y los pases al SIU en las pantallas del docente.
    Solo presentación: el estado lo decide Cursada. */
+import { longDay, timeOf } from '@/components/dates'
 import type { StatusTone } from '@/components/ui/status-pill'
-import type { AttendanceError, AttendancePass, StudiesReadError } from '@/lib/core/studies'
+import type { AttendanceError, AttendancePass, NextClass, StudiesReadError } from '@/lib/core/studies'
+import { dayKey } from '@/lib/dates'
 
 /** La pantalla de tomar lista de una clase de la comisión. */
 export const attendanceHref = (subjectId: string, sectionId: string, classAt: string) =>
@@ -44,4 +46,18 @@ export const ATTENDANCE_ERRORS: Record<
 export function absentCount(absent: number, total: number): string {
   if (absent === 0) return `Todos presentes (${total})`
   return `${absent} ${absent === 1 ? 'ausente' : 'ausentes'} de ${total}`
+}
+
+/** «miércoles 11 de noviembre», para ir en medio de una frase. */
+const dayInText = (iso: string) => longDay(iso).toLowerCase()
+
+/** Cuándo es la próxima clase, para el vacío de «Hoy no hay clase»: «La próxima es el miércoles 11 de noviembre, de
+    08:00 a 10:00.». Con el período sin empezar, cuándo empieza la cursada. */
+export function nextClassText(next: NextClass | null, sectionName: string): string {
+  if (!next) return `La comisión ${sectionName} no tiene más clases en este período.`
+  const hours = `de ${timeOf(next.classAt)} a ${timeOf(next.endAt)}`
+  if (!next.termStartsOn) return `La próxima es el ${dayInText(next.classAt)}, ${hours}.`
+  const starts = `La cursada empieza el ${dayInText(`${next.termStartsOn}T12:00:00-03:00`)}`
+  if (dayKey(next.classAt) === next.termStartsOn) return `${starts}, con la primera clase ${hours}.`
+  return `${starts}. La primera clase es el ${dayInText(next.classAt)}, ${hours}.`
 }

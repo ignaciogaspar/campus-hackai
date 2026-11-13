@@ -4,23 +4,26 @@
    el material y abrir un canal directo con un docente. Quién
    puede hacer qué lo decide Espacios; estas acciones validan lo que llega del
    navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
-   Se usan con useActionState: devuelven el estado que muestra el formulario. */
+   Se usan con useActionState: devuelven el estado que muestra el formulario.
+   También «Marcar todo como leído» de Novedades. */
 'use server'
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { discordChannelIdFrom } from '@/components/spaces/discord-format'
 import { spaceHref } from '@/components/spaces/format'
-import { requireSession } from '@/lib/auth'
+import { requireSession, setServerCookie } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
+import { GRADES_SEEN_COOKIE, GRADES_SEEN_MAX_AGE, seenValue } from '@/lib/grades-seen'
 import type { ErrorOf } from '@/lib/result'
 
-/** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. */
+/** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. Un error que es de un campo
+    nombra el campo (`field`, su `name`): el formulario lo muestra debajo de él y le lleva el foco. */
 export type SpaceActionState =
   | { status: 'idle' }
   | { status: 'ok'; message: string | null; at: number }
-  | { status: 'error'; message: string; at: number }
+  | { status: 'error'; message: string; at: number; field?: string }
 
 type SpaceError =
   | ErrorOf<ReturnType<Spaces['post']>>
@@ -96,7 +99,8 @@ function refresh(subjectId: string): void {
   revalidatePath(`/materias/${subjectId}`)
 }
 
-/** Publica un mensaje en un canal, o una respuesta en un hilo si llega `replyTo`. */
+/** Publica un mensaje en un canal, o una respuesta en un hilo si llega `replyTo`. Con `resolve`, además marca
+    resuelta la consulta que se responde. */
 export async function postMessage(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
@@ -120,8 +124,21 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
         : ERRORS[result.error]
     )
   }
+  if (replyTo && text(form, 'resolve') === '1') return resolveAfterReply(session.personId, subjectId, replyTo)
   refresh(subjectId)
-  return done(replyTo ? 'Respuesta enviada.' : 'Mensaje enviado.')
+  // La confirmación la pone el campo para escribir, que sabe a quién le llega.
+  return done()
+}
+
+/** «Responder y marcar resuelta»: la respuesta ya salió. Si marcarla falla se dice, pero como algo que salió: un
+    error devolvería el texto al campo y se podría mandar dos veces. */
+async function resolveAfterReply(personId: string, subjectId: string, messageId: string): Promise<SpaceActionState> {
+  const resolved = await system().spaces.resolve(personId, messageId)
+  refresh(subjectId)
+  if (!resolved.ok) {
+    return done('Tu respuesta se envió, pero no pudimos marcar la consulta resuelta: tocá «Marcar resuelta».')
+  }
+  return done('Respondiste y la consulta quedó resuelta.')
 }
 
 /** Marca una consulta como resuelta. */
@@ -282,4 +299,17 @@ export async function openDirect(_prev: SpaceActionState, form: FormData): Promi
   if (!result.ok) return failed(ERRORS[result.error])
   refresh(subjectId)
   redirect(spaceHref(subjectId, { canal: result.value.id }))
+}
+
+/** «Marcar todo como leído» de Novedades: lo sin leer de todos sus espacios y, al alumno, también sus notas
+    nuevas. Devuelve por qué no se pudo, o `null` si salió bien. */
+export async function markAllNewsRead(): Promise<string | null> {
+  const session = await requireSession()
+  const marked = await system().spaces.markAllRead(session.personId)
+  if (!marked.ok) return ERRORS[marked.error]
+  if (session.role === 'alumno') {
+    await setServerCookie(GRADES_SEEN_COOKIE, seenValue(session.personId, system().now()), GRADES_SEEN_MAX_AGE)
+  }
+  revalidatePath('/', 'layout')
+  return null
 }

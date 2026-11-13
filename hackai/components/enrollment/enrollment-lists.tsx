@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import type { ReactNode } from 'react'
 import {
   asKind,
+  emptyList,
   href,
   KINDS,
   type Kind,
@@ -90,7 +91,8 @@ function ListGroup({
   )
 }
 
-/* Los tipos, en un riel de una fila arriba de la lista (fuera del scroll): con cuántas abiertas hay de cada uno. */
+/* Los tipos, en un riel de una fila arriba de la lista (fuera del scroll): con cuántas abiertas hay de cada uno. En el
+   celular, si no entran (con letra grande), el riel se desliza y el borde derecho se desvanece para mostrarlo. */
 function KindFilter({
   current,
   counts,
@@ -103,7 +105,10 @@ function KindFilter({
   return (
     <nav
       aria-label='Tipo de materia'
-      className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto [scrollbar-width:none]')}
+      className={cn(
+        railTrack({ size: 'sm' }),
+        'w-full overflow-x-auto [scrollbar-width:none] max-sm:[mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]'
+      )}
     >
       {KINDS.map(({ kind, label, short }) => (
         <Link
@@ -117,7 +122,7 @@ function KindFilter({
           aria-current={kind === current ? 'page' : undefined}
           className={railItem({
             size: 'sm',
-            className: 'group/kind flex-auto shrink-0 gap-1 px-2.5 text-[0.75rem] max-sm:px-1.5'
+            className: 'group/kind min-h-11 flex-auto shrink-0 gap-1 px-2.5 text-[0.75rem] max-sm:px-1.5'
           })}
         >
           {short ? (
@@ -135,12 +140,6 @@ function KindFilter({
       ))}
     </nav>
   )
-}
-
-function emptyText(tab: Tab, kind: Kind): string {
-  if (tab === 'examenes') return 'Ahora no hay mesas abiertas de materias que tengas regulares o estés cursando.'
-  if (kind === 'todas') return 'Ahora no hay inscripciones a cursada que te sirvan. Cuando abra una, aparece acá.'
-  return 'No hay inscripciones abiertas de este tipo. Probá con otro filtro.'
 }
 
 function SubjectList({
@@ -161,11 +160,12 @@ function SubjectList({
   const filter = matches(tab === 'materias' ? kind : 'todas')
   const shownOpen = open.filter(filter)
   const shownMine = mine.filter(filter)
+  const empty = shownOpen.length === 0 ? emptyList({ tab, kind, open, mine }) : null
   return (
     <div className='flex flex-col gap-2'>
-      {shownOpen.length === 0 ? (
-        <EmptyState icon={ClipboardList} title='No hay inscripciones abiertas'>
-          {emptyText(tab, kind)}
+      {empty ? (
+        <EmptyState icon={ClipboardList} title={empty.title}>
+          {empty.text}
         </EmptyState>
       ) : (
         <ListGroup title='Con inscripción abierta' tab={tab} kind={kind} items={shownOpen} selected={selected} />
@@ -229,6 +229,8 @@ export function EnrollmentLists({
   const kind = asKind(params.get('tipo') ?? undefined)
   const listKind = tab === 'materias' ? kind : 'todas'
   const { open, mine, mineError } = lists[tab]
+  // Sin nada en la lista, compu no invita a tocar una materia: la lista ocupa todo el ancho.
+  const nothingToPick = !selected && ![...open, ...mine].some(matches(listKind))
 
   return (
     <>
@@ -245,9 +247,13 @@ export function EnrollmentLists({
                 window.history.replaceState(null, '', target)
               }}
               aria-current={item.tab === tab ? 'page' : undefined}
-              className={railItem({ size: 'sm' })}
+              className={railItem({
+                size: 'sm',
+                className: 'min-h-11 py-1 text-center leading-tight whitespace-normal'
+              })}
             >
-              {item.label}
+              <span className='sm:hidden'>{item.short}</span>
+              <span className='max-sm:hidden'>{item.label}</span>
             </Link>
           )
         })}
@@ -255,7 +261,12 @@ export function EnrollmentLists({
       {error ? (
         <ErrorNotice>{error}</ErrorNotice>
       ) : (
-        <div className='grid grid-cols-[minmax(0,1fr)] gap-5 lg:h-[max(30rem,calc(100dvh-17.5rem))] lg:grid-cols-[minmax(24rem,28rem)_minmax(0,1fr)] lg:gap-6'>
+        <div
+          className={cn(
+            'grid grid-cols-[minmax(0,1fr)] gap-5 lg:gap-6',
+            !nothingToPick && 'lg:h-[max(30rem,calc(100dvh-17.5rem))] lg:grid-cols-[minmax(24rem,28rem)_minmax(0,1fr)]'
+          )}
+        >
           <section
             aria-label='Materias'
             className={cn(
@@ -269,29 +280,31 @@ export function EnrollmentLists({
             </div>
           </section>
 
-          <section
-            aria-label='Detalle de la materia'
-            className={cn(
-              'relative min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-width:thin]',
-              !selected && 'max-lg:hidden'
-            )}
-          >
-            {selected && (
-              <Link
-                href={href(tab, undefined, kind)}
-                prefetch={false}
-                onNavigate={(event) => {
-                  event.preventDefault()
-                  window.history.replaceState(null, '', href(tab, undefined, kind))
-                }}
-                className='mb-3 inline-flex min-h-10 items-center gap-1 text-[0.875rem] font-semibold text-blue lg:hidden'
-              >
-                <ChevronLeft aria-hidden='true' className='size-4' strokeWidth={2} />
-                Todas las materias
-              </Link>
-            )}
-            {selected && selected === detailSubject && tab === detailTab ? detail : <PickSubject tab={tab} />}
-          </section>
+          {!nothingToPick && (
+            <section
+              aria-label='Detalle de la materia'
+              className={cn(
+                'relative min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:[scrollbar-width:thin]',
+                !selected && 'max-lg:hidden'
+              )}
+            >
+              {selected && (
+                <Link
+                  href={href(tab, undefined, kind)}
+                  prefetch={false}
+                  onNavigate={(event) => {
+                    event.preventDefault()
+                    window.history.replaceState(null, '', href(tab, undefined, kind))
+                  }}
+                  className='mb-3 inline-flex min-h-10 items-center gap-1 text-[0.875rem] font-semibold text-blue lg:hidden'
+                >
+                  <ChevronLeft aria-hidden='true' className='size-4' strokeWidth={2} />
+                  Todas las materias
+                </Link>
+              )}
+              {selected && selected === detailSubject && tab === detailTab ? detail : <PickSubject tab={tab} />}
+            </section>
+          )}
         </div>
       )}
     </>

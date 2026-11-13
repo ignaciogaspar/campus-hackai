@@ -31,15 +31,19 @@ const SEARCH_ERRORS: Record<SearchError, string> = {
 export function MaterialSearchForm({
   subjectId,
   channelId,
-  query
+  query,
+  comision
 }: {
   subjectId: string
   channelId: string
   query: string
+  /** La comisión elegida en el selector del docente que dicta varias: la búsqueda la conserva. */
+  comision?: string
 }) {
   return (
     <Form action={spaceHref(subjectId)} role='search' aria-label='En el material' className='flex gap-2'>
       <input type='hidden' name='canal' value={channelId} />
+      {comision && <input type='hidden' name='comision' value={comision} />}
       <label className='relative min-w-0 flex-1'>
         <span className='sr-only'>Buscar en el material</span>
         <Search
@@ -65,10 +69,10 @@ export function MaterialSearchForm({
   )
 }
 
-function ClearLink({ subjectId, channelId }: { subjectId: string; channelId: string }) {
+function ClearLink({ subjectId, channelId, comision }: { subjectId: string; channelId: string; comision?: string }) {
   return (
     <Link
-      href={spaceHref(subjectId, { canal: channelId })}
+      href={spaceHref(subjectId, { canal: channelId, comision })}
       className='inline-flex min-h-11 items-center gap-1 font-bold text-blue underline'
     >
       <X aria-hidden='true' className='size-4' />
@@ -134,11 +138,13 @@ function count(n: number, one: string, many: string) {
 export function MaterialSearchResults({
   subjectId,
   channelId,
-  search
+  search,
+  comision
 }: {
   subjectId: string
   channelId: string
   search: MaterialSearchResult
+  comision?: string
 }) {
   const { result } = search
   if (!result.ok) {
@@ -147,13 +153,13 @@ export function MaterialSearchResults({
         <p>{SEARCH_ERRORS[result.error]}</p>
         {result.error === 'falla-externa' && (
           <Link
-            href={spaceHref(subjectId, { canal: channelId, buscar: search.query })}
+            href={spaceHref(subjectId, { canal: channelId, buscar: search.query, comision })}
             className='inline-flex min-h-11 items-center font-bold underline'
           >
             Reintentar
           </Link>
         )}
-        <ClearLink subjectId={subjectId} channelId={channelId} />
+        <ClearLink subjectId={subjectId} channelId={channelId} comision={comision} />
       </ErrorNotice>
     )
   }
@@ -164,7 +170,7 @@ export function MaterialSearchResults({
         <EmptyState icon={SearchX} title={`No encontramos nada para «${query}»`}>
           Probá con otra palabra, el nombre de la unidad o parte del nombre del archivo.
         </EmptyState>
-        <ClearLink subjectId={subjectId} channelId={channelId} />
+        <ClearLink subjectId={subjectId} channelId={channelId} comision={comision} />
       </div>
     )
   }
@@ -180,7 +186,7 @@ export function MaterialSearchResults({
             .join(' y ')}{' '}
           para «{query}»
         </p>
-        <ClearLink subjectId={subjectId} channelId={channelId} />
+        <ClearLink subjectId={subjectId} channelId={channelId} comision={comision} />
       </div>
       {material.length > 0 && (
         <ResultGroup id='resultados-material' title='Material'>

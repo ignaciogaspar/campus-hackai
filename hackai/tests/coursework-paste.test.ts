@@ -91,6 +91,32 @@ test('un alumno repetido usa la primera línea y marca la otra', () => {
   ])
 })
 
+test('un repetido dice en qué línea venía el alumno y si esa nota no servía', () => {
+  const rows = previewOf('30101\t12\n30101\t9\n30102\t8\n30102\t7', students, '1-10').rows
+  assert.deepEqual(
+    rows.map((r) => [r.outcome, r.repeats]),
+    [
+      ['invalida', null],
+      ['repetido', { line: 1, invalid: true }],
+      ['nota', null],
+      ['repetido', { line: 3, invalid: false }]
+    ]
+  )
+})
+
+test('una línea sin tabulación que no es nadie de la comisión es un problema de formato', () => {
+  assert.deepEqual(
+    previewOf('hola\nescobar joaquín;9\n30101 8\n99999\t7', students, '1-10').rows.map((r) => r.outcome),
+    ['formato', 'formato', 'formato', 'no-reconocido']
+  )
+  const preview = previewOf('30101\t8\nhola', students, '1-10')
+  assert.deepEqual(preview.counts, { ready: 1, absent: 0, unmatched: 1, invalid: 0, skipped: 0 })
+})
+
+test('una línea con solo el legajo de un alumno no trae nota, no es un problema de formato', () => {
+  assert.deepEqual(outcomes('30101'), [['sin-nota', 'p-1', null]])
+})
+
 test('saltea el encabezado, las líneas vacías y los saltos de Windows', () => {
   const preview = previewOf('Legajo\tNota\r\n30101\t8\r\n\r\n', students, '1-10')
   assert.equal(preview.rows.length, 1)

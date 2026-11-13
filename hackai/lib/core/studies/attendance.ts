@@ -1,5 +1,5 @@
-/* Tomar lista (A3 de Docentes, #108): las clases de una comisión, la lista de
-   una clase, guardarla y pasarla al SIU. Vive en su archivo para que Cursada
+/* Tomar lista (A3 de Docentes, #108): las clases de una comisión, la próxima,
+   la lista de una clase, guardarla y pasarla al SIU. Vive en su archivo para que Cursada
    sume cada operación en una línea.
 
    - Solo el docente de la comisión toma lista, con los alumnos de la comisión.
@@ -36,6 +36,12 @@ export type ClassItem = SectionClass & {
   today: boolean
   modality: SiuSection['modality']
   taken: TakenClass | null
+}
+
+/** La próxima clase de la comisión: la primera del período que todavía no empezó. */
+export type NextClass = SectionClass & {
+  /** Si el período de la comisión todavía no empezó, el día que empieza (`AAAA-MM-DD`); si no, `null`. */
+  termStartsOn: string | null
 }
 
 /** La lista de una clase para tomarla o corregirla. */
@@ -246,5 +252,16 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
     return ok({ classAt, absent: absentIds, pass: outcome.pass, passedAt: outcome.passedAt })
   }
 
-  return { classesOf, sheet, take, retryAttendancePass }
+  async function nextClass(personId: PersonId, sectionId: string): Promise<Result<NextClass | null, AttendanceError>> {
+    const context = await contextOf(personId, sectionId)
+    if (!context.ok) return context
+    const { section, term } = context.value
+    const at = now()
+    const next = classesThrough(section, term, term.end).find((c) => c.classAt > at)
+    if (!next) return ok(null)
+    const starts = dayKey(term.start)
+    return ok({ ...next, termStartsOn: dayKey(at) < starts ? starts : null })
+  }
+
+  return { classesOf, nextClass, sheet, take, retryAttendancePass }
 }

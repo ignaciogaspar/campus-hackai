@@ -68,7 +68,7 @@ import {
 import { searchSpace } from '@/lib/core/spaces/search'
 import { createServerLink } from '@/lib/core/spaces/server'
 import { addCounts, createSync } from '@/lib/core/spaces/sync'
-import { unreadFor } from '@/lib/core/spaces/unread'
+import { markAllRead, unreadFor } from '@/lib/core/spaces/unread'
 import { isFileId } from '@/lib/ports/files'
 import { fail, ok, type Result } from '@/lib/result'
 
@@ -656,6 +656,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     createExternalChannels,
     syncAll,
     unreadFor: (personId) => unreadFor({ studies, people, store }, personId),
+    markAllRead: (personId) => markAllRead({ studies, people, store }, personId),
     openQuestions: (personId) => openQuestions(studies, people, store, personId),
     file
   }
