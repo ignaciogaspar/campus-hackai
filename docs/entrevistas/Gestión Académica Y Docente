@@ -1,0 +1,345 @@
+# Transcripción de Entrevista: Gestión Académica y Docente (SIU Guaraní / Campus)
+
+**Entrevistador 1:** ...tipos de lo que mostraríamos, pero eso es solo de alumnos y docentes y queríamos poder meter al menos...
+
+**Entrevistada:** Uno de gestión.
+
+**Entrevistador 1:** Uno de gestión, sí.
+
+**Entrevistada:** Pasa que con los feriados...
+
+**Entrevistador 2:** Está muy difícil. Y ayer habíamos organizado reuniones y se nos cayó el Outlook a las 2 de la tarde y teníamos una reunión a las 6 y no podíamos comunicarnos. Claro, y nos mató.
+
+**Entrevistada:** Entonces sí, de hecho a mí me habían escrito el jueves, pero con todo lo del Papa y las organizaciones que teníamos, recién les respondí ayer creo y les dije: "Vengan mañana". A Carlos y todo eso, pero no sé, no me escribieron nada así que imagino que o no les llegó el mail o...
+
+**Entrevistador 2:** Es que encima están todos hasta las manos porque es como fin de cuatrimestre. Está todo, entonces nos pasó eso también, como que estaban todos hasta las manos y no pasa nada.
+
+**Entrevistada:** Bueno, entonces, ¿qué quieren que les cuente? ¿Para qué uso yo el SIU como para gestión?
+
+**Entrevistador 2:** Sí, toda tu experiencia.
+
+**Entrevistador 1:** Qué es lo que más te molesta.
+
+**Entrevistador 2:** Si te parece algo tedioso, si querés algo, si necesitás algo que sea automático o mejorarlo.
+
+**Entrevistada:** Entonces, a ver. Yo uso SIU para gestión académica. ¿Qué quiere decir eso? Sobre todo para visualizar estados de alumnos. Por ejemplo, el área de la Dirección de Estudios tiene a cargo todo lo que es el programa de Vida Universitaria. Entonces yo necesito no gestionar el programa de Vida Universitaria, sino ver el avance de los alumnos en el programa de Vida Universitaria, en qué actividades están participando, quiénes son, sacar un montón de datos...
+
+**Entrevistador 2:** Como su perfil.
+
+**Entrevistada:** Exactamente, de cómo funciona el programa de Vida Universitaria. Después, dentro de la Dirección de Estudios también el objetivo es hacer el acompañamiento a los alumnos de todas las unidades académicas. En realidad vos trabajás con los directores de estudio de todas las unidades académicas. Por ejemplo, en el caso de ustedes la conocen a Mariana Krauss.
+
+**Entrevistador 2:** Sí, perfecto.
+
+**Entrevistada:** Entonces, desde la Dirección de Estudios hacemos ese seguimiento académico de los alumnos y vamos pidiendo reportes de cuánto tiempo tardan en recibirse, cuáles son las principales dificultades, cuándo y por qué se dan las bajas académicas, cómo podemos ayudarlos a lograr sus objetivos universitarios y que no se queden en el camino. Todo eso lo vamos siguiendo con los directores de estudio. Vos para poder hacer eso necesitás extraer datos de lo que sucede con los alumnos en el SIU, y todo eso está en SIU. Para mí, el principal problema de SIU es la visualización de datos. Vos para poder extraer datos de SIU necesitás generar reportes que muchos ya están estandarizados por SIU Guaraní, entonces es fácil. Otros reportes no existen. Entonces vos si querés cruzar datos, no los podés cruzar naturalmente en SIU. O sea, vos por ejemplo, si yo quisiera saber cómo vienen... Por ejemplo, quiero el programa de Vida Universitaria. Quiero saber cómo vienen los alumnos cumpliendo con el programa de Vida Universitaria: cuántos alumnos ya lo cumplieron, cuántos alumnos... Yo para poder hacer eso para toda la universidad, tengo que descargarme todos los reportes. Hay un único reporte que te da esa información.
+
+**Entrevistador 2:** Sí, pero es un montón.
+
+**Entrevistada:** Es un montón. Imaginate que yo trabajo en un área donde quiero saber cómo vienen de todas las facultades: tengo 20 carreras, tengo que bajarme 20 reportes por la... Por ejemplo, ese reporte solamente te permite bajar por carrera y por año de ingreso del alumno. Entonces me tengo que bajar 20 reportes por cada año de ingreso, ¿se entiende? Entonces 20, si yo quiero usar de los últimos 4 años, tengo que bajar 20 por 4. Imagínense, me tengo que bajar 80 reportes y no tengo la posibilidad de visualizar esos datos en un único espacio y lugar. Entonces, ¿qué es lo que empezó a hacer la universidad? Para eso usa Power BI, donde en el Power BI vos podés... Ahora si quieren les muestro algún tablero para que vean. Entonces vos en ese tablero cruzás todos los datos de SIU y los ves bien visualizados en un Power BI. Pero para poder hacer un Power BI necesitás un área de gestión que te los... un experto, digamos. Nosotros tenemos el área de sistemas, tenemos un departamento de Power BI que genera esos reportes de Power BI para que vos puedas acceder a esa información. Entonces, ahí se hace un embudo, porque vos tenés una cierta cantidad de gente trabajando que no llega a generar todos los tableros que vos necesitás. Entonces para mí ahí es como el principal problema que tiene SIU: es la visualización de datos y el cruce de datos, que no tenés como mucha libertad para poder generar tus propios reportes. Si yo tuviera... Nosotros antes teníamos un sistema que se llamaba SIA, un sistema que era propio de la universidad. Ese sistema quedó en algún momento obsoleto, pero una de las cosas buenas que tenía es que vos podías crear reportes. Entonces vos podías... "Yo quiero cruzar, bueno, yo quiero ver todos los alumnos de la universidad o todos los alumnos de los últimos 5 años que tienen hasta cinco créditos completados, independientemente de la carrera. Quiero ver todas las carreras". Entonces vos creabas ese reporte propio, por ahí tardaba un poco en generarte...
+
+**Entrevistador 1:** Sí, obvio, en las búsquedas y todo.
+
+**Entrevistada:** Exactamente, porque es mucha más información que un único reporte. Y en el fondo, en realidad lo que hace SIU es eso: seccionarte la información para poder funcionar más rápido, porque si no, si te tiene que tirar un reporte de 5.000 alumnos puede tardar muchas horas. Entonces bueno, ese es como el principal problema para mí hoy de SIU: es la visualización del alumno para la gestión general, porque por ahí para la gestión individual de un alumno no es difícil.
+
+**Entrevistador 1:** Claro, podés buscar al alumno y ya...
+
+**Entrevistada:** Exacto, buscás el alumno y ves toda su ficha. Por ejemplo, viene un alumno y te pide una excepción; bueno, te metés —ahora si quieren nos metemos en el perfil de ustedes—, ves hasta dónde tiene completado, cuántos aplazos tiene, entonces vos lo podés acompañar. Pero si vos querés hacer gestión general de muchos alumnos, todo eso lo necesitás visualizar en un...
+
+**Entrevistador 1:** En un lugar aparte.
+
+**Entrevistada:** En un lugar aparte. Entonces eso para mí es como... Hoy muchos sistemas más modernos tienen incorporada la visualización de datos dentro del sistema. Y para mí SIU eso no lo tiene y creo que es por ahí donde yo creo que debería avanzar, porque ustedes lo sabrán: el dato lo necesitás para gestionar. Yo necesito saber cuántos alumnos se dieron de baja a tal fecha, y si no tengo un tablero de Power BI, no puedo sacar ese dato; tengo que si no ir carrera por carrera.
+
+**Entrevistador 1:** Sería más que nada poner muchos filtros, que puedas elegir todos los alumnos de los últimos no sé cuántos años, o estos años, o algo personalizado.
+
+**Entrevistada:** Exacto. Miren, por ejemplo, yo en SIU si quisiera ver... Vamos a ir con Mozilla porque nos piden siempre que entremos con Mozilla. Voy a entrar al perfil de ustedes porque no les puedo mostrar información de otros alumnos, porque es confidencial y no corresponde. Pero voy a entrar al perfil de ustedes, entonces...
+
+**Entrevistador 1:** Entra en el mío, en el que quieras.
+
+**Entrevistada:** Cualquiera, no importa. Acá está bueno porque tenés el de gestión y el de departamento...
+
+**Entrevistador 1:** Sí, exactamente.
+
+**Entrevistada:** Está bueno porque a mí siempre me confunde. Bueno, yo tengo... trabajé muchos años en la Facultad de Comunicación, entonces también tengo varios perfiles. Vamos a poner el de Vida Universitaria, que es en el que nosotros vemos... Vamos a ir a dos cosas. Por ejemplo, si yo quiero ver... ¿Cómo es tu apellido?
+
+**Entrevistador 1:** Gaspar.
+
+**Entrevistada:** Si yo quisiera ver tu situación académica: Gaspar, ¿qué nombre?
+
+**Entrevistador 1:** Ignacio.
+
+**Entrevistada:** Entonces, acá yo puedo ver todo tu perfil. Entonces acá veo, puedo ver tu promedio, tu historia académica, las inscripciones que vos tuviste... Es eso, toda tu historia académica. Después podés ver las materias que regularizaste y las que no regularizaste, después podés ver las inscripciones que has tenido, tanto para... Acá te muestra todo, te muestra inscripciones a finales, inscripciones a cursadas, acá podés elegir...
+
+**Entrevistador 1:** Ah, pero es medio malo... Ah, ahí está.
+
+**Entrevistada:** Sí, podés filtrar. Pero bueno, acá ves por... o sea, se te mezclan todas las de materia y todas las de Vida Universitaria, ¿ves? Es como que ves todo mezclado. Podés ver las notas de evaluaciones parciales que tenés. Bueno, si tenés sanciones lo podés ver acá; podés tener una sanción administrativa, una sanción de la Secretaría de Alumnos porque debés documentación, etcétera.
+
+**Entrevistador 2:** Toda esta información es lo que después te descargás de cada alumno en los reportes.
+
+**Entrevistada:** Claro. Entonces vos, para la gestión individual de un alumno esto te sirve un montón. Ahora hay un problema: si yo quisiera saber cómo venís avanzando en tu plan de estudios, tengo que entrar a otro reporte. O sea, esta es la ficha del alumno...
+
+**Entrevistador 1:** O sea, para ver mis materias...
+
+**Entrevistada:** Exactamente, mira. Entonces tengo que meterme a otro reporte. Pongo "reporte plan de estudios".
+
+**Entrevistador 1:** Ah, encima el filtro es malísimo.
+
+**Entrevistada:** Claro. ¿Te parece malo? Sí, ¿no?
+
+**Entrevistador 1:** Es que detecta exacto.
+
+**Entrevistada:** Entonces, Gaspar Ignacio, yo acá puedo ver, pero bueno, tengo que irme a otro reporte, ¿se entiende?
+
+**Entrevistador 1:** Ah, claro, tipo te salía Informática y después te salía...
+
+**Entrevistada:** Acá solamente no me aparecen las materias porque Informática es... Ah, el curso de ingreso.
+
+**Entrevistador 1:** Ah, por eso. También se mezcla el curso de ingreso con el de...
+
+**Entrevistada:** ¿Por qué? Porque un alumno puede estar inscripto... o sea, vos lo que hacés es vincular propuestas académicas con personas. Entonces vos, Gaspar, tu primera propuesta académica fue el curso de ingreso, porque después que quede registrado que lo aprobaste... Muchas unidades académicas registran la nota porque después vos venís dentro de 4 años y decís: "Che, quiero el certificado de que aprobé el curso de ingreso", perfecto, se busca y se imprime. Y después, obviamente tu propuesta académica que es tu Ingeniería en Informática. Pero después vos dentro de 10 años podés venir a hacer una maestría y bueno, te van a generar otra propuesta, ¿me entendés? Bueno, acá yo veo, por ejemplo, todas tus materias y cómo venís, qué materias te faltan, ¿ves? Faltan todas estas, estas por cursar, las optativas, y los otros requisitos que vos tenés para poder recibirte, ¿sí? El programa de Vida Universitaria. Estos son los perfiles, lo que más se usa, lo que más usan las personas para ver el estado del alumno. O sea, viene Gaspar y dice: "Che, estoy atrasado, necesito ayuda para ponerme al día con las materias" o "Quiero pedir una beca", y bueno, "¿cómo te está yendo?". Entonces para la gestión individual, uno usa el perfil del alumno o este reporte de plan de estudios. Ahora, no existe un lugar donde esté todo eso junto, digamos.
+
+**Entrevistador 1:** Sí, a veces es raro que esto no esté en la otra pantalla, no te molesta nada hacer un coso abajo que diga "Plan de estudio".
+
+**Entrevistada:** Bueno, no costaría nada que vos tengas un botón y digas "Ver plan de estudio del alumno".
+
+**Entrevistador 1:** También podrías tenerlo tipo ahí.
+
+**Entrevistada:** Bueno, como que eso, es como que no hay conexión entre... Después, por ejemplo, pensando en el programa de Vida Universitaria, si yo quiero ver los créditos de un alumno, me meto acá. Entonces acá yo puedo elegir qué unidad académica —pongamos Facultad de Ingeniería—, qué año de ingreso, pero sí o sí tengo que elegir uno, no puedo elegir varios. No es que puedo elegir: "Bueno, che, yo quiero ver cómo vienen todos los alumnos de Ingeniería entre varios años, quiero este período y este período". Es como muy limitado...
+
+**Entrevistador 1:** Sí, solo te deja un reporte más chico.
+
+**Entrevistada:** Exactamente, te limita mucho. Propuesta formativa: olvídate, tenés diplomaturas, programas... Acá uno en general lo que hace es buscar Ingeniería en Informática. Plan de estudios puede haber un montón acá, generalmente no ponés ninguno.
+
+**Entrevistador 1:** Ah, bueno, al menos eso...
+
+**Entrevistada:** Y bueno, y tenés la sede, vamos a poner la sede Pilar. Supongamos: quiero ver saber cómo vienen los alumnos de ingreso 2024 a Facultad de Ingeniería. Entonces acá me va a decir cuántos créditos tiene. Y también acá esto está bueno: sí te cruza el porcentaje de avance del alumno. Esto es importante porque vos sabés cómo viene avanzando la carrera y cuántos créditos...
+
+**Entrevistador 1:** Pero ahí no aparece nada, o sea...
+
+**Entrevistada:** No, pues son del curso de ingreso me parece. No, estas puede ser que no tengan... A Ingeniería en Informática no aparece ninguno, sí, y no aparece el porcentaje de avance. Bueno, no sé, vamos a poner propuesta Ingeniería. Sí, tal cual, no aparece el porcentaje de avance. Bueno, lo que yo quiero decir con esto es que si yo quisiera ver toda la Facultad de Ingeniería del año 2024, me tengo que bajar todos los reportes de alumnos de la Facultad de Ingeniería 2024. Si quiero ver los de 2020... todos los reportes.
+
+**Entrevistador 1:** Claro, no podés hacer todo de una.
+
+**Entrevistador 2:** También si quisieras tipo de Ingeniería, tenés que hacer Ingeniería Informática, Ingeniería Industrial, Ingeniería Biomédica... No creo que no te deja...
+
+**Entrevistada:** No, tampoco te deja elegir varios, por decir: "Bueno, elijo..."
+
+**Entrevistador 1:** Ah, eso estaría bueno.
+
+**Entrevistada:** Yo creo que eso se puede hacer, lo que pasa es que yo no sé si es que te lo limitan para que sea un poco más ágil, digamos.
+
+**Entrevistador 2:** Sí, para que no sea tanta información junta capaz.
+
+**Entrevistada:** Pero bueno, a su vez, yo diría: "Bueno, a ver, Thiago Aguilar, me gustaría saber qué actividades de Vida Universitaria hizo. Está bien, tiene dos créditos, veamos qué actividades hizo". Ah no, tengo que ir a otro reporte, ¿me entendés?
+
+**Entrevistador 2:** O sea, claro, tocás y no se te abre.
+
+**Entrevistada:** No es que yo puedo apretar acá y saber de dónde vienen esos dos créditos.
+
+**Entrevistador 1:** Claro, estaría bueno poner un hipervínculo ahí que te lleve a la página que...
+
+**Entrevistada:** Todo eso no existe, o sea, no están como conectados los reportes. No es que vos podés generar los reportes, decir: "Bueno, a ver, veamos" y me lleva. Yo tendría que meterme a otro reporte que se llama "Reporte de créditos por alumno" y acá busco a Thiago Aguilar, ¿me entendés? Pongo acá Aguilar... Está bien, es de 2024. Acá no me muestra cuántos créditos tiene, en el otro reporte sí me lo mostró. Entonces acá sí puedo ver: okay, hizo dos créditos, uno del Austral Inter-International y otro representante de la Universidad Austral. ¿Se entiende cómo es? Es como que los reportes no están conectados entre sí.
+
+**Entrevistador 1:** Sí, debería estar todo en uno y después vos agregás columnas, sacás columnas, buscás en... pero nada más.
+
+**Entrevistada:** Y entonces la Universidad Austral como que deriva todo a cruces de reportes en Power BI. Entonces vos al final estás sacando datos de un lugar para llevarlos a otro. Para mí ese es como el principal, si tuviera que elegir un tema de SIU es ese: es la visualización.
+
+**Entrevistador 1:** Y aparte de esto, de lo de la extracción, debe pasar por varios departamentos de administración, me imagino, para hacer un reporte. Y tardás un montón.
+
+**Entrevistada:** Sí. Mira, les voy a mostrar: yo ahora estoy desarrollando un tablero para Vida Universitaria, entonces para poder hacer un tablero tengo que pedir un... te hacen armar un *business case*, tenés un equipo de personas que trabajan con vos para hacer ese tablero. A ver, les voy a mostrar este tablero de Vida Universitaria, ¿ves? Entonces tenés que todo completar el *template* —bueno, yo tengo ahora igual asignada una persona de sistemas que me va ayudando con todo esto—: para quién, para qué audiencia, quiénes son los usuarios, cuáles son las métricas de indicadores que mide ese tablero, cuáles son las dimensiones y los filtros que tiene el tablero, cuáles son las páginas y vistas del tablero, cuál es la fuente de datos —bueno, SIU Guaraní—, el boceto visual, las reglas, la lógica... Bueno, todo. Todo esto es lo que se necesita para... bueno, está incompleto. Yo después hice un resumen ejecutivo y hice unas visualizaciones con IA de lo que yo necesito en el tablero. Entonces después voy trabajando con sistemas para que me lo armen. Pero bueno, lleva un tiempo todo ese desarrollo y lleva tiempo y horas de trabajo de sistemas que tienen... Entonces ahora todo el mundo quiere tablero de Power BI para visualizar cosas, entonces ahí es como que se arma un embudo y tenés que contratar gente de afuera. Al final terminás contratando un servicio de otro para que te haga la visualización de los datos. Y a ver si les puedo mostrar algo sin mostrarles mucho de lo que nosotros hacemos con Power BI... Ah, bueno, y después además de eso, vos tenés un departamento de sistemas y también tenés un departamento de Gobierno de Datos, donde vos necesitás autorizar... Ese departamento de Gobierno de Datos es el que vela por todos los datos de la universidad, porque hay datos sensibles de...
+
+**Entrevistador 1:** Sí, obvio, datos confidenciales.
+
+**Entrevistada:** Exactamente. Entonces, que vos lo estás llevando a otro sistema, bueno, además necesitás la autorización de un departamento de Gobierno de Datos que vela por esa información. No, no, es complejo, ¿no? En cambio si esos datos estuvieran ahí y vos hicieras un reporte: "Che, quiero cruzar estos datos" y se te genera dentro de SIU, o la misma autonomía del usuario para poder hacerlo, ¿me entendés? No tengo que depender de un departamento de sistemas; quizás para datos básicos no, pero ahí si necesitás algo más complejo, sí. Bueno, miren, acá este es un tablero que es básico de gestión, que tienen la mayoría de las personas que trabajamos en gestión en la universidad, que te muestra estos alumnos de grado —porque además vos tenés 5.000 alumnos de grado y después tenés 10.000 alumnos de posgrado, es otro...—. Entonces, yo estoy dentro del área de grado; entonces vos en estos tableros podés ver alumnos activos, cantidad de ingresos, cantidad de graduados, cantidad de bajas y bajas por unidad académica. Entonces, por ejemplo, acá yo si quiero saber cuántos alumnos tiene la universidad hoy en día, voy a este tablero. Entonces me muestra: elijo todas las facultades, todas las carreras y todas las sedes. Entonces bueno, acá yo para poder hacer esto en SIU debería de sacar... olvídate.
+
+**Entrevistador 1:** Un montón de reportes y juntarlos.
+
+**Entrevistada:** Un montón. Y yo acá lo tengo en uno: tengo 5.641 alumnos activos en la universidad en este momento en grado, ¿no? Ingresaron 1.662, se graduaron este año 375 al momento y 531 bajas. Bueno, y acá puedo ver por todas las carreras, por año, por cohorte... Entonces acá ves también tenés gente de 2012, entonces podés fijarte quiénes son, de qué unidad académica y ver por qué todavía siguen activos alumnos de 2012, bueno.
+
+**Entrevistador 1:** Y si te llega un nuevo año, ¿tienen como que cargarle todos los reportes de ese año nuevo o...?
+
+**Entrevistada:** Esto está directamente... o sea, está enlazado con SIU.
+
+**Entrevistador 1:** Ah, okay. Bueno, eso al menos está bueno, pero...
+
+**Entrevistada:** Este tablero se hizo hace muchos años, es como un básico. Lo que pasa es que uno va como avanzando en complejidad, entonces este sería como un tablero básico, ¿no?, que te permite cruzar esos datos. Y después también ingreso, graduados, después un departamento de becas tiene su propio tablero, Vida Universitaria estamos desarrollando su propio tablero, y así para poder gestionar ese volumen de alumnos más grande.
+
+**Entrevistador 1:** Claro, sí, ver los datos...
+
+**Entrevistada:** Claro, obvio que si tenés 20 alumnos es fácil, digamos, te descargás unos reportes y hacés unos Excel, digamos. Pero ya cuando tenés 5.600 alumnos activos, para poder ver estadísticas, ver dónde trabajar, con esto que les decía —bajas, cuántos alumnos ingresaron—, para todo eso y poder trabajar con todas las unidades académicas necesitás algo de este tipo. Así que bueno, no sé si tienen dudas o...
+
+**Entrevistador 1:** Dudas... También te quería consultar aparte la parte de docente, si tenés algún problema también con la parte de docente.
+
+**Entrevistada:** En la parte de docente... a ver, yo doy una materia que se llama *Taller de Expresión Oral* en las carreras de Marketing y de Comunicación. Y claro, tenemos no sé, 120 alumnos por cuatrimestre. Tenemos muchos trabajos prácticos, entonces hay que cargar muchas notas. ¿Qué hacemos? Las cargamos al final del cuatrimestre. O sea, como que SIU es muy complejo a la hora de cargar notas, entonces directamente —bueno, me va a retar el secretario académico de mi facultad, pero— la verdad es que al final uno lo termina cargando en Excel y una vez que lo tenés limpio y ordenado, te sentás un día y pasás todo a SIU.
+
+**Entrevistador 2:** Claro, lo que habíamos pensado nosotros, que recién hablábamos con secretaría, es tipo tener todo en un Excel y que puedas subir el CSV o el archivo, y lo subís y ya está.
+
+**Entrevistada:** Sería glorioso, chicos. Miren, les muestro cómo es el sistema para la carga. No sé si lo vieron ustedes la interfaz de profesor.
+
+**Entrevistador 1:** No, no pudimos ver la interfaz de profesor.
+
+**Entrevistada:** Se las muestro entonces. Si vos sos profe, entonces autogestión. Esto estuvo buenísimo eso que hagan esa diferenciación porque a mí me re... Entonces bueno, acá yo tengo perfil de alumno, porque estudié grado y posgrado acá, y docente. Bueno, está la asistencia; eso también es un tema que no sé si alguien se las levantó, pero...
+
+**Entrevistador 1:** Sí, el tema de la asistencia nos dijeron que es un fiaco, tenés que ir uno por uno.
+
+**Entrevistador 2:** Pero es difícil implementar de alguna forma algo que solucione eso realmente, porque pasa que tenés dos lados: lo podés hacer rápido, por ejemplo, escanear un QR...
+
+**Entrevistador 1:** Sí, pero el problema ahí, ¿sabés cuál es? Está buenísimo, pero los chicos se lo pasan entre ellos por WhatsApp y...
+
+**Entrevistada:** No, porque a ver, pensemos lo siguiente: poner lo del QR sería... Yo estuve averiguando para entender si había otras universidades que lo tenían, porque eso sería... si ustedes lo desarrollan yo lo compro. Entonces, SIU te genera un QR que dura un minuto. O sea, los alumnos que están ahí lo escanean y en el momento que termina ese momento de toma de asistencia se venció y te tira la cantidad de presentes que tenés. Entonces el profesor puede chequear: "Che, tengo 30 alumnos y 32... o sea, alguien pasó el QR", ¿se entiende? Yo pienso eso, como que debería tener un tiempo acotado en el que el profesor: "Listo, comparto el QR", así lo escanean y ponen la asistencia, listo, dura un minuto, y bueno, después el alumno que llegó tarde tiene que, como se hace siempre, al final de la clase el profesor lo pone de manera manual.
+
+**Entrevistador 2:** Claro, o sea es más fácil poner uno manual que tener que poner los 30 manuales, o simplemente ponés el QR al final de la clase y...
+
+**Entrevistada:** Bueno, o el profesor puede elegir ponerlo al final de la clase porque sabe que los alumnos llegan 15 minutos tarde. Digo, eso es decisión, pero es lo mismo que tomando asistencia: algunos toman al principio, otros toman al final. Eso sería increíble. Después hubo también algunas ideas —hemos charlado mucho esto con los directores de estudio— de reconocimiento facial con las cámaras.
+
+**Entrevistador 1:** Sí, alguien del laboratorio, ah no, de la tesis creo que estaba haciendo eso.
+
+**Entrevistada:** Lo estaba haciendo. Bueno, ahí hay todo un tema de privacidad, los datos biométricos, y bueno, y si vos no querés dar la asistencia, digo, ¿por qué la gente tiene que saber que vos no estás en clase y vos no querés que sepan?, ponele, ¿me entendés? Uno es tal cual. Pero bueno, eso cuando vos sos el que da la asistencia es distinto; entonces yo quiero que sepan que estoy acá, que no quiero que sepan. Bueno, entonces esto es la asistencia y después para cargar... ya me olvidé chicos cómo era... cursadas, creo que era cursadas. Entonces, primer cuatrimestre, filtrar. Entonces vas acá a una comisión y ponés "cargar notas". Entonces acá bueno, ¿ves?, es como un poco complejo. Entonces: el resultado es ausente, ¿por qué? Porque abandonó o es ausente porque es libre, porque faltó tantas veces que quedó libre. O bueno, eso, podés como ponerle las condiciones. Bueno, acá tenés todo el listado de alumnos... autocompletar. Bueno, esto autocompletar no sé qué significa; calcular notas, ver escala de nota para regularidad... El calcular notas ya me imagino que te calcula las notas con los parciales y te pone una nota final o algo así. Claro, en instancia de regularidad aplicar a todos los alumnos regla de cálculo, bueno, podés como completar. La realidad es que es complejo. O sea, los profes no lo... por lo menos yo no lo termino de entender.
+
+**Entrevistador 1:** Sí, no hay como que tampoco se explica tanto...
+
+**Entrevistada:** Claro, y nosotros... a ver, por ejemplo, nosotros tenemos cuatro trabajos prácticos y un parcial, y un parcial en vivo y un parcial... No subimos las notas de los trabajos prácticos, porque imagínate: son cuatro trabajos prácticos —son todos chiquitos, ¿no?— más dos parciales, son seis notas por los 120 alumnos que tenemos. Es un montón. Entonces directamente lo que hacemos es cargar las notas finales: les ponemos los dos parciales como para que tengan alguna nota parcial y después la nota final de la cursada. Y lo que hacemos al alumno es en el campus, en Moodle, cargarle... Bueno, eso, como que van por separado, ¿no? Descargamos el Excel y digo: "Bueno, estos son el detalle de sus notas". Y no es que está integrado; no es que... A ver, después nosotros tenemos: muchos hacen entregas por Moodle, le cargamos la nota en Moodle, pero después vamos al Excel y después lo cargamos en SIU. O sea, tres cosas distintas.
+
+**Entrevistador 1:** Claro, porque hay entregas que son en el campus y es como...
+
+**Entrevistada:** Nosotros les pedimos porque los trabajos prácticos son que se graban videos y todo eso, entonces todas las entregas son por campus, lo cual es re importante y está bueno porque tenés bien quién entregó, en qué momento, quién entregó tarde, eso está muy bien ordenado. Pero después, claro, a veces cargamos las notas por campus, pero eso no va acá. No es que automáticamente va. Entonces las cargás por campus, y después inmediatamente tenés un registro en Excel paralelo, y después de ese Excel manualmente las cargás a SIU. O sea, se entiende que hay como tres pasos y en esos pasos hay errores. O sea, por lo menos en Facultad de Comunicación lo hacemos nosotros; no sé si hay otras unidades académicas que capaz las secretarias cargan las notas, pero en Facultad de Comunicación somos los profes los que nos metemos en SIU. Y bueno, es medio tedioso, o sea, los tres pasos: vos estás corrigiendo en Moodle, después estás cargando en un Excel para tener un registro vos, y después del Excel limpio al SIU. Si todo lo que cargás en Moodle va directo a SIU, yo aprendo a usar el Moodle para poner notas, o sea ya. Si lo tengo en Moodle para después tener que pasarlo igual manualmente, digo no, bueno, prefiero el Excel que para mí es más fácil. Y para lo único que lo usamos en realidad es para cargar las notas al final del cuatrimestre y para la asistencia; para asistencia sí lo usamos.
+
+**Entrevistador 1:** ¿Y comunicación con chicos por campus y eso? ¿Es tedioso, molesto?
+
+**Entrevistada:** No. La verdad es que no. Nosotros tenemos aula, tenemos un foro y en el foro vamos cargando todo y sabemos que todo... Bueno, ahora vieron que antes no era así, pero ahora si el alumno se inscribe en SIU, inmediatamente está inscripto en Moodle.
+
+**Entrevistador 1:** Sí, igual a veces funciona medio raro.
+
+**Entrevistada:** Sí, antes no era así.
+
+**Entrevistador 2:** Sí, no te acordás que antes tenías que ir a grado, te metías al curso y era como...
+
+**Entrevistada:** Te tenías que matricular manualmente. O sea, tenías que hacer dos cosas: tenías que inscribirte en SIU y después inscribirte en Moodle. Bueno, eso ya no más. A veces anda mal, pero bueno, eso fue una gran cosa porque te pasaba que vos mandabas un mensaje y había gente que no se matriculaba y no se enteraba de que había faltado. Entonces, ahora como que hay más seguridad de que todos los alumnos que tenés anotados en SIU los tenés. Y bueno, nada, tenemos avisos y vamos mandando estos mensajes... Tenemos todos los mensajes: "Notas TP1", este seguramente que es un PDF con notas, otros... o sea, como que vamos variando, ¿no?, pero bueno, tenemos después un registro de notas en Excel. Pero no, esto la verdad que funciona bien, no hay mucho... Los alumnos no responden mucho por acá, te mandan más mails. La verdad es que la comunicación con los alumnos no es como decir "me escriben por Moodle", no, te mandan mail y está bien. Pero bueno, este módulo de calificaciones no, no lo usamos.
+
+**Entrevistador 1:** Sí, lo mismo creo que había otro módulo de competencias o cosas así que...
+
+**Entrevistada:** La verdad que no, no lo usamos. Usamos avisos, sí usamos entregas —ves que acá tenés, nos sirve mucho esto, tener todas las entregas acá, entonces tenés participantes 93, 87...—, pero tampoco muchas veces no corregimos por acá; algunas veces sí, pero en general les mandamos como... Pero bueno, ves acá los alumnos que faltan entregar, ves los trabajos, podés hacer comentarios. Ah, ves, acá les ponemos comentarios.
+
+**Entrevistador 1:** Yo tengo un tema: a veces los comentarios esos como que se cortan, como se ven cortados y no los puedo ver completos.
+
+**Entrevistada:** Mira, nunca no me dijeron los alumnos, pero puede ser. Esto es bastante lo usado, o sea, las entregas, los avisos y la carga de material; lo usamos principalmente para eso. Ponemos ejemplos, obviamente el programa analítico... Y bueno, después está bueno para ver cuando un alumno te dice: "No, yo la verdad que no pude entregar el trabajo práctico porque no funcionaba el campus". Okay, ¿cuándo entraste? "No me andaba...". Entonces vos podés ver toda la actividad del alumno, ¿ves? En qué momento entró a este campus, dónde estuvo, cuánto tiempo estuvo, entonces bueno, ahí...
+
+**Entrevistador 1:** Sí, igual eso los alumnos creo que también lo pueden ver, pero yo no sabía que tenías como toda esa...
+
+**Entrevistada:** Sí, como alumnos nunca lo usamos, pero bueno, si un alumno te dice: "Che, no, intenté entregar y no pude". "¿Cuándo intentaste?". "Anoche". "No, no entraste, o sea, no está logueado". Está bueno eso como para tener más información.
+
+**Entrevistador 1:** Si querés te puedo mostrar... Pasa que todo el tema de lo que nos pasa también es que es bastante complejo abarcar todo...
+
+**Entrevistador 2:** Sí, es imposible, tenemos una semana.
+
+**Entrevistador 1:** ...como vamos acotando, entonces nos viene re bien esto que podamos hacer. Ya del alumnos y docentes tenemos como planteado como medio... bueno, SIU y campus unificados. Y ahora de administrativos podemos anotar todo esto que nos contaste que estaba... sí, es re tedioso a ver si podemos cambiar...
+
+**Entrevistada:** Sí, la visualización...
+
+**Entrevistador 2:** Igual hay 400 reportes, vamos a centrarnos en...
+
+**Entrevistador 1:** Claro. Yo te quería mostrar, por ejemplo, esto sería alumno. Vos entrás y lo primero que verías son tus materias.
+
+**Entrevistada:** ¿Esto qué sería? ¿Como un unificado?
+
+**Entrevistador 2:** Sí, unificado del campus, usa el SIU y el Moodle también.
+
+**Entrevistador 1:** Por ejemplo, vos entrás a esta materia y ya llega directo el canal de avisos. Acá yo no puedo escribir porque soy alumno, pero acá es como el profesor pone el aviso. Acá serían como las consultas donde se puede hablar en el chat, el material —acá no carga porque es como que vos acá subís tu material— y esto lo que buscamos es que el profesor lo pueda personalizar, que pueda agregar una nueva unidad 3 y que ponga otro material, un espacio de tareas que esto ya sería como la sección del campus por así decirlo, pero más que nada acá nos centramos en tema de comunicación sería, como que yo entro y veo ya los anuncios y las consultas. Después, el calendario académico con las materias...
+
+**Entrevistada:** Todo unificado.
+
+**Entrevistador 1:** Sí. Y acá ya metimos esto del SIU que es en inscripciones a materia, que yo quiero agarrar y veo el detalle de una materia, me quiero inscribir, y exámenes también. El tema de las notas, que bueno, esto podríamos hacer algo similar con todo lo que nos contaste: bueno, yo tengo todos los filtros, quiero ver mis alumnos, todo, yo puedo ver en curso, aprobadas, pendientes, tipos, si es optativa o es de Vida Universitaria.
+
+**Entrevistada:** Eso sería fantástico, o que tengas un apartado propio de Vida Universitaria en el que veas los créditos y las actividades que tenés disponibles. De eso se quejan mucho los alumnos, como que es difícil de ver...
+
+**Entrevistador 1:** No, ahora lo metieron igual en el SIU.
+
+**Entrevistada:** Sí, en el SIU está, pero no es muy atractivo como lo ves.
+
+**Entrevistador 1:** No, es feo, al menos funciona.
+
+**Entrevistada:** Pero bueno, vos querés buscar solo actividades que sean virtuales y bueno, podrías tener un filtro para que te aparezca.
+
+**Entrevistador 1:** Queríamos hacer como algo de Vida Universitaria, becas, por ejemplo...
+
+**Entrevistada:** Y ya te conecta a la plataforma...
+
+**Entrevistador 2:** Sí, a mí me pasa por ejemplo que con las becas, yo tengo que renovar y para becas tengo que buscarme la página web... Ah, sí, nunca me la acuerdo. En el campus, o sea, es como que es otra página aparte y me lo olvido y tengo que ver dónde la encuentro, y ahí cuando me la encuentro ahí puedo hacer todo.
+
+**Entrevistador 1:** O sea es difícil, no es que es feo, o sea es difícil como encontrar...
+
+**Entrevistada:** No, pero estaría bueno tenerlo todo integrado en el mismo lugar.
+
+**Entrevistador 1:** Claro. Después toda la parte de inasistencias del alumno, que lo pueda ver acá: fecha del día y bueno, en qué materia. El panel de novedades. Y después sería esto del plan de estudio que te quería mostrar, que lo quisimos hacer... Bueno, justo este caso está como es un alumno de primer año, pero lo quisimos hacer... ¿Viste el manual? No sé si lo viste...
+
+**Entrevistada:** Sí, no todas las unidades académicas tienen, pero sí, he visto.
+
+**Entrevistador 1:** Que tiene como todas las materias así por año. Sí, y acá tendría como las métricas de porcentaje aprobado, las materias obligatorias, optativas y seminarios, tipo con la cantidad de horas y créditos de Vida Universitaria, promedio y todo. Y ya después es lo de trámites y reportes.
+
+**Entrevistada:** Ah, trámites... Ah, perfecto, historia académica, plan de estudios. Quizás ya podrías tener un apartado para comunicarte con administración o que te salte alguna alerta si no se debitó la última cuota, o si... Bueno, no sé, pienso que...
+
+**Entrevistador 1:** Nos decía por ejemplo Cary que si vos te atrasás con o sos deudor, es como que te bloquean el campus.
+
+**Entrevistada:** Claro, realmente te llega una inhabilitación administrativa y se te bloquea el campus, y no te podés ni inscribir a materias.
+
+**Entrevistador 1:** Y justo me dijo: "Bueno, ¿y acá qué pasa si te pasa eso?". Bueno, ahí podríamos como bloquearte secciones...
+
+**Entrevistada:** Te salta un cartel: "Estás inhabilitado, comunicate con administración". Sí, a veces los alumnos no se enteran hasta que quieren entrar al campus o anotarse a un final y se dan cuenta.
+
+**Entrevistador 2:** Claro, porque capaz el mail no lo leen o no les...
+
+**Entrevistada:** Bueno, ese es otro tema tal cual. Pero bueno, poder tenerlo todo en una plataforma... esto sí, o sea...
+
+**Entrevistador 1:** Y después como profesor, si querés meterte... Como profesor todavía lo estamos iterando, pero por ejemplo vos verías tus materias...
+
+**Entrevistada:** Ah, tenés tu visualización...
+
+**Entrevistador 1:** Que yo entro y tengo acá los alumnos de mis clases, aunque eso está medio ahí... bueno, después se cambia aún. Pero estamos viendo también tener modalidades de virtual, híbrido y presencial, porque como son tres formas distintas, como que vos podés decir: "Bueno, yo estoy virtual y tengo por ejemplo acá lo del enlace al Zoom que lo puedo poner, la subida de tareas, que vos puedas crear tus tareas y los alumnos las vean", y la parte de calificaciones... No, no hay exámenes creo. No, es que no tengo alumnos en esa. Métete con otra cuenta... Ah, programación no tiene. Tiene tres alumnos. Que vos puedas... Está feo este igual, estaba como...
+
+**Entrevistada:** Bueno, no importa, pero se entiende el concepto. Que vos tengas...
+
+**Entrevistador 2:** Ahora andá a calificaciones. Acá tipo por Excel podés subir...
+
+**Entrevistada:** Bueno, eso sería espectacular, yo creo que la función principal.
+
+**Entrevistador 2:** Subís el Excel y es como que ya se te suben todos los alumnos.
+
+**Entrevistador 1:** Que eso lo único que tenemos que ver es si en Excel tenemos que poner, no sé, los campos; viste, tenemos que poner solo nombre y apellido, también tenemos que agregar el DNI, por las dudas. Y que vos le puedas, no sé, poner la nota, un comentario, si estuvo ausente, y acá en el espacio que vos puedas tipo configurar de todo, tipo vos podés hacer los avisos y se suba como en un chat, como que pongas "Hola" y se sube acá. Y después del lado de docentes, la verdad que o sea es esto lo que tenemos, no mucho más.
+
+**Entrevistada:** Okay, bueno, pero funciona bastante. Y después tienen como un perfil más administrativo para secretarias...
+
+**Entrevistador 2:** Ese lo vamos a hacer ahora.
+
+**Entrevistada:** Bueno, está bueno ahí en ese perfil más administrativo tener en cuenta este perfil del que hace el seguimiento como académico de todos, entonces que quizás no es cargar a un profesor o cargar los días de clase, sino también visualizar el estado general de los alumnos.
+
+**Entrevistador 1:** Sí, más o menos por ahí como... no sé si te gustó por ahí lo del plan de estudios, por ahí verlo así, pero con todos los datos de los reportes.
+
+**Entrevistada:** Sí, es una de... Nosotros ahora también estamos desarrollando con Python un tablero en el que ves el plan de estudios así. Y yo creo que lo más interesante ahí es que te muestre lo que falta, porque vos por ahí, cuando vos ayudás al alumno, bueno, lo que ya completó te sirve para algo, pero en realidad vos lo que necesitás ver es qué es lo que le está faltando completar para poder ayudarlo a terminar la carrera. Y es lo que le falta, por ejemplo, nosotros tenemos unos tableros de seguimiento académico en Power BI, pero te muestran lo que el alumno hizo y no te... bueno, esas tres materias que le faltan. Y como vos tenés además que tengan muchos planes de estudio a veces —o sea son todos distintos los planes de estudio—, entonces bueno: "¿Cuántas materias le faltan?". "Le faltan tres, cuatro, cinco materias". Entonces está bueno eso, que lo puedas visualizar así, me encanta, y que te aparezca lo que falta, o sea, bien marcado. Y si eso se pudiera, por ejemplo, cruzar con los horarios publicados, mucho mejor. Una cosa que uno hace —el director de estudios lo que hace es ayudar al alumno a terminar—: por ejemplo, vos llegás a cuarto año y decís: "Che, no me fue...", ustedes son cinco años, ¿no?, entonces llegás a cuatro años y medio y te faltan no sé, cuatro materias del primer cuatrimestre, dos materias del segundo cuatrimestre, o sea, tenés que como poner... y qué es lo que tiene que hacer el director: ver todos los horarios y ver cómo lograr que ese alumno termine en la menor cantidad de tiempo.
+
+**Entrevistador 2:** Ah, okay, ya entendí, sí.
+
+**Entrevistada:** Entonces, yo siempre soñaba cuando estaba en la Facultad de Comunicación poder subirle a la IA: "Bueno, esto es lo que le falta al alumno y estos son los horarios que tenemos disponibles; acomodámelo y decime cuál es el mejor camino para el alumno". Porque al final vos terminás haciendo como un poco con la experiencia lo hacés: "Bueno, a ver, esto lo podemos acomodar así", pero con tu cerebro, digamos; pero si vos pudieras tirárselo a la IA y decir: "Simulame un recorrido para este alumno que se retrasó en estas materias y cómo poder hacer que termine en la menor cantidad de tiempo", y ahí te va a decir: "Bueno, en este horario este..."
+
+**Entrevistador 1:** Tiene que ver cuáles son correlativas también.
+
+**Entrevistada:** Por supuesto, correlativas, horarios, materias equivalentes... Sí, está todo. Materias equivalentes por ahí a nosotros nos pasaba en la Facultad de Comunicación: "Bueno, lo mandamos a cursar en otra unidad académica Economía", ¿viste?, o que vaya a Facultad de Ciencias Empresariales a cursar Economía porque la puede cursar acá. Bueno, que te cruce todos esos datos, eso sería...
+
+**Entrevistador 1:** Siendo como desde el perfil de administración sería.
+
+**Entrevistada:** Sí, el perfil como más académico de... se llama como de Dirección de Estudios o de acompañamiento del alumno, como de asesoramiento del alumno para poder ayudarlo a que termine.
+
+**Entrevistador 2:** Y así no se queda mucho más tiempo ahí.
+
+**Entrevistada:** No, no, es que vos necesitás eso, vos necesitás ayudarlo, acompañarlo para que...
+
+**Entrevistador 2:** Como un pibe que está de 2012, ¿viste?
+
+**Entrevistada:** Decís: "¿Qué le falta a ese alumno? ¿Qué le falta y qué materias tiene? ¿Por qué no está cursando?". "Y, porque no le da el horario". "Bueno, busquemos el horario en otra unidad académica". Eso es el trabajo muy artesanal que hacen las direcciones de estudio. Así que bueno, no sé, espero que les sirva.
+
+**Entrevistador 1:** Sí, nos sirve re.
+
+**Entrevistada:** Está muy bueno, igual están re avanzados, está muy bien.
+
+**Entrevistador 2:** Estuvimos trabajando, pero lo que más nos falta es la validación. Tipo esto de validar con profesores, porque nos pasa que los profesores por ahí no están disponibles; nos falta validar y es como bueno, ya yo hago y es como bueno, ¿qué te gusta, qué no?
+
+**Entrevistada:** Bueno, igual en una semana, chicos, eso es un montón. Imaginate que esto, por eso te digo, yo para hacer tableros, para hacer interfaces, todo, el departamento de sistemas me lleva meses, años. Así que esto es un montón para una semana. Está muy bueno.
+
+**Entrevistador 1:** Muchas gracias.
