@@ -1,5 +1,6 @@
 /* Horario, modalidad y cupo de la oferta, en palabras. Solo presentación: las
    fechas están en components/dates.ts. */
+import { termLabel } from '@/components/academic/format'
 import type { OfferItem } from '@/lib/core/studies'
 
 /** El aviso de una mesa que pide regularizar la cursada antes de rendir. */
@@ -66,6 +67,22 @@ export function closingText(closesInDays: number): string {
 export function durationText(start: string, end: string): string {
   const weeks = Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / (7 * 24 * 3600 * 1000)))
   return `${weeks} ${weeks === 1 ? 'semana' : 'semanas'}`
+}
+
+/** La otra comisión de la materia en la que ya está inscripto. `period`: su período, si se sabe. `canDrop`: si su
+    inscripción sigue abierta, así que todavía se puede dar de baja. */
+export type OtherSection = { name: string; period: string | null; canDrop: boolean }
+
+/** Por qué no se puede inscribir en esta comisión si ya está en otra de la materia. Sugiere la baja solo si todavía
+    se puede dar de baja, y si la otra es de otro período, lo dice. */
+export function elsewhereText(other: OtherSection, period: string): string {
+  const enrolled = `Ya estás inscripto en la comisión ${other.name}`
+  if (other.period !== null && other.period !== period) {
+    const why = `${enrolled}, del ${termLabel(other.period)}, y no podés estar en dos comisiones de la misma materia.`
+    return other.canDrop ? `${why} Para anotarte en esta, primero date de baja de esa.` : why
+  }
+  if (other.canDrop) return `${enrolled}. Para cambiarte, primero date de baja de esa.`
+  return other.period === null ? `${enrolled}.` : `${enrolled} y su inscripción cerró, así que no te podés cambiar.`
 }
 
 /** «Se puede promocionar» o «Con final»: cómo se aprueba la cursada de una comisión. */

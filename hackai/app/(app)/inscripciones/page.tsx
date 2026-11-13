@@ -162,6 +162,7 @@ function Detail({
             <SectionCard
               key={item.target.sectionId}
               item={item}
+              siblings={offer.value.data}
               student={student}
               program={program}
               enrollAction={enrollAction}
