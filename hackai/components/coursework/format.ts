@@ -16,6 +16,14 @@ const subjectPath = (subjectId: string) => `${SUBJECTS_PATH}/${encodeURIComponen
 /** La lista de tareas de la materia. */
 export const tasksHref = (subjectId: string, comision?: string) => href(`${subjectPath(subjectId)}/tareas`, comision)
 
+/** La lista de tareas recién creada una: marca cuál es la nueva en `?creada=`, para avisar que se publicó. */
+export function createdTaskHref(subjectId: string, comision: string | undefined, taskId: string): string {
+  const params = new URLSearchParams()
+  if (comision) params.set('comision', comision)
+  params.set('creada', taskId)
+  return `${subjectPath(subjectId)}/tareas?${params}`
+}
+
 /** El formulario de tarea nueva. */
 export const newTaskHref = (subjectId: string, comision?: string) =>
   href(`${subjectPath(subjectId)}/tareas/nueva`, comision)

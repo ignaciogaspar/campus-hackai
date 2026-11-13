@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import {
   COURSE_COLUMN,
+  createdTaskHref,
   dueAtFromInput,
   durationLabel,
   evaluationHref,
@@ -116,7 +117,8 @@ function chosenFiles(form: FormData, key: string): File[] {
   })
 }
 
-/** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera. */
+/** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera, que avisa
+    que se publicó. */
 export async function createTask(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
@@ -143,7 +145,7 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
   })
   if (!result.ok) return failed(ERRORS[result.error])
   revalidatePath(tasksHref(subjectId))
-  redirect(tasksHref(subjectId, sectionIds[0]))
+  redirect(createdTaskHref(subjectId, sectionIds[0], result.value.id))
 }
 
 /** Cambia el nombre, la consigna y la fecha límite de una tarea. */

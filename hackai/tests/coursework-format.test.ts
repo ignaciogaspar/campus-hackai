@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   countsLabel,
+  createdTaskHref,
   dueAtFromInput,
   dueLabel,
   durationLabel,
@@ -29,6 +30,14 @@ test('los enlaces de Seguimiento conservan la comisión elegida y escapan los id
   assert.equal(newTaskHref('am1', 'sec-am1-fi-a'), '/materias/am1/tareas/nueva?comision=sec-am1-fi-a')
   assert.equal(taskHref('am1', 'tarea-1', 'sec a'), '/materias/am1/tareas/tarea-1?comision=sec+a')
   assert.equal(tasksHref('a/b'), '/materias/a%2Fb/tareas')
+})
+
+test('después de crear una tarea se vuelve a la lista de su comisión, marcando cuál es la nueva', () => {
+  assert.equal(
+    createdTaskHref('am1', 'sec-am1-fi-a', 'tarea 7'),
+    '/materias/am1/tareas?comision=sec-am1-fi-a&creada=tarea+7'
+  )
+  assert.equal(createdTaskHref('am1', undefined, 'tarea-7'), '/materias/am1/tareas?creada=tarea-7')
 })
 
 test('el alumno ve las pestañas Espacio y Tareas y el docente además Alumnos', () => {

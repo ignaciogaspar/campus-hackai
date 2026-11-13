@@ -22,11 +22,12 @@ function TaskStatus({ task }: { task: Task }) {
   return task.past ? <StatusPill tone='neutral'>Venció</StatusPill> : <StatusPill tone='info'>Vigente</StatusPill>
 }
 
-function TaskRow({ task, role, comision }: { task: Task; role: Role; comision: string }) {
+function TaskRow({ task, role, comision, fresh }: { task: Task; role: Role; comision: string; fresh: boolean }) {
   const sharedWith = role === 'profesor' && task.sections.length > 1
   return (
     <ListItem
       href={taskHref(task.subjectId, task.id, comision)}
+      className={fresh ? 'bg-success-background/60 hover:bg-success-background' : undefined}
       start={
         <span className='grid size-10 flex-none place-items-center rounded-full bg-accent text-blue-light'>
           <ClipboardList aria-hidden='true' className='size-5' strokeWidth={1.8} />
@@ -39,6 +40,7 @@ function TaskRow({ task, role, comision }: { task: Task; role: Role; comision: s
           <OriginBadge origin='hackai' />
           <time dateTime={task.dueAt}>{dueLabel(task)}</time>
           {!task.graded && <span>· Sin nota</span>}
+          {fresh && <span className='font-semibold text-success'>· Recién publicada</span>}
           {sharedWith && <span>· {sectionsLabel(task.sections.map((s) => s.name))}</span>}
         </>
       }
@@ -47,7 +49,18 @@ function TaskRow({ task, role, comision }: { task: Task; role: Role; comision: s
   )
 }
 
-export function TaskList({ tasks, role, comision }: { tasks: Task[]; role: Role; comision: string }) {
+export function TaskList({
+  tasks,
+  role,
+  comision,
+  createdId
+}: {
+  tasks: Task[]
+  role: Role
+  comision: string
+  /** La tarea que se acaba de crear, que se distingue de las demás. */
+  createdId?: string
+}) {
   if (tasks.length === 0) {
     return (
       <EmptyState icon={ClipboardList} title='Todavía no hay tareas'>
@@ -61,7 +74,7 @@ export function TaskList({ tasks, role, comision }: { tasks: Task[]; role: Role;
     <Card>
       <List aria-label='Tareas'>
         {tasks.map((task) => (
-          <TaskRow key={task.id} task={task} role={role} comision={comision} />
+          <TaskRow key={task.id} task={task} role={role} comision={comision} fresh={task.id === createdId} />
         ))}
       </List>
     </Card>

@@ -10,8 +10,9 @@ import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cache } from 'react'
+import { CreatedNotice } from '@/components/coursework/created-notice'
 import { PRIMARY } from '@/components/coursework/fields'
-import { newTaskHref, pageOf, tasksHref } from '@/components/coursework/format'
+import { newTaskHref, pageOf, sectionsLabel, tasksHref } from '@/components/coursework/format'
 import { TaskError } from '@/components/coursework/task-error'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { TaskList } from '@/components/coursework/task-list'
@@ -60,6 +61,8 @@ export default async function TasksPage({ params, searchParams }: { params: Para
   const several = list.sections.length > 1
   const page = pageOf(list.tasks, typeof raw.pagina === 'string' ? raw.pagina : undefined)
   const teacher = list.role === 'profesor'
+  // La que se acaba de crear (createTask lleva acá con `?creada=`), si es de esta comisión.
+  const created = teacher && typeof raw.creada === 'string' ? list.tasks.find((t) => t.id === raw.creada) : undefined
 
   return (
     <>
@@ -85,6 +88,7 @@ export default async function TasksPage({ params, searchParams }: { params: Para
             desactualizado.
           </StaleNotice>
         )}
+        {created && <CreatedNotice name={created.name} audience={sectionsLabel(created.sections.map((s) => s.name))} />}
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <h2 className='text-lg font-extrabold'>
             Tareas
@@ -101,7 +105,7 @@ export default async function TasksPage({ params, searchParams }: { params: Para
             </Link>
           )}
         </div>
-        <TaskList tasks={page.items} role={list.role} comision={list.sectionId} />
+        <TaskList tasks={page.items} role={list.role} comision={list.sectionId} createdId={created?.id} />
         <Pagination
           page={page.page}
           pages={page.pages}

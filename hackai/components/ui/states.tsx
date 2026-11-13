@@ -1,4 +1,4 @@
-import { CircleAlert, Clock, type LucideIcon, WifiOff } from 'lucide-react'
+import { CircleAlert, CircleCheck, Clock, type LucideIcon, WifiOff } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +48,15 @@ function Notice({
 export function StaleNotice({ children }: { children: ReactNode }) {
   return (
     <Notice icon={Clock} tone='bg-warning-background text-warning-foreground [&>svg]:text-warning-icon' role='status'>
+      {children}
+    </Notice>
+  )
+}
+
+/* Algo salió bien y conviene decirlo: se publicó, se guardó. */
+export function SuccessNotice({ children }: { children: ReactNode }) {
+  return (
+    <Notice icon={CircleCheck} tone='bg-success-background text-success' role='status'>
       {children}
     </Notice>
   )
