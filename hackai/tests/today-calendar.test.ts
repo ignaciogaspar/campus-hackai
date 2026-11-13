@@ -107,6 +107,24 @@ test('un final dice su turno y su lugar, y el cierre de una actividad dice que e
   assert.equal(closing.title, 'Cierra la inscripción a la actividad')
 })
 
+test('para el docente, un final es la mesa que integra: «Mesa de final»; para el alumno sigue con su nombre', () => {
+  const final = { ...item('Final', '2026-12-07T17:00:00.000Z', 'final'), subjectName: 'Sistemas de Representación' }
+  const parcial = item('Segundo parcial', '2026-11-16T11:00:00.000Z')
+  const now = '2026-11-10T12:00:00.000Z'
+
+  const teacher = eventsOf([final, parcial], [], null, now, 'profesor')
+  const student = eventsOf([final, parcial], [], null, now)
+
+  assert.deepEqual(
+    teacher.map((e) => e.title),
+    ['Mesa de final', 'Segundo parcial']
+  )
+  assert.deepEqual(
+    student.map((e) => e.title),
+    ['Final', 'Segundo parcial']
+  )
+})
+
 // Análisis I, comisión B: martes y jueves de 14 a 16, del 10/8 al 28/11.
 const am1: ClassSlot[] = [1, 3].map((weekday) => ({
   id: `clase:am1-b:${weekday}`,
