@@ -8,7 +8,7 @@
    se guarda nada. Las repetidas se cargan una sola vez. Qué se entiende y qué
    choca lo decide Planning. */
 import { Download, FileSpreadsheet } from 'lucide-react'
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef } from 'react'
 import { type PlanningPreviewState, previewPlanning, savePlanning } from '@/app/actions/planning'
 import { whenLabel } from '@/components/planning/format'
 import { ActionForm, FormFeedback, SubmitButton } from '@/components/spaces/action-form'
@@ -97,10 +97,17 @@ function Preview({ state }: { state: Extract<PlanningPreviewState, { status: 'pr
   const { ok, duplicates, errors } = state.preview.counts
   const order: PlanningPreviewRow['status'][] = ['error', 'repetida', 'ok']
   const rows = order.flatMap((status) => state.preview.rows.filter((r) => r.status === status))
+  const heading = useRef<HTMLHeadingElement>(null)
+  // La vista previa aparece debajo del formulario: se baja hasta ella y se le da el foco, así se ve el botón de
+  // guardar sin buscarlo y el lector de pantalla la anuncia.
+  useEffect(() => {
+    heading.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    heading.current?.focus({ preventScroll: true })
+  }, [])
   return (
-    <section aria-labelledby='vista-previa' className='flex flex-col gap-3'>
+    <section aria-labelledby='vista-previa' className='flex scroll-mt-4 flex-col gap-3'>
       <Card className='flex flex-col gap-3 p-4'>
-        <h2 id='vista-previa' className='text-lg font-extrabold'>
+        <h2 id='vista-previa' ref={heading} tabIndex={-1} className='scroll-mt-4 text-lg font-extrabold outline-none'>
           Vista previa de {state.source}
         </h2>
         <div className='flex flex-wrap gap-2'>
@@ -206,8 +213,11 @@ export function PlanningUpload() {
           <div className='flex flex-wrap gap-2'>
             <button type='submit' disabled={pending} aria-busy={pending || undefined} className={PRIMARY}>
               <FileSpreadsheet aria-hidden='true' className='size-4' strokeWidth={2} />
-              Ver vista previa
+              Revisar la planilla
             </button>
+            <span className={cn('self-center text-[0.8125rem]', HELP)}>
+              Primero se revisa; el botón para guardar aparece en la vista previa.
+            </span>
           </div>
           <FormFeedback error={state.status === 'error' ? state.message : null} />
         </form>
