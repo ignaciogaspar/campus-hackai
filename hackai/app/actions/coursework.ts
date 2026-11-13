@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import {
   COURSE_COLUMN,
+  createdTaskHref,
   dueAtFromInput,
   durationLabel,
   evaluationHref,
@@ -36,6 +37,7 @@ const ERRORS: Record<TaskError, string> = {
   'nombre-invalido': 'Ponele un nombre a la tarea, de hasta 120 caracteres.',
   'consigna-invalida': 'La consigna es demasiado larga: usá hasta 5.000 caracteres o subí un archivo.',
   'fecha-invalida': 'Elegí la fecha y la hora límite.',
+  'fecha-pasada': 'La fecha límite ya pasó. Elegí una fecha y hora de acá en adelante.',
   'demasiado-grande': 'El archivo pasa los 10 MB. Subí uno más liviano.',
   'archivo-vacio': 'El archivo está vacío. Elegí otro.',
   'falla-externa': 'No pudimos guardarlo porque un sistema no responde. Probá de nuevo en un rato.'
@@ -117,7 +119,8 @@ function chosenFiles(form: FormData, key: string): File[] {
   })
 }
 
-/** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera. */
+/** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera, que avisa
+    que se publicó. */
 export async function createTask(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
@@ -144,7 +147,7 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
   })
   if (!result.ok) return failed(ERRORS[result.error])
   revalidatePath(tasksHref(subjectId))
-  redirect(tasksHref(subjectId, sectionIds[0]))
+  redirect(createdTaskHref(subjectId, sectionIds[0], result.value.id))
 }
 
 /** Cambia el nombre, la consigna y la fecha límite de una tarea. */

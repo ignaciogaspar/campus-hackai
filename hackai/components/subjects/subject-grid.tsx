@@ -21,7 +21,7 @@ import {
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { gradesHref } from '@/components/coursework/format'
-import { dueTime, longDay, shortDate, timeOf } from '@/components/dates'
+import { closesAt, dueTime, longDay, shortDate, timeOf } from '@/components/dates'
 import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
 import { gradeText, StatusChip } from '@/components/grades/status'
@@ -161,7 +161,16 @@ export function CourseCard({
           <Callout>
             <span className='truncate font-semibold'>{next.name}</span>
             <span className='text-[0.75rem] text-ink/65'>
-              Vence <time dateTime={next.dueDate}>{dueTime(next.dueDate)}</time> · Moodle
+              {/* Al docente no le vence: es la fecha en que cierra la entrega de sus alumnos. */}
+              {subject.role === 'profesor' ? (
+                <>
+                  Cierra el <time dateTime={next.dueDate}>{closesAt(next.dueDate)}</time> · en Moodle
+                </>
+              ) : (
+                <>
+                  Vence <time dateTime={next.dueDate}>{dueTime(next.dueDate)}</time> · Moodle
+                </>
+              )}
             </span>
           </Callout>
         )
