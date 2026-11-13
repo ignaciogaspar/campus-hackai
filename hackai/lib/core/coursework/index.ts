@@ -334,6 +334,9 @@ export type NewGrade = {
   comment: string
 }
 
+/** La nota de qué alumno y en qué columna. */
+export type GradeTarget = Pick<NewGrade, 'sectionId' | 'columnId' | 'studentId'>
+
 /** Una nota publicada, como la ve el alumno. */
 export type PublishedGrade = {
   subjectId: string
@@ -508,6 +511,13 @@ export type Coursework = {
     personId: PersonId,
     input: NewGrade
   ): Promise<Result<GradeCell, AccessError | ColumnError | GradeError | 'alumno-desconocido'>>
+  /** Quita la nota (o el ausente) y el comentario de un alumno en una columna, si todavía no está publicada. Una nota
+      que ya ven los alumnos es `nota-publicada`: no se quita, porque ya la vio el alumno y puede haber pasado al SIU.
+      Si el alumno no tenía nota, no cambia nada. */
+  removeGrade(
+    personId: PersonId,
+    target: GradeTarget
+  ): Promise<Result<void, AccessError | ColumnError | 'alumno-desconocido' | 'nota-publicada'>>
   /** Publica las notas cargadas de una columna: desde ahí las ven los alumnos y les llega a la campana. Publicar de
       nuevo no repite nada. Una columna sin notas cargadas es `sin-notas`. Devuelve cuántas notas se publicaron ahora. */
   publish(

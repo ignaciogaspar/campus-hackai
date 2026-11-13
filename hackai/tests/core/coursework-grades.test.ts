@@ -187,6 +187,54 @@ test('rechaza una nota que no es de 1 a 10, la falta de nota y un comentario lar
   })
 })
 
+test('quitar una nota sin publicar la saca de la fila y de la columna', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  value(await coursework.grade('p-mledesma', gradeOf({ studentId: 'p-lbenitez', value: 6 })))
+
+  value(await coursework.removeGrade('p-mledesma', { sectionId: A, columnId: PARCIAL_1, studentId: 'p-taguirre' }))
+
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.students[0].cells[PARCIAL_1], undefined)
+  assert.equal(book.students[1].cells[PARCIAL_1]?.value, 6)
+  assert.equal(book.columns[0].graded, 1)
+})
+
+test('quitar la nota de un alumno que no tiene no cambia nada', async () => {
+  const { coursework } = build()
+
+  value(await coursework.removeGrade('p-mledesma', { sectionId: A, columnId: PARCIAL_1, studentId: 'p-taguirre' }))
+
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.columns[0].graded, 0)
+})
+
+test('una nota que ya ven los alumnos no se quita', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  value(await coursework.publish('p-mledesma', A, PARCIAL_1))
+
+  const removed = await coursework.removeGrade('p-mledesma', {
+    sectionId: A,
+    columnId: PARCIAL_1,
+    studentId: 'p-taguirre'
+  })
+
+  assert.deepEqual(removed, { ok: false, error: 'nota-publicada' })
+  assert.equal(value(await coursework.publishedFor('p-taguirre'))[0].value, 8)
+})
+
+test('solo quita una nota un docente de la comisión', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  const target = { sectionId: A, columnId: PARCIAL_1, studentId: 'p-taguirre' }
+
+  assert.deepEqual(await coursework.removeGrade('p-taguirre', target), { ok: false, error: 'solo-docentes' })
+  assert.deepEqual(await coursework.removeGrade('p-gferreyra', target), { ok: false, error: 'sin-acceso' })
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.students[0].cells[PARCIAL_1]?.value, 8)
+})
+
 test('solo califica un docente de la comisión, a un alumno de la comisión y en una columna de la comisión', async () => {
   const { coursework } = build()
   const ofB = value(await coursework.createTask('p-gferreyra', taskOf({ sectionIds: [B] })))

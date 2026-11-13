@@ -101,6 +101,26 @@ export function gradeFromInput(value: string): number | null {
   return /^\d+(\.\d+)?$/.test(text) ? Number(text) : Number.NaN
 }
 
+/** Lo escrito en la planilla, para comparar: sin espacios y con «a» igual que «A». */
+const sheetKey = (text: string) => text.trim().toUpperCase()
+
+/** Si lo escrito en un campo de la planilla se puede guardar: un número de 1 a 10 o «A» de ausente. */
+export function isSheetGrade(value: string): boolean {
+  if (sheetKey(value) === 'A') return true
+  const grade = gradeFromInput(value)
+  return grade !== null && grade >= 1 && grade <= 10
+}
+
+/** Qué pide una fila de la planilla al guardar: nada si no cambió («8,5» y «8.5» son lo mismo), quitar la nota si se
+    vació, o guardar lo escrito, que puede no servir. Un campo que ya estaba vacío nunca pide quitar. */
+export function sheetChange(row: { before: string; value: string }): 'igual' | 'quitar' | 'nota' | 'invalida' {
+  const before = sheetKey(row.before)
+  const value = sheetKey(row.value)
+  if (value === before || (value !== '' && gradeFromInput(value) === gradeFromInput(before))) return 'igual'
+  if (value === '') return 'quitar'
+  return isSheetGrade(value) ? 'nota' : 'invalida'
+}
+
 /** La nota como se escribe en un campo y se lee en pantalla: con coma decimal, sin ceros de más («8,5»). */
 export const gradeInputValue = (value: number | null) => (value === null ? '' : String(value).replace('.', ','))
 
