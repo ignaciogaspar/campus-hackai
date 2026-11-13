@@ -64,6 +64,22 @@ export const mondayOf = (day: string) => addDays(day, -weekdayIndex(day))
 /** Los 7 días de la semana que empieza en `monday`. */
 export const weekOf = (monday: string) => Array.from({ length: 7 }, (_, i) => addDays(monday, i))
 
+/** Una fila de la agenda del celular: un día con algo, o varios vacíos seguidos. */
+export type AgendaRow = { days: string[]; empty: boolean }
+
+/** Los días de la agenda en filas: los vacíos seguidos van juntos en una sola, salvo hoy, que va solo. */
+export function agendaRows(days: string[], busy: (day: string) => boolean, today: string): AgendaRow[] {
+  const rows: AgendaRow[] = []
+  for (const day of days) {
+    const empty = !busy(day)
+    const last = rows.at(-1)
+    const joins = empty && last?.empty && day !== today && !last.days.includes(today)
+    if (joins) last.days.push(day)
+    else rows.push({ days: [day], empty })
+  }
+  return rows
+}
+
 /** Las semanas completas, de lunes a domingo, que cubren el mes de un día `AAAA-MM-DD`. */
 export function monthOf(day: string): string[] {
   const first = `${day.slice(0, 7)}-01`

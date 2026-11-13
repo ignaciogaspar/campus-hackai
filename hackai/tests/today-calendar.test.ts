@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  agendaRows,
   type CalendarEvent,
   type ClassSlot,
   classesIn,
@@ -250,4 +251,18 @@ test('lo que se pisa va lado a lado, cada uno en el primer carril libre', () => 
       ['c', 0, 2]
     ]
   )
+})
+
+test('en la agenda del celular, los días vacíos seguidos van en una sola fila, salvo hoy, que va solo', () => {
+  const week = weekOf('2026-11-16')
+
+  const rows = agendaRows(week, (d) => d === '2026-11-21', '2026-11-17')
+
+  assert.deepEqual(rows, [
+    { days: ['2026-11-16'], empty: true },
+    { days: ['2026-11-17'], empty: true },
+    { days: ['2026-11-18', '2026-11-19', '2026-11-20'], empty: true },
+    { days: ['2026-11-21'], empty: false },
+    { days: ['2026-11-22'], empty: true }
+  ])
 })

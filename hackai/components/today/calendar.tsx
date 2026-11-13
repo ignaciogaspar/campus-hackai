@@ -13,7 +13,9 @@ import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, type ReactNode, useState } from 'react'
 import { ZoomLink } from '@/components/subjects/zoom-link'
+import { CalendarSummary, NextDates } from '@/components/today/calendar-dates'
 import {
+  agendaRows,
   type CalendarEvent,
   type CalendarTone,
   type ClassSlot,
@@ -31,6 +33,8 @@ import {
   withClasses
 } from '@/components/today/calendar-layout'
 import { Select } from '@/components/ui/select'
+import type { Role } from '@/lib/core/people'
+import type { UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 
@@ -302,9 +306,11 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
    entra. Los días sin nada se dicen en una línea. */
 function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent[]; today: string }) {
   const byTime = (a: CalendarEvent, b: CalendarEvent) => (a.minutes ?? -1) - (b.minutes ?? -1)
+  const rows = agendaRows(days, (d) => events.some((e) => e.day === d), today)
   return (
     <ol className='flex flex-col divide-y divide-border'>
-      {days.map((d) => {
+      {rows.map(({ days: [d, ...more] }) => {
+        if (more.length > 0) return <EmptyDays key={d} from={d} to={more.at(-1)!} />
         const ofDay = events.filter((e) => e.day === d).sort(byTime)
         const isToday = d === today
         return (
@@ -338,6 +344,21 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
         )
       })}
     </ol>
+  )
+}
+
+/* Varios días seguidos sin nada, en una sola línea: «Mié 18 a vie 20: nada estos días». */
+function EmptyDays({ from, to }: { from: string; to: string }) {
+  const short = (d: string) => `${format(d, { weekday: 'short' }).replace('.', '')} ${Number(d.slice(8))}`
+  return (
+    <li className='flex items-center gap-3 px-3 py-2.5'>
+      <span className='w-11 flex-none text-center text-[0.75rem] font-semibold text-muted-foreground tabular-nums'>
+        {Number(from.slice(8))}–{Number(to.slice(8))}
+      </span>
+      <p className='text-[0.8125rem] text-muted-foreground'>
+        {capitalize(short(from))} a {short(to)}: nada estos días
+      </p>
+    </li>
   )
 }
 
@@ -532,6 +553,8 @@ export function TodayCalendar({
   now,
   initialDay,
   filters = false,
+  upcoming,
+  viewer = 'alumno',
   top,
   below,
   aside
@@ -544,6 +567,10 @@ export function TodayCalendar({
   initialDay?: string
   /** Muestra los filtros por tipo y por materia. */
   filters?: boolean
+  /** Las fechas de Hoy: con ellas, arriba va lo próximo y al costado, las próximas fechas en lista. */
+  upcoming?: UpcomingItem[]
+  /** Quién mira, para saber a dónde lleva cada fecha. */
+  viewer?: Role
   top?: ReactNode
   /** Debajo de la semana, en su misma columna. */
   below?: ReactNode
@@ -583,6 +610,7 @@ export function TodayCalendar({
     >
       <div className='flex min-w-0 flex-col gap-5'>
         {top}
+        {upcoming && <CalendarSummary items={upcoming} now={now} viewer={viewer} />}
         <section aria-label='Semana' className='overflow-hidden rounded-2xl border border-border bg-card'>
           <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} />
           {filters && (
@@ -614,7 +642,12 @@ export function TodayCalendar({
           onMonth={(step) => setMonth((m) => shiftMonth(m, step))}
           onDay={goTo}
         />
-        {aside}
+        {(aside || upcoming) && (
+          <div className='flex flex-col gap-3'>
+            {aside}
+            {upcoming && <NextDates items={upcoming} viewer={viewer} />}
+          </div>
+        )}
       </aside>
     </div>
   )
