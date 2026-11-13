@@ -11,22 +11,37 @@ export function Pagination({
   page,
   pages,
   hrefFor,
-  label = 'Páginas'
+  label = 'Páginas',
+  local = false
 }: {
   /** La página actual, desde 1. */
   page: number
   pages: number
   hrefFor: (page: number) => string
   label?: string
+  local?: boolean
 }) {
   if (pages <= 1) return null
+  const navigation = (page: number) =>
+    local
+      ? (event: { preventDefault(): void }) => {
+          event.preventDefault()
+          window.history.pushState(null, '', hrefFor(page))
+        }
+      : undefined
   const arrow = (to: number, text: string, Icon: typeof ChevronLeft) =>
     to < 1 || to > pages ? (
       <span aria-hidden='true' className={cn(ITEM, 'text-gray-light')}>
         <Icon className='size-4' strokeWidth={2} />
       </span>
     ) : (
-      <Link href={hrefFor(to)} aria-label={text} className={cn(ITEM, 'text-ink hover:bg-ink/5')}>
+      <Link
+        href={hrefFor(to)}
+        prefetch={local ? false : undefined}
+        onNavigate={navigation(to)}
+        aria-label={text}
+        className={cn(ITEM, 'text-ink hover:bg-ink/5')}
+      >
         <Icon aria-hidden='true' className='size-4' strokeWidth={2} />
       </Link>
     )
@@ -37,6 +52,8 @@ export function Pagination({
         <Link
           key={n}
           href={hrefFor(n)}
+          prefetch={local ? false : undefined}
+          onNavigate={navigation(n)}
           aria-current={n === page ? 'page' : undefined}
           className={cn(ITEM, n === page ? 'bg-blue text-white' : 'text-ink hover:bg-ink/5')}
         >

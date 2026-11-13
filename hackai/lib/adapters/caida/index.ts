@@ -60,6 +60,7 @@ export function withSiuOutage(siu: SiuPort, outages: OutageSwitch): SiuPort {
     person: guarded(down, siu.person),
     terms: guarded(down, siu.terms),
     subject: guarded(down, siu.subject),
+    subjects: guarded(down, siu.subjects),
     section: guarded(down, siu.section),
     sections: guarded(down, siu.sections),
     teacherSections: guarded(down, siu.teacherSections),

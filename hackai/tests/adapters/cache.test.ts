@@ -170,3 +170,39 @@ test('con la caché en 0 segundos no se guarda nada: cada lectura va a la base',
   await siu.subject('am1')
   assert.equal(calls.get('subject'), 2)
 })
+
+test('comparte lecturas del SIU solo dentro del mismo pedido y las renueva al inscribirse', async () => {
+  const { spy, calls } = counted()
+  let scope = new Map<string, Promise<unknown>>()
+  const siu = withSiuCache(spy, { requestScope: () => scope })
+  const target = { kind: 'comision', sectionId: 'sec-pr1-fi-v' } as const
+
+  const before = await siu.courseEnrollments(TOMAS_SIU)
+  assert.deepEqual(await siu.courseEnrollments(TOMAS_SIU), before)
+  assert.equal(calls.get('courseEnrollments'), 1)
+  scope = new Map()
+  assert.deepEqual(await siu.courseEnrollments(TOMAS_SIU), before)
+  assert.equal(calls.get('courseEnrollments'), 2)
+
+  assert.ok((await siu.enroll(TOMAS_SIU, target)).ok)
+  const after = await siu.courseEnrollments(TOMAS_SIU)
+  assert.ok(before.ok && after.ok)
+  assert.equal(after.value.length, before.value.length + 1)
+})
+
+test('carga las materias faltantes en un lote y comparte sus entradas con lecturas individuales', async () => {
+  const { spy, calls } = counted()
+  const siu = withSiuCache(spy)
+  await siu.subject('am1')
+  const pending = siu.subjects(['am1', 'pr1', 'inexistente', 'pr1'])
+  assert.ok((await siu.subject('pr1')).ok)
+  const found = await pending
+  assert.ok(found.ok)
+  assert.deepEqual(
+    found.value.map((item) => item.id),
+    ['am1', 'pr1']
+  )
+  assert.deepEqual(await siu.subjects([]), ok([]))
+  assert.equal(calls.get('subjects'), 1)
+  assert.equal(calls.get('subject'), 1)
+})

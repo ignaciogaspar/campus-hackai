@@ -8,6 +8,7 @@
    ingreso, no hay contexto y el encabezado no muestra el perfil. */
 import { createContext, type ReactNode, useContext } from 'react'
 import { ProfileMenu } from '@/components/session/profile-menu'
+import { Brand } from '@/components/shell/brand'
 import type { Person } from '@/lib/core/people'
 
 export type Shell = {
@@ -20,6 +21,11 @@ const ShellContext = createContext<Shell | null>(null)
 
 export function ShellProvider({ value, children }: { value: Shell; children: ReactNode }) {
   return <ShellContext value={value}>{children}</ShellContext>
+}
+
+export function HeaderBrand({ school }: { school?: string }) {
+  const shell = useContext(ShellContext)
+  return <Brand school={school ?? shell?.person?.school.name} />
 }
 
 /* Arriba a la derecha del encabezado, en el celular: el avatar que abre el

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { absencesLine } from '@/components/subjects/absences'
+import { absencesLine } from '@/components/absences/line'
 
 test('las faltas dicen cuántas lleva, del máximo si lo hay, las justificadas y cuántas le quedan', () => {
   assert.equal(
@@ -17,5 +17,5 @@ test('las faltas dicen cuántas lleva, del máximo si lo hay, las justificadas y
   )
   assert.equal(absencesLine({ count: 1, justified: 0, max: null, left: null, warning: null }), '1 falta')
   assert.equal(absencesLine({ count: 0, justified: 0, max: null, left: null, warning: null }), 'Sin faltas')
-  assert.equal(absencesLine({ count: 0, justified: 0, max: 8, left: 8, warning: null }), '0 de 8 faltas · te quedan 8')
+  assert.equal(absencesLine({ count: 0, justified: 0, max: 8, left: 8, warning: null }), 'Sin faltas · te quedan 8')
 })

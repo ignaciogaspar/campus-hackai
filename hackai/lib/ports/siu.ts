@@ -235,6 +235,8 @@ export type SiuPort = {
   person(personId: string): Promise<Result<SiuPerson, SiuReadError>>
   terms(): Promise<Result<SiuTerm[], ExternalFailure>>
   subject(subjectId: string): Promise<Result<SiuSubject, SiuReadError>>
+  /** Devuelve las materias encontradas, sin repetir ids. */
+  subjects(ids: string[]): Promise<Result<SiuSubject[], ExternalFailure>>
   section(sectionId: string): Promise<Result<SiuSection, SiuReadError>>
   /** Oferta de comisiones, con la cantidad de inscriptos aceptados. */
   sections(filter: SiuSectionFilter): Promise<Result<(SiuSection & { enrolled: number })[], ExternalFailure>>

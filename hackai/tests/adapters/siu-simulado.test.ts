@@ -8,7 +8,7 @@ import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 
-function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000) {
+function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000, nowMs?: () => number) {
   const logs: string[] = []
   const client = createClient('http://siu-simulado.test', 'clave-de-prueba', {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -19,6 +19,7 @@ function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000) {
     clock: createFixedClock(syntheticData.now),
     selfServiceBaseUrl: syntheticData.siu.selfServiceBaseUrl,
     timeoutMs,
+    nowMs,
     log: (message) => logs.push(message)
   })
   return { siu, logs }
@@ -63,7 +64,7 @@ test('si la red falla, cada operación devuelve «falla externa» sin tirar', as
 
 test('lee cuándo se cargó cada nota, y `null` si la columna viene vacía', async () => {
   const tables: Record<string, unknown[]> = {
-    siu_persons: [{ id: '30101' }],
+    siu_persons: [{ id: '30101', programs: [] }],
     siu_provisional_results: [
       {
         id: 'ap-1',
@@ -115,7 +116,7 @@ test('si la base responde con error devuelve «falla externa»', async () => {
 function writableBase(options: { failWrites?: boolean } = {}) {
   const writes: { table: string; query: string; body: unknown }[] = []
   const tables: Record<string, unknown[]> = {
-    siu_persons: [{ id: '30101' }],
+    siu_persons: [{ id: '30101', programs: [] }],
     siu_assessments: [
       {
         id: 'ev-5',
@@ -193,3 +194,50 @@ test('si la base rechaza la escritura de una nota devuelve «falla externa» y n
   assert.deepEqual(await siu.writeCourseGrade('30101', 'sec-am1-fi-a', 8), { ok: false, error: 'falla-externa' })
 })
 // --- fin B: notas ---
+test('comparte una sola consulta de persona entre el padrón y las lecturas del SIU', async () => {
+  const tables: string[] = []
+  const { siu } = siuWith(async (input) => {
+    const table = new URL(String(input)).pathname.split('/').at(-1) ?? ''
+    tables.push(table)
+    const rows = table === 'siu_persons' ? [{ id: '30101', programs: [] }] : []
+    return Response.json(rows)
+  })
+
+  const results = await Promise.all([siu.person('30101'), siu.history('30101'), siu.provisionalResults('30101')])
+  assert.ok(results.every((result) => result.ok))
+  assert.ok((await siu.history('30101')).ok)
+  assert.equal(tables.filter((table) => table === 'siu_persons').length, 1)
+})
+
+test('una persona inexistente se vuelve a buscar y las lecturas mantienen no-encontrado', async () => {
+  let reads = 0
+  const { siu } = siuWith(async (input) => {
+    if (new URL(String(input)).pathname.endsWith('/siu_persons')) reads += 1
+    return Response.json([])
+  })
+
+  assert.deepEqual(await siu.history('99999'), { ok: false, error: 'no-encontrado' })
+  assert.deepEqual(await siu.provisionalResults('99999'), { ok: false, error: 'no-encontrado' })
+  assert.equal(reads, 2)
+})
+
+test('vuelve a consultar el padrón cuando vence su caché aunque el reloj académico esté fijo', async () => {
+  let time = 0
+  let reads = 0
+  const { siu } = siuWith(
+    async () => {
+      reads += 1
+      return Response.json([{ id: '30101', programs: [] }])
+    },
+    1000,
+    () => time
+  )
+
+  assert.ok((await siu.person('30101')).ok)
+  time = 299_999
+  assert.ok((await siu.person('30101')).ok)
+  assert.equal(reads, 1)
+  time = 300_000
+  assert.ok((await siu.person('30101')).ok)
+  assert.equal(reads, 2)
+})
