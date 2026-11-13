@@ -116,6 +116,7 @@ function parseFilter(table: FakeTable, column: string, raw: string): Filter {
     for (const value of values) checkValue(table, column, value)
     return (row) => values.includes(asText(row[column]) ?? '\u0000')
   }
+  if (raw === 'is.null') return (row) => row[column] === null || row[column] === undefined
   if (raw.startsWith('cs.')) {
     if (!table.jsonb?.includes(column)) throw bad(`cs solo sobre columnas jsonb: ${column}`)
     let wanted: unknown

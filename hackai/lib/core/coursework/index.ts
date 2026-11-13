@@ -575,7 +575,11 @@ export type CourseworkStore = {
   /** La entrega de esa persona a esa tarea, o `null`. */
   submission(taskId: string, personId: PersonId): Promise<Result<StoredSubmission | null, CourseworkStoreError>>
   /** Guarda la entrega de la persona a la tarea: la crea o, si ya había una, la reemplaza entera. */
-  saveSubmission(submission: Omit<StoredSubmission, 'id'>): Promise<Result<StoredSubmission, CourseworkStoreError>>
+  /** Guarda la entrega o reemplaza la que ya tiene la persona en la tarea. Una entrega calificada no se reemplaza:
+      `ya-calificada`, también si el docente la calificó después de que se leyó. */
+  saveSubmission(
+    submission: Omit<StoredSubmission, 'id'>
+  ): Promise<Result<StoredSubmission, CourseworkStoreError | 'ya-calificada'>>
   /** Las entregas de la persona a esas tareas. */
   submissionsBy(personId: PersonId, taskIds: string[]): Promise<Result<StoredSubmission[], CourseworkStoreError>>
   /** La entrega que tiene ese archivo, o `null`. */

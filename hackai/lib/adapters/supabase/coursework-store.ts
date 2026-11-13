@@ -229,16 +229,18 @@ export function createSupabaseCourseworkStore({
     return raced.ok && raced.value ? replace(raced.value.id, submission) : fail('falla-externa' as const)
   }
 
-  /** Reemplaza la entrega que ya existe, por su id. */
+  /** Reemplaza la entrega que ya existe, por su id, solo si sigue sin calificar: si el docente la calificó en el
+      medio, no actualiza ninguna fila y devuelve `null`. */
   const replace = (id: string, submission: Omit<StoredSubmission, 'id'>) =>
     run<SubmissionRow>('reemplazar entrega', (s) =>
       client
         .from('coursework_submissions')
         .update(submissionRow(submission))
         .eq('id', id)
+        .is('graded_at', null)
         .select(SUBMISSION_COLUMNS)
         .abortSignal(s)
-        .single()
+        .maybeSingle()
     )
 
   return {
@@ -303,10 +305,13 @@ export function createSupabaseCourseworkStore({
       if (!isUuid(submission.taskId)) return fail('falla-externa')
       const existing = await submissionOf(submission.taskId, submission.personId)
       if (!existing.ok) return existing
+      if (existing.value?.gradedAt) return fail('ya-calificada')
       let saved = existing.value ? await replace(existing.value.id, submission) : await create(submission)
       // Otra entrega del mismo alumno llegó entre la lectura y el alta: esta la reemplaza.
       if (!saved.ok && saved.error === 'duplicado') saved = await replaceRaced(submission)
-      if (!saved.ok || !saved.value) return fail('falla-externa')
+      if (!saved.ok) return fail('falla-externa')
+      // El reemplazo no tocó ninguna fila: el docente la calificó entre la lectura y la escritura.
+      if (!saved.value) return fail('ya-calificada')
       return ok(toSubmission(saved.value))
     },
 

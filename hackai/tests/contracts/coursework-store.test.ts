@@ -193,6 +193,19 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     assert.deepEqual(value(await store.submissionsBy(ids.person(2), [task.id])), [second])
   })
 
+  it('una entrega calificada no se reemplaza: devuelve ya-calificada y queda como estaba', async (store, ids) => {
+    const task = value(await store.createTask(taskOf(ids)))
+    value(await store.saveSubmission(submissionOf(ids, task.id)))
+    const graded = value(await store.gradeSubmission(task.id, ids.person(2), '2026-11-12T10:00:00.000Z'))
+
+    const files = [{ id: randomUUID(), name: 'v2.pdf', contentType: 'application/pdf', size: 99 }]
+    assert.deepEqual(await store.saveSubmission(submissionOf(ids, task.id, { files })), {
+      ok: false,
+      error: 'ya-calificada'
+    })
+    assert.deepEqual(value(await store.submissionsBy(ids.person(2), [task.id])), [graded])
+  })
+
   it('las entregas de una persona salen solo para las tareas pedidas, y no se mezclan con las de otra', async (store, ids) => {
     const one = value(await store.createTask(taskOf(ids, { name: 'Una' })))
     const two = value(await store.createTask(taskOf(ids, { name: 'Dos' })))

@@ -2,7 +2,7 @@
    docentes y las entregas, los alumnos. Se porta como el de Supabase y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts). */
 import type { CourseworkStore, StoredGrade, StoredSubmission, StoredTask, StoredWeight } from '@/lib/core/coursework'
-import { ok } from '@/lib/result'
+import { fail, ok } from '@/lib/result'
 
 export function createMemoryCourseworkStore(): CourseworkStore {
   const tasks: StoredTask[] = []
@@ -54,6 +54,7 @@ export function createMemoryCourseworkStore(): CourseworkStore {
     async saveSubmission(submission) {
       const index = submissions.findIndex((s) => s.taskId === submission.taskId && s.personId === submission.personId)
       if (index >= 0) {
+        if (submissions[index].gradedAt) return fail('ya-calificada')
         submissions[index] = { ...copy(submission), id: submissions[index].id }
         return ok(copy(submissions[index]))
       }
