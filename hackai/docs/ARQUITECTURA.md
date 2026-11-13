@@ -120,7 +120,7 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 ### Seguimiento (`coursework`)
 
-Las tareas de una materia, sus entregas y sus calificaciones. Hoy el docente crea y edita tareas, el alumno las ve y las entrega, y el docente califica (nota y comentario) y publica las notas por columna. Los pesos, la nota de cursada y el pase al SIU son de tickets siguientes.
+Las tareas de una materia, sus entregas y sus calificaciones. Hoy el docente crea y edita tareas, ve quién entregó, califica (nota y comentario) y publica las notas por columna, y el alumno las ve, las entrega y ve sus notas publicadas. Los pesos, la nota de cursada y el pase al SIU son de tickets siguientes.
 
 | Operación | Qué hace |
 | --- | --- |
@@ -129,13 +129,15 @@ Las tareas de una materia, sus entregas y sus calificaciones. Hoy el docente cre
 | `tasksOf(persona, materia, comisión?)` | Las tareas de una comisión, por fecha límite. Al docente le devuelve las comisiones vigentes que dicta de la materia y las de la elegida (la primera si falta o no es suya); al alumno, las de su comisión. Una comisión que la persona no tiene nunca trae tareas |
 | `task(persona, tarea)` | Una tarea con lo que la persona puede hacer con ella (`canManage`) y sus comisiones, solo las que la persona tiene |
 | `submit(persona, tarea, archivos)` | El alumno entrega uno o más archivos (hasta 10, 10 MB en total) a una tarea de su comisión, o reemplaza su entrega anterior si el docente todavía no la calificó. Guarda cuándo entregó. Después de la fecha límite la acepta y queda atrasada, con cuántos minutos |
+| `submissions(persona, tarea, comisión)` | Quién entregó, para el docente de esa comisión: todos los alumnos de la comisión (los de Cursada), por apellido, cada uno con su estado (entregó, no entregó o atrasada con cuánto) y los totales |
+| `submission(persona, entrega)` | Una entrega con sus archivos y de qué alumno es, para el docente de la comisión del alumno |
 | `dated(persona)` | Las tareas de las materias actuales donde la persona cursa, por fecha límite: lo que Hoy suma al calendario. A un docente le da una lista vacía |
 | `gradebook(persona, materia, comisión?)` | Calificaciones de una comisión que dicta el docente (la pedida si es suya, o la primera): las columnas por fecha (una por tarea con nota de la comisión y una por evaluación del SIU, con cuántas notas tiene cada una, cuántas sin publicar y desde cuándo está publicada) y una fila por alumno con su nota en cada columna. A un alumno le da `solo-docentes` |
 | `grade(persona, nota)` | Carga la nota (de 1 a 10, hasta dos decimales) o el ausente, y el comentario, de un alumno en una columna; si ya había, la reemplaza. En una columna ya publicada la nota sale publicada en el momento. Calificar la entrega de una tarea cierra su reemplazo |
 | `publish(persona, comisión, columna)` | Publica las notas cargadas de una columna: desde ahí las ven los alumnos y les llega a la campana. Publicar de nuevo no repite nada; una columna sin notas es `sin-notas` |
 | `publishedFor(persona)` | Las notas publicadas del alumno (nota y comentario entero), la más nueva primero. Nunca trae una de una columna sin publicar |
 | `newGrades(persona, visto)` | Las publicadas con número en los últimos 7 días y después de la última vez que el alumno vio sus notas: lo que Hoy suma a la campana y a Novedades |
-| `file(persona, archivo)` | Los bytes de un archivo de Seguimiento: la consigna de una tarea, si la persona la ve, o un archivo de una entrega, solo si es de quien la hizo (el docente los abre desde la pantalla de entregas, que es de un ticket siguiente) |
+| `file(persona, archivo)` | Los bytes de un archivo de Seguimiento: la consigna de una tarea, si la persona la ve, o un archivo de una entrega, si es de quien la hizo o si la persona es docente de una comisión del alumno |
 
 **Reglas que hace cumplir:**
 
@@ -147,8 +149,9 @@ Las tareas de una materia, sus entregas y sus calificaciones. Hoy el docente cre
 - **Quién ve una nota:** el alumno, solo cuando su columna está publicada. Publicar sella las notas cargadas; una nota cargada o cambiada después en una columna ya publicada sale publicada en ese momento.
 - **Quién entrega:** solo un alumno de una comisión de la tarea. Para quien no la ve, la tarea no existe (`tarea-desconocida`), así que un alumno de la A no entrega una tarea que es solo de la B; un docente recibe `solo-alumnos`. Cada alumno tiene una sola entrega por tarea: entregar de nuevo la reemplaza (y borra sus archivos) hasta que la califican (`ya-calificada`).
 - **Atrasada:** una entrega después de la fecha límite se acepta, nunca se bloquea. El atraso no se guarda: se calcula al leer con la fecha de la entrega y la fecha límite vigente (si el docente la corre, se recalcula). Menos de un minuto cuenta como uno.
+- **Quién entregó:** `submissions` es solo del docente de esa comisión de la tarea: una comisión que no dicta es `sin-acceso`, un alumno recibe `solo-docentes` y quien no ve la tarea, `tarea-desconocida`. La lista sale de los alumnos que da Cursada, no de las entregas guardadas, así que figura también quien no entregó. `submission` es `entrega-desconocida` para todos menos el docente de una comisión del alumno: la entrega de un alumno de otra comisión, para él, no existe.
 - **Sin archivos sueltos:** si falla guardar la entrega, se borran los archivos recién subidos y la entrega anterior sigue como estaba.
-- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `columna-desconocida`, `alumno-desconocido`, `nota-invalida`, `comentario-invalido`, `sin-notas`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
+- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `entrega-desconocida`, `columna-desconocida`, `alumno-desconocido`, `nota-invalida`, `comentario-invalido`, `sin-notas`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
 
 Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la persona), el puerto de Archivos y el reloj. Cursada no lo llama.
 

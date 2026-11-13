@@ -375,6 +375,29 @@ export function createSupabaseCourseworkStore({
       )
       if (!closed.ok || !closed.value) return fail('falla-externa')
       return ok(toSubmission(closed.value))
+    },
+
+    async submissionById(submissionId) {
+      if (!isUuid(submissionId)) return ok(null)
+      const row = await run<SubmissionRow>('entrega por id', (s) =>
+        client
+          .from('coursework_submissions')
+          .select(SUBMISSION_COLUMNS)
+          .eq('id', submissionId)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!row.ok) return fail('falla-externa')
+      return ok(row.value ? toSubmission(row.value) : null)
+    },
+
+    async submissionsOfTask(taskId) {
+      if (!isUuid(taskId)) return ok([])
+      const rows = await run<SubmissionRow[]>('entregas de la tarea', (s) =>
+        client.from('coursework_submissions').select(SUBMISSION_COLUMNS).eq('task_id', taskId).abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      return ok((rows.value ?? []).map(toSubmission))
     }
   }
 }

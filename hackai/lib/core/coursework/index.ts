@@ -1,7 +1,8 @@
 /* Seguimiento (coursework): las tareas de una materia y sus entregas. Interfaz y
-   reglas en hackai/docs/ARQUITECTURA.md. Hoy el docente crea y edita tareas, el
-   alumno las ve y las entrega, y el docente califica y publica las notas; la
-   vista del docente sobre las entregas, los pesos y el pase al SIU se suman en
+   reglas en hackai/docs/ARQUITECTURA.md. Hoy el docente crea y edita tareas, ve
+   quién entregó, califica y publica las notas; el alumno las ve y las entrega y
+   ve sus notas publicadas. Los pesos, la nota de cursada y el pase al SIU se
+   suman en
    los tickets siguientes.
 
    - Una tarea es de una o más comisiones vigentes de una materia, y la crea un
@@ -20,7 +21,11 @@
      acepta igual y queda atrasada, con cuántos minutos. El atraso se calcula al
      leer, con la fecha límite vigente. Volver a entregar reemplaza la entrega
      anterior (y borra sus archivos) hasta que el docente la califica. Los
-     archivos de una entrega los baja solo quien la hizo.
+     archivos de una entrega los baja quien la hizo y los docentes de la
+     comisión del alumno.
+   - Quién entregó: el docente ve todos los alumnos de una comisión suya (los de
+     Cursada) con su estado, y abre cada entrega. Una comisión que no dicta es
+     `sin-acceso`; la entrega de un alumno de otra comisión, para él, no existe.
    - Las tareas con fecha de las materias actuales del alumno (`dated`) las
      compone Hoy para el calendario y el `.ics`.
    - Calificaciones: una columna por tarea con nota de la comisión y una por
@@ -39,7 +44,7 @@
    Usa Cursada, el puerto de Archivos y el reloj. Cursada no lo llama. */
 import { createCourseworkModule } from '@/lib/core/coursework/module'
 import type { PersonId, Role } from '@/lib/core/people'
-import type { Studies } from '@/lib/core/studies'
+import type { SectionStudent, Studies } from '@/lib/core/studies'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { FileContent, FilesPort, NewFile } from '@/lib/ports/files'
 import type { ExternalFailure, Result } from '@/lib/result'
@@ -210,6 +215,36 @@ export type PublishedGrade = {
   publishedAt: string
 }
 
+/** Un alumno de la comisión, como lo da Cursada. `personId` es `null` si todavía no tiene cuenta en HackAI. */
+export type SubmissionStudent = SectionStudent
+
+/** Entregó a tiempo, entregó tarde o todavía no entregó. */
+export type SubmissionState = 'entregada' | 'atrasada' | 'sin-entrega'
+
+/** Un alumno de la comisión y su entrega a la tarea, si la hizo. */
+export type SubmissionRow = { student: SubmissionStudent; state: SubmissionState; submission: Submission | null }
+
+export type SubmissionCounts = { onTime: number; late: number; missing: number }
+
+/** Quién entregó una tarea en una comisión: todos sus alumnos, por apellido. */
+export type TaskSubmissions = {
+  task: TaskView
+  sectionId: string
+  rows: SubmissionRow[]
+  counts: SubmissionCounts
+  staleSince: string | null
+}
+
+/** Una entrega abierta por el docente: de quién es, con sus archivos. */
+export type SubmissionDetail = {
+  task: TaskView
+  /** La comisión del docente a la que pertenece el alumno. */
+  sectionId: string
+  student: SubmissionStudent
+  submission: Submission
+  staleSince: string | null
+}
+
 export type AccessError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
 export type GradeError = 'nota-invalida' | 'comentario-invalido'
 export type ColumnError = 'solo-docentes' | 'columna-desconocida'
@@ -245,6 +280,19 @@ export type Coursework = {
       docente todavía no la calificó. Después de la fecha límite se acepta y queda atrasada. Si algo falla, no
       deja archivos sueltos y la entrega anterior sigue como estaba. */
   submit(personId: PersonId, taskId: TaskId, files: NewFile[]): Promise<Result<Submission, SubmitError>>
+  /** Quién entregó y quién no en una comisión que dicta el docente: todos sus alumnos con su estado (entregó, no
+      entregó, atrasada con cuánto). Un docente de otra comisión recibe `sin-acceso`; un alumno, `solo-docentes`. */
+  submissions(
+    personId: PersonId,
+    taskId: TaskId,
+    sectionId: string
+  ): Promise<Result<TaskSubmissions, AccessError | 'tarea-desconocida' | 'solo-docentes'>>
+  /** Una entrega con sus archivos, para el docente de la comisión del alumno. Para cualquier otra persona, o si no
+      existe, `entrega-desconocida`. */
+  submission(
+    personId: PersonId,
+    submissionId: string
+  ): Promise<Result<SubmissionDetail, AccessError | 'entrega-desconocida'>>
   /** Las tareas de las materias actuales del alumno, por fecha límite. A un docente le da una lista vacía. */
   dated(personId: PersonId): Promise<Result<DatedTask[], AccessError>>
   /** Los bytes de un archivo de Seguimiento: la consigna de una tarea, para quien la ve, o un archivo de una
@@ -361,6 +409,10 @@ export type CourseworkStore = {
     personId: PersonId,
     at: string
   ): Promise<Result<StoredSubmission | null, CourseworkStoreError>>
+  /** La entrega con ese id, o `null`. */
+  submissionById(submissionId: string): Promise<Result<StoredSubmission | null, CourseworkStoreError>>
+  /** Las entregas de todos los alumnos a esa tarea. */
+  submissionsOfTask(taskId: string): Promise<Result<StoredSubmission[], CourseworkStoreError>>
 }
 
 export type CourseworkDeps = {

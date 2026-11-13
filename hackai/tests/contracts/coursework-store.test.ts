@@ -207,6 +207,20 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     assert.deepEqual(value(await store.submissionsBy(ids.person(2), ['no-es-un-uuid'])), [])
   })
 
+  it('encuentra una entrega por id y las de una tarea, sin mezclar las de otra', async (store, ids) => {
+    const one = value(await store.createTask(taskOf(ids, { name: 'Una' })))
+    const two = value(await store.createTask(taskOf(ids, { name: 'Dos' })))
+    const a = value(await store.saveSubmission(submissionOf(ids, one.id)))
+    const b = value(await store.saveSubmission(submissionOf(ids, one.id, { personId: ids.person(3) })))
+    value(await store.saveSubmission(submissionOf(ids, two.id)))
+
+    assert.deepEqual(value(await store.submissionById(a.id)), a)
+    assert.equal(value(await store.submissionById(randomUUID())), null)
+    assert.equal(value(await store.submissionById('no-es-un-uuid')), null)
+    assert.deepEqual(new Set(value(await store.submissionsOfTask(one.id)).map((s) => s.id)), new Set([a.id, b.id]))
+    assert.deepEqual(value(await store.submissionsOfTask('no-es-un-uuid')), [])
+  })
+
   it('encuentra la entrega que tiene un archivo', async (store, ids) => {
     const task = value(await store.createTask(taskOf(ids)))
     const file = { id: randomUUID(), name: 'tp3.pdf', contentType: 'application/pdf', size: 1200 }

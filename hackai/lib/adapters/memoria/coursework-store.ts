@@ -115,6 +115,15 @@ export function createMemoryCourseworkStore(): CourseworkStore {
       if (!found) return ok(null)
       found.gradedAt ??= at
       return ok(copy(found))
+    },
+
+    async submissionById(submissionId) {
+      const found = submissions.find((s) => s.id === submissionId)
+      return ok(found ? copy(found) : null)
+    },
+
+    async submissionsOfTask(taskId) {
+      return ok(copy(submissions.filter((s) => s.taskId === taskId)))
     }
   }
 }

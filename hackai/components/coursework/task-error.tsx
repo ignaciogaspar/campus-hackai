@@ -7,11 +7,14 @@ import { PageHeader } from '@/components/shell/page-header'
 import { ErrorNotice } from '@/components/ui/states'
 import type { AccessError } from '@/lib/core/coursework'
 
-const ERRORS: Record<AccessError | 'tarea-desconocida' | 'solo-docentes', string> = {
+export type TaskErrorKind = AccessError | 'tarea-desconocida' | 'entrega-desconocida' | 'solo-docentes'
+
+const ERRORS: Record<TaskErrorKind, string> = {
   'sin-acceso': 'No sos parte de esta materia. Si recién te inscribiste, puede tardar un rato en aparecer.',
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
   'falla-externa': 'No pudimos abrir la pantalla porque un sistema no responde. Probá de nuevo en un rato.',
   'tarea-desconocida': 'Esa tarea no existe o no es de tu comisión.',
+  'entrega-desconocida': 'Esa entrega no existe o no es de una comisión tuya.',
   'solo-docentes': 'Esta pantalla es solo para los docentes de la comisión.'
 }
 
@@ -22,7 +25,7 @@ export function TaskError({
   backHref = '/materias',
   backLabel = 'Ir a Mis materias'
 }: {
-  error: AccessError | 'tarea-desconocida' | 'solo-docentes'
+  error: TaskErrorKind
   retryHref: string
   title?: string
   backHref?: string

@@ -559,15 +559,17 @@ test('si no se puede guardar la entrega, no quedan archivos sueltos y la entrega
   assert.deepEqual(value(await coursework.task('p-taguirre', task.id)).submission, first)
 })
 
-test('los archivos de una entrega los baja solo quien la hizo', async () => {
+test('los archivos de una entrega los baja quien la hizo y el docente de su comisión, y nadie más', async () => {
   const { coursework, task } = await withTaskInA()
   const submission = value(await coursework.submit('p-taguirre', task.id, [upload('mia.txt', 'mi tarea')]))
   const fileId = fileIdOf(submission.files[0])
 
   const own = value(await coursework.file('p-taguirre', fileId))
   assert.equal(new TextDecoder().decode(own.bytes), 'mi tarea')
-  // Otro alumno de la comisión, el docente y un alumno de otra comisión no.
-  for (const person of ['p-lbenitez', 'p-mledesma', 'p-mcabrera']) {
+  const teacher = value(await coursework.file('p-mledesma', fileId))
+  assert.equal(new TextDecoder().decode(teacher.bytes), 'mi tarea')
+  // Otro alumno de la comisión, un docente de otra comisión y un alumno de otra comisión no.
+  for (const person of ['p-lbenitez', 'p-gferreyra', 'p-mcabrera']) {
     assert.deepEqual(await coursework.file(person, fileId), { ok: false, error: 'sin-acceso' })
   }
 })
@@ -593,4 +595,138 @@ test('las tareas con fecha del alumno son las de las materias actuales donde cur
   )
   assert.deepEqual(value(await coursework.dated('p-mledesma')), [])
   assert.deepEqual(await coursework.dated('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
+// --- Quién entregó ----------------------------------------------------------
+
+/** Entre A (Aguirre, Benítez, Escobar): Aguirre entrega a tiempo, Benítez 150 minutos tarde y Escobar no entrega. */
+async function withDeliveries() {
+  const built = await withTaskInA()
+  const { coursework, task, advance } = built
+  const onTime = value(await coursework.submit('p-taguirre', task.id, [upload('tp3.txt')]))
+  advance(3 * 24 * 60 + 11 * 60 + 59 + 150)
+  const late = value(await coursework.submit('p-lbenitez', task.id, [upload('tarde.txt'), upload('anexo.txt')]))
+  return { ...built, onTime, late }
+}
+
+test('el docente ve todos los alumnos de la comisión: quién entregó, quién no y quién entregó tarde y por cuánto', async () => {
+  const { coursework, task, onTime, late } = await withDeliveries()
+
+  const result = value(await coursework.submissions('p-mledesma', task.id, A))
+
+  assert.equal(result.sectionId, A)
+  assert.equal(result.task.id, task.id)
+  assert.deepEqual(
+    result.rows.map((r) => [r.student.name, r.state, r.submission?.id ?? null, r.submission?.late ?? null]),
+    [
+      ['Aguirre, Tomás', 'entregada', onTime.id, null],
+      ['Benítez, Lucía', 'atrasada', late.id, { minutes: 150 }],
+      ['Escobar, Joaquín', 'sin-entrega', null, null]
+    ]
+  )
+  assert.deepEqual(result.counts, { onTime: 1, late: 1, missing: 1 })
+  assert.equal(result.staleSince, null)
+})
+
+test('sin entregas, todos los alumnos de la comisión figuran sin entregar', async () => {
+  const { coursework, task } = await withTaskInA()
+
+  const result = value(await coursework.submissions('p-mledesma', task.id, A))
+
+  assert.deepEqual(result.counts, { onTime: 0, late: 0, missing: 3 })
+  assert.ok(result.rows.every((r) => r.submission === null))
+})
+
+test('si el docente corre la fecha límite, quién está atrasado se recalcula', async () => {
+  const { coursework, task } = await withDeliveries()
+
+  value(
+    await coursework.updateTask('p-mledesma', task.id, {
+      name: task.name,
+      instructions: '',
+      dueAt: '2026-11-20T23:59:00-03:00'
+    })
+  )
+
+  const result = value(await coursework.submissions('p-mledesma', task.id, A))
+  assert.deepEqual(result.counts, { onTime: 2, late: 0, missing: 1 })
+})
+
+test('quién entregó es solo del docente de esa comisión: otro docente, un alumno o una comisión ajena no ven nada', async () => {
+  const { coursework, task } = await withDeliveries()
+
+  // Un docente de otra comisión ni siquiera sabe que la tarea existe.
+  assert.deepEqual(await coursework.submissions('p-gferreyra', task.id, A), { ok: false, error: 'tarea-desconocida' })
+  assert.deepEqual(await coursework.submissions('p-gferreyra', task.id, B), { ok: false, error: 'tarea-desconocida' })
+  assert.deepEqual(await coursework.submissions('p-taguirre', task.id, A), { ok: false, error: 'solo-docentes' })
+  // La docente de A pide la lista de una comisión que no dicta: aunque la ruta sea suya.
+  assert.deepEqual(await coursework.submissions('p-mledesma', task.id, B), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await coursework.submissions('p-mledesma', task.id, 'sec-inventada'), {
+    ok: false,
+    error: 'sin-acceso'
+  })
+  assert.deepEqual(await coursework.submissions('p-mledesma', 'tarea-inventada', A), {
+    ok: false,
+    error: 'tarea-desconocida'
+  })
+  assert.deepEqual(await coursework.submissions('p-nadie', task.id, A), { ok: false, error: 'persona-desconocida' })
+})
+
+test('en una tarea de dos comisiones del mismo docente, cada lista trae solo los alumnos de su comisión', async () => {
+  const { coursework } = build(withTwoSectionsForOneTeacher())
+  const task = value(await coursework.createTask('p-gferreyra', taskOf({ sectionIds: [A, B] })))
+  value(await coursework.submit('p-taguirre', task.id, [upload('a.txt')]))
+  value(await coursework.submit('p-mcabrera', task.id, [upload('b.txt')]))
+
+  const ofA = value(await coursework.submissions('p-gferreyra', task.id, A))
+  const ofB = value(await coursework.submissions('p-gferreyra', task.id, B))
+
+  const names = (r: typeof ofA) => r.rows.map((x) => [x.student.personId, x.state])
+  assert.ok(names(ofA).some(([id, state]) => id === 'p-taguirre' && state === 'entregada'))
+  assert.ok(!names(ofA).some(([id]) => id === 'p-mcabrera'))
+  assert.ok(names(ofB).some(([id, state]) => id === 'p-mcabrera' && state === 'entregada'))
+  assert.ok(!names(ofB).some(([id]) => id === 'p-taguirre'))
+})
+
+test('el docente abre una entrega y ve de quién es y sus archivos', async () => {
+  const { coursework, task, late } = await withDeliveries()
+
+  const detail = value(await coursework.submission('p-mledesma', late.id))
+
+  assert.equal(detail.task.id, task.id)
+  assert.equal(detail.sectionId, A)
+  assert.equal(detail.student.name, 'Benítez, Lucía')
+  assert.equal(detail.student.legajo.length > 0, true)
+  assert.deepEqual(detail.submission, late)
+  assert.deepEqual(detail.submission.late, { minutes: 150 })
+  assert.deepEqual(
+    detail.submission.files.map((f) => f.name),
+    ['tarde.txt', 'anexo.txt']
+  )
+  const bytes = value(await coursework.file('p-mledesma', fileIdOf(detail.submission.files[0])))
+  assert.equal(new TextDecoder().decode(bytes.bytes), 'contenido de tarde.txt')
+})
+
+test('una entrega la abre solo el docente de la comisión del alumno: para los demás no existe', async () => {
+  const { coursework, onTime } = await withDeliveries()
+
+  for (const person of ['p-gferreyra', 'p-taguirre', 'p-lbenitez', 'p-mcabrera']) {
+    assert.deepEqual(await coursework.submission(person, onTime.id), { ok: false, error: 'entrega-desconocida' })
+  }
+  assert.deepEqual(await coursework.submission('p-mledesma', 'entrega-inventada'), {
+    ok: false,
+    error: 'entrega-desconocida'
+  })
+  assert.deepEqual(await coursework.submission('p-nadie', onTime.id), { ok: false, error: 'persona-desconocida' })
+})
+
+test('con el SIU caído, quién entregó sale de la última lectura y avisa desde cuándo', async () => {
+  const { coursework, task, siuState } = await withDeliveries()
+  value(await coursework.submissions('p-mledesma', task.id, A))
+
+  siuState.down = true
+
+  const result = value(await coursework.submissions('p-mledesma', task.id, A))
+  assert.equal(result.rows.length, 3)
+  assert.notEqual(result.staleSince, null)
 })

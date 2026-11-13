@@ -24,6 +24,7 @@ import {
   teaches
 } from '@/lib/core/coursework/access'
 import { createGradebook } from '@/lib/core/coursework/gradebook'
+import { countsOf, rowsOf, studentInTaught, studentsOf } from '@/lib/core/coursework/roster'
 import { checkedFiles, removeAll, saveAll } from '@/lib/core/coursework/submissions'
 import { byDue, checkedTexts, datedOf, submissionFor, taskFor } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
@@ -234,19 +235,36 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     return ok(tasks.sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.id.localeCompare(b.id)))
   }
 
-  /** Si la persona ve ese archivo: el de una consigna, quien ve la tarea; el de una entrega, solo quien la hizo. */
+  /** Si el docente ve el archivo de esa entrega: solo si es docente de una comisión del alumno. */
+  async function teacherMayRead(
+    personId: PersonId,
+    delivered: StoredSubmission,
+    sections: MySection[]
+  ): Promise<Result<null, AccessError>> {
+    const task = await store.task(delivered.taskId)
+    if (!task.ok) return task
+    const mine = task.value ? sectionsOfTask(task.value, sections) : []
+    if (!teaches(mine)) return fail('sin-acceso')
+    const student = await studentInTaught(studies, personId, mine, delivered.personId)
+    if (!student.ok) return student
+    return student.value ? ok(null) : fail('sin-acceso')
+  }
+
+  /** Si la persona ve ese archivo: el de una consigna, quien ve la tarea; el de una entrega, quien la hizo y los
+      docentes de la comisión del alumno. */
   async function mayRead(
     personId: PersonId,
     fileId: string,
     sections: MySection[]
-  ): Promise<Result<null, 'archivo-desconocido' | 'sin-acceso' | 'falla-externa'>> {
+  ): Promise<Result<null, 'archivo-desconocido' | AccessError>> {
     const owner = await store.taskByFile(fileId)
     if (!owner.ok) return owner
     if (owner.value) return sectionsOfTask(owner.value, sections).length > 0 ? ok(null) : fail('sin-acceso')
     const delivered = await store.submissionByFile(fileId)
     if (!delivered.ok) return delivered
     if (!delivered.value) return fail('archivo-desconocido')
-    return delivered.value.personId === personId ? ok(null) : fail('sin-acceso')
+    if (delivered.value.personId === personId) return ok(null)
+    return teacherMayRead(personId, delivered.value, sections)
   }
 
   const file: Coursework['file'] = async (personId, fileId) => {
@@ -258,6 +276,61 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     const content = await files.read(fileId)
     if (!content.ok) return fail(content.error === 'no-encontrado' ? 'archivo-desconocido' : content.error)
     return content
+  }
+
+  async function submissions(
+    personId: PersonId,
+    taskId: string,
+    sectionId: string
+  ): ReturnType<Coursework['submissions']> {
+    const found = await visibleTask(personId, taskId)
+    if (!found.ok) return found
+    const { task, mine, staleSince } = found.value
+    // Solo una comisión que la persona dicta y que es de la tarea.
+    if (!mine.some((s) => s.role === 'profesor' && s.sectionId === sectionId)) {
+      return fail(teaches(mine) ? 'sin-acceso' : 'solo-docentes')
+    }
+    const roster = await studentsOf(studies, personId, sectionId)
+    if (!roster.ok) return roster
+    const stored = await store.submissionsOfTask(taskId)
+    if (!stored.ok) return stored
+    const rows = rowsOf(roster.value.students, stored.value, task)
+    return ok({
+      task: viewOf(task, mine, staleSince),
+      sectionId,
+      rows,
+      counts: countsOf(rows),
+      staleSince: staleSince ?? roster.value.staleSince
+    })
+  }
+
+  /** La tarea de la entrega y el alumno, si la persona es docente de una comisión del alumno; si no, la entrega no
+      existe para ella. */
+  async function teacherOpens(personId: PersonId, stored: StoredSubmission) {
+    const found = await visibleTask(personId, stored.taskId)
+    if (!found.ok) return fail(found.error === 'tarea-desconocida' ? 'entrega-desconocida' : found.error)
+    const { mine } = found.value
+    if (!teaches(mine)) return fail('entrega-desconocida')
+    const student = await studentInTaught(studies, personId, mine, stored.personId)
+    if (!student.ok) return student
+    if (!student.value) return fail('entrega-desconocida')
+    return ok({ ...found.value, ...student.value, staleSince: found.value.staleSince ?? student.value.staleSince })
+  }
+
+  async function submission(personId: PersonId, submissionId: string): ReturnType<Coursework['submission']> {
+    const stored = await store.submissionById(submissionId)
+    if (!stored.ok) return stored
+    if (!stored.value) return fail('entrega-desconocida')
+    const opened = await teacherOpens(personId, stored.value)
+    if (!opened.ok) return opened
+    const { task, mine, student, sectionId, staleSince } = opened.value
+    return ok({
+      task: viewOf(task, mine, staleSince),
+      sectionId,
+      student,
+      submission: submissionFor(stored.value, task),
+      staleSince
+    })
   }
 
   return {
@@ -273,6 +346,8 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
       return ok(viewOf(task, mine, staleSince, submitted.value.get(task.id) ?? null))
     },
     submit,
+    submissions,
+    submission,
     dated,
     file,
     ...gradebook
