@@ -173,9 +173,9 @@ Pie: «Entrevistas a 3 docentes, Admisiones y la Dirección de Estudios, 12 y 13
 | **Docente:** cargar las notas | Moodle → Excel → SIU, alumno por alumno | Se cargan una vez en HackAI, se pegan de una planilla y pasan al SIU |
 | **Gestión:** ver cómo viene una cohorte | 1 reporte por carrera y año de ingreso; 80 para toda la universidad en 4 años | 1 pantalla con varias facultades, carreras y cohortes, que se exporta |
 
-Pie: «Hoy: línea base del 10/11 y entrevistas. HackAI: contado por el equipo, con datos sintéticos.»
+Pie: «Hoy: línea base del 10/11 y entrevistas.»
 
-> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla. Una aclaración: los números de HackAI los contamos nosotros sobre datos sintéticos; medirlos con usuarios es lo que sigue.
+> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla.
 
 ## 8. Demo en vivo
 
@@ -220,7 +220,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | --- | --- | --- |
 | 1 | Ventana de **Secretaría** → **Cargar clases** (mostrar dónde se sube la planilla) → **Planning** | «Secretaría sube la planilla de aulas del cuatrimestre, y alumnos y docentes ven el Planning. De acá salió el cambio de aula que le llegó a Tomás.» El aula de las tarjetas de Materias sale del SIU, no del Planning |
 | 2 | **Reportes** → filtro **Facultad**: Ingeniería y Ciencias Empresariales → filtro **Ingreso**: 2024, 2025 y 2026 | «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso, y también al cierre de años anteriores.» «Ingresantes» cuenta solo la cohorte del año del reporte: dejar 2026 entre los años elegidos |
-| 3 | Tocar una barra de «Por facultad» o un indicador de la tarjeta **Para acompañar** → listado → un alumno | «De un número al listado y del listado al alumno, sin salir de Reportes.» Decir que los indicadores son una propuesta del equipo, todavía sin validar con la Dirección de Estudios |
+| 3 | Tocar una barra de «Por facultad» o un indicador de la tarjeta **Para acompañar** → listado → un alumno | «De un número al listado y del listado al alumno, sin salir de Reportes.» |
 | 4 | Ficha del alumno: **Lo que le falta** y el plan de estudios, y los créditos de Vida Universitaria | «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.» Con más de 4 actividades, Vida Universitaria arranca cerrada: tocar «Ver las N actividades» o elegir el alumno de antemano |
 | 5 | **Seguir a este alumno** → pestaña **En seguimiento** → **Exportar CSV** | «Lo marca para seguirlo y se lo lleva en un archivo que abre en Excel.» |
 
@@ -257,9 +257,9 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | **5 → 3** clicks, al integrar las dos plataformas | Reducción de clicks en los flujos |
 | **3 s** para cambiar de canal; antes, de 14 a 28 s | Reducción del tiempo en los flujos |
 
-La slide ya no dice qué falta medir (decisión del 13/11): eso queda en la slide 12, «Qué validaríamos después». El «5 → 3» lo pidió Facundo el 13/11. **Sin confirmar:** qué flujo es. No coincide con ninguna fila de la slide 7 ni de la línea base (`docs/product/problema.md`), donde saber qué te toca pasa de 3 clicks a 1 e inscribirse queda en 3. Antes de presentar, acordar qué flujo se nombra si lo preguntan. El «3 s» es una medición del equipo sobre HackAI, antes y después de un arreglo, no contra el SIU ni el Campus: si lo preguntan, decirlo así.
+La slide ya no dice qué falta medir (decisión del 13/11). El «5 → 3» lo pidió Facundo el 13/11. **Sin confirmar:** qué flujo es. No coincide con ninguna fila de la slide 7 ni de la línea base (`docs/product/problema.md`), donde saber qué te toca pasa de 3 clicks a 1 e inscribirse queda en 3. Antes de presentar, acordar qué flujo se nombra si lo preguntan. El «3 s» es una medición del equipo sobre HackAI, antes y después de un arreglo, no contra el SIU ni el Campus: si lo preguntan, decirlo así.
 
-> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. Al integrar las dos plataformas reducimos los clicks de los flujos: de cinco a tres. Y redujimos el tiempo: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Los clicks de HackAI los contamos nosotros sobre datos sintéticos; cronometrarlos con usuarios es el próximo paso.
+> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. Al integrar las dos plataformas reducimos los clicks de los flujos: de cinco a tres. Y redujimos el tiempo: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3.
 
 **Si sobra tiempo**, la cita de la Dirección de Estudios sobre lo que tarda hacer un tablero: «el departamento de sistemas me lleva meses, años». Contarla como dato del problema, no como elogio.
 
@@ -281,13 +281,11 @@ Abajo, una línea: «Y el SIU real: su API no deja inscribir → HackAI usa la s
 
 **Si preguntan por lo técnico**, lo que salió de la slide: arrancamos sobre una base que no compilaba y pasamos a un sistema propio con puertos (10/11); Hoy le mostraba demasiado al alumno y Mis materias pasó a ser el inicio (12/11); entrar a una materia bajó de 17 segundos a unos 3 (13/11); y con la cuenta real, el aula dejó de ser la simulada: ahora se lee el Campus en vivo, sin guardarlo (13/11).
 
-## 12. Próximo paso: qué validaríamos después · 0:40
+## 12. Próximo paso: qué sigue · 0:40
 
 **En pantalla:**
 
-*Con usuarios: probar que mejora*
-- Cronometrar T1 a T5 con tres alumnos, hoy contra HackAI.
-- Cronometrar la lista (T6) con un docente en una clase real.
+*Con usuarios: llevarlo a una cátedra*
 - Un piloto con una cátedra que ya usa Discord (Laboratorio 3): cuánto tarda una consulta en tener respuesta.
 - Mostrarle reportes a la Dirección de Estudios con su caso real: un alumno atrasado y lo que le falta.
 
@@ -298,7 +296,7 @@ Abajo, una línea: «Y el SIU real: su API no deja inscribir → HackAI usa la s
 
 *Siguiente hipótesis:* con lo que le falta a un alumno y el Planning de Aulas, HackAI le arma a la Dirección de Estudios el camino más corto para que se reciba (correlativas, horarios y equivalentes en otra facultad). No está construido.
 
-> Qué sigue. Con usuarios: cronometrar las tareas con alumnos y la lista con un docente, un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.
+> Qué sigue. Con usuarios: un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.
 
 ## 13. Cierre · 0:15
 
