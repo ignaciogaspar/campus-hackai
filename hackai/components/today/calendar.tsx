@@ -4,7 +4,7 @@
    horas, las clases como bloques de su horario y cada parcial en su hora (el
    día de hoy, con la columna celeste, y una línea azul en la hora), cada uno
    completo y sin pisarse; a la derecha, un calendario chico del mes para
-   saltar de semana. Las entregas de Moodle y los cierres de inscripción no
+   saltar de semana. Las entregas (de Moodle y de HackAI) y los cierres de inscripción no
    ocupan una hora: van en la fila de todo el día. Con `filters`, arriba de la
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
    y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico

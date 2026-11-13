@@ -28,3 +28,9 @@ test('una fecha lleva al espacio de su materia; un final sin comisión, a la mes
   assert.equal(dateHref(libre, 'alumno'), '/inscripciones?tab=examenes&materia=fi1')
   assert.equal(dateHref(libre, 'profesor'), undefined)
 })
+
+test('una tarea de HackAI lleva a la tarea, donde se entrega, con el id sin el prefijo', () => {
+  const task: UpcomingItem = { ...item('tarea-hackai:abc-123'), kind: 'entrega', source: 'hackai' }
+
+  assert.equal(dateHref(task, 'alumno'), '/materias/am1/tareas/abc-123')
+})

@@ -26,6 +26,8 @@ export type SubjectStatus = 'promocionada' | 'aprobada' | 'regular' | 'en-curso'
 
 /** Una evaluación de la materia con su nota, si ya está cargada. */
 export type SubjectAssessment = {
+  /** El id de la evaluación en el cronograma del SIU, o de la tarea de HackAI. Es null si el SIU no lo dice. */
+  id: string | null
   name: string
   /** `null` si el SIU no expone el cronograma y no se sabe qué fue. */
   kind: SiuAssessment['kind'] | null
@@ -34,7 +36,10 @@ export type SubjectAssessment = {
   /** La nota está cargada. Cargada y sin nota es un ausente. */
   graded: boolean
   past: boolean
-  source: 'historia' | 'actuacion-provisoria' | null
+  /** De dónde viene la nota: Cursada solo da las del SIU; 'hackai' es de una nota publicada en Seguimiento. */
+  source: 'historia' | 'actuacion-provisoria' | 'hackai' | null
+  /** El comentario del docente, entero. Cursada no lo tiene: solo viene de las notas de HackAI. */
+  comment: string | null
 }
 
 /** Cómo viene el alumno en una materia. */
@@ -49,6 +54,8 @@ export type SubjectStanding = {
   /** Año calendario de lo último que hizo en la materia: la aprobó, la cursó o la está cursando. `null` si nunca la cursó. */
   academicYear: number | null
   termName: string | null
+  /** La comisión más reciente de la materia, la de las notas; es null si nunca la cursó. */
+  sectionId: string | null
   sectionName: string | null
   assessments: SubjectAssessment[]
   /** Nota de la cursada regular, si la tiene. */
@@ -168,26 +175,30 @@ function assessmentsOf(section: TakenSection | undefined, input: CareerInput): S
   const scheduled = schedule.map((a): SubjectAssessment => {
     const found = gradeOf(a.id)
     return {
+      id: a.id,
       name: a.name,
       kind: a.kind,
       date: a.date,
       grade: found?.grade ?? null,
       graded: Boolean(found),
       past: a.date < input.now,
-      source: found?.source ?? null
+      source: found?.source ?? null,
+      comment: null
     }
   })
   const loose = loaded
     .filter((g) => !schedule.some((a) => a.id === g.assessmentId))
     .map(
       (g): SubjectAssessment => ({
+        id: g.assessmentId,
         name: input.genericName,
         kind: null,
         date: g.date,
         grade: g.grade,
         graded: true,
         past: true,
-        source: g.source
+        source: g.source,
+        comment: null
       })
     )
   return [...scheduled, ...loose].sort((a, b) => a.date.localeCompare(b.date))
@@ -219,6 +230,7 @@ function standingOf(subjectId: string, input: CareerInput): SubjectStanding {
     status: statusOf(approved, section, Boolean(regular)),
     academicYear: academicYearOf(approved, section, regular),
     termName: section?.termName ?? null,
+    sectionId: section?.sectionId ?? null,
     sectionName: section?.sectionName ?? null,
     assessments: assessmentsOf(section, input),
     courseGrade: regular?.grade ?? null,

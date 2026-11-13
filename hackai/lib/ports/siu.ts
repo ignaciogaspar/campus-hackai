@@ -15,6 +15,10 @@ export type SiuCapabilities = {
   hasAssessmentSchedule: boolean
   /** El SIU ya matricula en Moodle (su interfaz oficial está activa). */
   enrolsInClassroom: boolean
+  // --- B: notas ---
+  /** Cargar por API las notas de una evaluación y la de cursada. La API real no lo permite. */
+  canWriteGrades: boolean
+  // --- fin B: notas ---
 }
 
 /** El rol como lo informa el SIU. El de una persona de HackAI es `Role`, de
@@ -235,6 +239,12 @@ export type SiuEnrollError =
   | ExternalFailure
 export type SiuDropError = 'no-inscripto' | 'fuera-de-periodo' | 'no-encontrado' | 'no-soportado' | ExternalFailure
 export type SiuReadError = 'no-encontrado' | ExternalFailure
+// --- B: notas ---
+/** Qué se cargó en el SIU: la nota de la evaluación o la de cursada, y cuándo. */
+export type SiuGradeReceipt = { date: string }
+/** Sin `canWriteGrades`, `no-soportado`. Una nota fuera de 1 a 10 es `nota-invalida`. */
+export type SiuWriteGradeError = 'no-soportado' | 'no-encontrado' | 'nota-invalida' | ExternalFailure
+// --- fin B: notas ---
 
 /** Dónde mandar al alumno en la Autogestión del SIU. */
 export type SiuSelfServiceTarget = SiuTarget | { kind: 'constancia'; type: SiuCertificateType }
@@ -309,6 +319,26 @@ export type SiuPort = {
   /** Inasistencias del alumno (Reportes > Inasistencias) y el máximo de cada comisión, si lo hay. */
   absences(personId: string): Promise<Result<SiuAbsences, SiuReadError>>
   meetsCertificateConditions(personId: string, type: SiuCertificateType): Promise<Result<boolean, SiuReadError>>
+
+  // --- B: notas ---
+  /** Carga la nota de un alumno en una evaluación del cronograma de su comisión (`null` es ausente). Es idempotente
+      por alumno y evaluación: cargarla de nuevo la reemplaza y no deja dos. Se lee de vuelta con
+      `provisionalResults`. */
+  writeAssessmentGrade(
+    personId: string,
+    sectionId: string,
+    assessmentId: string,
+    grade: number | null
+  ): Promise<Result<SiuGradeReceipt, SiuWriteGradeError>>
+  /** Carga la nota de cursada de un alumno en una comisión. Es idempotente por alumno y comisión. Se lee de vuelta
+      con `history`, como un renglón `cursada`; con `promoted`, con resultado `promocionado`. */
+  writeCourseGrade(
+    personId: string,
+    sectionId: string,
+    grade: number,
+    promoted?: boolean
+  ): Promise<Result<SiuGradeReceipt, SiuWriteGradeError>>
+  // --- fin B: notas ---
 
   /** Sin `canEnroll` devuelven `no-soportado`. */
   enroll(personId: string, target: SiuTarget): Promise<Result<SiuReceipt, SiuEnrollError>>

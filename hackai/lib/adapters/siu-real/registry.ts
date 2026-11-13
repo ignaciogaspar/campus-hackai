@@ -94,6 +94,10 @@ export function createRealSiuRegistry(options: RegistryOptions): RealSiuRegistry
     },
 
     sectionEnrollments: (id) => (byId(id) ?? fallback).sectionEnrollments(id),
+    writeAssessmentGrade: (person, sectionId, assessmentId, grade) =>
+      (byId(sectionId) ?? fallback).writeAssessmentGrade(person, sectionId, assessmentId, grade),
+    writeCourseGrade: (person, sectionId, grade, promoted) =>
+      (byId(sectionId) ?? fallback).writeCourseGrade(person, sectionId, grade, promoted),
     section: (id) => (byId(id) ?? fallback).section(id),
     sections: (filter) => (byId(filter.schoolId) ?? byId(filter.subjectId) ?? fallback).sections(filter),
     teacherSections: (id) => fallback.teacherSections(id),

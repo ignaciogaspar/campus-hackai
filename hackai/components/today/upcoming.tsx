@@ -20,6 +20,13 @@ const KIND: Record<UpcomingItem['kind'], string> = {
   entrega: 'Entrega'
 }
 
+/** El fondo del bloque de la fecha, según de dónde viene. */
+const DATE_BLOCK: Record<UpcomingItem['source'], string> = {
+  siu: 'bg-background',
+  moodle: 'bg-origin-moodle-background',
+  hackai: 'bg-origin-hackai-background'
+}
+
 function DateBlock({ item }: { item: UpcomingItem }) {
   const { weekday, day, month } = dayParts(item.date)
   return (
@@ -28,7 +35,7 @@ function DateBlock({ item }: { item: UpcomingItem }) {
       className={cn(
         'flex w-12 flex-none flex-col items-center rounded-xl py-1 leading-tight',
         item.past && 'border border-dashed border-gray-light',
-        !item.past && (item.source === 'moodle' ? 'bg-origin-moodle-background' : 'bg-background')
+        !item.past && DATE_BLOCK[item.source]
       )}
     >
       <span className='text-[10px] font-bold text-muted-foreground uppercase'>{weekday}</span>

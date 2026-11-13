@@ -116,6 +116,7 @@ function parseFilter(table: FakeTable, column: string, raw: string): Filter {
     for (const value of values) checkValue(table, column, value)
     return (row) => values.includes(asText(row[column]) ?? '\u0000')
   }
+  if (raw === 'is.null') return (row) => row[column] === null || row[column] === undefined
   if (raw.startsWith('cs.')) {
     if (!table.jsonb?.includes(column)) throw bad(`cs solo sobre columnas jsonb: ${column}`)
     let wanted: unknown
@@ -274,6 +275,14 @@ export function createFakePostgrest({ tables, functions = {} }: FakePostgrestOpt
     return respond(200, project(matched, query.select ?? table.columns), headers)
   }
 
+  function remove(name: string, table: FakeTable, params: URLSearchParams, headers: Headers) {
+    const query = parseQuery(table, params)
+    if (!query.filters.length) throw bad('un delete sin filtros')
+    const matched = data[name].filter((row) => query.filters.every((f) => f(row)))
+    for (const row of matched) data[name].splice(data[name].indexOf(row), 1)
+    return respond(200, project(matched, query.select ?? table.columns), headers)
+  }
+
   function call(fn: string, body: unknown): Response {
     const handler = functions[fn]
     if (!handler) throw new PostgrestError(404, 'PGRST202', `función desconocida: ${fn}`)
@@ -297,6 +306,7 @@ export function createFakePostgrest({ tables, functions = {} }: FakePostgrestOpt
     if (method === 'GET') return select(table, data[path], url.searchParams, headers)
     if (method === 'POST') return insert(path, table, url.searchParams, headers, body)
     if (method === 'PATCH') return update(path, table, url.searchParams, headers, body)
+    if (method === 'DELETE') return remove(path, table, url.searchParams, headers)
     throw bad(`método no soportado: ${method}`)
   }
 

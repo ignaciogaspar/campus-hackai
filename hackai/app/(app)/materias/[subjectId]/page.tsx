@@ -14,10 +14,10 @@
    del canal externo o de otros aparece sin recargar. Al leer un canal, la
    barra lateral baja sus no leídos (UnreadRefresh, en el layout).
 
-   Para el docente, arriba de todo, la barra de pestañas de la materia (Espacio,
-   Alumnos) y, si dicta más de una comisión, el selector. La comisión elegida
-   va en `?comision=` y la llevan las otras pestañas; el espacio muestra los
-   canales de todas sus comisiones igual que antes.
+   Arriba de todo, la barra de pestañas de la materia (Espacio, Tareas y, para el
+   docente, Alumnos) que conserva `?comision=`. Si el docente dicta más de una
+   comisión, también el selector: la comisión elegida la llevan las otras
+   pestañas; el espacio muestra los canales de todas sus comisiones igual que antes.
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
@@ -55,15 +55,15 @@ import {
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
-import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
-import { SubjectTabs } from '@/components/subjects/subject-tabs'
+import { SUBJECT_WIDTH, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { AccessError, Channel, ChannelView, Spaces, SpaceView } from '@/lib/core/spaces'
 import type { Fail } from '@/lib/result'
+import { cn } from '@/lib/utils'
 
 type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -411,18 +411,15 @@ function CenterPane(props: Parameters<typeof CenterContent>[0]) {
 function TeacherNav({ subjectId, view, requested }: { subjectId: string; view: SpaceView; requested?: string }) {
   const taught = view.viewer.sections.filter((s) => s.current)
   const section = chooseSection(taught, requested)
-  const comision = taught.length > 1 ? section?.sectionId : undefined
   return (
-    <>
-      <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} />
-      {section && (
-        <SectionPicker
-          sections={taught}
-          selectedId={section.sectionId}
-          hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
-        />
-      )}
-    </>
+    <SubjectToolbar
+      subjectId={subjectId}
+      current='espacio'
+      viewer='profesor'
+      sections={taught}
+      selectedId={section?.sectionId ?? ''}
+      hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+    />
   )
 }
 
@@ -458,13 +455,14 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         art={subjectTheme(view.space.name).art}
         backHref='/materias'
         hideBackOnDesktop
+        desktopBell={view.viewer.role !== 'profesor'}
       >
         <SectionChips view={view} />
       </PageHeader>
 
       <main
         data-just-read={hadUnread ? '' : undefined}
-        className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8'
+        className={cn(SUBJECT_WIDTH, 'flex flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8')}
       >
         {view.staleSince && (
           <StaleNotice>
@@ -473,7 +471,18 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        {view.viewer.role === 'profesor' && <TeacherNav subjectId={subjectId} view={view} requested={comision} />}
+        {view.viewer.role === 'profesor' ? (
+          <TeacherNav subjectId={subjectId} view={view} requested={comision} />
+        ) : (
+          <SubjectToolbar
+            subjectId={subjectId}
+            current='espacio'
+            viewer={view.viewer.role}
+            sections={[]}
+            selectedId={comision ?? ''}
+            hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+          />
+        )}
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs

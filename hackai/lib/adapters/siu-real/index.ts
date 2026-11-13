@@ -572,6 +572,15 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
           )
         : fallback.sectionEnrollments(id),
 
+    // --- B: notas ---
+    // La Autogestión del alumno no carga notas: en una comisión real el pase al SIU queda «sin pasar» (`no-soportado`).
+    // Las comisiones de la demo siguen yendo al simulado.
+    writeAssessmentGrade: async (person, sectionId, assessmentId, grade) =>
+      isReal(sectionId) ? fail('no-soportado') : fallback.writeAssessmentGrade(person, sectionId, assessmentId, grade),
+    writeCourseGrade: async (person, sectionId, grade, promoted) =>
+      isReal(sectionId) ? fail('no-soportado') : fallback.writeCourseGrade(person, sectionId, grade, promoted),
+    // --- fin B: notas ---
+
     section: (id) => (isReal(id) ? byId((s) => s.sections.find((x) => x.id === id)) : fallback.section(id)),
 
     async sections(filter) {

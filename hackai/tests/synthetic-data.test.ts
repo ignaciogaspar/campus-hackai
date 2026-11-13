@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
+import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -9,6 +10,7 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
+import { createCoursework } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
 import { createSpaces } from '@/lib/core/spaces'
 import { createStudies } from '@/lib/core/studies'
@@ -190,7 +192,13 @@ function systemAt(now: string) {
     timer: () => 0,
     store: createMemorySpacesStore()
   })
-  return { studies, classroom, today: createToday({ studies, spaces, clock }) }
+  const coursework = createCoursework({
+    studies,
+    files: createMemoryFiles(),
+    clock,
+    store: createMemoryCourseworkStore()
+  })
+  return { studies, classroom, today: createToday({ studies, spaces, coursework, clock }) }
 }
 
 for (const { day, now, daysToExam } of DEMO_DAYS) {

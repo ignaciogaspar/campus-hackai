@@ -274,7 +274,7 @@ La demo corre en Vercel con el plan Hobby. Vercel compila Next.js por su cuenta;
 
 ## Corrida periódica
 
-Los espacios se sincronizan con sus canales externos aunque nadie los abra: un cron del hosting pide `/api/cron/sync`, que llama a `syncAll` de Espacios. La ruta acepta `GET` y `POST`, y solo deja pasar el pedido que trae `Authorization: Bearer <valor de CRON_SECRET>`. Compara el secreto en tiempo constante, y ni el secreto ni lo que trajo el pedido van a la respuesta o al log. El log de cada corrida lleva solo el resultado y los números del resumen.
+Los espacios se sincronizan con sus canales externos aunque nadie los abra: un cron del hosting pide `/api/cron/sync`, que llama a `syncAll` de Espacios y después reintenta el pase al SIU de las notas que quedaron pendientes (`retryPass` de Seguimiento). La ruta acepta `GET` y `POST`, y solo deja pasar el pedido que trae `Authorization: Bearer <valor de CRON_SECRET>`. Compara el secreto en tiempo constante, y ni el secreto ni lo que trajo el pedido van a la respuesta o al log. El log de cada corrida lleva solo el resultado y los números del resumen.
 
 | Responde | Cuándo |
 | --- | --- |
@@ -397,7 +397,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `DISCORD_BOT_TOKEN` | Token del bot de Discord. Lo usan `HACKAI_EXTERNAL_CHANNEL=discord` y `npm run discord:probar`. Cómo crearlo: [docs/discord.md](docs/discord.md). |
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
-| `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
+| `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas, Espacios y Seguimiento. |
 | `HACKAI_SIU_REAL_PUBLICO`, `HACKAI_SIU_ESCRITURAS`, `HACKAI_SIU_REAL`, `SIU_SESION`, `SIU_URL`, `HACKAI_SIU_REAL_SEGUNDOS` | Sin configurar nada, cualquiera entra con su cuenta del SIU desde el ingreso y las acciones (inscribirse, darse de baja, pedir la constancia de alumno regular) van al SIU de verdad: `HACKAI_SIU_REAL_PUBLICO=no` y `HACKAI_SIU_ESCRITURAS=no` los apagan. `HACKAI_SIU_REAL=si` con `SIU_SESION` suma una cuenta fija desde el `.env.local`; `SIU_URL` solo si la Autogestión no es la de la Austral; `HACKAI_SIU_REAL_SEGUNDOS` cada cuánto se vuelve a leer (20 por defecto). Ver «Entrar con tu cuenta real del SIU». |
 | `HACKAI_CAIDAS` | `si` deja tirar el SIU o Moodle desde `/caidas` para mostrarlo en la demo. Vacía o `no` (por defecto): no existe, como en producción. Ver «Mostrar una caída en la demo». |
 | `HACKAI_CACHE_SEGUNDOS` | Cuánto guarda la caché de lecturas (`lib/adapters/cache/`) lo que no cambia con lo que hace el alumno: personas, materias, comisiones, planes y vínculos. Vacía: 300. `0` no guarda nada (solo comparte la consulta en vuelo), por ejemplo para editar el seed o las notas en la base durante la demo; si no, un cambio así tarda hasta 5 minutos en verse en cada instancia de Vercel. Inscripciones, historia, cupos e inasistencias nunca se guardan. |
@@ -416,7 +416,7 @@ No las imprimas en logs ni en reportes.
 | `tests/session-token.test.ts` | Tests de la sesión. Ejemplo de cómo se escribe un test con `node:test`. |
 | `lib/result.ts` | `Result`, `ok()`, `fail()` y `notImplemented()`: los errores como valores. |
 | `lib/ports/` | Los seis puertos (identidad, SIU, aula virtual, canal externo, archivos, reloj) con sus capacidades. |
-| `lib/core/` | Personas, Cursada, Espacios y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
+| `lib/core/` | Personas, Cursada, Espacios, Seguimiento y Hoy. Lo que todavía no está hecho devuelve `no-implementado`. |
 | `lib/adapters/synthetic-data.ts` | El set único de datos sintéticos: facultades, materias, comisiones, alumnos, notas, cursos de Moodle y canales de Discord. Los adjuntos PDF son PDF que abre el visor del navegador (`synthetic-files.ts`). |
 | `lib/adapters/memoria/` | Un adaptador en memoria por puerto, cargado con ese set. |
 | `lib/adapters/discord/` | El canal externo real: API REST v10 de Discord, sin gateway. Bot y prueba manual (`npm run discord:probar`): [docs/discord.md](docs/discord.md). |
@@ -437,7 +437,7 @@ No las imprimas en logs ni en reportes.
 | `app/(app)/inscripciones/`, `components/enrollment/` | Inscripciones del alumno, en dos pestañas (materias y exámenes): lo que tiene la inscripción abierta, solo de su carrera, y lo que ya tiene; al elegir una materia (`?materia=`, y `?tab=examenes` para las mesas), su oferta con modalidad, horarios, cupo, sede, docentes y observaciones. Las actividades con créditos van con las materias. Inscribirse y darse de baja van por el mismo flujo; si el SIU no deja hacerlo por API, llevan a la Autogestión. `offerHref` arma el enlace; las rutas viejas (`[materia]/`, `[materia]/final/`) redirigen. |
 | `app/simulado/`, `components/simulated/` | La página a la que llevan los enlaces al SIU y a Moodle simulados: dice que es una demo y qué abriría el enlace en producción. |
 | `app/actions/spaces.ts`, `components/spaces/` | El espacio de la materia: publicar, responder, marcar resuelta, crear canales, vincularlos con Discord, subir y organizar el material y escribirle en privado a un docente de la comisión. |
-| `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios. Ver «Corrida periódica». |
+| `app/api/cron/sync/`, `lib/periodic-sync.ts` | La corrida periódica: la ruta protegida por `CRON_SECRET` que sincroniza todos los espacios y reintenta el pase de notas al SIU. Ver «Corrida periódica». |
 | `app/manifest.ts`, `public/sw.js`, `app/sin-conexion/`, `components/shell/service-worker.tsx` | La app instalable y su pantalla sin conexión. Ver «App instalable». |
 | `vercel.json` | El cron diario y la configuración del deploy en Vercel. Ver «Deploy en Vercel». |
 | `app/api/health/`, `lib/health.ts` | El chequeo de salud: ok solo si el sistema se arma. Ver «Con Docker». |

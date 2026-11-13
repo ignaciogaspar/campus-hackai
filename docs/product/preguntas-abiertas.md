@@ -196,6 +196,54 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 24. ¿Con qué resultado queda una cursada que HackAI pasa al SIU, y qué nota vale si la bedelía la corrige después?
+
+- **Por qué importa:** al publicar, HackAI pasa al SIU la nota de cada evaluación y (en #103) la de cursada. El SIU simulado tiene que guardar la cursada con un resultado (`regular` o `desaprobado`), y la API real no deja escribir notas: hay que decidir qué pasa cuando la bedelía cambia en el SIU una nota que ya pasó.
+- **Hipótesis (12/11/2026):** la cursada queda `regular` desde 4 y `desaprobado` por debajo (el mínimo real para regularizar lo define cada cátedra: ver la pregunta de #103). Si la bedelía corrige una nota en el SIU, HackAI sigue mostrando la que cargó el docente; no se vuelve a leer del SIU. Reenviar una nota la reemplaza en el SIU y no la duplica.
+- **Opciones:** mínimo configurable por comisión; mostrar la nota del SIU cuando difiere de la de HackAI; avisar al docente de la diferencia.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 25. ¿Cómo cuenta un recuperatorio en la nota de cursada, y qué nota mínima hace falta para regularizar?
+
+- **Por qué importa:** HackAI calcula la nota de cursada como promedio ponderado de las columnas del docente y la pasa al SIU. Cada cátedra tiene sus reglas (si el recuperatorio reemplaza al parcial, si hay promedio mínimo por parcial, cuántas tareas hay que entregar), y no las conocemos.
+- **Hipótesis (12/11/2026):** HackAI no aplica ninguna regla de cátedra. El recuperatorio es una columna más, con el peso que le ponga el docente (si reemplaza a un parcial, el docente le baja el peso al parcial o pisa la nota). Una columna sin peso, un ausente y una columna en la que el alumno no tiene nota no cuentan, y el peso se reparte entre las columnas que sí cuentan (no baja la nota como un cero). Los pesos van de 0 a 100 y no hace falta que sumen 100. El mínimo para regularizar lo resuelve el SIU simulado: `regular` desde 4 (pregunta 24); el docente que quiera otra cosa pisa la nota. El legajo de un alumno es su id en el SIU (`SiuPerson.id`).
+- **Opciones:** reglas por comisión (reemplazo de parcial por recuperatorio, mínimo por columna, mínimo para regularizar); que el docente elija la regla al armar los pesos; dejarlo manual con la nota pisada.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 26. ¿Excel y Google Sheets abren el .xlsx sin comprimir que arma HackAI?
+
+- **Por qué importa:** el Excel de la materia (Calificaciones, issue #104) lo arma HackAI sin dependencias nuevas (ADR 0002): un ZIP sin comprimir (método «stored») con el CRC32 de `node:zlib` y las hojas como XML con textos en línea. Si Excel o Google Sheets lo rechazan, el docente no puede bajar sus notas y hay que sumar una librería con una ADR.
+- **Hipótesis (12/11/2026):** Excel, Google Sheets y LibreOffice abren un .xlsx sin comprimir, porque el formato de paquete (OPC) solo pide un ZIP válido y no obliga a comprimir. Los tests de HackAI abren el ZIP a mano y verifican el CRC32 y las hojas, pero no se probó en Excel ni en Google Sheets.
+- **Opciones:** como está; comprimir con `zlib.deflateRawSync` (también sin dependencias) si alguno lo rechaza; una librería de planillas con una ADR.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 27. Si la Austral no habilita escribir notas por la API, ¿el SIU acepta importarlas desde un archivo?
+
+- **Por qué importa:** la API real del SIU no escribe notas (research #1), así que el adaptador real declara que no puede y las notas quedan «sin pasar al SIU». Sin un plan B, el docente las vuelve a cargar alumno por alumno, que es justo lo que HackAI quiere evitar.
+- **Hipótesis (12/11/2026):** Guaraní deja importar notas de una evaluación o de un acta desde una planilla, y HackAI puede generarla con el mismo generador del Excel de la materia. No se verificó en el SIU de la Austral.
+- **Opciones:** pedir a la Austral la escritura por API para el pitch; exportar un archivo con el formato de importación del SIU; seguir cargándolas a mano en el SIU.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 28. ¿Una nota que el docente cambia en una columna ya publicada se republica sola?
+
+- **Por qué importa:** la spec #96 define publicar como una acción del docente. Hoy, cambiar o pegar una nota en una columna ya publicada la publica en el momento: el alumno la ve, le llega el aviso y pasa al SIU. Es cómodo para corregir un error, pero el docente no puede dejar un cambio en borrador.
+- **Hipótesis (12/11/2026):** una columna publicada queda publicada: corregir una nota la republica sola, porque el caso común es arreglar un error que el alumno ya vio.
+- **Opciones:** como está; que la columna vuelva a «con cambios sin publicar» y pida publicar de nuevo; preguntar al guardar.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 29. ¿Desde qué nota se promociona, y quién decide si una comisión promociona?
+
+- **Por qué importa:** HackAI marca la condición de cada alumno con la nota de cursada (promociona, regular o desaprobada) y pasa la promoción al SIU. Si el mínimo o quién lo decide no son los de la Austral, la condición que ve el alumno está mal.
+- **Hipótesis (12/11/2026):** sin configurar, una comisión promociona si el SIU la da como `instance = 'promocion'`, desde 7. El docente lo puede cambiar por comisión (de 4 a 10). Regulariza desde 4. Las instancias de examen que suma el docente quedan en HackAI y no pasan al SIU; corregirle la fecha a un parcial del SIU tampoco cambia el cronograma del SIU.
+- **Opciones:** el mínimo lo fija la cátedra (como está); un mínimo único de la facultad; que lo decida solo el SIU.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

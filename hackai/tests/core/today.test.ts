@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
+import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -8,16 +9,18 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
+import { createCoursework } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
 import { createSpaces } from '@/lib/core/spaces'
-import { createStudies } from '@/lib/core/studies'
+import { type Career, createStudies } from '@/lib/core/studies'
 import { createToday } from '@/lib/core/today'
+import { fail } from '@/lib/result'
 import { fallible, movableClock } from '@/tests/core/helpers'
 
 const NOW = syntheticData.now
 
 /** Hoy con Personas, Cursada y Espacios reales sobre los puertos en memoria. El SIU y Moodle se pueden «caer». */
-function build(data: SyntheticData = syntheticData) {
+function build(data: SyntheticData = syntheticData, courseworkStore = createMemoryCourseworkStore()) {
   const { clock, advance } = movableClock(data.now)
   const { port: siu, state: siuState } = fallible(createMemorySiu(data, clock))
   const { port: classroom, state: classroomState } = fallible(createMemoryClassroom(data))
@@ -33,8 +36,14 @@ function build(data: SyntheticData = syntheticData) {
     store: createMemorySpacesStore(),
     timer: () => 0
   })
-  const today = createToday({ studies, spaces, clock })
-  return { today, studies, spaces, siuState, classroomState, advance }
+  const coursework = createCoursework({
+    studies,
+    files: createMemoryFiles(),
+    clock,
+    store: courseworkStore
+  })
+  const today = createToday({ studies, spaces, coursework, clock })
+  return { today, studies, spaces, coursework, siuState, classroomState, advance }
 }
 
 test('arma la pantalla del alumno en una sola llamada: materias, próximos por fecha e inscripciones abiertas', async () => {
@@ -194,8 +203,8 @@ test('si varias lecturas están desactualizadas, la hora es la de la más vieja'
   assert.equal(result.value.staleSince, NOW)
   assert.equal(result.value.subjects.current.length, 2)
   assert.equal(result.value.upcoming.length, 9)
-  // Las novedades necesitan las comisiones, que el SIU no dio antes de caerse.
-  assert.deepEqual(result.value.unavailable, ['openEnrollments', 'unread'])
+  // Las novedades y las tareas de HackAI necesitan las comisiones, que el SIU no dio antes de caerse.
+  assert.deepEqual(result.value.unavailable, ['openEnrollments', 'unread', 'coursework'])
 })
 
 test('con Moodle caído faltan las entregas y los enlaces al aula, pero las materias, los parciales, finales e inscripciones se ven igual', async () => {
@@ -290,7 +299,7 @@ test('con el SIU caído y nada leído antes, Hoy responde igual, con todo marcad
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming', 'openEnrollments', 'unread'])
+  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming', 'openEnrollments', 'unread', 'coursework'])
   assert.deepEqual(result.value.unread, [])
 })
 
@@ -442,4 +451,284 @@ test('con el SIU caído, el Hoy del docente muestra lo último que leyó; sin na
   assert.deepEqual(empty.value.sections, [])
   assert.deepEqual(empty.value.unavailable, ['sections', 'dates', 'questions', 'unread'])
   assert.deepEqual(await today.teaching('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
+test('las tareas con fecha de HackAI de su comisión suman a los próximos como entregas, con su propio id', async () => {
+  const { today, coursework } = build()
+  const task = await coursework.createTask('p-mledesma', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-a'],
+    name: 'Práctica 3: integrales',
+    instructions: '',
+    dueAt: '2026-11-13T23:59:00-03:00',
+    graded: true
+  })
+  assert.ok(task.ok)
+  const onlyB = await coursework.createTask('p-gferreyra', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-b'],
+    name: 'Solo de la B',
+    instructions: '',
+    dueAt: '2026-11-14T23:59:00-03:00',
+    graded: false
+  })
+  assert.ok(onlyB.ok)
+
+  const result = await today.today('p-taguirre')
+
+  assert.ok(result.ok)
+  const own = result.value.upcoming.filter((i) => i.source === 'hackai')
+  assert.deepEqual(own, [
+    {
+      id: `tarea-hackai:${task.value.id}`,
+      kind: 'entrega',
+      source: 'hackai',
+      subjectId: 'am1',
+      subjectCode: 'AM1',
+      subjectName: 'Análisis Matemático I',
+      name: 'Práctica 3: integrales',
+      date: '2026-11-14T02:59:00.000Z',
+      past: false,
+      examPeriod: null,
+      location: null,
+      hasSection: true
+    }
+  ])
+  // Las de Moodle siguen con su id y no se repiten.
+  const moodle = result.value.upcoming.filter((i) => i.source === 'moodle')
+  assert.ok(moodle.length > 0)
+  assert.ok(moodle.every((i) => i.id.startsWith('tarea:')))
+  const ids = result.value.upcoming.map((i) => i.id)
+  assert.equal(new Set(ids).size, ids.length)
+  // Una tarea que ya venció queda en la lista como pasada.
+  assert.deepEqual(result.value.unavailable, [])
+})
+
+test('el docente no ve tareas de HackAI entre sus próximos del alumno', async () => {
+  const { today, coursework } = build()
+  await coursework.createTask('p-mledesma', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-a'],
+    name: 'Práctica 3',
+    instructions: '',
+    dueAt: '2026-11-13T23:59:00-03:00',
+    graded: true
+  })
+
+  const result = await today.today('p-mledesma')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.upcoming.filter((i) => i.source === 'hackai'),
+    []
+  )
+})
+
+test('si Seguimiento no responde, el Hoy sale sin las tareas de HackAI y lo avisa', async () => {
+  const store = { ...createMemoryCourseworkStore(), tasksOfSubject: async () => fail('falla-externa' as const) }
+  const { today } = build(syntheticData, store)
+
+  const result = await today.today('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.unavailable, ['coursework'])
+  assert.ok(result.value.upcoming.length > 0)
+})
+
+// --- Notas del alumno: lo del SIU y lo publicado en HackAI -------------------
+
+const A = 'sec-am1-fi-a'
+
+const newTask = {
+  subjectId: 'am1',
+  sectionIds: [A],
+  name: 'Práctica 3',
+  instructions: '',
+  dueAt: '2026-11-13T23:59:00-03:00',
+  graded: true
+}
+
+/** La nota de Tomás en una columna de Análisis I A (el SIU ya tiene un 7 de él en el primer parcial) y, si se
+    pide, publicada. */
+async function gradeTomas(
+  coursework: ReturnType<typeof build>['coursework'],
+  columnId: string,
+  value: number,
+  publish: boolean,
+  comment = 'Revisá el punto 3.'
+) {
+  const input = { sectionId: A, columnId, studentId: 'p-taguirre', value, absent: false, comment }
+  assert.ok((await coursework.grade('p-mledesma', input)).ok)
+  if (publish) assert.ok((await coursework.publish('p-mledesma', A, columnId)).ok)
+}
+
+const am1 = (career: Career) => career.subjects.find((s) => s.subjectId === 'am1')!
+
+test('Notas: una nota sin publicar en HackAI no cambia lo que el alumno ve del SIU', async () => {
+  const { today, studies, coursework } = build()
+  await gradeTomas(coursework, 'evaluacion:ev-4', 9, false)
+
+  const view = await today.grades('p-taguirre')
+  const siu = await studies.career('p-taguirre')
+
+  assert.ok(view.ok && siu.ok)
+  assert.deepEqual(view.value.data, siu.value.data)
+  assert.equal(view.value.hackaiUnavailable, false)
+})
+
+test('Notas: una evaluación publicada en HackAI muestra la nota y el comentario de HackAI, y el resto sigue como en el SIU', async () => {
+  const { today, studies, coursework } = build()
+  const comment = 'Revisá el punto 3. '.repeat(20).trim()
+  await gradeTomas(coursework, 'evaluacion:ev-4', 9, true, comment)
+
+  const view = await today.grades('p-taguirre')
+  const siu = await studies.career('p-taguirre')
+
+  assert.ok(view.ok && siu.ok)
+  const [first, ...rest] = am1(view.value.data).assessments
+  assert.deepEqual(
+    [first.id, first.name, first.grade, first.graded, first.source, first.comment],
+    ['ev-4', 'Primer parcial', 9, true, 'hackai', comment]
+  )
+  assert.deepEqual(rest, am1(siu.value.data).assessments.slice(1))
+  // Las otras materias, y las notas del SIU que no pasaron por HackAI, quedan igual.
+  assert.deepEqual(
+    view.value.data.subjects.filter((s) => s.subjectId !== 'am1'),
+    siu.value.data.subjects.filter((s) => s.subjectId !== 'am1')
+  )
+  // Publicar pasó la nota al SIU, que la reemplazó: el 9 de HackAI es también el del SIU, y se ve una sola vez.
+  assert.equal(am1(siu.value.data).assessments[0].grade, 9)
+})
+
+test('Notas: una tarea con nota publicada aparece en su materia aunque no exista en el SIU', async () => {
+  const { today, coursework } = build()
+  const task = await coursework.createTask('p-mledesma', newTask)
+  assert.ok(task.ok)
+  await gradeTomas(coursework, `tarea:${task.value.id}`, 10, true)
+
+  const view = await today.grades('p-taguirre')
+
+  assert.ok(view.ok)
+  const row = am1(view.value.data).assessments.find((a) => a.id === task.value.id)
+  assert.deepEqual(row && [row.name, row.kind, row.grade, row.source, row.comment, row.past], [
+    'Práctica 3',
+    null,
+    10,
+    'hackai',
+    'Revisá el punto 3.',
+    false
+  ])
+  // Los otros alumnos de la comisión no ven una nota que no es suya.
+  const other = await today.grades('p-lbenitez')
+  assert.ok(other.ok)
+  assert.ok(!am1(other.value.data).assessments.some((a) => a.id === task.value.id))
+})
+
+test('Notas: la nota de cursada publicada en HackAI es la de la materia, no una evaluación más, y avisa a la campana', async () => {
+  const { today, coursework } = build()
+  await gradeTomas(coursework, 'evaluacion:ev-4', 9, false)
+  assert.ok((await coursework.setWeights('p-mledesma', A, [{ columnId: 'evaluacion:ev-4', weight: 50 }])).ok)
+  assert.ok((await coursework.overrideCourseGrade('p-mledesma', A, 'p-taguirre', 8.25)).ok)
+  const before = await today.grades('p-taguirre')
+  assert.ok((await coursework.publishCourseGrade('p-mledesma', A)).ok)
+
+  const view = await today.grades('p-taguirre')
+
+  assert.ok(before.ok && view.ok)
+  assert.notEqual(am1(before.value.data).courseGrade, 8.25)
+  assert.equal(am1(view.value.data).courseGrade, 8.25)
+  assert.ok(!am1(view.value.data).assessments.some((a) => a.name === 'Nota de cursada'))
+  const news = await today.newGrades('p-taguirre', null)
+  assert.ok(news.ok)
+  assert.deepEqual(
+    news.value.filter((g) => g.assessmentName === 'Nota de cursada').map((g) => [g.subjectId, g.grade, g.source]),
+    [['am1', 8.25, 'hackai']]
+  )
+})
+
+test('Notas: si Seguimiento no responde, salen las notas del SIU y se avisa que faltan las de HackAI', async () => {
+  const store = { ...createMemoryCourseworkStore(), publishedGradesOf: async () => fail('falla-externa' as const) }
+  const { today, studies } = build(syntheticData, store)
+
+  const view = await today.grades('p-taguirre')
+  const siu = await studies.career('p-taguirre')
+
+  assert.ok(view.ok && siu.ok)
+  assert.equal(view.value.hackaiUnavailable, true)
+  assert.deepEqual(view.value.data, siu.value.data)
+})
+
+test('Notas: una persona que Cursada no conoce no tiene notas', async () => {
+  const { today } = build()
+  assert.deepEqual(await today.grades('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
+// --- Notas nuevas: la campana ------------------------------------------------
+
+test('Notas nuevas: publicar en HackAI avisa, y una nota que también está en el SIU se cuenta una sola vez', async () => {
+  const { today, advance, coursework } = build()
+  const before = await today.newGrades('p-taguirre', null)
+  assert.ok(before.ok)
+  // El SIU ya tiene cargado el primer parcial de Tomás, y una nota de otra materia.
+  assert.deepEqual(
+    before.value.map((g) => [g.subjectName, g.assessmentName, g.grade, g.source]),
+    [
+      ['Análisis Matemático I', 'Primer parcial', 7, 'actuacion-provisoria'],
+      ['Programación I', 'TP integrador', 9, 'historia']
+    ]
+  )
+  advance(10)
+  await gradeTomas(coursework, 'evaluacion:ev-4', 9, true)
+  const task = await coursework.createTask('p-mledesma', newTask)
+  assert.ok(task.ok)
+  advance(10)
+  await gradeTomas(coursework, `tarea:${task.value.id}`, 10, true)
+
+  const after = await today.newGrades('p-taguirre', null)
+
+  assert.ok(after.ok)
+  // El 7 del SIU y el 9 de HackAI son la misma evaluación: sale la de HackAI, una sola vez.
+  assert.deepEqual(
+    after.value.map((g) => [g.subjectName, g.assessmentName, g.grade, g.source]),
+    [
+      ['Análisis Matemático I', 'Práctica 3', 10, 'hackai'],
+      ['Análisis Matemático I', 'Primer parcial', 9, 'hackai'],
+      ['Programación I', 'TP integrador', 9, 'historia']
+    ]
+  )
+  // Una vez que las vio, la campana queda en cero.
+  const seen = await today.newGrades('p-taguirre', '2026-11-10T16:00:00.000Z')
+  assert.ok(seen.ok)
+  assert.deepEqual(seen.value, [])
+})
+
+test('Notas nuevas: sin lo publicado en HackAI, son las del SIU como hoy', async () => {
+  const { today, studies } = build()
+
+  const result = await today.newGrades('p-taguirre', null)
+  const siu = await studies.newGrades('p-taguirre', null)
+
+  assert.ok(result.ok && siu.ok)
+  assert.deepEqual(result.value, siu.value.data)
+})
+
+test('Notas nuevas: si Seguimiento no responde, la campana sigue con las notas del SIU', async () => {
+  const store = { ...createMemoryCourseworkStore(), publishedGradesOf: async () => fail('falla-externa' as const) }
+  const { today, studies } = build(syntheticData, store)
+
+  const result = await today.newGrades('p-taguirre', null)
+  const siu = await studies.newGrades('p-taguirre', null)
+
+  assert.ok(result.ok && siu.ok)
+  assert.deepEqual(result.value, siu.value.data)
+})
+
+test('Notas nuevas: con el SIU caído la campana no cuenta notas viejas como nuevas', async () => {
+  const { today, siuState } = build()
+  siuState.down = true
+
+  const result = await today.newGrades('p-taguirre', null)
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value, [])
 })

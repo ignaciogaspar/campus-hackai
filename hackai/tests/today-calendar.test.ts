@@ -58,6 +58,24 @@ test('cada fecha cae en su día y su hora de Buenos Aires; las entregas van en l
   assert.equal(minutesOf('2026-11-17T17:00:00.000Z'), 14 * 60)
 })
 
+test('una tarea de HackAI es una entrega propia, con su origen, en la fila de todo el día y con su hora límite', () => {
+  const task = {
+    ...item('tarea-hackai:t-1', '2026-11-14T02:59:00.000Z', 'entrega'),
+    source: 'hackai' as const
+  }
+  const moodle = item('tarea:77', '2026-11-14T02:59:00.000Z', 'entrega')
+
+  const [own, theirs] = eventsOf([task, moodle], [], null, '2026-11-10T12:00:00.000Z')
+
+  assert.equal(own.origin, 'hackai')
+  assert.equal(theirs.origin, 'moodle')
+  assert.equal(own.tone, 'entrega')
+  assert.equal(own.minutes, null)
+  assert.equal(own.time, '23:59')
+  assert.equal(own.day, '2026-11-13')
+  assert.notEqual(own.id, theirs.id)
+})
+
 test('un final dice su turno y su lugar, y el cierre de una actividad dice que es una actividad', () => {
   const final = {
     ...item('final', '2026-12-10T12:00:00.000Z', 'final'),

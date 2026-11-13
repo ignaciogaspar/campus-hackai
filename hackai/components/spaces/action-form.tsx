@@ -31,9 +31,10 @@ const IDLE: SpaceActionState = { status: 'idle' }
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 export const TOO_LARGE = 'El archivo pasa los 10 MB. Subí uno más liviano o compartí un enlace.'
 
-/** Algún archivo del formulario que pasa el máximo. */
+/** Algún archivo del formulario que pasa el máximo, o todos juntos: el servidor corta el pedido entero. */
 export function tooLarge(form: FormData): boolean {
-  return [...form.values()].some((v) => v instanceof File && v.size > MAX_UPLOAD_BYTES)
+  const sizes = [...form.values()].flatMap((v) => (v instanceof File ? [v.size] : []))
+  return sizes.some((size) => size > MAX_UPLOAD_BYTES) || sizes.reduce((sum, size) => sum + size, 0) > MAX_UPLOAD_BYTES
 }
 
 const Pending = createContext(false)

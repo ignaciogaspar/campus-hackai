@@ -9,7 +9,11 @@ export const dynamic = 'force-dynamic'
 
 /** El sistema se arma recién con el secreto validado: un pedido sin permiso no toca nada. */
 function run(request: Request) {
-  return handlePeriodicSync(request, { secret: process.env.CRON_SECRET, syncAll: () => system().spaces.syncAll() })
+  return handlePeriodicSync(request, {
+    secret: process.env.CRON_SECRET,
+    syncAll: () => system().spaces.syncAll(),
+    retryPass: () => system().coursework.retryPass()
+  })
 }
 
 // Vercel Cron llama con GET; otros crons pueden usar POST.
