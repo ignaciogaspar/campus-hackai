@@ -117,6 +117,7 @@ import {
   type LoadedGrade,
   type TakenSection
 } from '@/lib/core/studies/career'
+import { type ClassHistoryEntry, createClassHistory, type HistoryAbsent } from '@/lib/core/studies/class-history'
 import {
   createSectionStudents,
   type SectionStudent,
@@ -185,7 +186,7 @@ export { hasZoom, type ZoomError } from '@/lib/core/studies/zoom'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
-export type { Fresh, SectionStudent, SectionStudentsError }
+export type { ClassHistoryEntry, Fresh, HistoryAbsent, SectionStudent, SectionStudentsError }
 
 /** Una comisión (cursada) o una mesa (examen). */
 export type Target = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
@@ -466,6 +467,9 @@ export type Studies = {
       una si ya se tomó. Solo para un docente de la comisión (`sin-acceso` si no). Reintenta los pases al SIU
       pendientes de la comisión. */
   classesOf(personId: PersonId, sectionId: string): Promise<Result<ClassItem[], AttendanceError>>
+  /** El historial de la comisión: solo las clases con la lista tomada, la más nueva primero, con la modalidad, los
+      ausentes con nombre y el estado del pase al SIU. Solo para un docente de la comisión (`sin-acceso`). */
+  classHistory(personId: PersonId, sectionId: string): Promise<Result<ClassHistoryEntry[], AttendanceError>>
   /** La lista de una clase para tomarla o corregirla: los alumnos de la comisión y los ausentes ya guardados. Solo
       para un docente de la comisión. `clase-inexistente` si no hay una clase en ese instante. */
   attendanceSheet(
@@ -811,6 +815,7 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
   const sectionStudents = createSectionStudents({ people, siu })
   const attendance = createAttendance({ people, siu, clock, store, sectionStudents })
   const zoom = createZoom({ people, siu, store })
+  const classHistory = createClassHistory({ siu, classesOf: attendance.classesOf, sectionStudents })
 
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
@@ -1975,6 +1980,7 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
     sectionStudents: (personId, sectionId) =>
       fresh(`sectionStudents:${personId}:${sectionId}`, () => sectionStudents(personId, sectionId)),
     classesOf: attendance.classesOf,
+    classHistory,
     attendanceSheet: attendance.sheet,
     takeAttendance: attendance.take,
     retryPases: attendance.retryPases,
