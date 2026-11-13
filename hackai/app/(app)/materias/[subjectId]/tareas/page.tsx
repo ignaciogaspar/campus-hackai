@@ -106,7 +106,12 @@ export default async function TasksPage({ params, searchParams }: { params: Para
             desactualizado.
           </StaleNotice>
         )}
-        {created && <CreatedNotice name={created.name} audience={sectionsLabel(created.sections.map((s) => s.name))} />}
+        {created && (
+          <CreatedNotice
+            name={created.name}
+            audience={`${created.sections.length > 1 ? 'las' : 'la'} ${sectionsLabel(created.sections.map((s) => s.name))}`}
+          />
+        )}
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <h2 className='text-lg font-extrabold'>
             Tareas

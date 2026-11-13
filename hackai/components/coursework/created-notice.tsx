@@ -6,6 +6,7 @@
 import { useEffect } from 'react'
 import { SuccessNotice } from '@/components/ui/states'
 
+/** `audience`: a quiénes les llega, ya con el artículo: «la Comisión A», «las Comisiones A y B». */
 export function CreatedNotice({ name, audience }: { name: string; audience: string }) {
   useEffect(() => {
     const url = new URL(window.location.href)
