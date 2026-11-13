@@ -33,5 +33,5 @@ Quien entra a HackAI con su cuenta real del SIU (ADR 0009) veía sus materias re
 - En el hosting sin estado, una instancia nueva vuelve a leer todo: la primera apertura de una materia puede tardar unos segundos.
 - Lo leído en vivo no cuenta como nuevo ni entra en la búsqueda del espacio: no hay dónde guardar la marca de leído sin guardar el elemento.
 - Además, con el Moodle simulado y en memoria, carpetas, páginas, textos y actividades también se muestran en vivo: el material guardado sigue teniendo solo archivos y enlaces.
-- Sin probar contra la cuenta real al escribir esta decisión: que el token de `launch.php` traiga todas esas funciones en la Austral. El plan del issue #142 tenía esa prueba como fase 0; su resultado va en la nota de research del 13/11.
+- Probado el 13/11 con la cuenta real de un alumno (fase 0 del issue #142): el canje de la sesión por el token, la estructura de los cursos y los archivos por `pluginfile.php` andan en la Austral. Detalle en la nota de research del 13/11.
 - Pedido de implementar el plan del issue #142 el 2026-11-13, con la credencial elegida por el equipo. Cambia la decisión 4 de `docs/product/preguntas-abiertas.md` («Moodle sigue simulado»).

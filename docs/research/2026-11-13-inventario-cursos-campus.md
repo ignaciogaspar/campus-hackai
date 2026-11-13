@@ -53,10 +53,15 @@ Consecuencias:
 
 ## Con el token de la app (fase 0 del issue #142)
 
-**Pendiente.** El equipo eligió el token de la app (ADR 0010), y HackAI lo saca canjeando la sesión del Campus en `admin/tool/mobile/launch.php` (`hackai/lib/adapters/moodle-real/client.ts`). El adaptador sigue la forma de las respuestas del código de Moodle 5.1; falta confirmar contra la cuenta, con el permiso de su dueño:
+Probado el 2026-11-13 con la cuenta de un alumno de Ingeniería en Informática, que conectó su Campus en HackAI corriendo en local (`/conectar-campus`). Se miró solo el log del servidor, sin valores: ni la sesión, ni el token, ni nombres.
 
-- Que `launch.php`, pedido por el servidor con la cookie `MoodleSession`, devuelva el token en la redirección o en la página que simula el click en la app.
-- Que el servicio `moodle_mobile_app` de la Austral traiga `core_course_get_contents`, `core_enrol_get_users_courses`, `mod_page_get_pages_by_courses`, `mod_forum_get_forums_by_courses`, `mod_forum_get_forum_discussions`, `mod_assign_get_assignments` y `mod_assign_get_submission_status`. La configuración pública apaga el tablero y los mensajes de la app (nota del 12/11), no estas funciones.
-- Que `webservice/pluginfile.php` sirva los archivos con el token, y cuánto dura el token.
+| Qué | Resultado |
+|---|---|
+| Canje de la sesión por el token: `launch.php` pedido por el servidor con la cookie `MoodleSession`, sin seguir la redirección | **Confirmado.** Devuelve el token y el `md5(wwwroot + passport)` coincide |
+| `core_webservice_get_site_info` con el token | **Confirmado** |
+| Cursos y elementos de cada curso (`core_enrol_get_users_courses`, `core_course_get_contents`) | **Confirmado.** El material de dos materias en curso salió con sus archivos |
+| Archivos por `webservice/pluginfile.php` con el token | **Confirmado.** Un PDF del aula se abrió dentro de HackAI (`/aula/archivos/…`, 200) |
+| Avisos y tareas (`mod_forum_*`, `mod_assign_*`) | Sin errores en el log al abrir `#avisos` y las materias. El alumno confirmó que «anda»; no se miró el contenido |
+| Vínculo comisión → curso por el enlace «Moodle» del SIU real | **Confirmado** |
 
-Cómo se prueba: con la cookie en `hackai/.env.local` (`MOODLE_SESION`), un script que canjea la sesión, llama a cada función y solo imprime tipos, claves y cantidades. Los resultados van acá, con los valores reemplazados por marcadores.
+Sin ver todavía: cuánto dura el token en la Austral (Moodle 4 y 5 traen 12 semanas por defecto) y si alguna lectura marcó una actividad como vista en el aula.
