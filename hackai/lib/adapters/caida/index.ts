@@ -64,6 +64,7 @@ export function withSiuOutage(siu: SiuPort, outages: OutageSwitch): SiuPort {
     sections: guarded(down, siu.sections),
     teacherSections: guarded(down, siu.teacherSections),
     courseEnrollments: guarded(down, siu.courseEnrollments),
+    sectionEnrollments: guarded(down, siu.sectionEnrollments),
     examBoards: guarded(down, siu.examBoards),
     examEnrollments: guarded(down, siu.examEnrollments),
     assessments: guarded(down, siu.assessments),
