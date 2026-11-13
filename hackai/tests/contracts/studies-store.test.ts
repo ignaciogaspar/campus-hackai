@@ -54,6 +54,21 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
     assert.equal(value(await store.classAt(ids.section(2), TUESDAY)), null)
   })
 
+  it('guarda el enlace de Zoom de una comisión, lo reemplaza y lo borra', async (store, ids) => {
+    assert.deepEqual(value(await store.zoomLinks([ids.section(1), ids.section(2)])), {})
+    value(await store.setZoomLink(ids.section(1), 'https://zoom.us/j/111'))
+    value(await store.setZoomLink(ids.section(2), 'https://zoom.us/j/222'))
+    assert.deepEqual(value(await store.zoomLinks([ids.section(1), ids.section(2), ids.section(3)])), {
+      [ids.section(1)]: 'https://zoom.us/j/111',
+      [ids.section(2)]: 'https://zoom.us/j/222'
+    })
+    value(await store.setZoomLink(ids.section(1), 'https://zoom.us/j/999'))
+    assert.deepEqual(value(await store.zoomLinks([ids.section(1)])), { [ids.section(1)]: 'https://zoom.us/j/999' })
+    value(await store.setZoomLink(ids.section(1), null))
+    assert.deepEqual(value(await store.zoomLinks([ids.section(1)])), {})
+    assert.deepEqual(value(await store.zoomLinks([])), {})
+  })
+
   it('una clase sin ausentes también queda guardada', async (store, ids) => {
     value(await store.saveClass(classOf(ids, 1, TUESDAY, [])))
     assert.deepEqual(value(await store.classAt(ids.section(1), TUESDAY))?.absent, [])
@@ -144,7 +159,8 @@ const TABLES = {
     generated: { id: 'uuid' },
     defaults: { absent: [], pase: 'pendiente' },
     unique: [['section_id', 'class_at']]
-  }
+  },
+  section_zoom_links: { columns: ['section_id', 'url'], unique: [['section_id']] }
 } satisfies Parameters<typeof createFakePostgrest>[0]['tables']
 
 const supabaseStore = (url: string, key: string, fetch?: typeof globalThis.fetch) =>
@@ -176,6 +192,8 @@ test('almacén de Supabase: una base caída devuelve «falla externa» sin tirar
     log: () => {}
   })
   const failed = { ok: false, error: 'falla-externa' }
+  assert.deepEqual(await store.zoomLinks(['c']), failed)
+  assert.deepEqual(await store.setZoomLink('c', 'https://zoom.us/j/1'), failed)
   assert.deepEqual(await store.classAt('c', TUESDAY), failed)
   assert.deepEqual(await store.classesOf(['c']), failed)
   assert.deepEqual(await store.classesAbsent('a'), failed)

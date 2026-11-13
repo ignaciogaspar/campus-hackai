@@ -15,7 +15,8 @@ import {
   type LucideIcon,
   MapPin,
   NotebookPen,
-  Trophy
+  Trophy,
+  Video
 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -25,7 +26,13 @@ import { offerHref } from '@/components/enrollment/offer-href'
 import { gradeText, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
-import type { MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
+import {
+  hasClassOn,
+  type MySubject,
+  type PendingFinal,
+  type SubjectStanding,
+  type SubjectStatus
+} from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 function Row({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
@@ -116,16 +123,20 @@ const detailOf = (subject: MySubject) => `${subject.code} · Comisión ${subject
 export function CourseCard({
   subject,
   standing,
-  unread = 0
+  unread = 0,
+  today
 }: {
   subject: MySubject
   standing?: SubjectStanding
   unread?: number
+  /** Hoy, `AAAA-MM-DD` en Buenos Aires: con él, el día de una clase virtual o híbrida con enlace trae «Entrar a Zoom». */
+  today?: string
 }) {
   const next = subject.assignments.find((a) => !a.past)
   const modality = modalityName(subject.modality)
   const place = modality === subject.location ? modality : [modality, subject.location].filter(Boolean).join(' · ')
   const classroom = subject.classrooms[0]
+  const zoomUrl = today && subject.zoomUrl && hasClassOn(subject, today) ? subject.zoomUrl : null
   return (
     <SubjectCard
       subjectId={subject.subjectId}
@@ -150,12 +161,23 @@ export function CourseCard({
         )
       }
       secondary={
-        classroom && (
-          <a href={classroom.url} target='_blank' rel='noopener noreferrer' className={SECONDARY}>
-            Aula
-            <ExternalLink aria-hidden='true' className='size-3.5' />
-            <span className='sr-only'>de {subject.name} en Moodle (se abre en otra pestaña)</span>
-          </a>
+        (zoomUrl || classroom) && (
+          <span className='flex flex-wrap items-center justify-end'>
+            {zoomUrl && (
+              <a href={zoomUrl} target='_blank' rel='noopener noreferrer' className={SECONDARY}>
+                <Video aria-hidden='true' className='size-3.5' />
+                Entrar a Zoom
+                <span className='sr-only'>a la clase de {subject.name} (se abre en otra pestaña)</span>
+              </a>
+            )}
+            {classroom && (
+              <a href={classroom.url} target='_blank' rel='noopener noreferrer' className={SECONDARY}>
+                Aula
+                <ExternalLink aria-hidden='true' className='size-3.5' />
+                <span className='sr-only'>de {subject.name} en Moodle (se abre en otra pestaña)</span>
+              </a>
+            )}
+          </span>
         )
       }
     />

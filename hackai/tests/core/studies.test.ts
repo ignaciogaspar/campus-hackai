@@ -93,6 +93,7 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     location: 'Campus Pilar, aula 12',
     modality: 'presencial',
     role: 'alumno',
+    zoomUrl: null,
     classrooms: [
       {
         courseId: 'c-am1-fi-a',

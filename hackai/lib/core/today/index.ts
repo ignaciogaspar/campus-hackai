@@ -28,12 +28,20 @@
      (`openQuestions`), la más vieja primero.
    - Las fechas son los parciales de sus comisiones y las mesas que integra,
      según Cursada, sin las que ya pasaron.
+   - Su clase de ahora (`nowClass`) es la que está en curso o, si no hay, la
+     próxima de sus comisiones actuales, con modalidad, aula y enlace de Zoom.
+     Sale del horario de la comisión y del reloj de la llamada, no de la hora de
+     la lectura. El enlace va solo en las clases virtuales o híbridas, y solo si
+     el docente lo cargó. Si Cursada no responde, no hay clase y `unavailable`
+     lleva `class`.
 
    Usa Cursada, Espacios y el reloj. */
 import type { PersonId } from '@/lib/core/people'
 import type { OpenQuestion, Spaces, UnreadItem } from '@/lib/core/spaces'
 import {
   compareUpcoming,
+  currentClass,
+  hasZoom,
   type MySection,
   type MySubject,
   type MySubjects,
@@ -70,7 +78,25 @@ export type TodayView = {
 }
 
 /** Cada parte del Hoy del docente que sale de una lectura aparte. */
-export type TeachingPart = 'sections' | 'questions' | 'dates' | 'unread'
+export type TeachingPart = 'sections' | 'questions' | 'dates' | 'unread' | 'class'
+
+/** La clase de ahora o la próxima de una comisión que dicta. */
+export type NowClass = {
+  /** `ahora`: empezó y no terminó. `proxima`: todavía no empezó. */
+  state: 'ahora' | 'proxima'
+  sectionId: string
+  sectionName: string
+  subjectId: string
+  subjectCode: string
+  subjectName: string
+  /** Cuándo empieza y cuándo termina, en ISO: con `sectionId`, identifica la clase para tomar lista. */
+  classAt: string
+  endAt: string
+  location: string
+  modality: MySubject['modality']
+  /** El enlace de Zoom: solo si la clase es virtual o híbrida y el docente lo cargó; si no, `null`. */
+  zoomUrl: string | null
+}
 
 /** Una comisión actual que dicta, con lo que no leyó en su espacio. */
 export type TaughtSection = {
@@ -90,6 +116,8 @@ export type TeachingView = {
   sections: TaughtSection[]
   /** Consultas sin resolver de sus comisiones, la más vieja primero. */
   questions: OpenQuestion[]
+  /** Su clase de ahora o la próxima, o `null` si no tiene ninguna por delante. */
+  nowClass: NowClass | null
   /** Parciales de sus comisiones y mesas que integra que no pasaron, por fecha. */
   dates: UpcomingItem[]
   /** Todo lo que no leyó, los directos incluidos, lo más nuevo primero. */
@@ -165,6 +193,27 @@ function taughtSections(sections: MySection[], unread: UnreadItem[]): TaughtSect
   })
 }
 
+/** La clase de ahora o la próxima de las comisiones actuales que dicta, con el reloj de la llamada. */
+function nowClassOf(subjects: MySubjects, now: string): NowClass | null {
+  const taught = subjects.current.filter((s) => s.role === 'profesor')
+  const found = currentClass(taught, now)
+  if (!found) return null
+  const subject = taught[found.index]
+  return {
+    state: found.state,
+    sectionId: subject.sectionId,
+    sectionName: subject.sectionName,
+    subjectId: subject.subjectId,
+    subjectCode: subject.code,
+    subjectName: subject.name,
+    classAt: found.classAt,
+    endAt: found.endAt,
+    location: subject.location,
+    modality: subject.modality,
+    zoomUrl: hasZoom(subject.modality) ? subject.zoomUrl : null
+  }
+}
+
 type Read<T> = Result<T, string>
 
 const valueOr = <T>(read: Read<T>, empty: T): T => (read.ok ? read.value : empty)
@@ -177,13 +226,14 @@ function failed<P extends string>(reads: Record<P, Read<unknown>>): P[] {
 export function createToday({ studies, spaces, clock }: TodayDeps): Today {
   return {
     async teaching(personId) {
-      const [sections, dates, questions, unread] = await Promise.all([
+      const [sections, dates, questions, unread, subjects] = await Promise.all([
         studies.sectionsOf(personId),
         studies.upcoming(personId),
         spaces.openQuestions(personId),
-        spaces.unreadFor(personId)
+        spaces.unreadFor(personId),
+        studies.subjectsOf(personId)
       ])
-      const reads = { sections, dates, questions, unread }
+      const reads = { sections, dates, questions, unread, class: subjects }
       if (Object.values(reads).some((r) => !r.ok && r.error === 'persona-desconocida')) {
         return fail('persona-desconocida')
       }
@@ -193,9 +243,10 @@ export function createToday({ studies, spaces, clock }: TodayDeps): Today {
         now,
         sections: taughtSections(sections.ok ? sections.value.data : [], unreadItems),
         questions: valueOr(questions, []),
+        nowClass: subjects.ok ? nowClassOf(subjects.value.data, now) : null,
         dates: (dates.ok ? dates.value.data : []).filter((d) => d.date >= now),
         unread: unreadItems,
-        staleSince: staleSince([sections, dates]),
+        staleSince: staleSince([sections, dates, subjects]),
         unavailable: failed<TeachingPart>(reads)
       })
     },
