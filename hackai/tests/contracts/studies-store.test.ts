@@ -76,7 +76,7 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
 
   it('guardar de nuevo la misma comisión e instante reemplaza la lista y vuelve a quedar pendiente', async (store, ids) => {
     value(await store.saveClass(classOf(ids, 1, TUESDAY, [1, 2])))
-    value(await store.setPass(ids.section(1), TUESDAY, 'pasado', TAKEN))
+    value(await store.setPass(ids.section(1), TUESDAY, TAKEN, 'pasado', TAKEN))
     const again = value(
       await store.saveClass({ ...classOf(ids, 1, TUESDAY, [2, 3]), takenAt: '2026-11-10T16:00:00.000Z' })
     )
@@ -119,7 +119,7 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
   it('cambia el pase de una clase y lista las que siguen pendientes', async (store, ids) => {
     value(await store.saveClass(classOf(ids, 1, MONDAY, [1])))
     value(await store.saveClass(classOf(ids, 1, TUESDAY, [1])))
-    value(await store.setPass(ids.section(1), MONDAY, 'pasado', TAKEN))
+    value(await store.setPass(ids.section(1), MONDAY, TAKEN, 'pasado', TAKEN))
     const monday = value(await store.classAt(ids.section(1), MONDAY))
     assert.equal(monday?.pass, 'pasado')
     assert.equal(monday?.passedAt, TAKEN)
@@ -128,13 +128,24 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
       pending.map((c) => c.classAt),
       [TUESDAY]
     )
-    value(await store.setPass(ids.section(1), TUESDAY, 'no-permitido', null))
+    value(await store.setPass(ids.section(1), TUESDAY, TAKEN, 'no-permitido', null))
     assert.equal(value(await store.classAt(ids.section(1), TUESDAY))?.pass, 'no-permitido')
   })
 
   it('cambiar el pase de una clase que no existe no hace nada', async (store, ids) => {
-    assert.deepEqual(await store.setPass(ids.section(1), TUESDAY, 'pasado', TAKEN), { ok: true, value: null })
+    assert.deepEqual(await store.setPass(ids.section(1), TUESDAY, TAKEN, 'pasado', TAKEN), { ok: true, value: false })
     assert.equal(value(await store.classAt(ids.section(1), TUESDAY)), null)
+  })
+
+  it('no marca el pase de una lista que se corrigió después de mandarla', async (store, ids) => {
+    value(await store.saveClass(classOf(ids, 1, TUESDAY, [1])))
+    const corrected = '2026-11-10T15:30:00.000Z'
+    value(await store.saveClass({ ...classOf(ids, 1, TUESDAY, [2]), takenAt: corrected }))
+
+    assert.equal(value(await store.setPass(ids.section(1), TUESDAY, TAKEN, 'pasado', TAKEN)), false)
+    assert.equal(value(await store.classAt(ids.section(1), TUESDAY))?.pass, 'pendiente')
+    assert.equal(value(await store.setPass(ids.section(1), TUESDAY, corrected, 'pasado', corrected)), true)
+    assert.equal(value(await store.classAt(ids.section(1), TUESDAY))?.pass, 'pasado')
   })
 }
 
@@ -199,7 +210,7 @@ test('almacén de Supabase: una base caída devuelve «falla externa» sin tirar
   assert.deepEqual(await store.classesAbsent('a'), failed)
   assert.deepEqual(await store.pending(), failed)
   assert.deepEqual(await store.saveClass(classOf(fresh(), 1, TUESDAY, [1])), failed)
-  assert.deepEqual(await store.setPass('c', TUESDAY, 'pasado', TAKEN), failed)
+  assert.deepEqual(await store.setPass('c', TUESDAY, TAKEN, 'pasado', TAKEN), failed)
 })
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL

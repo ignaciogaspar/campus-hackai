@@ -39,13 +39,12 @@ export function createMemoryStudiesStore(): StudiesStore {
       return ok(copy(saved))
     },
 
-    async setPass(sectionId, classAt, pass, passedAt) {
+    async setPass(sectionId, classAt, takenAt, pass, passedAt) {
       const found = classes.get(keyOf(sectionId, classAt))
-      if (found) {
-        found.pass = pass
-        found.passedAt = passedAt
-      }
-      return ok(null)
+      if (!found || found.takenAt !== takenAt) return ok(false)
+      found.pass = pass
+      found.passedAt = passedAt
+      return ok(true)
     },
 
     async zoomLinks(sectionIds) {

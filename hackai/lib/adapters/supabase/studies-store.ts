@@ -155,16 +155,19 @@ export function createSupabaseStudiesStore({
       return saved.value ? ok(saved.value) : fail('falla-externa')
     },
 
-    async setPass(sectionId, classAt, pass, passedAt) {
-      const updated = await run('pase de la clase', (s) =>
+    async setPass(sectionId, classAt, takenAt, pass, passedAt) {
+      // Solo si la lista sigue siendo la que se mandó: la condición sobre `taken_at` la hace la base, sin carrera.
+      const updated = await run<{ section_id: string }[]>('pase de la clase', (s) =>
         client
           .from('section_classes')
           .update({ pass_status: pass, passed_at: passedAt })
           .eq('section_id', sectionId)
           .eq('class_at', classAt)
+          .eq('taken_at', takenAt)
+          .select('section_id')
           .abortSignal(s)
       )
-      return updated.ok ? ok(null) : fail('falla-externa')
+      return updated.ok ? ok((updated.value ?? []).length > 0) : fail('falla-externa')
     },
 
     async zoomLinks(sectionIds) {

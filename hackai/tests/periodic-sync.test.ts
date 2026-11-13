@@ -127,6 +127,30 @@ test('si la corrida reintenta el pase, lo suma al resumen y al log, y un pase qu
   assert.ok(logs.includes('[corrida-periodica] pase de notas: falla-externa'))
 })
 
+test('la corrida reintenta los pases de asistencia, y ni un error ni una excepción cortan la sincronización', async () => {
+  const logs: string[] = []
+  const { syncAll, calls } = spySync({ channels: 1, imported: 0, sent: 0, pending: 0 })
+  const run = (retryAttendancePass: Parameters<typeof handlePeriodicSync>[1]['retryAttendancePass']) =>
+    handlePeriodicSync(request(`Bearer ${SECRET}`), {
+      secret: SECRET,
+      syncAll,
+      retryAttendancePass,
+      log: (m) => logs.push(m)
+    })
+
+  const done = await run(async () => ok({ passed: 2, pending: 0 }))
+  const failed = await run(async () => fail('falla-externa'))
+  const thrown = await run(async () => {
+    throw new Error('el almacén no respondió')
+  })
+
+  assert.deepEqual([done.status, failed.status, thrown.status], [200, 200, 200])
+  assert.equal(calls.count, 3)
+  assert.ok(logs.includes('[corrida-periodica] pases al SIU: 2 pasados, 0 pendientes'))
+  assert.ok(logs.includes('[corrida-periodica] pases al SIU: falla-externa'))
+  assert.ok(logs.includes('[corrida-periodica] pases al SIU: el almacén no respondió'))
+})
+
 // La ruta de verdad, con el sistema armado sobre los adaptadores en memoria.
 
 test('la ruta toma el secreto de CRON_SECRET y sincroniza los canales vinculados', async () => {

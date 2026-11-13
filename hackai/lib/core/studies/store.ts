@@ -51,13 +51,16 @@ export type StudiesStore = {
   /** Guarda la clase, o REEMPLAZA la de esa comisión e instante (la lista, quién la tomó y cuándo). Queda
       `pendiente`: una lista corregida se pasa de nuevo. */
   saveClass(input: StoredClassInput): Promise<Result<StoredClass, StudiesStoreError>>
-  /** Marca cómo quedó el pase de una clase. Si la clase ya no existe, no hace nada. */
+  /** Marca cómo quedó el pase de una clase, solo si la lista guardada sigue siendo la que se tomó en `takenAt` (la
+      que se mandó al SIU). Devuelve `true` si la marcó, y `false` si la clase ya no existe o se corrigió mientras
+      tanto: así una lista vieja que llegó tarde al SIU no deja como pasada a la corregida. */
   setPass(
     sectionId: string,
     classAt: string,
+    takenAt: string,
     pass: AttendancePass,
     passedAt: string | null
-  ): Promise<Result<null, StudiesStoreError>>
+  ): Promise<Result<boolean, StudiesStoreError>>
   /** Los enlaces de Zoom cargados de esas comisiones, por id de comisión. Las que no tienen no figuran. */
   zoomLinks(sectionIds: string[]): Promise<Result<Record<string, string>, StudiesStoreError>>
   /** Guarda el enlace de Zoom de la comisión, o lo borra con `null`. Reemplaza el anterior. */

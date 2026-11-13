@@ -103,7 +103,8 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
     return ok({ siuId: teacher.value, section: section.value, term, subject: subject.value })
   }
 
-  /** Pasa la lista guardada al SIU y deja anotado cómo quedó. Nunca falla. Si el SIU declara que no escribe
+  /** Pasa la lista guardada al SIU y deja anotado cómo quedó. Nunca falla. Si el docente corrigió la lista mientras
+      tanto, la que llegó al SIU puede ser la vieja: la clase vuelve a `pendiente` y el reintento manda la última. Si el SIU declara que no escribe
       asistencia (`canRecordAttendance`), queda `no-permitido` sin llamarlo; si dice `no-soportado` para esa comisión
       (el SIU real con la comisión de una cuenta real), también. Queda `pendiente` si el SIU no respondió (`down`) o
       no conoce la comisión o a un ausente: se reintenta, y el SIU reemplaza la lista, no la duplica. */
@@ -117,8 +118,30 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
       ? { pass: 'pasado' as const, passedAt: now() }
       : { pass: 'no-permitido' as const, passedAt: null }
     // Si no se pudo anotar, queda `pendiente` y el reintento reenvía lo mismo.
-    await store.setPass(saved.sectionId, saved.classAt, outcome.pass, outcome.passedAt)
+    const marked = await store.setPass(saved.sectionId, saved.classAt, saved.takenAt, outcome.pass, outcome.passedAt)
+    if (marked.ok && !marked.value) {
+      await markStale(saved)
+      return { pass: 'pendiente', passedAt: null, down: false }
+    }
     return { ...outcome, down: false }
+  }
+
+  /** La lista que se mandó ya no es la guardada: la guardada vuelve a `pendiente`, porque el SIU puede tener la vieja. */
+  async function markStale(sent: StoredClass) {
+    const current = await store.classAt(sent.sectionId, sent.classAt)
+    if (current.ok && current.value)
+      await store.setPass(sent.sectionId, sent.classAt, current.value.takenAt, 'pendiente', null)
+  }
+
+  /** Reintenta una clase de la lista de pendientes. Se relee justo antes de mandarla: si el docente la corrigió va la
+      corregida, y si ya no está pendiente no se manda. `down` si el SIU (o el almacén) no responde. */
+  async function retryOne(listed: StoredClass): Promise<'down' | 'passed' | 'pending'> {
+    const current = await store.classAt(listed.sectionId, listed.classAt)
+    if (!current.ok) return 'down'
+    if (current.value?.pass !== 'pendiente') return 'passed'
+    const outcome = await pass(current.value)
+    if (outcome.down) return 'down'
+    return outcome.pass === 'pendiente' ? 'pending' : 'passed'
   }
 
   /** Reintenta los pases pendientes (todos, o los de una comisión), de la clase más vieja a la más nueva. Corta si el
@@ -128,10 +151,10 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
     if (!all.ok) return all
     const pending = sectionId ? all.value.filter((c) => c.sectionId === sectionId) : all.value
     let passed = 0
-    for (const [i, c] of pending.entries()) {
-      const outcome = await pass(c)
-      if (outcome.down) return ok({ passed, pending: pending.length - i })
-      if (outcome.pass !== 'pendiente') passed += 1
+    for (const [i, listed] of pending.entries()) {
+      const result = await retryOne(listed)
+      if (result === 'down') return ok({ passed, pending: pending.length - i })
+      if (result === 'passed') passed += 1
     }
     return ok({ passed, pending: pending.length - passed })
   }
@@ -220,7 +243,7 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
     })
     if (!saved.ok) return saved
     const outcome = await pass(saved.value)
-    return ok({ classAt, absent: absentIds, ...outcome })
+    return ok({ classAt, absent: absentIds, pass: outcome.pass, passedAt: outcome.passedAt })
   }
 
   return { classesOf, sheet, take, retryAttendancePass }

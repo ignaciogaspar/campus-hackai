@@ -130,7 +130,7 @@ export function AttendanceForm({
       {editable ? (
         <div className='fixed inset-x-0 bottom-[calc(67px+env(safe-area-inset-bottom))] z-10 border-t border-border bg-background px-4 py-2 lg:sticky lg:bottom-0 lg:z-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:py-3'>
           <Button type='submit' size='lg' disabled={pending} className='h-11 w-full text-base'>
-            {pending ? 'Guardando…' : pass ? 'Guardar corrección' : 'Guardar lista'}
+            {pending ? 'Guardando…' : shownPass ? 'Guardar corrección' : 'Guardar lista'}
           </Button>
         </div>
       ) : (

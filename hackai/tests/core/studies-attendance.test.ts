@@ -273,6 +273,41 @@ test('si el pase falla, la lista queda pendiente, el alumno ve la falta y el rei
   assert.equal(sheet.taken?.pass, 'pasado')
 })
 
+test('si el docente corrige la lista mientras el reintento manda la vieja, al final el SIU queda con la corregida', async () => {
+  let siuAnswers = false
+  let inSiu: string[] = []
+  let correctMeanwhile: (() => Promise<unknown>) | null = null
+  const receipts = createMemorySiu(syntheticData, movableClock(syntheticData.now).clock)
+  const { studies, advance } = build({
+    siuOverrides: {
+      async recordAttendance(sectionId, classAt, absentIds) {
+        if (!siuAnswers) return fail('falla-externa')
+        // La corrección entra mientras la lista vieja va en camino, y la vieja llega al SIU después.
+        const correct = correctMeanwhile
+        correctMeanwhile = null
+        if (correct) await correct()
+        inSiu = absentIds
+        return receipts.recordAttendance(sectionId, classAt, absentIds)
+      }
+    }
+  })
+  value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.mcabrera]))
+
+  siuAnswers = true
+  advance(1)
+  correctMeanwhile = () => studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.sdominguez])
+  value(await studies.retryAttendancePass())
+
+  // El SIU se quedó con la vieja: la corregida volvió a pendiente en vez de figurar como pasada.
+  assert.deepEqual(inSiu, [LEGAJO.mcabrera])
+
+  // Abrir la lista reintenta los pases de la comisión: va la corregida.
+  const sheet = value(await studies.attendanceSheet(TEACHER, SECTION, TODAY_CLASS))
+  assert.deepEqual(inSiu, [LEGAJO.sdominguez])
+  assert.deepEqual(sheet.absent, [LEGAJO.sdominguez])
+  assert.equal(sheet.taken?.pass, 'pasado')
+})
+
 test('al abrir la comisión se reintentan sus pases pendientes', async () => {
   let siuAnswers = false
   const memory = createMemorySiu(syntheticData, movableClock(syntheticData.now).clock)
