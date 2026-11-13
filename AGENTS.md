@@ -51,7 +51,7 @@ Todas están en `.claude/skills/` (procedencia y tabla completa: `.claude/skills
 
 ## Workflows en vez de subagentes
 
-Cuando una skill o una tarea necesite agentes en paralelo, llamá al Workflow tool con el `name` de un script de `.claude/workflows/`: `review-axes`, `implement-tickets`, `design-it-twice`, `explore-codebase`, `research-tickets`, `scan-siu-campus`. Args, qué devuelve cada uno y cuándo conviene hacerlo inline: `docs/agents/workflows.md`. Por qué: ADR 0003.
+Cuando una skill o una tarea necesite agentes en paralelo, llamá al Workflow tool con el `name` de un script de `.claude/workflows/`: `review-axes`, `implement-tickets`, `design-it-twice`, `explore-codebase`, `research-tickets`, `scan-siu-campus`, `recorrer-ux`. Args, qué devuelve cada uno y cuándo conviene hacerlo inline: `docs/agents/workflows.md`. Por qué: ADR 0003.
 
 ## Agent skills
 
