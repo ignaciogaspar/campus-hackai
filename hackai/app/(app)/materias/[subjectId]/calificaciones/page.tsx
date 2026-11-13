@@ -13,7 +13,7 @@ import type { Metadata } from 'next'
 import { CourseGradeEditor, CourseStudentList, CourseSummary, WeightsForm } from '@/components/coursework/course-grade'
 import { COURSE_COLUMN, gradesHref, nextStudent, notesLabel } from '@/components/coursework/format'
 import { GradeEditor } from '@/components/coursework/grade-editor'
-import { ColumnPicker, ColumnSummary, NoColumns, StudentList } from '@/components/coursework/gradebook'
+import { ColumnPicker, ColumnSummary, ExcelDownload, NoColumns, StudentList } from '@/components/coursework/gradebook'
 import { TaskError } from '@/components/coursework/task-error'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { messageTime } from '@/components/spaces/format'
@@ -76,6 +76,7 @@ export default async function GradebookPage({ params, searchParams }: { params: 
           hrefFor={(sectionId) => gradesHref(subjectId, { comision: sectionId })}
         />
         <div className='flex w-full max-w-3xl flex-col gap-4'>
+          <ExcelDownload subjectId={subjectId} several={several} />
           {column ? (
             <>
               <ColumnPicker

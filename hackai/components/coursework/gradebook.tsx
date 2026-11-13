@@ -4,11 +4,18 @@
    se publica, y debajo hay una fila por alumno con su nota. Tocar un alumno abre
    su nota y comentario.
    Sin tablas anchas: la misma lista sirve en la compu. */
-import { ClipboardList, ClipboardPaste, NotebookPen } from 'lucide-react'
+import { ClipboardList, ClipboardPaste, FileSpreadsheet, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
 import { publishColumn, retryGradePass } from '@/app/actions/coursework'
 import { GradeBadge } from '@/components/academic/grade-badge'
-import { COURSE_COLUMN, dueTime, gradeInputValue, gradesHref, pasteGradesHref } from '@/components/coursework/format'
+import {
+  COURSE_COLUMN,
+  dueTime,
+  gradeInputValue,
+  gradesExcelHref,
+  gradesHref,
+  pasteGradesHref
+} from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -19,6 +26,27 @@ import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
 import type { GradebookStudent, GradeCell, GradeColumn, PassCounts, PassStatus } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
+
+/** Baja el Excel de la materia: una hoja por comisión del docente, con sus alumnos y notas. Es un enlace común con
+    `download`, así anda igual en el celular. */
+export function ExcelDownload({ subjectId, several }: { subjectId: string; several: boolean }) {
+  return (
+    <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4'>
+      <a
+        href={gradesExcelHref(subjectId)}
+        download
+        className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full flex-none rounded-[10px] sm:w-auto')}
+      >
+        <FileSpreadsheet aria-hidden='true' data-icon='inline-start' />
+        Descargar Excel de la materia
+      </a>
+      <p className='text-[0.8125rem] text-muted-foreground'>
+        {several ? 'Una hoja por cada una de tus comisiones' : 'Una hoja con tu comisión'}, con los alumnos y todas sus
+        notas.
+      </p>
+    </div>
+  )
+}
 
 export function NoColumns() {
   return (
