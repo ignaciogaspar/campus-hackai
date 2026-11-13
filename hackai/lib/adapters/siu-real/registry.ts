@@ -70,6 +70,7 @@ export function createRealSiuRegistry(options: RegistryOptions): RealSiuRegistry
   return {
     register,
     accountOf: byPerson,
+    // Las del simulado: escribir notas y asistencia se decide por comisión (ver createRealSiu).
     capabilities: { ...fallback.capabilities, hasAssessmentSchedule: true },
 
     person: (id) => routeTo(id)?.person(id) ?? missing(),
@@ -98,6 +99,8 @@ export function createRealSiuRegistry(options: RegistryOptions): RealSiuRegistry
       (byId(sectionId) ?? fallback).writeAssessmentGrade(person, sectionId, assessmentId, grade),
     writeCourseGrade: (person, sectionId, grade, promoted) =>
       (byId(sectionId) ?? fallback).writeCourseGrade(person, sectionId, grade, promoted),
+    recordAttendance: (sectionId, classAt, absent) =>
+      (byId(sectionId) ?? fallback).recordAttendance(sectionId, classAt, absent),
     section: (id) => (byId(id) ?? fallback).section(id),
     sections: (filter) => (byId(filter.schoolId) ?? byId(filter.subjectId) ?? fallback).sections(filter),
     teacherSections: (id) => fallback.teacherSections(id),

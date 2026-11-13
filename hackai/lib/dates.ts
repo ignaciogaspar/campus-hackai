@@ -16,6 +16,11 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(dayKey(to)) - Date.parse(dayKey(from))) / DAY_MS)
 }
 
+/** El instante ISO de una hora `HH:MM` de un día `AAAA-MM-DD` en Buenos Aires (UTC-3, sin horario de verano). */
+export function atBuenosAires(day: string, time: string): string {
+  return new Date(`${day}T${time}:00-03:00`).toISOString()
+}
+
 /** El día `AAAA-MM-DD` que está `days` días después de otro. */
 export function addDays(day: string, days: number): string {
   return new Date(Date.parse(day) + days * DAY_MS).toISOString().slice(0, 10)

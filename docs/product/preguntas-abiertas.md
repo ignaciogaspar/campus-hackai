@@ -244,6 +244,38 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 30. ¿Hasta cuándo puede el docente tomar o corregir la lista de una clase?
+
+- **Por qué importa:** tomar lista (#108) toma y corrige solo la clase de hoy. Si el docente se olvida un día, la clase queda sin lista y sin poder tomarse después.
+- **Hipótesis (13/11/2026):** se toma o corrige la clase de hoy, día calendario de Buenos Aires. Las anteriores se ven, pero no se cambian. Una clase doble el mismo día cuenta como dos clases; en las inasistencias del alumno, una lista de HackAI reemplaza todas las faltas que el SIU tenga de esa comisión ese día.
+- **Opciones:** solo hoy; hasta el final del día siguiente; hasta una fecha límite por período; sin límite, con aviso a la secretaría.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 31. ¿Cuándo se reintenta pasar al SIU una lista que no llegó?
+
+- **Por qué importa:** si el SIU no responde, la lista queda `pendiente`. El alumno ve la falta igual, pero el SIU no la tiene hasta que se reintente.
+- **Hipótesis (13/11/2026):** se reintenta al abrir las clases o la lista de esa comisión y en la corrida periódica (`/api/cron/sync`). Como el SIU reemplaza la lista de la clase, reintentar no duplica. Una lista corregida se pasa de nuevo. HackAI no justifica faltas: las suyas van sin justificar.
+- **Opciones:** lo de la hipótesis; un botón «Reintentar» en la lista de la clase; avisar al docente por la campana si pasan más de 24 horas.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 32. ¿El enlace de Zoom de una comisión tiene que ser de Zoom?
+
+- **Por qué importa:** el docente carga el enlace (#109) y todos los alumnos de la comisión lo ven como «Entrar a Zoom». Hoy alcanza con que sea `https://` y tenga un dominio, así que también entra un enlace a otro sitio, mal pegado o malicioso, con el sello de la facultad.
+- **Hipótesis (13/11/2026):** lo carga solo un docente de la comisión, y eso alcanza para la demo. La review del PR #118 lo marcó como pregunta, no como error.
+- **Opciones:** como está; aceptar solo `zoom.us` y sus subdominios; aceptar también Meet y Teams, y cambiar el texto a «Entrar a la clase».
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 33. ¿Hasta cuándo se reintenta una lista que el SIU no reconoce?
+
+- **Por qué importa:** si el SIU no conoce la comisión o a un ausente (`no-encontrado`), la lista queda `pendiente`. Cada apertura de la comisión y cada corrida periódica la vuelven a mandar, y el docente la ve pendiente sin límite, aunque no vaya a pasar nunca.
+- **Hipótesis (13/11/2026):** queda pendiente y se reintenta, porque el alumno puede aparecer en el SIU más tarde (una inscripción que todavía no se cargó). Para la demo no pasa: el SIU simulado conoce a todos.
+- **Opciones:** como está; un tope de intentos o de días y después `no-permitido` con un aviso al docente; mostrar «el SIU no reconoce a X» en la lista.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

@@ -25,6 +25,7 @@ import { offerHref } from '@/components/enrollment/offer-href'
 import { gradeText, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
+import { ZoomLink } from '@/components/subjects/zoom-link'
 import { LinkPending } from '@/components/ui/link-pending'
 import type { MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
@@ -127,6 +128,8 @@ export function CourseCard({
   const modality = modalityName(subject.modality)
   const place = modality === subject.location ? modality : [modality, subject.location].filter(Boolean).join(' · ')
   const classroom = subject.classrooms[0]
+  // El día de una clase virtual o híbrida con enlace, «Entrar a Zoom».
+  const zoomUrl = subject.classToday ? subject.zoomUrl : null
   return (
     <SubjectCard
       subjectId={subject.subjectId}
@@ -151,12 +154,17 @@ export function CourseCard({
         )
       }
       secondary={
-        classroom && (
-          <a href={classroom.url} target='_blank' rel='noopener noreferrer' className={SECONDARY}>
-            Aula
-            <ExternalLink aria-hidden='true' className='size-3.5' />
-            <span className='sr-only'>de {subject.name} en Moodle (se abre en otra pestaña)</span>
-          </a>
+        (zoomUrl || classroom) && (
+          <span className='flex flex-wrap items-center justify-end'>
+            {zoomUrl && <ZoomLink url={zoomUrl} subjectName={subject.name} className={SECONDARY} />}
+            {classroom && (
+              <a href={classroom.url} target='_blank' rel='noopener noreferrer' className={SECONDARY}>
+                Aula
+                <ExternalLink aria-hidden='true' className='size-3.5' />
+                <span className='sr-only'>de {subject.name} en Moodle (se abre en otra pestaña)</span>
+              </a>
+            )}
+          </span>
         )
       }
     />

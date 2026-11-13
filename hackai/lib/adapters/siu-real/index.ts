@@ -535,7 +535,9 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
   }
 
   return {
-    // Las del simulado: la demo sigue inscribiendo a las personas sintéticas.
+    // Las del simulado: la demo sigue inscribiendo a las personas sintéticas. Escribir notas y asistencia se decide
+    // por comisión: las de la demo van al simulado y las de una cuenta real responden `no-soportado`, que el núcleo
+    // anota como «Sin pasar al SIU». Por eso `canWriteGrades` y `canRecordAttendance` son las del simulado.
     capabilities: { ...fallback.capabilities, hasAssessmentSchedule: true },
 
     person: (id) => (isMine(id) ? fromSnapshot((s) => s.person) : fallback.person(id)),
@@ -580,6 +582,12 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
     writeCourseGrade: async (person, sectionId, grade, promoted) =>
       isReal(sectionId) ? fail('no-soportado') : fallback.writeCourseGrade(person, sectionId, grade, promoted),
     // --- fin B: notas ---
+
+    // --- A: asistencia ---
+    // La Autogestión del alumno no carga asistencia: en una comisión real la clase queda «sin pasar» (`no-soportado`).
+    recordAttendance: async (sectionId, classAt, absent) =>
+      isReal(sectionId) ? fail('no-soportado') : fallback.recordAttendance(sectionId, classAt, absent),
+    // --- fin A: asistencia ---
 
     section: (id) => (isReal(id) ? byId((s) => s.sections.find((x) => x.id === id)) : fallback.section(id)),
 

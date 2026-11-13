@@ -133,6 +133,19 @@ _Avoid_: usarla para el examen final.
 **Inasistencia (Absence)**:
 Falta de un alumno a una clase, registrada por materia con fecha y si está justificada. El máximo de inasistencias de una comisión (`AbsenceLimit`) es una hipótesis: ver Regularidad.
 
+**Clase (SectionClass)**:
+Cada vez que el horario de una comisión del SIU cae en un día de su período lectivo. Se identifica por la comisión y el instante en que empieza, en Buenos Aires. La modalidad es la de la comisión: el SIU no la da por clase. No es la Jornada ni la Clase en vivo de Campus Austral.
+
+**Tomar lista (Take attendance)**:
+Lo que hace el docente en HackAI con la clase de hoy: todos arrancan presentes y marca a los ausentes. La puede corregir el mismo día. HackAI la guarda, así el alumno ve la falta aunque el SIU no responda, y después la pasa al SIU con los mismos tres estados del Pase al SIU (`pendiente`, `pasado`, `no-permitido`).
+_Avoid_: «pasar asistencia» para la toma (pasar es escribir en el SIU).
+
+**Lista de asistencia (AttendanceSheet)**:
+Los alumnos de una comisión para una clase, con los ausentes ya guardados si se tomó. No es el Padrón de Campus Austral.
+
+**Enlace de Zoom (Zoom link)**:
+El enlace a la reunión de una comisión virtual o híbrida, que el docente carga una vez en HackAI. El alumno lo ve el día de clase en la tarjeta de la materia y en Calendario, y el docente en su clase de Hoy.
+
 **Acta (GradeRecord)**:
 Documento oficial que asienta las notas de una cursada, una promoción o una mesa. Mientras no se cierra, las notas son provisorias; cerrada, no se modifica. Quién la cierra y cómo, a confirmar.
 _Avoid_: «planilla»; guardar en un acta una nota que escribió un agente sin que la apruebe una persona.
@@ -274,7 +287,7 @@ La nota con la que un alumno termina la cursada de una comisión en HackAI: el p
 _Avoid_: «promedio de la materia», «nota final» (esa es la del final).
 
 **Pase al SIU (Grade pass)**:
-Escribir en el SIU las notas que el docente publicó en HackAI: la de cada evaluación del cronograma del SIU y la nota de cursada. Una tarea no existe en el SIU y queda solo en HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó: el SIU falló y se reintenta, sin duplicar), `pasado` o `no-permitido` («Sin pasar al SIU»: el SIU no deja escribir notas). El alumno ve la nota en los tres estados. Se hace por la capacidad `canWriteGrades` del puerto del SIU: el adaptador real declara que no puede, el simulado sí.
+Escribir en el SIU las notas que el docente publicó en HackAI: la de cada evaluación del cronograma del SIU y la nota de cursada. Una tarea no existe en el SIU y queda solo en HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó: el SIU falló y se reintenta, sin duplicar), `pasado` o `no-permitido` («Sin pasar al SIU»: el SIU no deja escribir notas). El alumno ve la nota en los tres estados. Se hace por la capacidad `canWriteGrades` del puerto del SIU: el adaptador real declara que no puede, el simulado sí. La lista que se toma en HackAI pasa al SIU igual, con los mismos tres estados, por la capacidad `canRecordAttendance`.
 _Avoid_: «sincronizar notas», «exportar».
 
 **Espacio de la materia (Subject space)**:

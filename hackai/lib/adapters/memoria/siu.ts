@@ -17,6 +17,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
     canEnroll: true,
     hasAssessmentSchedule: true,
     enrolsInClassroom: false,
+    canRecordAttendance: true,
     canWriteGrades: true,
     ...options.capabilities
   }
@@ -264,6 +265,25 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       found.active.status = 'baja'
       return ok({ transactionNumber: nextTransaction(), date: at, target: copy(target) })
     },
+
+    // --- A: asistencia ---
+    async recordAttendance(sectionId, classAt, absentPersonIds) {
+      if (!capabilities.canRecordAttendance) return fail('no-soportado')
+      if (!db.sections.some((s) => s.id === sectionId)) return fail('no-encontrado')
+      if (!absentPersonIds.every(hasPerson)) return fail('no-encontrado')
+      db.absences = db.absences.filter((a) => !(a.sectionId === sectionId && a.date === classAt))
+      for (const personId of new Set(absentPersonIds)) {
+        db.absences.push({
+          id: `ia-${sectionId}-${classAt}-${personId}`,
+          personId,
+          sectionId,
+          date: classAt,
+          justified: false
+        })
+      }
+      return ok({ date: now() })
+    },
+    // --- fin A: asistencia ---
 
     selfServiceUrl(target) {
       const base = db.selfServiceBaseUrl

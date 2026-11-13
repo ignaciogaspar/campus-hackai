@@ -3,7 +3,9 @@
    sus próximos parciales y mesas, armado con lo que da Hoy en una sola llamada.
    Cada cosa lleva a su canal o a su hilo. Qué consultas le tocan y qué no leyó
    lo deciden Hoy y Espacios; acá solo se muestra. Si una parte no se pudo
-   leer, esa parte dice por qué y el resto se ve igual.
+   leer, esa parte dice por qué y el resto se ve igual. Arriba de todo va su
+   clase de ahora (o la próxima), con Tomar lista y, si es virtual o híbrida,
+   Entrar a Zoom.
 
    En el celular es una columna: consultas, no leídos, comisiones y fechas. En
    compu, a la izquierda lo que espera una respuesta y a la derecha sus
@@ -12,6 +14,7 @@ import { CircleCheck, Megaphone, MessageCircleQuestion, MessagesSquare, Users } 
 import type { ReactNode } from 'react'
 import { timeAgo } from '@/components/dates'
 import { spaceHref } from '@/components/spaces/format'
+import { NowClassCard } from '@/components/today/now-class'
 import { UpcomingRow } from '@/components/today/upcoming'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
@@ -27,7 +30,8 @@ const DOWN: Record<TeachingPart, string> = {
   sections: 'No pudimos traer tus comisiones porque el SIU no responde. Probá de nuevo en un rato.',
   questions: 'No pudimos traer las consultas de tus comisiones. Probá de nuevo en un rato.',
   dates: 'No pudimos traer tus parciales y mesas porque el SIU no responde. Probá de nuevo en un rato.',
-  unread: 'No pudimos traer lo que no leíste. Probá de nuevo en un rato.'
+  unread: 'No pudimos traer lo que no leíste. Probá de nuevo en un rato.',
+  class: 'No pudimos traer tu clase de ahora porque el SIU no responde. Probá de nuevo en un rato.'
 }
 
 const CHANNEL: Record<Exclude<ChannelKind, 'libre'>, string> = {
@@ -214,6 +218,12 @@ export function TeachingScreen({ view }: { view: TeachingView }) {
   return (
     <div className='flex flex-col gap-6'>
       {view.staleSince && <StaleBanner since={view.staleSince} now={view.now} />}
+
+      {view.unavailable.includes('class') ? (
+        <ErrorNotice>{DOWN.class}</ErrorNotice>
+      ) : (
+        view.nowClass && <NowClassCard nowClass={view.nowClass} now={view.now} />
+      )}
 
       <div className='grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(18.75rem,1fr)] lg:items-start'>
         <div className='flex min-w-0 flex-col gap-6'>

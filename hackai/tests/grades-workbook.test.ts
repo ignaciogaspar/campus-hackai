@@ -9,6 +9,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createCoursework } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
@@ -92,7 +93,13 @@ function build(data: SyntheticData = syntheticData) {
   const { clock } = movableClock(data.now)
   const siu = createMemorySiu(data, clock)
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
-  const studies = createStudies({ people, siu, classroom: createMemoryClassroom(data), clock })
+  const studies = createStudies({
+    people,
+    siu,
+    classroom: createMemoryClassroom(data),
+    clock,
+    store: createMemoryStudiesStore()
+  })
   return createCoursework({ studies, files: createMemoryFiles(), clock, store: createMemoryCourseworkStore() })
 }
 

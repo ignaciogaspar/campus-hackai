@@ -12,6 +12,7 @@ function run(request: Request) {
   return handlePeriodicSync(request, {
     secret: process.env.CRON_SECRET,
     syncAll: () => system().spaces.syncAll(),
+    retryAttendancePass: () => system().studies.retryAttendancePass(),
     retryPass: () => system().coursework.retryPass()
   })
 }

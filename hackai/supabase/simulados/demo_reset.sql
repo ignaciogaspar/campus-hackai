@@ -23,6 +23,13 @@ begin;
 truncate table space_reads, space_messages, space_material, space_channels, spaces restart identity cascade;
 truncate table coursework_promotions, coursework_exams, coursework_weights, coursework_grades, coursework_submissions, coursework_tasks restart identity cascade;
 
+-- A: asistencia. Las listas que se tomaron en un ensayo y las faltas que pasaron al SIU simulado.
+truncate table section_classes;
+delete from siu_absences where id like 'ia-%';
+
+-- A4: los enlaces de Zoom que se cargaron en un ensayo.
+truncate table section_zoom_links;
+
 commit;
 
 -- Que PostgREST relea el esquema, por si las migraciones de recién sumaron algo.

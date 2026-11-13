@@ -9,6 +9,7 @@ import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { syntheticPdf } from '@/lib/adapters/synthetic-files'
 import { createPeople, type PeopleStore } from '@/lib/core/people'
@@ -82,7 +83,7 @@ function build(
   const classroom = overrides.classroom ?? createMemoryClassroom(withoutMoodleContent(data))
   const peopleStore = overrides.peopleStore ?? createMemoryPeopleStore(data)
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: peopleStore })
-  const studies = createStudies({ people, siu, classroom, clock })
+  const studies = createStudies({ people, siu, classroom, clock, store: createMemoryStudiesStore() })
   const store = overrides.store ?? createMemorySpacesStore()
   const files: FilesPort = overrides.files ?? createMemoryFiles()
   const spaces = createSpaces({

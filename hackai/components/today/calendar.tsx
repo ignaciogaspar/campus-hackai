@@ -11,6 +11,7 @@
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import { Fragment, type ReactNode, useState } from 'react'
+import { ZoomLink } from '@/components/subjects/zoom-link'
 import {
   type CalendarEvent,
   type CalendarTone,
@@ -113,6 +114,19 @@ function Block({ e }: { e: CalendarEvent }) {
       )}
       <span className='sr-only'>, {describe(e)}</span>
     </span>
+  )
+}
+
+/* El enlace de Zoom de una clase virtual o híbrida, en un bloque propio debajo del evento: va afuera del bloque
+   para que no haya un enlace dentro de otro y para que el toque tenga el tamaño de un botón. */
+function EventZoom({ e }: { e: CalendarEvent }) {
+  if (!e.zoomUrl || e.past) return null
+  return (
+    <ZoomLink
+      url={e.zoomUrl}
+      subjectName={e.title}
+      className='inline-flex min-h-11 items-center gap-1.5 self-start rounded-md px-1 text-[0.75rem] font-semibold text-blue hover:underline focus-ring'
+    />
   )
 }
 
@@ -219,7 +233,10 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
             }}
           >
             {c.events.map((e) => (
-              <Block key={e.id} e={e} />
+              <div key={e.id} className='flex min-w-0 flex-col'>
+                <Block e={e} />
+                <EventZoom e={e} />
+              </div>
             ))}
           </div>
         ))}
@@ -263,7 +280,10 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
             ) : (
               <div className='flex min-w-0 flex-1 flex-col gap-2'>
                 {ofDay.map((e) => (
-                  <Block key={e.id} e={e} />
+                  <div key={e.id} className='flex min-w-0 flex-col'>
+                    <Block e={e} />
+                    <EventZoom e={e} />
+                  </div>
                 ))}
               </div>
             )}
