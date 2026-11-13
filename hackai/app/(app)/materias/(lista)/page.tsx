@@ -154,9 +154,6 @@ function SubjectsView({
           El Campus Virtual no responde: tus materias están, pero faltan los enlaces al aula y las tareas de Moodle.
         </StaleNotice>
       )}
-      {subjects.absencesUnavailable && (
-        <StaleNotice>El SIU no nos dio tus inasistencias: tus materias están, pero sin las faltas.</StaleNotice>
-      )}
       <SubjectViews
         student={student}
         views={{

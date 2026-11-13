@@ -10,13 +10,11 @@
 import {
   ArrowUpRight,
   CalendarClock,
-  CalendarX,
   ChevronRight,
   ExternalLink,
   type LucideIcon,
   MapPin,
   NotebookPen,
-  TriangleAlert,
   Trophy
 } from 'lucide-react'
 import Link from 'next/link'
@@ -26,16 +24,8 @@ import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
 import { gradeText, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
-import { absencesLine } from '@/components/subjects/absences'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
-import type {
-  AbsenceWarning,
-  MyAbsences,
-  MySubject,
-  PendingFinal,
-  SubjectStanding,
-  SubjectStatus
-} from '@/lib/core/studies'
+import type { MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 function Row({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
@@ -60,28 +50,6 @@ function UnreadPill({ count }: { count: number }) {
 /* Un aviso dentro de la tarjeta: la próxima entrega, la próxima mesa. Neutro: el color queda para el estado. */
 function Callout({ children }: { children: ReactNode }) {
   return <div className='flex flex-col gap-0.5 rounded-xl bg-muted px-3 py-2 text-[0.8125rem] text-ink'>{children}</div>
-}
-
-/** Cómo se ve cada aviso de faltas: el fondo, el ícono y lo que lee un lector de pantalla. */
-const ABSENCE_WARNING: Record<AbsenceWarning, { box: string; icon: string; label: string }> = {
-  cerca: { box: 'bg-warning-background text-warning-foreground', icon: 'text-warning-icon', label: 'Cuidado: ' },
-  limite: { box: 'bg-error-background text-error-foreground', icon: 'text-destructive', label: 'Aviso: ' }
-}
-
-/** Las faltas de la materia. Cerca del máximo o en el máximo, resaltadas como aviso. */
-function AbsencesRow({ absences }: { absences: MyAbsences }) {
-  const line = absencesLine(absences)
-  if (!absences.warning) return <Row icon={CalendarX}>{line}</Row>
-  const look = ABSENCE_WARNING[absences.warning]
-  return (
-    <p className={cn('flex w-fit items-start gap-2 rounded-xl px-2.5 py-1.5 text-[0.8125rem] font-semibold', look.box)}>
-      <TriangleAlert aria-hidden='true' className={cn('mt-0.5 size-4 flex-none', look.icon)} strokeWidth={2} />
-      <span className='min-w-0'>
-        <span className='sr-only'>{look.label}</span>
-        {line}
-      </span>
-    </p>
-  )
 }
 
 const SECONDARY =
@@ -169,7 +137,6 @@ export function CourseCard({
         <>
           <Row icon={CalendarClock}>{subject.schedule.map(scheduleLine).join(' · ') || 'Horario a confirmar'}</Row>
           <Row icon={MapPin}>{place || 'Aula a confirmar'}</Row>
-          {subject.absences && <AbsencesRow absences={subject.absences} />}
         </>
       }
       callout={
