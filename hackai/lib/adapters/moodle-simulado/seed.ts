@@ -7,7 +7,7 @@
    que no están en el set (las que se hicieron durante la demo) se borran, así
    correrlo de nuevo deja el Moodle como en el set sintético. Va después de
    siu_seed.sql solo por prolijidad: no hay claves entre los dos. */
-import { json, type Sql, text, textArray, upsert } from '@/lib/adapters/supabase/sql'
+import { json, num, type Sql, text, textArray, upsert } from '@/lib/adapters/supabase/sql'
 import type { SyntheticData } from '@/lib/adapters/synthetic-data'
 
 /** Borra las matrículas que no están en `pairs`: de (usuario, curso) hay una sola por par. */
@@ -84,7 +84,11 @@ export function moodleSeedSql(data: SyntheticData): string {
         name: text(c.name),
         type: text(c.type),
         url: text(c.url),
-        modified_at: text(c.modifiedAt)
+        modified_at: text(c.modifiedAt),
+        position: num(c.position),
+        files: json(c.files),
+        text: text(c.text),
+        activity: text(c.activity)
       }))
     ),
     upsert(
@@ -94,7 +98,9 @@ export function moodleSeedSql(data: SyntheticData): string {
         id: text(a.id),
         course_id: text(a.courseId),
         name: text(a.name),
-        due_date: text(a.dueDate)
+        due_date: text(a.dueDate),
+        description: text(a.description),
+        url: text(a.url)
       }))
     ),
     'commit;\n'

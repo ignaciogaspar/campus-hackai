@@ -304,6 +304,7 @@ function ChannelPanel({
           canManage={view.viewer.canManage}
           search={search}
           comision={comision}
+          campus={system().campusLive?.status(view.viewer.personId) ?? null}
         />
       )
     case 'avisos':

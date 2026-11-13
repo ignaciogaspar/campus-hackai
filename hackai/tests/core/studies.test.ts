@@ -15,7 +15,7 @@ import {
   type UpcomingItem
 } from '@/lib/core/studies'
 import { absencesFrom, maxAbsences } from '@/lib/core/studies/absences'
-import type { ClassroomPort } from '@/lib/ports/classroom'
+import type { ClassroomAssignment, ClassroomPort } from '@/lib/ports/classroom'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
 import { fallible, movableClock } from '@/tests/core/helpers'
@@ -104,7 +104,16 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
       }
     ],
     assignments: [
-      { id: 't-3', name: 'Guía 3 resuelta', dueDate: '2026-11-14T02:59:00.000Z', source: 'moodle', past: false }
+      {
+        id: 't-3',
+        name: 'Guía 3 resuelta',
+        dueDate: '2026-11-14T02:59:00.000Z',
+        source: 'moodle',
+        past: false,
+        description: 'Subí la guía 3 resuelta, escaneada o en foto, en un solo PDF.',
+        url: '/simulado/moodle/mod/assign/view.php?id=t-3',
+        submission: null
+      }
     ]
   })
 })
@@ -432,8 +441,26 @@ test('las tareas con fecha van ordenadas por fecha, con las vencidas marcadas se
   const [am1, pr1] = result.value.data.current
   assert.deepEqual(tasks(am1), [['Guía 3 resuelta', false]])
   assert.deepEqual(pr1.assignments, [
-    { id: 't-1', name: 'Entrega del TP integrador', dueDate: '2026-10-17T02:59:00.000Z', source: 'moodle', past: true },
-    { id: 't-2', name: 'Ejercicios de recursión', dueDate: '2026-11-22T02:59:00.000Z', source: 'moodle', past: false }
+    {
+      id: 't-1',
+      name: 'Entrega del TP integrador',
+      dueDate: '2026-10-17T02:59:00.000Z',
+      source: 'moodle',
+      past: true,
+      description: 'Subí el código del TP integrador en un .zip, con el informe en PDF. Grupos de hasta tres.',
+      url: '/simulado/moodle/mod/assign/view.php?id=t-1',
+      submission: null
+    },
+    {
+      id: 't-2',
+      name: 'Ejercicios de recursión',
+      dueDate: '2026-11-22T02:59:00.000Z',
+      source: 'moodle',
+      past: false,
+      description: 'Resolvé los ejercicios 1 a 8 de la guía de recursión y subí un solo archivo.',
+      url: '/simulado/moodle/mod/assign/view.php?id=t-2',
+      submission: null
+    }
   ])
 })
 
@@ -457,6 +484,14 @@ test('una tarea pasa a vencida cuando el reloj llega a su fecha', async () => {
   assert.deepEqual(tasks(after.value.data.current[0]), [['Guía 3 resuelta', true]])
 })
 
+/** Una tarea del aula para sumar al set: sin consigna y sin saber la entrega, como las del simulado. */
+const moodleTask = (task: Pick<ClassroomAssignment, 'id' | 'courseId' | 'name' | 'dueDate'>): ClassroomAssignment => ({
+  ...task,
+  description: null,
+  url: `/simulado/moodle/mod/assign/view.php?id=${task.id}`,
+  submission: null
+})
+
 test('las tareas de varios cursos de una misma comisión se juntan y se ordenan por fecha', async () => {
   const data = structuredClone(syntheticData)
   data.moodle.courses.push({
@@ -466,8 +501,13 @@ test('las tareas de varios cursos de una misma comisión se juntan y se ordenan 
     siuSectionIds: ['sec-am1-fi-a']
   })
   data.moodle.assignments.push(
-    { id: 't-9', courseId: 'c-am1-fi-a-lab', name: 'Informe de laboratorio', dueDate: '2026-11-12T20:00:00.000Z' },
-    { id: 't-10', courseId: 'c-am1-fi-a', name: 'Guía 4 resuelta', dueDate: '2026-12-01T20:00:00.000Z' }
+    moodleTask({
+      id: 't-9',
+      courseId: 'c-am1-fi-a-lab',
+      name: 'Informe de laboratorio',
+      dueDate: '2026-11-12T20:00:00.000Z'
+    }),
+    moodleTask({ id: 't-10', courseId: 'c-am1-fi-a', name: 'Guía 4 resuelta', dueDate: '2026-12-01T20:00:00.000Z' })
   )
   const { studies } = build(data)
 
@@ -496,12 +536,14 @@ test('las tareas sin fecha no aparecen', async () => {
 
 test('las materias archivadas llevan el enlace al aula pero no las tareas', async () => {
   const data = structuredClone(syntheticData)
-  data.moodle.assignments.push({
-    id: 't-8',
-    courseId: 'c-aga-fi-a',
-    name: 'Entrega final de Álgebra',
-    dueDate: '2026-12-20T20:00:00.000Z'
-  })
+  data.moodle.assignments.push(
+    moodleTask({
+      id: 't-8',
+      courseId: 'c-aga-fi-a',
+      name: 'Entrega final de Álgebra',
+      dueDate: '2026-12-20T20:00:00.000Z'
+    })
+  )
   const { studies } = build(data)
 
   const result = await studies.subjectsOf('p-taguirre')
@@ -1727,6 +1769,29 @@ test('inscribirse inscribe en el SIU, matricula en el aula de Moodle y devuelve 
   })
   assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b', 'sec-pr1-fi-v'])
   assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), [...VALENTINA_COURSES, 'c-pr1-fi-v'])
+})
+
+test('un curso que se lee con la cuenta real de la persona no se matricula: se inscribe solo en el SIU', async () => {
+  const inner = createMemoryClassroom(syntheticData)
+  const { studies, siu, classroom } = build(
+    syntheticData,
+    {},
+    {
+      classroomOverrides: {
+        coursesForSection: async (id) => {
+          const found = await inner.coursesForSection(id)
+          return found.ok ? { ok: true, value: found.value.map((c) => ({ ...c, liveOnly: true })) } : found
+        }
+      }
+    }
+  )
+
+  const result = await studies.enroll('p-vfunes', PR1_VERANO)
+
+  assert.ok(result.ok)
+  assert.equal(result.value.kind, 'inscripto')
+  assert.deepEqual(await siuSections(siu, VALENTINA.siu), ['sec-am1-fi-b', 'sec-pr1-fi-v'])
+  assert.deepEqual(await studentCourses(classroom, VALENTINA.moodle), VALENTINA_COURSES)
 })
 
 test('después de inscribirse, la materia aparece en sus materias y en sus comisiones, que dan acceso a su espacio', async () => {

@@ -1,7 +1,8 @@
 /* El material de la materia, en secciones plegables según
    cómo lo organiza el docente: por unidad o tema, por semana o sin secciones.
    Junta lo que se sube en HackAI, en Moodle y en el canal externo, cada archivo
-   con su origen. El docente de la materia ve además el selector para
+   con su origen; de Moodle, también carpetas, páginas, textos y actividades,
+   en el orden del aula (material-row). El docente de la materia ve además el selector para
    organizarlo y el formulario para subir; quién es docente lo dice
    `viewer.canManage`. Las secciones son <details>: se pliegan sin JavaScript.
    Arriba, el campo para buscar; con algo buscado, los resultados reemplazan a
@@ -12,6 +13,7 @@
 import { ChevronRight, FileText, Upload } from 'lucide-react'
 import { addMaterial, organizeMaterial } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import { CampusNotice } from '@/components/spaces/campus-notice'
 import { openMaterialSections } from '@/components/spaces/format'
 import { MaterialRow } from '@/components/spaces/material-row'
 import {
@@ -22,6 +24,7 @@ import {
 import { buttonVariants } from '@/components/ui/button'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
+import type { CampusStatus } from '@/lib/campus-session'
 import type { MaterialItem, MaterialLayout, MaterialView } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
@@ -122,6 +125,8 @@ type Props = {
   search: MaterialSearchResult | null
   /** La comisión elegida en el selector del docente que dicta varias: la conserva la búsqueda. */
   comision?: string
+  /** Cómo está el Campus de quien entró con su cuenta real, o `null` para las personas de la demo. */
+  campus?: CampusStatus | null
 }
 
 /** Los últimos archivos, arriba de las secciones: lo nuevo se ve sin desplegar nada. En compu grande ya están en
@@ -143,6 +148,13 @@ function Latest({ recent }: { recent: MaterialItem[] }) {
       </ul>
     </section>
   )
+}
+
+/** Cuántos hay en una sección: «3 archivos», o «5 elementos» si hay algo del aula que no es un archivo ni un enlace. */
+function countOf(items: MaterialItem[]): string {
+  const files = items.every((i) => i.kind === 'archivo' || i.kind === 'enlace')
+  const noun = files ? 'archivo' : 'elemento'
+  return items.length === 1 ? `1 ${noun}` : `${items.length} ${noun}s`
 }
 
 function MaterialSections({ material }: { material: MaterialView }) {
@@ -171,9 +183,7 @@ function MaterialSections({ material }: { material: MaterialView }) {
                 className='size-4 flex-none text-muted-foreground transition-transform group-open:rotate-90 motion-reduce:transition-none'
               />
               <span className='min-w-0 flex-1'>{section.title}</span>
-              <span className='flex-none text-xs font-semibold text-muted-foreground'>
-                {section.items.length === 1 ? '1 archivo' : `${section.items.length} archivos`}
-              </span>
+              <span className='flex-none text-xs font-semibold text-muted-foreground'>{countOf(section.items)}</span>
             </summary>
             <ul className='divide-y divide-border border-t border-border'>
               {section.items.map((item) => (
@@ -190,10 +200,20 @@ function MaterialSections({ material }: { material: MaterialView }) {
   )
 }
 
-export function MaterialPanel({ subjectId, spaceId, channelId, material, canManage, search, comision }: Props) {
+export function MaterialPanel({
+  subjectId,
+  spaceId,
+  channelId,
+  material,
+  canManage,
+  search,
+  comision,
+  campus = null
+}: Props) {
   const query = search?.query ?? ''
   return (
     <>
+      <CampusNotice status={campus} returnTo={`/materias/${encodeURIComponent(subjectId)}`} />
       {canManage && (
         <div className='flex flex-col gap-3'>
           <OrganizeForm subjectId={subjectId} spaceId={spaceId} layout={material.layout} />

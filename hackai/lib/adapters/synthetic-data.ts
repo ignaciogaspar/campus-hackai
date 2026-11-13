@@ -1133,78 +1133,178 @@ const announcements: ClassroomAnnouncement[] = [
   }
 ]
 
+/** Un elemento del aula con lo que no todos los tipos usan vacío. */
+const content = (
+  item: Pick<ClassroomContent, 'id' | 'courseId' | 'topic' | 'name' | 'type' | 'url' | 'modifiedAt' | 'position'> &
+    Partial<Pick<ClassroomContent, 'files' | 'text' | 'activity'>>
+): ClassroomContent => ({ files: [], text: null, activity: null, ...item })
+
+/** Un archivo del aula, como lo describe Moodle en `contents` (`filename`, `fileurl`, `mimetype`, `filesize`). */
+const pdfIn = (course: string, filename: string, size: number) => ({
+  name: filename,
+  url: moodleFile(course, filename),
+  contentType: 'application/pdf',
+  size
+})
+
 const contents: ClassroomContent[] = [
-  {
+  content({
+    id: 'r-7',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'General',
+    name: 'Programa de la materia',
+    type: 'page',
+    url: `${moodleBaseUrl}/mod/page/view.php?id=r-7`,
+    modifiedAt: at('2026-08-03', '10:00'),
+    position: 0,
+    text: 'Análisis Matemático I cubre límites, continuidad, derivadas y sus aplicaciones.\n\nSe aprueba con dos parciales de 4 o más, o con el recuperatorio. La asistencia mínima es del 75 %.\n\nBibliografía: el apunte de la cátedra y Stewart, Cálculo de una variable.'
+  }),
+  content({
+    id: 'r-8',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'General',
+    name: 'Foro de consultas',
+    type: 'activity',
+    url: `${moodleBaseUrl}/mod/forum/view.php?id=r-8`,
+    modifiedAt: at('2026-08-03', '10:05'),
+    position: 1,
+    activity: 'forum'
+  }),
+  content({
+    id: 'r-9',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'Unidad 1: Límites',
+    name: 'Esta semana repasamos límites laterales',
+    type: 'label',
+    url: '',
+    modifiedAt: at('2026-08-10', '18:00'),
+    position: 2,
+    text: 'Esta semana repasamos límites laterales. Traigan la guía 1 impresa a la clase del jueves.'
+  }),
+  content({
     id: 'r-1',
     courseId: courseOf('sec-am1-fi-a'),
     topic: 'Unidad 1: Límites',
     name: 'Guía de ejercicios 1',
     type: 'file',
     url: moodleFile('am1-fi-a', 'guia-1.pdf'),
-    modifiedAt: at('2026-08-11', '09:00')
-  },
-  {
+    modifiedAt: at('2026-08-11', '09:00'),
+    position: 3,
+    files: [pdfIn('am1-fi-a', 'guia-1.pdf', 182_344)]
+  }),
+  content({
     id: 'r-2',
     courseId: courseOf('sec-am1-fi-a'),
     topic: 'Unidad 2: Derivadas',
     name: 'Guía de ejercicios 2',
     type: 'file',
     url: moodleFile('am1-fi-a', 'guia-2.pdf'),
-    modifiedAt: at('2026-09-29', '09:00')
-  },
-  {
+    modifiedAt: at('2026-09-29', '09:00'),
+    position: 4,
+    files: [pdfIn('am1-fi-a', 'guia-2.pdf', 204_918)]
+  }),
+  content({
+    id: 'r-10',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'Unidad 2: Derivadas',
+    name: 'Parciales de años anteriores',
+    type: 'folder',
+    url: `${moodleBaseUrl}/mod/folder/view.php?id=r-10`,
+    modifiedAt: at('2026-10-20', '12:00'),
+    position: 5,
+    files: [pdfIn('am1-fi-a', 'parcial-2-2024.pdf', 96_120), pdfIn('am1-fi-a', 'parcial-2-2025.pdf', 101_502)]
+  }),
+  content({
+    id: 'r-11',
+    courseId: courseOf('sec-am1-fi-a'),
+    topic: 'Unidad 2: Derivadas',
+    name: 'Autoevaluación de derivadas',
+    type: 'activity',
+    url: `${moodleBaseUrl}/mod/quiz/view.php?id=r-11`,
+    modifiedAt: at('2026-10-21', '12:00'),
+    position: 6,
+    activity: 'quiz'
+  }),
+  content({
     id: 'r-3',
     courseId: courseOf('sec-am1-fi-b'),
     topic: 'Bibliografía',
     name: 'Apunte de la cátedra',
     type: 'url',
     url: `${moodleBaseUrl}/mod/url/view.php?id=r-3`,
-    modifiedAt: at('2026-08-12', '15:00')
-  },
-  {
+    modifiedAt: at('2026-08-12', '15:00'),
+    position: 0
+  }),
+  content({
     id: 'r-4',
     courseId: courseOf('sec-pr1-fi-a'),
     topic: 'Trabajos prácticos',
     name: 'Enunciado del TP integrador',
     type: 'file',
     url: moodleFile('pr1-fi-a', 'tp-integrador.pdf'),
-    modifiedAt: at('2026-09-04', '10:00')
-  },
-  {
+    modifiedAt: at('2026-09-04', '10:00'),
+    position: 0,
+    files: [pdfIn('pr1-fi-a', 'tp-integrador.pdf', 143_007)]
+  }),
+  content({
     id: 'r-5',
     courseId: courseOf('sec-am1-fce-a'),
     topic: 'Unidad 1',
     name: 'Apunte de funciones',
     type: 'file',
     url: moodleFile('am1-fce-a', 'funciones.pdf'),
-    modifiedAt: at('2026-08-14', '19:00')
-  },
-  {
+    modifiedAt: at('2026-08-14', '19:00'),
+    position: 0,
+    files: [pdfIn('am1-fce-a', 'funciones.pdf', 88_230)]
+  }),
+  content({
     id: 'r-6',
     courseId: courseOf('sec-pr1-fi-a'),
     topic: 'Unidad 4: Recursión',
     name: 'Guía de ejercicios de recursión',
     type: 'file',
     url: moodleFile('pr1-fi-a', 'guia-recursion.pdf'),
-    modifiedAt: at('2026-11-06', '11:00')
-  }
+    modifiedAt: at('2026-11-06', '11:00'),
+    position: 1,
+    files: [pdfIn('pr1-fi-a', 'guia-recursion.pdf', 120_455)]
+  })
 ]
 
+/** Una tarea del aula: el enlace lleva a la tarea en el aula simulada. El simulado no lee por persona, así que no
+    sabe cómo está cada entrega. */
+const assignment = (
+  item: Pick<ClassroomAssignment, 'id' | 'courseId' | 'name' | 'dueDate' | 'description'>
+): ClassroomAssignment => ({ ...item, url: `${moodleBaseUrl}/mod/assign/view.php?id=${item.id}`, submission: null })
+
 const assignments: ClassroomAssignment[] = [
-  {
+  assignment({
     id: 't-1',
     courseId: courseOf('sec-pr1-fi-a'),
     name: 'Entrega del TP integrador',
-    dueDate: at('2026-10-16', '23:59')
-  },
-  {
+    dueDate: at('2026-10-16', '23:59'),
+    description: 'Subí el código del TP integrador en un .zip, con el informe en PDF. Grupos de hasta tres.'
+  }),
+  assignment({
     id: 't-2',
     courseId: courseOf('sec-pr1-fi-a'),
     name: 'Ejercicios de recursión',
-    dueDate: at('2026-11-21', '23:59')
-  },
-  { id: 't-3', courseId: courseOf('sec-am1-fi-a'), name: 'Guía 3 resuelta', dueDate: at('2026-11-13', '23:59') },
-  { id: 't-4', courseId: courseOf('sec-co1-fce-a'), name: 'Práctico de asientos', dueDate: null }
+    dueDate: at('2026-11-21', '23:59'),
+    description: 'Resolvé los ejercicios 1 a 8 de la guía de recursión y subí un solo archivo.'
+  }),
+  assignment({
+    id: 't-3',
+    courseId: courseOf('sec-am1-fi-a'),
+    name: 'Guía 3 resuelta',
+    dueDate: at('2026-11-13', '23:59'),
+    description: 'Subí la guía 3 resuelta, escaneada o en foto, en un solo PDF.'
+  }),
+  assignment({
+    id: 't-4',
+    courseId: courseOf('sec-co1-fce-a'),
+    name: 'Práctico de asientos',
+    dueDate: null,
+    description: null
+  })
 ]
 
 // Discord: canales del servidor del equipo

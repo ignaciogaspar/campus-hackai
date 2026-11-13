@@ -54,6 +54,14 @@
    primera en el ingreso de demo. Las personas sintéticas siguen en el SIU
    elegido.
 
+   Campus real (ADR 0010, lib/adapters/moodle-real/): sobre el aula elegida,
+   quien entró con su cuenta real del SIU conecta su Campus Virtual
+   (`/conectar-campus`) y ve en cada materia todo lo de sus cursos, leído en
+   vivo con el token de su app móvil, sin guardarlo. Prendido junto con las
+   cuentas reales del SIU; `HACKAI_CAMPUS_REAL=no` lo apaga. `MOODLE_URL` fija
+   el Campus si no es https://campusvirtual.austral.edu.ar. Las personas
+   sintéticas siguen en el aula elegida.
+
    `HACKAI_CAIDAS=si` envuelve al SIU y al aula virtual con un interruptor que
    los hace responder como caídos, para mostrarlo en la demo desde `/caidas`
    (README, «Mostrar una caída en la demo»). Vacía o `no`, el interruptor no
@@ -83,6 +91,8 @@ import { createMemoryReportsStore } from '@/lib/adapters/memoria/reports-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
+import { createMoodleClient, tokenFromSession } from '@/lib/adapters/moodle-real/client'
+import { createRealMoodleRegistry, type RealMoodleRegistry } from '@/lib/adapters/moodle-real/registry'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { createRealSiu, identifySession, type RealSiu } from '@/lib/adapters/siu-real'
@@ -104,6 +114,7 @@ import { createSupabaseReportsStore } from '@/lib/adapters/supabase/reports-stor
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import { createSupabaseStudiesStore } from '@/lib/adapters/supabase/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
+import type { CampusStatus } from '@/lib/campus-session'
 import { type Coursework, createCoursework } from '@/lib/core/coursework'
 import { createPeople, type People, type PeopleStore, type PersonId } from '@/lib/core/people'
 import { createPlanning, type Planning } from '@/lib/core/planning'
@@ -114,11 +125,11 @@ import { createToday, type Today } from '@/lib/core/today'
 import type { ClassroomPort } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { ExternalChannelPort } from '@/lib/ports/external-channel'
-import type { FilesPort } from '@/lib/ports/files'
+import type { FileContent, FilesPort } from '@/lib/ports/files'
 import type { IdentityPort } from '@/lib/ports/identity'
 import type { SiuPort } from '@/lib/ports/siu'
 import { memoRead, type RequestScope } from '@/lib/request-memo'
-import type { ExternalFailure, Result } from '@/lib/result'
+import { type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 import { personKey } from '@/lib/siu-session'
 
 export type Env = Record<string, string | undefined>
@@ -184,6 +195,9 @@ export type System = {
         si la sesión no es válida. */
     signIn(session: string): Promise<{ key: string; personId: PersonId } | null>
   } | null
+  /** El Campus real de quienes entran con su cuenta real del SIU (ADR 0010), o `null` si no hay cuentas reales
+      del SIU o `HACKAI_CAMPUS_REAL=no`. */
+  campusLive: CampusLive | null
   /** «Conectar con Discord», o `null` si el canal externo no es Discord o falta la aplicación de Discord. */
   discordOAuth: DiscordOAuth | null
   /** La URL de vuelta de Discord fijada por `DISCORD_REDIRECT_URI`, o `null` para usar la del pedido. */
@@ -196,6 +210,24 @@ export type System = {
   planning: Planning
   reports: Reports
 }
+
+export type CampusLive = {
+  /** Arma la cuenta del Campus de una persona real con el token de su cookie. No consulta nada. */
+  connect(key: string, token: string): void
+  /** Canjea la sesión del Campus de quien entra por el token de su app móvil y prueba que con él se lea su aula.
+      `sesion-invalida` si el Campus no la reconoce. */
+  signIn(key: string, session: string): Promise<Result<string, 'sesion-invalida' | ExternalFailure>>
+  /** Cómo está el Campus de una persona; `null` si la persona no es de una cuenta real. No consulta nada. */
+  status(personId: PersonId): CampusStatus | null
+  /** Un archivo del Campus, por su ruta en `pluginfile.php`, con el token de la persona. Para /aula/archivos. */
+  file(
+    personId: PersonId,
+    path: string
+  ): Promise<Result<FileContent, 'archivo-desconocido' | 'sin-acceso' | 'persona-desconocida' | ExternalFailure>>
+}
+
+/** Dónde se muestra un archivo del Campus en HackAI: la ruta que lo pide con el token de quien lo abre. */
+export const CAMPUS_FILES_PATH = '/aula/archivos'
 
 function choose<A extends AdapterName>(env: Env, name: A): AdapterChoice[A] {
   const { variable, values } = ADAPTERS[name]
@@ -302,6 +334,79 @@ function siuLiveOf(
   }
 }
 
+/** El Campus Virtual de las cuentas reales. */
+const campusUrlOf = (env: Env) => (env.MOODLE_URL?.trim() || 'https://campusvirtual.austral.edu.ar').replace(/\/$/, '')
+
+/** El archivo de Moodle en la ruta de HackAI que lo pide con el token (`/aula/archivos/<ruta>`); otra URL, igual. */
+function campusFileUrl(baseUrl: string): (moodleUrl: string) => string {
+  const pluginfile = `${baseUrl}/webservice/pluginfile.php/`
+  return (url) =>
+    url.startsWith(pluginfile) ? `${CAMPUS_FILES_PATH}/${url.slice(pluginfile.length).split('?')[0]}` : url
+}
+
+/** Las cuentas del Campus real, sobre el aula elegida, solo junto con las cuentas reales del SIU. Prendido por
+    defecto; `HACKAI_CAMPUS_REAL=no` lo apaga. */
+function campusRegistryOf(env: Env, fallback: ClassroomPort, siu: RealSiuRegistry | null) {
+  if (!siu || !flag(env, 'HACKAI_CAMPUS_REAL', true)) return null
+  const baseUrl = campusUrlOf(env)
+  return createRealMoodleRegistry({
+    baseUrl,
+    fallback,
+    linksOf: async (key) => siu.accountOf(siuIdOf(key))?.moodleCourses() ?? ok([]),
+    fileUrl: campusFileUrl(baseUrl)
+  })
+}
+
+/** Los tramos de la ruta de un archivo del Campus, decodificados, o `null` si alguno sacaría el pedido de
+    pluginfile.php: vacío, `.`, `..` o con una barra (también codificados), o mal codificado. */
+function fileSegments(path: string): string[] | null {
+  try {
+    const segments = path.split('/').map((segment) => decodeURIComponent(segment))
+    const unsafe = (segment: string) => segment === '' || segment === '.' || segment === '..' || /[/\\]/.test(segment)
+    return segments.some(unsafe) ? null : segments
+  } catch {
+    return null
+  }
+}
+
+/** El Campus real para las pantallas: conectar, saber cómo está y abrir un archivo. `null` sin Campus real. */
+function campusLiveOf(campus: RealMoodleRegistry | null, baseUrl: string): CampusLive | null {
+  if (!campus) return null
+  const keyOf = (personId: PersonId) => personId.match(/^p-siu-([a-f0-9]{12})$/)?.[1] ?? null
+  return {
+    connect: (key, token) => {
+      campus.register(key, token)
+    },
+    async signIn(key, session) {
+      const token = await tokenFromSession({ baseUrl, session })
+      if (!token.ok) return token
+      // Que el token lea antes de conectarlo: sin esto, un Campus sin el servicio de la app quedaría conectado y vacío.
+      const site = await createMoodleClient({ baseUrl, token: token.value }).call('core_webservice_get_site_info')
+      if (!site.ok) return fail('falla-externa')
+      campus.register(key, token.value)
+      return ok(token.value)
+    },
+    status(personId) {
+      const key = keyOf(personId)
+      if (!key) return null
+      const account = campus.accountOf(key)
+      if (!account) return 'sin-conectar'
+      return account.expired() ? 'vencido' : 'conectado'
+    },
+    async file(personId, path) {
+      const key = keyOf(personId)
+      const account = key ? campus.accountOf(key) : null
+      if (!account) return fail('sin-acceso')
+      const segments = fileSegments(path)
+      if (!segments) return fail('archivo-desconocido')
+      const name = segments.at(-1) ?? ''
+      const found = await account.download(`${baseUrl}/webservice/pluginfile.php/${path}`)
+      if (found.ok) return ok({ name, contentType: found.value.contentType, bytes: found.value.bytes })
+      return fail(found.error === 'no-encontrado' ? 'archivo-desconocido' : 'falla-externa')
+    }
+  }
+}
+
 /** La persona de HackAI de la cuenta real del SIU. */
 export const REAL_PERSON: RealPerson = {
   personId: 'p-real',
@@ -320,6 +425,17 @@ const courseworkStoreOf = (store: AdapterChoice['store'], supabase: () => Supaba
 /** El almacén de Planning: en Supabase arranca vacío y lo carga secretaría; en memoria, con el planning sintético. */
 const planningStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient, data: SyntheticData) =>
   store === 'supabase' ? createSupabasePlanningStore({ client: supabase() }) : createMemoryPlanningStore(data.planning)
+
+/** El aula elegida: el Moodle simulado sobre Supabase, con la caché de lecturas, o el aula en memoria. */
+const baseClassroomOf = (
+  choice: AdapterChoice['classroom'],
+  data: SyntheticData,
+  supabase: () => SupabaseClient,
+  cache: Parameters<typeof withClassroomCache>[1]
+): ClassroomPort =>
+  choice === 'simulado'
+    ? withClassroomCache(createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl }), cache)
+    : createMemoryClassroom(data)
 
 /** El padrón sintético es el mismo para todas las llamadas a `compose`: se genera una sola vez por proceso. */
 const academicRecords = createMemoryAcademicRecords()
@@ -368,10 +484,9 @@ export function compose(
   const realSiu = realSiuOf(env, baseSiu, clock)
   const registry = realSiuRegistryOf(env, realSiu ?? baseSiu, clock)
   const siu = registry ?? realSiu ?? baseSiu
-  const classroom =
-    adapters.classroom === 'simulado'
-      ? withClassroomCache(createSimulatedMoodle({ client: supabase(), baseUrl: data.moodle.baseUrl }), cache)
-      : createMemoryClassroom(data)
+  const baseClassroom = baseClassroomOf(adapters.classroom, data, supabase, cache)
+  const campus = campusRegistryOf(env, baseClassroom, registry)
+  const classroom = campus ?? baseClassroom
 
   const ports: Ports = {
     identity: realSiu ? withRealSubject(createMemoryIdentity(data), REAL_PERSON) : createMemoryIdentity(data),
@@ -446,6 +561,7 @@ export function compose(
     now,
     outages,
     siuLive: realSiu || registry ? siuLiveOf(realSiu, registry, realSiuCommon(env)) : null,
+    campusLive: campusLiveOf(campus, campusUrlOf(env)),
     discordOAuth: discordOAuthFrom(env, adapters),
     discordRedirectUri: env.DISCORD_REDIRECT_URI?.trim() || null,
     people,

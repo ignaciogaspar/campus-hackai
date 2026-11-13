@@ -53,8 +53,19 @@ type ContentRow = {
   type: ClassroomContent['type']
   url: string
   modified_at: string
+  position: number
+  files: ClassroomFile[]
+  text: string | null
+  activity: string | null
 }
-type AssignmentRow = { id: string; course_id: string; name: string; due_date: string | null }
+type AssignmentRow = {
+  id: string
+  course_id: string
+  name: string
+  due_date: string | null
+  description: string | null
+  url: string
+}
 
 const toCourse = (row: CourseRow): ClassroomCourse => ({
   id: row.id,
@@ -80,14 +91,22 @@ const toContent = (row: ContentRow): ClassroomContent => ({
   name: row.name,
   type: row.type,
   url: row.url,
-  modifiedAt: iso(row.modified_at)
+  modifiedAt: iso(row.modified_at),
+  position: row.position,
+  files: row.files,
+  text: row.text,
+  activity: row.activity
 })
 
 const toAssignment = (row: AssignmentRow): ClassroomAssignment => ({
   id: row.id,
   courseId: row.course_id,
   name: row.name,
-  dueDate: row.due_date === null ? null : iso(row.due_date)
+  dueDate: row.due_date === null ? null : iso(row.due_date),
+  description: row.description,
+  url: row.url,
+  // El simulado no lee por persona: no sabe cómo está la entrega de cada uno.
+  submission: null
 })
 
 export function createSimulatedMoodle({
@@ -196,7 +215,13 @@ export function createSimulatedMoodle({
       const course = await requireCourse(courseId)
       if (!course.ok) return course
       const rows = await list<ContentRow>('contenidos', (s) =>
-        client.from('moodle_contents').select('*').eq('course_id', courseId).order('id').abortSignal(s)
+        client
+          .from('moodle_contents')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('position')
+          .order('id')
+          .abortSignal(s)
       )
       return rows.ok ? ok(rows.value.map(toContent)) : rows
     },

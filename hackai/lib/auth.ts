@@ -5,6 +5,7 @@ import 'server-only'
 import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
+import { CAMPUS_SESSION_COOKIE, campusSessionOf } from '@/lib/campus-session'
 import { system } from '@/lib/composition'
 import type { Role } from '@/lib/core/people'
 import { homeFor } from '@/lib/home'
@@ -31,6 +32,9 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const live = system().siuLive
   if (!siu || !live?.canConnect) return null
   live.connect(siu.key, siu.session)
+  // Si conectó su Campus, el token viaja en otra cookie (ADR 0010): con él se arma su aula en este proceso.
+  const campus = campusSessionOf(siu.key, jar.get(CAMPUS_SESSION_COOKIE)?.value)
+  if (campus) system().campusLive?.connect(campus.key, campus.token)
   return session
 })
 
@@ -63,9 +67,11 @@ export async function startSession(session: Session): Promise<void> {
   await setServerCookie(SESSION_COOKIE, createSessionToken(session), SESSION_MAX_AGE)
 }
 
-/** Cierra la sesión, y con ella la del SIU que haya traído. Solo desde una server action o un route handler. */
+/** Cierra la sesión, y con ella la del SIU y el Campus que haya traído. Solo desde una server action o un route
+    handler. */
 export async function endSession(): Promise<void> {
   const jar = await cookies()
   jar.delete(SESSION_COOKIE)
   jar.delete(SIU_SESSION_COOKIE)
+  jar.delete(CAMPUS_SESSION_COOKIE)
 }

@@ -132,7 +132,7 @@ import type { StudiesStore } from '@/lib/core/studies/store'
 import { createZoom, hasZoom, type ZoomError } from '@/lib/core/studies/zoom'
 import { dayKey, daysBetween } from '@/lib/dates'
 import type { Fresh } from '@/lib/fresh'
-import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
+import type { ClassroomAssignment, ClassroomCourse, ClassroomPort, ClassroomSubmission } from '@/lib/ports/classroom'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
   SiuAssessment,
@@ -223,7 +223,19 @@ export type Teacher = { personId: PersonId | null; name: string }
 export type MyClassroom = { courseId: string; name: string; url: string }
 
 /** Tarea con fecha límite de un curso de Moodle. `past` si la fecha ya pasó según el reloj. */
-export type MyAssignment = { id: string; name: string; dueDate: string; source: 'moodle'; past: boolean }
+export type MyAssignment = {
+  id: string
+  name: string
+  dueDate: string
+  source: 'moodle'
+  past: boolean
+  /** La consigna, en texto, si el aula la da. */
+  description: string | null
+  /** La tarea en el aula, donde se entrega. */
+  url: string
+  /** Cómo está la entrega de la persona, si el aula lo sabe: solo con su cuenta real del Campus (ADR 0010). */
+  submission: ClassroomSubmission | null
+}
 
 /** Una materia de la persona, en una comisión y un período lectivo. */
 export type MySubject = {
@@ -944,9 +956,20 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
     return ok(
       lists
         .flat()
-        .flatMap((a) => (a.dueDate === null ? [] : [{ id: a.id, name: a.name, dueDate: a.dueDate }]))
+        .flatMap(({ dueDate, ...a }) => (dueDate === null ? [] : [{ ...a, dueDate }]))
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.name.localeCompare(b.name, 'es'))
-        .map((a): MyAssignment => ({ ...a, source: 'moodle', past: a.dueDate < at }))
+        .map(
+          (a): MyAssignment => ({
+            id: a.id,
+            name: a.name,
+            dueDate: a.dueDate,
+            source: 'moodle',
+            past: a.dueDate < at,
+            description: a.description,
+            url: a.url,
+            submission: a.submission
+          })
+        )
     )
   }
 
@@ -1470,12 +1493,15 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
     }
     // Si nadie puede matricular por API, se inscribe en el SIU y no queda en ningún aula.
     if (!classroom.capabilities.canEnrol) return ok({ courseIds: [], moodleId: null })
-    const courses = await classroom.coursesForSection(target.sectionId)
-    if (!courses.ok) return courses
-    if (!courses.value.length) return ok({ courseIds: [], moodleId: null })
+    const found = await classroom.coursesForSection(target.sectionId)
+    if (!found.ok) return found
+    // Un curso que se lee con la cuenta real de la persona (ADR 0010) no se matricula desde HackAI: en el Campus
+    // el alumno no puede matricularse solo.
+    const courses = found.value.filter((c) => !c.liveOnly)
+    if (!courses.length) return ok({ courseIds: [], moodleId: null })
     const moodleId = await people.accountIn(personId, 'moodle')
     if (!moodleId.ok) return fail(moodleId.error === 'falla-externa' ? 'falla-externa' : 'sin-cuenta-del-aula')
-    return ok({ courseIds: courses.value.map((c) => c.id), moodleId: moodleId.value })
+    return ok({ courseIds: courses.map((c) => c.id), moodleId: moodleId.value })
   }
 
   type CourseStep = (moodleId: string, courseId: string) => Promise<Result<unknown, string>>

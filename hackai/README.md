@@ -402,6 +402,26 @@ Qué se lee: tus inscripciones a cursada, la historia académica con las notas d
 - **Avance y créditos de Vida Universitaria:** el % de avance es el del SIU (Reportes > Promedio y porcentaje de avance), y los créditos que pide la carrera salen de la materia «Programa de Vida Universitaria» del plan, en «Otros Requisitos».
 - **La oferta para inscribirse** sigue siendo la del SIU de la demo.
 
+## Conectar tu Campus Virtual
+
+Quien entró con su cuenta real del SIU puede conectar además su Campus Virtual: cada materia que cursa muestra todo lo de su curso de Moodle, leído en vivo y sin guardarlo (ADR 0010). Prendido junto con las cuentas reales del SIU; `HACKAI_CAMPUS_REAL=no` lo apaga y `MOODLE_URL` fija el Campus si no es `https://campusvirtual.austral.edu.ar`. Research: [`docs/research/2026-11-13-inventario-cursos-campus.md`](../docs/research/2026-11-13-inventario-cursos-campus.md).
+
+1. Después de entrar con el SIU, HackAI ofrece «Conectá tu Campus Virtual» (`/conectar-campus`). Se puede dejar para después: el material de cada materia lo vuelve a ofrecer.
+2. Iniciá sesión en `https://campusvirtual.austral.edu.ar` con tu cuenta de Microsoft.
+3. En las herramientas del navegador, Application > Cookies > `https://campusvirtual.austral.edu.ar`, copiá el valor de `MoodleSession` y pegalo.
+4. Aceptá cómo se usa. HackAI canjea esa sesión, una sola vez, por el token de la app de Moodle (`admin/tool/mobile/launch.php`: si ya usás la app, el Campus te da el mismo) y prueba que lea.
+
+Cómo se cuida: la sesión del Campus no se guarda. El token viaja cifrado en una cookie de tu navegador (`hackai_campus`, `lib/campus-session.ts`), dura un mes y se borra al salir; no va a la base ni a logs. En el Campus lo das de baja en Preferencias > Claves de seguridad, y entonces el material pide conectarlo de nuevo.
+
+Qué se ve, en cada materia (`lib/adapters/moodle-real/`, `lib/core/spaces/classroom-live.ts`):
+
+- **Material:** todos los elementos del curso, con sus temas y en el orden del aula: archivos (los PDF se ven dentro de HackAI, por `/aula/archivos/…`, que los pide con tu token), carpetas con sus archivos, páginas con su texto, textos sueltos, enlaces, y cuestionarios, foros y demás actividades como enlace al aula. Lo que no se puede ver en el aula (restringido) no aparece.
+- **#avisos:** los avisos del foro de Avisos del curso, en texto, con sus adjuntos.
+- **Tareas y Calendario:** las tareas del aula con fecha, su consigna y si ya la entregaste; la nota de Tareas no cuenta las entregadas.
+- **Qué cursos:** los de tus comisiones del SIU, por el enlace «Moodle» de Mis inscripciones. Los demás cursos «en progreso» de Moodle no.
+- **Sin vistas:** HackAI usa solo funciones de lectura de la API, que no marcan nada como visto ni completado. Entregar, responder un cuestionario o escribir en un foro se hacen en el Campus.
+- **Se lee en vivo:** cada lectura se guarda un minuto en memoria. Lo leído no cuenta como «nuevo» ni entra en la búsqueda del espacio.
+
 ## Mostrar una caída en la demo
 
 En la encuesta aparecen créditos perdidos porque el SIU se cayó. Para mostrar que HackAI sigue andando, quien presenta tira el SIU o Moodle desde `/caidas` y recorre las pantallas.
@@ -438,6 +458,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
 | `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas, Espacios y Seguimiento. |
 | `HACKAI_SIU_REAL_PUBLICO`, `HACKAI_SIU_ESCRITURAS`, `HACKAI_SIU_REAL`, `SIU_SESION`, `SIU_URL`, `HACKAI_SIU_REAL_SEGUNDOS` | Sin configurar nada, cualquiera entra con su cuenta del SIU desde el ingreso y las acciones (inscribirse, darse de baja, pedir la constancia de alumno regular) van al SIU de verdad: `HACKAI_SIU_REAL_PUBLICO=no` y `HACKAI_SIU_ESCRITURAS=no` los apagan. `HACKAI_SIU_REAL=si` con `SIU_SESION` suma una cuenta fija desde el `.env.local`; `SIU_URL` solo si la Autogestión no es la de la Austral; `HACKAI_SIU_REAL_SEGUNDOS` cada cuánto se vuelve a leer (20 por defecto). Ver «Entrar con tu cuenta real del SIU». |
+| `HACKAI_CAMPUS_REAL`, `MOODLE_URL` | Con las cuentas reales del SIU, quien entra puede conectar su Campus Virtual: `HACKAI_CAMPUS_REAL=no` lo apaga. `MOODLE_URL` solo si el Campus no es el de la Austral. Ver «Conectar tu Campus Virtual». |
 | `HACKAI_CAIDAS` | `si` deja tirar el SIU o Moodle desde `/caidas` para mostrarlo en la demo. Vacía o `no` (por defecto): no existe, como en producción. Ver «Mostrar una caída en la demo». |
 | `HACKAI_CACHE_SEGUNDOS` | Cuánto guarda la caché de lecturas (`lib/adapters/cache/`) lo que no cambia con lo que hace el alumno: personas, materias, comisiones, planes y vínculos. Vacía: 300. `0` no guarda nada (solo comparte la consulta en vuelo), por ejemplo para editar el seed o las notas en la base durante la demo; si no, un cambio así tarda hasta 5 minutos en verse en cada instancia de Vercel. Inscripciones, historia, cupos e inasistencias nunca se guardan. |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |

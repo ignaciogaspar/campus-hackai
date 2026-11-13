@@ -7,6 +7,7 @@ import type { MaterialItem, MaterialSection, MaterialView } from '@/lib/core/spa
 function item(id: string, unread = false): MaterialItem {
   return {
     id,
+    kind: 'archivo',
     name: `${id}.pdf`,
     url: `/archivos/${id}`,
     contentType: 'application/pdf',
@@ -15,7 +16,11 @@ function item(id: string, unread = false): MaterialItem {
     section: null,
     addedBy: null,
     addedAt: '2026-11-10T15:00:00.000Z',
-    unread
+    unread,
+    files: [],
+    text: null,
+    activity: null,
+    position: null
   }
 }
 

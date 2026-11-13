@@ -12,6 +12,7 @@ import {
   Globe,
   GraduationCap,
   Link as LinkIcon,
+  ListChecks,
   type LucideIcon
 } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -40,6 +41,7 @@ const ICONS: Record<SimulatedLinkKind, LucideIcon> = {
   aula: GraduationCap,
   archivo: FileText,
   enlace: LinkIcon,
+  actividad: ListChecks,
   cursada: ClipboardCheck,
   examen: CalendarCheck,
   constancia: FileBadge,

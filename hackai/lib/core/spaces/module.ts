@@ -35,7 +35,8 @@ import type {
   StoredAttachment,
   StoredChannel,
   StoredMessage,
-  StoredSpace
+  StoredSpace,
+  Thread
 } from '@/lib/core/spaces'
 import {
   canLink,
@@ -53,8 +54,9 @@ import {
 import { type Authors, authorsFrom } from '@/lib/core/spaces/authors'
 import { channelName, ensureChannels, nameTaken, toChannel, visibleChannels } from '@/lib/core/spaces/channels'
 import { importFromClassroom } from '@/lib/core/spaces/classroom-import'
+import { liveAnnouncements, liveMaterial } from '@/lib/core/spaces/classroom-live'
 import { counterpartOf, directChannel } from '@/lib/core/spaces/direct'
-import { materialItems, materialView } from '@/lib/core/spaces/material'
+import { materialItems, materialView, withLive } from '@/lib/core/spaces/material'
 import { threadsOf, toMessage } from '@/lib/core/spaces/messages'
 import { openQuestions } from '@/lib/core/spaces/questions'
 import {
@@ -94,6 +96,18 @@ function toSpace(space: StoredSpace): Space {
 }
 
 const maxSeq = (items: { seq: number }[]) => items.reduce((max, i) => Math.max(max, i.seq), 0)
+
+/** Suma los avisos leídos en vivo del aula a los hilos guardados, por fecha, sin cambiar el orden de lo guardado. */
+function withLiveThreads(threads: Thread[], live: Message[]): Thread[] {
+  const pending = [...live]
+  const merged: Thread[] = []
+  for (const thread of threads) {
+    while (pending.length && pending[0].createdAt < thread.message.createdAt)
+      merged.push({ message: pending.shift() as Message, replies: [] })
+    merged.push(thread)
+  }
+  return [...merged, ...pending.map((message) => ({ message, replies: [] }))]
+}
 
 export function createSpacesModule(deps: SpacesDeps): Spaces {
   const { people, studies, classroom, files, clock, store, externalChannel, timer } = deps
@@ -135,20 +149,23 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     channels: StoredChannel[]
   ): Promise<Result<SpaceView, SpacesStoreError>> {
     const visible = visibleChannels(member, channels)
-    const snapshot = await loadSnapshot(store, member.personId, visible, [space.id])
+    const [snapshot, live] = await Promise.all([
+      loadSnapshot(store, member.personId, visible, [space.id]),
+      liveMaterial(classroom, member)
+    ])
     if (!snapshot.ok) return snapshot
     const materialChannel = visible.find((c) => c.kind === 'material')
     const mark = materialChannel ? markOf(snapshot.value, materialChannel.id) : 0
     const authors = authorsFrom(people)
     const [items, shown] = await Promise.all([
-      materialItems(snapshot.value.material, authors, member.personId, mark),
+      materialItems(snapshot.value.material, authors, member.personId, mark, live.positions),
       Promise.all(visible.map((c) => channelFor(authors, member, c, unreadIn(snapshot.value, c).count)))
     ])
     return ok({
       space: toSpace(space),
       viewer: viewerOf(member),
       channels: shown,
-      material: materialView(space.materialLayout, items),
+      material: materialView(space.materialLayout, withLive(items, live.items)),
       externalServer: space.externalServer,
       staleSince: member.staleSince
     })
@@ -218,9 +235,10 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
 
   /** Los hilos del canal, con lo que la persona no había leído; marca leído hasta el último. */
   async function readMessages({ channel, space, member }: InChannel): Promise<Result<ChannelView, SpacesStoreError>> {
-    const [marks, stored] = await Promise.all([
+    const [marks, stored, live] = await Promise.all([
       store.readMarks(member.personId, [channel.id]),
-      store.messages([channel.id])
+      store.messages([channel.id]),
+      liveAnnouncements(classroom, channel)
     ])
     if (!marks.ok) return marks
     if (!stored.ok) return stored
@@ -235,7 +253,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
       space: toSpace(space),
       channel: await channelFor(authors, member, channel, 0),
       version: messagesVersion(stored.value),
-      threads: threadsOf(messages),
+      threads: withLiveThreads(threadsOf(messages), live),
       material: null
     })
   }
@@ -409,15 +427,19 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     space: StoredSpace,
     channelId: ChannelId | null
   ): Promise<Result<{ view: MaterialView; lastSeq: number }, SpacesStoreError>> {
-    const [marks, stored] = await Promise.all([
+    const [marks, stored, live] = await Promise.all([
       store.readMarks(member.personId, channelId ? [channelId] : []),
-      store.material([space.id])
+      store.material([space.id]),
+      liveMaterial(classroom, member)
     ])
     if (!marks.ok) return marks
     if (!stored.ok) return stored
     const mark = channelId ? (marks.value[channelId] ?? 0) : 0
-    const items = await materialItems(stored.value, authorsFrom(people), member.personId, mark)
-    return ok({ view: materialView(space.materialLayout, items), lastSeq: maxSeq(stored.value) })
+    const items = await materialItems(stored.value, authorsFrom(people), member.personId, mark, live.positions)
+    return ok({
+      view: materialView(space.materialLayout, withLive(items, live.items)),
+      lastSeq: maxSeq(stored.value)
+    })
   }
 
   /** El espacio, si la persona es docente de la materia. */

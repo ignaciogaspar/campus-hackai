@@ -40,6 +40,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** decidida (10/11/2026)
 - **Decisión:** se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. Campus Austral queda fuera de la demo. SIU y Moodle se simulan en tablas propias con datos sintéticos, modeladas sobre sus APIs reales (las confirma el research). No se levanta un Moodle propio con Docker: la máquina no lo aguanta. Campus Austral y WhatsApp quedan afuera.
 - **Actualización (12/11/2026, ADR 0009):** además de las personas sintéticas, cualquiera de la Austral entra con su cuenta real del SIU desde el ingreso y ve sus datos en vivo; las acciones (inscribirse, darse de baja, pedir la constancia de alumno regular) van al SIU de verdad. Las personas sintéticas siguen para mostrar los espacios y la vista docente. Moodle sigue simulado.
+- **Actualización (13/11/2026, ADR 0010):** quien entró con su cuenta real del SIU puede conectar además su Campus Virtual, y cada materia muestra en vivo todo lo de su curso de Moodle (archivos, carpetas, páginas, textos, avisos, tareas con su entrega y enlaces a las actividades), sin guardarlo. Las personas sintéticas siguen con el Moodle simulado.
 
 ### 5. ¿Con qué métrica mostramos la mejora?
 

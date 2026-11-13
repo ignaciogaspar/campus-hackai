@@ -9,6 +9,9 @@
      antes el espacio.
    Cada cosa guarda origen `moodle` y su id de Moodle, y no entra dos veces.
    Entra en el orden en que se publicó en Moodle.
+   Lo de un curso `liveOnly` (el Campus real de una persona, ADR 0010) no se
+   guarda, y del resto del aula (carpetas, páginas, textos y actividades)
+   tampoco: se muestra leído en vivo (classroom-live).
 
    Traer de Moodle nunca corta la apertura del espacio: si Moodle, Cursada,
    Personas o el almacén no responden, se saltea lo que no se pudo traer y
@@ -27,7 +30,7 @@ import type {
 } from '@/lib/core/spaces'
 import type { Membership } from '@/lib/core/spaces/access'
 import type { Studies } from '@/lib/core/studies'
-import type { ClassroomAnnouncement, ClassroomContent, ClassroomPort } from '@/lib/ports/classroom'
+import type { ClassroomAnnouncement, ClassroomContent, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
 import { ok, type Result } from '@/lib/result'
 
 export type ClassroomImportDeps = { classroom: ClassroomPort; studies: Studies; people: People; store: SpacesStore }
@@ -62,13 +65,20 @@ const byDate =
   (a: T, b: T) =>
     Date.parse(dateOf(a)) - Date.parse(dateOf(b))
 
-/** Los cursos de Moodle de cada comisión. Una comisión cuyo curso no se pudo leer queda sin cursos. */
+/** Lo que se guarda al traerlo: los archivos y los enlaces de un curso que se puede guardar. */
+export const isStored = (course: ClassroomCourse, content: ClassroomContent) =>
+  !course.liveOnly && (content.type === 'file' || content.type === 'url')
+
+/** Los cursos de Moodle de cada comisión que se pueden guardar. Una comisión cuyo curso no se pudo leer queda sin
+    cursos. */
 async function coursesBySection(classroom: ClassroomPort, sectionIds: string[]): Promise<CourseIds> {
   const found = await Promise.all(sectionIds.map((id) => classroom.coursesForSection(id)))
   return new Map(
     sectionIds.map((sectionId, i) => [
       sectionId,
-      orEmpty(found[i], 'no se pudieron leer los cursos de la comisión', { sectionId }).map((c) => c.id)
+      orEmpty(found[i], 'no se pudieron leer los cursos de la comisión', { sectionId })
+        .filter((c) => !c.liveOnly)
+        .map((c) => c.id)
     ])
   )
 }
@@ -189,9 +199,10 @@ const TYPES_BY_EXTENSION: Record<string, string> = {
   jpeg: 'image/jpeg'
 }
 
-/** Moodle no da el tipo de un recurso: un enlace es `text/uri-list` y un archivo sale de la extensión de su URL. */
-function contentTypeOf(content: ClassroomContent): string {
-  if (content.type === 'url') return 'text/uri-list'
+/** Moodle no da el tipo de un recurso: un archivo sale de la extensión de su URL, y lo demás (un enlace, o una
+    carpeta, una página o una actividad del aula) es un enlace: `text/uri-list`. */
+export function contentTypeOf(content: ClassroomContent): string {
+  if (content.type !== 'file') return 'text/uri-list'
   const path = content.url.split(/[?#]/)[0]
   const extension = path.includes('.') ? (path.split('.').pop() ?? '').toLowerCase() : ''
   return TYPES_BY_EXTENSION[extension] ?? 'application/octet-stream'
@@ -227,7 +238,10 @@ async function importContents(
   const byCourse = await perCourse([...courses.values()].flat(), async (courseId) =>
     orEmpty(await classroom.contents(courseId), 'no se pudieron leer los recursos del curso', { courseId })
   )
-  const fresh = [...byCourse.values()].flat().filter((c) => !known.has(keyOf(space.id, c.id)))
+  // Los cursos ya vienen sin los `liveOnly`: de los demás se guardan solo archivos y enlaces.
+  const fresh = [...byCourse.values()]
+    .flat()
+    .filter((c) => (c.type === 'file' || c.type === 'url') && !known.has(keyOf(space.id, c.id)))
   for (const content of fresh.sort(byDate((c) => c.modifiedAt))) {
     const added = await store.addMaterial(toMaterial(space, content))
     warnUnlessDuplicate(added, 'no se pudo guardar el recurso', { contentId: content.id })

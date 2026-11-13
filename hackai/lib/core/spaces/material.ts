@@ -1,11 +1,19 @@
 /* El material de la materia como lo ve una persona: cada archivo con quién lo
    subió y si lo vio, ordenado según cómo lo organizó el docente. Por unidad,
-   las unidades en orden natural («Unidad 2» antes que «Unidad 10») y lo que no
+   primero los temas del aula de Moodle en el orden del aula, después las
+   unidades en orden natural («Unidad 2» antes que «Unidad 10») y lo que no
    tiene unidad al final; por semana, de lunes a domingo en hora de Buenos
-   Aires y la más nueva primero; o todo junto. Adentro de cada sección, lo más
-   nuevo primero. */
+   Aires y la más nueva primero; o todo junto. Adentro de cada sección, lo del
+   aula en el orden del aula y después lo más nuevo primero. */
 import type { PersonId } from '@/lib/core/people'
-import type { MaterialItem, MaterialLayout, MaterialSection, MaterialView, StoredMaterial } from '@/lib/core/spaces'
+import type {
+  MaterialItem,
+  MaterialKind,
+  MaterialLayout,
+  MaterialSection,
+  MaterialView,
+  StoredMaterial
+} from '@/lib/core/spaces'
 import type { Authors } from '@/lib/core/spaces/authors'
 import { isUnreadMaterial } from '@/lib/core/spaces/reading'
 
@@ -26,18 +34,25 @@ const MONTHS = [
 ]
 const RECENT = 3
 
-/** Los archivos como los ve la persona, del más nuevo al más viejo. */
+/** Lo guardado es un archivo, o un enlace si no tiene archivo y es una lista de URLs (los enlaces de Moodle). */
+const kindOf = (m: StoredMaterial): MaterialKind =>
+  m.fileId === null && m.contentType === 'text/uri-list' ? 'enlace' : 'archivo'
+
+/** Los archivos como los ve la persona, del más nuevo al más viejo. `positions` es el lugar en el aula de lo que
+    se trajo de Moodle, por su id de Moodle. */
 export async function materialItems(
   stored: StoredMaterial[],
   authors: Authors,
   personId: PersonId,
-  mark: number
+  mark: number,
+  positions: Map<string, number> = new Map()
 ): Promise<MaterialItem[]> {
   const newestFirst = [...stored].sort((a, b) => b.seq - a.seq)
   return Promise.all(
     newestFirst.map(
       async (m): Promise<MaterialItem> => ({
         id: m.id,
+        kind: kindOf(m),
         name: m.name,
         url: m.url,
         contentType: m.contentType,
@@ -46,10 +61,25 @@ export async function materialItems(
         section: m.section,
         addedBy: await authors.ofMaterial(m),
         addedAt: m.addedAt,
-        unread: isUnreadMaterial(personId, mark, m)
+        unread: isUnreadMaterial(personId, mark, m),
+        files: [],
+        text: null,
+        activity: null,
+        position: (m.origin === 'moodle' && m.externalId !== null ? positions.get(m.externalId) : undefined) ?? null
       })
     )
   )
+}
+
+/** Suma lo leído en vivo del aula a lo guardado, del más nuevo al más viejo, sin cambiar el orden de lo guardado. */
+export function withLive(stored: MaterialItem[], live: MaterialItem[]): MaterialItem[] {
+  const pending = [...live].sort((a, b) => b.addedAt.localeCompare(a.addedAt))
+  const merged: MaterialItem[] = []
+  for (const item of stored) {
+    while (pending.length && pending[0].addedAt > item.addedAt) merged.push(pending.shift() as MaterialItem)
+    merged.push(item)
+  }
+  return [...merged, ...pending]
 }
 
 const byNaturalOrder = (a: string, b: string) => a.localeCompare(b, 'es', { numeric: true })
@@ -64,10 +94,30 @@ function groupBy(items: MaterialItem[], keyOf: (item: MaterialItem) => string): 
   return groups
 }
 
+/** El primer lugar en el aula de lo que tiene la sección, o `null` si nada vino de un aula. */
+function firstPosition(items: MaterialItem[]): number | null {
+  const positions = items.flatMap((i) => (i.position === null ? [] : [i.position]))
+  return positions.length ? Math.min(...positions) : null
+}
+
+/** Lo del aula en el orden del aula; después, lo demás como venía (lo más nuevo primero). */
+function inClassroomOrder(items: MaterialItem[]): MaterialItem[] {
+  const placed = items.filter((i) => i.position !== null).sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+  return [...placed, ...items.filter((i) => i.position === null)]
+}
+
 function byUnit(items: MaterialItem[]): MaterialSection[] {
   const groups = groupBy(items, (i) => i.section ?? '')
-  const units = [...groups.keys()].filter((k) => k !== '').sort(byNaturalOrder)
-  const sections = units.map((title) => ({ title, items: groups.get(title) ?? [] }))
+  const units = [...groups.keys()].filter((k) => k !== '')
+  const first = new Map(units.map((title) => [title, firstPosition(groups.get(title) ?? [])]))
+  const fromClassroom = units
+    .filter((t) => first.get(t) !== null)
+    .sort((a, b) => (first.get(a) ?? 0) - (first.get(b) ?? 0))
+  const others = units.filter((t) => first.get(t) === null).sort(byNaturalOrder)
+  const sections = [...fromClassroom, ...others].map((title) => ({
+    title,
+    items: inClassroomOrder(groups.get(title) ?? [])
+  }))
   const loose = groups.get('')
   return loose ? [...sections, { title: 'Sin unidad', items: loose }] : sections
 }
@@ -113,6 +163,7 @@ export function materialView(layout: MaterialLayout, items: MaterialItem[]): Mat
     layout,
     sections: sectionsFor(layout, items),
     sectionNames: [...new Set(used)].sort(byNaturalOrder),
-    recent: items.slice(0, RECENT)
+    // Lo último son archivos y lo que se abre: un texto suelto o una actividad del aula no.
+    recent: items.filter((i) => i.kind !== 'texto' && i.kind !== 'actividad').slice(0, RECENT)
   }
 }

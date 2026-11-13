@@ -10,7 +10,15 @@ import type { CertificateType } from '@/lib/core/studies'
 export type SimulatedSystem = 'moodle' | 'siu'
 
 /** Qué abriría el enlace en el sistema real. `otro` es una ruta que no reconocemos. */
-export type SimulatedLinkKind = 'aula' | 'archivo' | 'enlace' | 'cursada' | 'examen' | 'constancia' | 'otro'
+export type SimulatedLinkKind =
+  | 'aula'
+  | 'archivo'
+  | 'enlace'
+  | 'actividad'
+  | 'cursada'
+  | 'examen'
+  | 'constancia'
+  | 'otro'
 
 export type SimulatedDestination = {
   system: SimulatedSystem
@@ -60,6 +68,15 @@ function decoded(segment: string): string {
   }
 }
 
+/** Lo del aula que se abre en el aula: una página, una carpeta o una actividad, por su módulo de Moodle. */
+const ACTIVITIES: Record<string, string> = {
+  page: 'Página del aula',
+  folder: 'Carpeta del aula',
+  quiz: 'Cuestionario del aula',
+  forum: 'Foro del aula',
+  assign: 'Tarea del aula'
+}
+
 function moodleLink(path: string[]): Link {
   const [first, second] = path
   if (first === 'course' && second === 'view.php')
@@ -79,6 +96,12 @@ function moodleLink(path: string[]): Link {
       kind: 'enlace',
       title: 'Enlace del aula',
       production: 'Abre el enlace que el docente dejó en el aula del Campus Virtual.'
+    }
+  if (first === 'mod' && second && ACTIVITIES[second])
+    return {
+      kind: 'actividad',
+      title: ACTIVITIES[second],
+      production: 'Abre esto en el aula del Campus Virtual, donde se hace o se entrega.'
     }
   return {
     kind: 'otro',
