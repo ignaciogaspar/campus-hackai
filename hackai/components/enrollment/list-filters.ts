@@ -16,9 +16,10 @@ export const KINDS: { kind: Kind; label: string; short?: string }[] = [
 export const asKind = (value: string | undefined): Kind =>
   KINDS.find((k) => k.kind === value && value !== 'todas')?.kind ?? 'todas'
 
-export const TABS: { tab: Tab; label: string }[] = [
-  { tab: 'materias', label: 'Inscripción a materias' },
-  { tab: 'examenes', label: 'Inscripción a exámenes' }
+/** `short`: en el celular, para que las dos entren también con letra grande. */
+export const TABS: { tab: Tab; label: string; short: string }[] = [
+  { tab: 'materias', label: 'Inscripción a materias', short: 'Materias' },
+  { tab: 'examenes', label: 'Inscripción a exámenes', short: 'Finales' }
 ]
 
 export function href(tab: Tab, subjectId?: string, kind: Kind = 'todas'): string {
@@ -47,4 +48,39 @@ export const matches = (kind: Kind) => (item: ListItem) => kind === 'todas' || i
 /** Cuántas abiertas hay de cada tipo, para el filtro. */
 export function kindCounts(open: ListItem[]): Record<Kind, number> {
   return Object.fromEntries(KINDS.map((k) => [k.kind, open.filter(matches(k.kind)).length])) as Record<Kind, number>
+}
+
+/** Qué dice la lista cuando no hay nada abierto para mostrar, según por qué: ya se anotó a todo lo abierto, no hay
+    nada abierto, o el filtro de tipo no deja nada pero hay de otros tipos. Sugiere otro filtro solo en ese caso. */
+export function emptyList({
+  tab,
+  kind,
+  open,
+  mine
+}: {
+  tab: Tab
+  kind: Kind
+  /** Todas las abiertas de la pestaña, sin filtrar. */
+  open: ListItem[]
+  /** Lo que ya tiene en la pestaña, sin filtrar. */
+  mine: ListItem[]
+}): { title: string; text: string } {
+  if (tab === 'examenes') {
+    return mine.length > 0
+      ? {
+          title: 'Ya te anotaste a todo lo abierto',
+          text: 'Tus finales están abajo. Cuando abra otra mesa de una materia que tengas regular o estés cursando, aparece acá.'
+        }
+      : {
+          title: 'No hay mesas abiertas',
+          text: 'Ahora no hay mesas abiertas de materias que tengas regulares o estés cursando.'
+        }
+  }
+  if (kind !== 'todas' && open.length > 0) {
+    return { title: 'No hay de este tipo', text: 'No hay inscripciones abiertas de este tipo. Probá con otro filtro.' }
+  }
+  return {
+    title: 'No hay inscripciones abiertas',
+    text: 'Ahora no hay inscripciones a cursada que te sirvan. Cuando abra una, aparece acá.'
+  }
 }

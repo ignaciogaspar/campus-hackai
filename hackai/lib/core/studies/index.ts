@@ -101,6 +101,7 @@ import {
   type AttendanceSheet,
   type ClassItem,
   createAttendance,
+  type NextClass,
   type RetryReport,
   type TakenResult
 } from '@/lib/core/studies/attendance'
@@ -170,6 +171,7 @@ export type {
   AttendanceError,
   AttendanceSheet,
   ClassItem,
+  NextClass,
   RetryReport,
   TakenClass,
   TakenResult
@@ -497,6 +499,10 @@ export type Studies = {
       una si ya se tomó. Solo para un docente de la comisión (`sin-acceso` si no). Reintenta los pases al SIU
       pendientes de la comisión. */
   classesOf(personId: PersonId, sectionId: string): Promise<Result<ClassItem[], AttendanceError>>
+  /** La próxima clase de una comisión: la primera de su período que todavía no empezó (la de hoy, si no empezó), o
+      `null` si ya no quedan. Si el período no empezó, dice qué día empieza. Solo para un docente de la comisión
+      (`sin-acceso` si no). */
+  nextClass(personId: PersonId, sectionId: string): Promise<Result<NextClass | null, AttendanceError>>
   /** El historial de la comisión: solo las clases con la lista tomada, la más nueva primero, con la modalidad, los
       ausentes con nombre y el estado del pase al SIU. Solo para un docente de la comisión (`sin-acceso`). */
   classHistory(personId: PersonId, sectionId: string): Promise<Result<ClassHistoryEntry[], AttendanceError>>
@@ -2020,6 +2026,7 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
     sectionStudents: (personId, sectionId) =>
       fresh(`sectionStudents:${personId}:${sectionId}`, () => sectionStudents(personId, sectionId)),
     classesOf: attendance.classesOf,
+    nextClass: attendance.nextClass,
     classHistory,
     attendanceSheet: attendance.sheet,
     takeAttendance: attendance.take,

@@ -7,7 +7,7 @@
    saltar de semana. Las entregas (de Moodle y de HackAI) y los cierres de inscripción no
    ocupan una hora: van en la fila de todo el día. Con `filters`, arriba de la
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
-   y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
+   (no para el docente, que no se inscribe) y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import Link from 'next/link'
@@ -106,6 +106,8 @@ function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: bo
 function kindLabel(e: CalendarEvent): string | null {
   if (e.tone === 'clase') return null
   if (e.tone === 'entrega' && e.time) return `Entrega · vence ${e.time}`
+  // El nombre de un final dice qué es: «Final» o, para el docente, «Mesa de final».
+  if (e.tone === 'final') return e.title
   return TONES[e.tone].label
 }
 
@@ -507,15 +509,18 @@ function WeekToolbar({
 /* Los filtros de Calendario: qué tipo de cosas y de qué materia. Se elige un
    tipo (o «Todo») en un riel de una fila que, en el celular, se desliza de costado. */
 function Filters({
+  groups,
   value,
   onChange,
   subjects
 }: {
+  /** Los tipos que se pueden elegir: el docente no se inscribe, así que no tiene el de inscripciones. */
+  groups: typeof CALENDAR_GROUPS
   value: CalendarFilters
   onChange: (next: CalendarFilters) => void
   subjects: { code: string; name: string }[]
 }) {
-  const kinds = [{ group: 'todo' as const, label: 'Todo', tones: [] as CalendarTone[] }, ...CALENDAR_GROUPS]
+  const kinds = [{ group: 'todo' as const, label: 'Todo', tones: [] as CalendarTone[] }, ...groups]
   return (
     <div className='flex flex-col gap-2 border-b border-border px-3 py-2.5 lg:flex-row lg:items-center'>
       <fieldset className={cn(railTrack({ size: 'sm' }), 'min-w-0 overflow-x-auto [scrollbar-width:none] lg:flex-1')}>
@@ -676,7 +681,16 @@ export function TodayCalendar({
           className='scroll-mt-4 overflow-hidden rounded-2xl border border-border bg-card'
         >
           <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} rangeRef={rangeRef} />
-          {filters && <Filters value={shownKinds} onChange={setFilters} subjects={subjectsIn(events, classes)} />}
+          {filters && (
+            <Filters
+              groups={
+                viewer === 'profesor' ? CALENDAR_GROUPS.filter((g) => g.group !== 'inscripciones') : CALENDAR_GROUPS
+              }
+              value={shownKinds}
+              onChange={setFilters}
+              subjects={subjectsIn(events, classes)}
+            />
+          )}
           {filters && shown.length < inWeek.length && (
             <HiddenNotice
               count={inWeek.length - shown.length}

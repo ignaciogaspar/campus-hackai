@@ -2,8 +2,10 @@
 /* La lista de una clase para tomar lista: una fila grande por alumno, un toque
    lo marca ausente (todos arrancan presentes) y «Guardar» queda siempre a la
    vista, abajo en el celular. Con la clase de otro día la lista se ve, pero no
-   se puede cambiar. Solo muestra lo que dice la página y la server action. */
+   se puede cambiar. Al guardar, el mensaje trae el camino de vuelta a Alumnos
+   y clases. Solo muestra lo que dice la página y la server action. */
 import { Check, CircleAlert, UserX } from 'lucide-react'
+import Link from 'next/link'
 import { useActionState, useState } from 'react'
 import { absentCount, PASS_TEXT, PASS_TONE, SAVED_TEXT } from '@/components/subjects/attendance-format'
 import type { AttendanceAction, AttendanceState } from '@/components/subjects/attendance-state'
@@ -20,6 +22,7 @@ const INITIAL: AttendanceState = { kind: 'inicial' }
 
 export function AttendanceForm({
   action,
+  backHref,
   sectionId,
   classAt,
   students,
@@ -28,6 +31,8 @@ export function AttendanceForm({
   editable
 }: {
   action: AttendanceAction
+  /** Alumnos y clases de la comisión, para volver después de guardar. */
+  backHref: string
   sectionId: string
   classAt: string
   students: AttendanceStudent[]
@@ -112,10 +117,18 @@ export function AttendanceForm({
 
       <div aria-live='polite' className='flex flex-col gap-2'>
         {state.kind === 'guardada' && (
-          <p className='flex items-start gap-2 rounded-lg bg-success-background p-3 text-sm text-success'>
-            <Check aria-hidden='true' className='mt-0.5 size-4 flex-none' />
-            <span>{SAVED_TEXT[state.pass]}</span>
-          </p>
+          <div className='flex flex-col gap-1 rounded-lg bg-success-background p-3 text-sm text-success sm:flex-row sm:items-center sm:justify-between sm:gap-3'>
+            <p className='flex items-start gap-2'>
+              <Check aria-hidden='true' className='mt-0.5 size-4 flex-none' />
+              <span>{SAVED_TEXT[state.pass]}</span>
+            </p>
+            <Link
+              href={backHref}
+              className='inline-flex min-h-11 flex-none items-center self-start pl-6 font-semibold underline underline-offset-2 focus-ring sm:self-auto sm:pl-0'
+            >
+              Volver a Alumnos y clases
+            </Link>
+          </div>
         )}
         {state.kind === 'error' && (
           <ErrorNotice>

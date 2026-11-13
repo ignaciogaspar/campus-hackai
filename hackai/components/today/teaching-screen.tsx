@@ -1,8 +1,11 @@
 /* Hoy del docente: dónde dicta, qué consultas de sus comisiones siguen sin
    respuesta, qué no leyó (los mensajes directos de sus alumnos incluidos) y
    sus próximos parciales y mesas, armado con lo que da Hoy en una sola llamada.
-   Cada cosa lleva a su canal o a su hilo. Qué consultas le tocan y qué no leyó
-   lo deciden Hoy y Espacios; acá solo se muestra. Si una parte no se pudo
+   Cada cosa lleva a su canal o a su hilo, y cada comisión a su espacio, con la
+   comisión en `?comision=`: así la Comisión Verano abre Verano y no la primera
+   de la materia. Qué consultas le tocan y qué no leyó (sin repetir las
+   consultas) lo deciden Hoy y Espacios; acá solo se muestra, con los íconos,
+   títulos y horas de Novedades. Si una parte no se pudo
    leer, esa parte dice por qué y el resto se ve igual. Arriba de todo va su
    clase de ahora (o la próxima), con Tomar lista y, si es virtual o híbrida,
    Entrar a Zoom.
@@ -10,10 +13,11 @@
    En el celular es una columna: consultas, no leídos, comisiones y fechas. En
    compu, a la izquierda lo que espera una respuesta y a la derecha sus
    comisiones y sus fechas. */
-import { CircleCheck, Megaphone, MessageCircleQuestion, MessagesSquare, Users } from 'lucide-react'
+import { CircleCheck, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { timeAgo } from '@/components/dates'
-import { spaceHref } from '@/components/spaces/format'
+import { newsRow } from '@/components/news/format'
+import { ChannelIcon } from '@/components/spaces/channel-icon'
+import { messageTime, spaceHref } from '@/components/spaces/format'
 import { NowClassCard } from '@/components/today/now-class'
 import { UpcomingRow } from '@/components/today/upcoming'
 import { Card } from '@/components/ui/card'
@@ -22,9 +26,8 @@ import { OriginBadge } from '@/components/ui/origin-badge'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { UnreadCount } from '@/components/ui/unread-count'
-import type { ChannelKind, OpenQuestion, UnreadItem } from '@/lib/core/spaces'
+import type { OpenQuestion, UnreadItem } from '@/lib/core/spaces'
 import type { TaughtSection, TeachingPart, TeachingView } from '@/lib/core/today'
-import { cn } from '@/lib/utils'
 
 const DOWN: Record<TeachingPart, string> = {
   sections: 'No pudimos traer tus comisiones porque el SIU no responde. Probá de nuevo en un rato.',
@@ -32,13 +35,6 @@ const DOWN: Record<TeachingPart, string> = {
   dates: 'No pudimos traer tus parciales y mesas porque el SIU no responde. Probá de nuevo en un rato.',
   unread: 'No pudimos traer lo que no leíste. Probá de nuevo en un rato.',
   class: 'No pudimos traer tu clase de ahora porque el SIU no responde. Probá de nuevo en un rato.'
-}
-
-const CHANNEL: Record<Exclude<ChannelKind, 'libre'>, string> = {
-  avisos: 'Avisos',
-  consultas: 'Consultas',
-  material: 'Material nuevo',
-  directo: 'Mensaje directo'
 }
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
@@ -58,28 +54,43 @@ function Icon({ children }: { children: ReactNode }) {
   )
 }
 
-function replies(n: number): string {
-  if (n === 0) return 'Sin respuestas'
-  return n === 1 ? '1 respuesta' : `${n} respuestas`
+/** El estado de la consulta con las mismas palabras que el hilo: «Sin responder» hasta que responde un docente;
+    después, que falta marcarla resuelta. */
+function QuestionState({ question: q }: { question: OpenQuestion }) {
+  if (q.answeredByTeacher) {
+    return <span className='font-semibold text-blue'>Respondida · falta marcarla resuelta</span>
+  }
+  const others = q.replies === 1 ? '1 respuesta' : `${q.replies} respuestas`
+  return (
+    <>
+      <span className='font-semibold text-warning-foreground'>Sin responder</span>
+      {q.replies > 0 && (
+        <>
+          <span aria-hidden='true'>·</span>
+          <span>{others}</span>
+        </>
+      )}
+    </>
+  )
 }
 
-function QuestionRow({ question: q, now }: { question: OpenQuestion; now: string }) {
+function QuestionRow({ question: q }: { question: OpenQuestion }) {
   const where = q.sectionName ? `${q.subjectName} · Comisión ${q.sectionName}` : q.subjectName
   return (
     <ListItem
-      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId })}
+      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId, comision: q.sectionId ?? undefined })}
       start={
         <Icon>
-          <MessageCircleQuestion aria-hidden='true' className='size-5' strokeWidth={1.8} />
+          <ChannelIcon kind='consultas' className='size-5' />
         </Icon>
       }
-      title={<span className='line-clamp-2'>{q.text}</span>}
+      title={<span className='line-clamp-3'>{q.text}</span>}
       description={`${q.author.name} · ${where}`}
       meta={
         <>
-          <time dateTime={q.createdAt}>{timeAgo(q.createdAt, now)}</time>
+          <time dateTime={q.createdAt}>{messageTime(q.createdAt)}</time>
           <span aria-hidden='true'>·</span>
-          <span className={cn(q.replies === 0 && 'font-semibold text-warning-foreground')}>{replies(q.replies)}</span>
+          <QuestionState question={q} />
           {q.origin !== 'hackai' && <OriginBadge origin={q.origin} />}
         </>
       }
@@ -100,27 +111,31 @@ function Questions({ view }: { view: TeachingView }) {
     <Card>
       <List>
         {view.questions.map((q) => (
-          <QuestionRow key={q.messageId} question={q} now={view.now} />
+          <QuestionRow key={q.messageId} question={q} />
         ))}
       </List>
     </Card>
   )
 }
 
-function UnreadRow({ item, now }: { item: UnreadItem; now: string }) {
-  const label = item.kind === 'libre' ? `#${item.channelName}` : CHANNEL[item.kind]
-  const ItemIcon = item.kind === 'directo' ? MessagesSquare : Megaphone
+/** Como en Novedades: el ícono y el título del canal (un directo, con el nombre del alumno) y la misma hora. */
+function UnreadRow({ item }: { item: UnreadItem }) {
+  const row = newsRow(item)
   return (
     <ListItem
-      href={spaceHref(item.subjectId, { canal: item.channelId })}
+      href={spaceHref(item.subjectId, {
+        canal: item.channelId,
+        hilo: item.kind === 'directo' ? undefined : (item.thread ?? undefined),
+        comision: item.sectionId ?? undefined
+      })}
       start={
         <Icon>
-          <ItemIcon aria-hidden='true' className='size-5' strokeWidth={1.8} />
+          <ChannelIcon kind={item.kind} className='size-5' />
         </Icon>
       }
-      title={`${label} · ${item.subjectName}`}
-      description={item.latest.text}
-      meta={<time dateTime={item.latest.createdAt}>{timeAgo(item.latest.createdAt, now)}</time>}
+      title={`${row.title} · ${item.subjectName}`}
+      description={row.text}
+      meta={<time dateTime={row.createdAt}>{row.when}</time>}
       end={<UnreadCount count={item.count} />}
     />
   )
@@ -141,7 +156,7 @@ function UnreadList({ view }: { view: TeachingView }) {
     <Card>
       <List>
         {view.unread.map((u) => (
-          <UnreadRow key={u.channelId} item={u} now={view.now} />
+          <UnreadRow key={u.channelId} item={u} />
         ))}
       </List>
     </Card>
@@ -151,7 +166,7 @@ function UnreadList({ view }: { view: TeachingView }) {
 function SectionRow({ section: s }: { section: TaughtSection }) {
   return (
     <ListItem
-      href={spaceHref(s.subjectId)}
+      href={spaceHref(s.subjectId, { comision: s.sectionId })}
       className='items-center'
       start={
         <span

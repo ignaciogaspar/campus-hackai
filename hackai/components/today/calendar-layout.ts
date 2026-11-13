@@ -5,7 +5,7 @@
    es el próximo lo decide Hoy: acá solo se ubica. */
 import { offerHref } from '@/components/enrollment/offer-href'
 import { spaceHref } from '@/components/spaces/format'
-import { dateHref } from '@/components/today/agenda'
+import { calendarHref } from '@/components/today/agenda'
 import type { Origin } from '@/components/ui/origin-badge'
 import type { Role } from '@/lib/core/people'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
@@ -162,9 +162,14 @@ const CLOSING: Record<OpenEnrollment['kind'], string> = {
   examen: 'al final'
 }
 
+/** El docente no rinde el final: integra la mesa. «Final» se lee como la mesa; otro nombre queda como está. */
+const titleOf = (item: UpcomingItem, viewer: Role) =>
+  viewer === 'profesor' && item.kind === 'final' && item.name === 'Final' ? 'Mesa de final' : item.name
+
 /** Las fechas de Hoy como eventos. Los parciales y finales van en su hora; las
-    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día.
-    Cada una lleva a donde lleva en Hoy (`dateHref`); un cierre, a la oferta de la materia. */
+    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. Para el docente
+    (`viewer`), el final se titula como la mesa que integra. Cada una lleva a donde lleva en Hoy (`calendarHref`);
+    un cierre, a la oferta de la materia. */
 export function eventsOf(
   upcoming: UpcomingItem[],
   enrollments: OpenEnrollment[],
@@ -181,7 +186,7 @@ export function eventsOf(
       end: null,
       time: hhmm(minutes),
       code: item.subjectCode,
-      title: item.name,
+      title: titleOf(item, viewer),
       subject: item.examPeriod ? `${item.subjectName} · ${item.examPeriod}` : item.subjectName,
       subjectName: item.subjectName,
       place: item.location,
@@ -189,7 +194,7 @@ export function eventsOf(
       origin: item.source,
       past: item.past,
       next: item.id === nextId,
-      href: dateHref(item, viewer)
+      href: calendarHref(item, viewer)
     }
   })
   // Una inscripción sin fecha de cierre informada no tiene día en el calendario.

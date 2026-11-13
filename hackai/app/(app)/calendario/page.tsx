@@ -7,7 +7,11 @@
 
    `?semana=AAAA-MM-DD` abre en la semana de ese día: lo usa el mensaje de
    inscripción para mostrar la cursada nueva. Los filtros van en `?ver=` (un
-   tipo) y `?materia=` (una sigla), así sobreviven a recargar. */
+   tipo) y `?materia=` (una sigla), así sobreviven a recargar.
+
+   El docente ve sus clases, los parciales de sus comisiones y las mesas de
+   final que integra, con textos para él: sin el filtro de inscripciones y con
+   el final como «Mesa de final». */
 import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
@@ -24,6 +28,18 @@ import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Calendario · Campus HackAI' }
 
+/** Lo que cambia para el docente: no rinde finales, integra la mesa, y las entregas son las que él carga. */
+const TEXTS: Record<Role, { subtitle: string; below: string }> = {
+  alumno: {
+    subtitle: 'Tus clases, parciales, finales y entregas en un solo lugar.',
+    below: 'Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.'
+  },
+  profesor: {
+    subtitle: 'Tus clases, parciales, mesas de final y entregas en un solo lugar.',
+    below: 'Las entregas vienen de Moodle y de HackAI: aparecen las tareas que cargaste con fecha.'
+  }
+}
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 type CalendarParams = { semana?: string; ver?: string; materia?: string }
@@ -35,7 +51,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       <PageHeader
         desktopBell={session.role === 'profesor'}
         title='Calendario'
-        subtitle='Tus clases, parciales, finales y entregas en un solo lugar.'
+        subtitle={TEXTS[session.role].subtitle}
         art='hoy'
         hideBackOnDesktop
       />
@@ -100,11 +116,7 @@ async function CalendarContent({
         initialDay={initialDay}
         filters
         initialFilters={calendarFiltersFrom(params)}
-        below={
-          <p className='text-[0.8125rem] text-muted-foreground'>
-            Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.
-          </p>
-        }
+        below={<p className='text-[0.8125rem] text-muted-foreground'>{TEXTS[role].below}</p>}
         aside={
           <div className='flex flex-col gap-3'>
             {/* Entre el mes y las próximas fechas, a la vista sin bajar hasta el final de la semana. */}

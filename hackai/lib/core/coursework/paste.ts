@@ -88,9 +88,9 @@ function rowOf(line: number, cells: string[], directory: Directory, scale: Grade
     .map((c) => c.trim())
     .filter(Boolean)
     .join(' ')
-  const base = { line, key, raw, by: null, personId: null, name: null, legajo: null, value: null }
+  const base = { line, key, raw, by: null, personId: null, name: null, legajo: null, value: null, repeats: null }
   const found = find(ids, directory)
-  if (!found) return { ...base, outcome: 'no-reconocido' }
+  if (!found) return { ...base, outcome: cells.length > 1 ? 'no-reconocido' : 'formato' }
   if (found.students.length > 1) return { ...base, outcome: 'ambiguo' }
   const [student] = found.students
   const known = { ...base, by: found.by, name: student.name, legajo: student.legajo }
@@ -103,6 +103,7 @@ const COUNTED: Record<PasteOutcome, keyof PasteCounts> = {
   nota: 'ready',
   ausente: 'absent',
   'no-reconocido': 'unmatched',
+  formato: 'unmatched',
   ambiguo: 'unmatched',
   'sin-cuenta': 'unmatched',
   invalida: 'invalid',
@@ -118,18 +119,21 @@ export function previewOf(text: string, students: SectionStudent[], scale: Grade
     .split(/\r\n|\r|\n/)
     .map((content, index) => ({ line: index + 1, cells: content.split('\t') }))
     .filter(({ cells }) => cells.some((c) => c.trim() !== ''))
-  const seen = new Set<string>()
+  // La primera línea de cada alumno con nota, ausente o nota inválida: las que siguen son repetidas.
+  const seen = new Map<string, PasteRow>()
   const rows: PasteRow[] = []
   lines.forEach(({ line, cells }, index) => {
     const row = rowOf(line, cells, directory, scale)
     const header = index === 0 && row.outcome === 'no-reconocido' && parseGrade(row.raw, scale).outcome === 'invalida'
     if (header) return
     const keeps = row.outcome === 'nota' || row.outcome === 'ausente' || row.outcome === 'invalida'
-    if (row.personId && keeps && seen.has(row.personId)) {
-      rows.push({ ...row, outcome: 'repetido', value: null })
+    const first = row.personId && keeps ? seen.get(row.personId) : undefined
+    if (first) {
+      const repeats = { line: first.line, invalid: first.outcome === 'invalida' }
+      rows.push({ ...row, outcome: 'repetido', value: null, repeats })
       return
     }
-    if (row.personId && keeps) seen.add(row.personId)
+    if (row.personId && keeps) seen.set(row.personId, row)
     rows.push(row)
   })
   const counts: PasteCounts = { ready: 0, absent: 0, unmatched: 0, invalid: 0, skipped: 0 }

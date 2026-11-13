@@ -50,7 +50,8 @@ function titleOf(item: UnreadItem): { title: string; chip: string | null } {
   return { title: channelOf(item), chip: item.kind === 'libre' ? LABELS.canales : null }
 }
 
-function rowOf(item: UnreadItem): NewsRow {
+/** La fila de un canal con novedades: también la usa el Hoy del docente, para que se lea igual que en Novedades. */
+export function newsRow(item: UnreadItem): NewsRow {
   const direct = item.kind === 'directo'
   const thread = direct ? undefined : (item.thread ?? undefined)
   return {
@@ -102,7 +103,7 @@ export function newsBySubject(items: UnreadItem[]): SubjectNews[] {
       rows: []
     }
     group.count += item.count
-    group.rows.push(rowOf(item))
+    group.rows.push(newsRow(item))
     groups.set(item.subjectId, group)
   }
   return [...groups.values()]

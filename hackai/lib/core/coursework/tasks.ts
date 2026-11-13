@@ -2,16 +2,20 @@
    Todo puro. */
 import type {
   DatedTask,
+  StoredGrade,
   StoredSubmission,
   StoredTask,
   StoredTaskFile,
   Submission,
   Task,
   TaskChanges,
+  TaskDueError,
   TaskFile,
+  TaskGrade,
   TaskSection,
   TaskTextError
 } from '@/lib/core/coursework'
+import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
 import { fileUrl } from '@/lib/ports/files'
 import { fail, ok, type Result } from '@/lib/result'
@@ -30,6 +34,22 @@ export function checkedTexts(input: TaskChanges): Result<TaskChanges, TaskTextEr
   return ok({ name, instructions, dueAt: due.toISOString() })
 }
 
+/** Los textos de una tarea nueva o editada, ya limpios, con la fecha límite por venir: una tarea no nace vencida ni
+    se le corre la fecha al pasado. Al editar se pasa la fecha que ya tenía (`current`): si no cambia, una tarea
+    vencida se edita igual. */
+export function checkedTaskTexts(
+  input: TaskChanges,
+  now: Date,
+  current?: string
+): Result<TaskChanges, TaskTextError | TaskDueError> {
+  const texts = checkedTexts(input)
+  if (!texts.ok) return texts
+  const { dueAt } = texts.value
+  const unchanged = current !== undefined && new Date(current).toISOString() === dueAt
+  if (!unchanged && new Date(dueAt).getTime() < now.getTime()) return fail('fecha-pasada')
+  return texts
+}
+
 function fileView(file: StoredTaskFile): TaskFile {
   return { name: file.name, contentType: file.contentType, size: file.size, url: fileUrl(file.id, file.name) }
 }
@@ -43,15 +63,34 @@ export function lateBy(submittedAt: string, dueAt: string): { minutes: number } 
   return late > 0 ? { minutes: Math.ceil(late / 60_000) } : null
 }
 
-/** La entrega como la ve el alumno, con el atraso contra la fecha límite vigente de la tarea. */
-export function submissionFor(submission: StoredSubmission, task: StoredTask): Submission {
+/** La nota del alumno en la tarea, de las notas de su comisión. Con `onlyPublished` (lo que ve el alumno), solo si
+    ya se publicó. */
+export function taskGradeOf(
+  grades: StoredGrade[],
+  taskId: string,
+  personId: PersonId,
+  onlyPublished: boolean
+): TaskGrade | null {
+  const found = grades.find((g) => g.kind === 'tarea' && g.refId === taskId && g.personId === personId)
+  if (!found || (onlyPublished && !found.publishedAt)) return null
+  return { value: found.value, absent: found.absent, comment: found.comment, published: found.publishedAt !== null }
+}
+
+/** La entrega como la ve quien mira, con el atraso contra la fecha límite vigente de la tarea y la nota que le toca
+    ver. */
+export function submissionFor(
+  submission: StoredSubmission,
+  task: StoredTask,
+  grade: TaskGrade | null = null
+): Submission {
   return {
     id: submission.id,
     taskId: submission.taskId,
     submittedAt: submission.submittedAt,
     files: submission.files.map(fileView),
     late: lateBy(submission.submittedAt, task.dueAt),
-    graded: submission.gradedAt !== null
+    graded: submission.gradedAt !== null,
+    grade
   }
 }
 
@@ -60,7 +99,8 @@ export function taskFor(
   task: StoredTask,
   sections: TaskSection[],
   now: Date,
-  submission: StoredSubmission | null = null
+  submission: StoredSubmission | null = null,
+  grade: TaskGrade | null = null
 ): Task {
   return {
     id: task.id,
@@ -73,7 +113,8 @@ export function taskFor(
     sections,
     past: new Date(task.dueAt).getTime() < now.getTime(),
     createdAt: task.createdAt,
-    submission: submission ? submissionFor(submission, task) : null
+    submission: submission ? submissionFor(submission, task, grade) : null,
+    progress: null
   }
 }
 
