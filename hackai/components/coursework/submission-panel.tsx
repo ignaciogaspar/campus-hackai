@@ -62,7 +62,10 @@ function SubmitForm({ task, replacing }: { task: Task; replacing: boolean }) {
         </span>
       </label>
       <SubmitButton
-        className={cn(buttonVariants(), 'min-h-11 w-full rounded-[10px] px-4 text-[0.9375rem] font-bold sm:w-fit')}
+        className={cn(
+          buttonVariants(),
+          'min-h-11 w-full scroll-mb-4 rounded-[10px] px-4 text-[0.9375rem] font-bold sm:w-fit'
+        )}
       >
         {replacing ? 'Reemplazar la entrega' : 'Entregar'}
       </SubmitButton>

@@ -197,7 +197,11 @@ export default async function TaskPage({ params, searchParams }: { params: Param
             desactualizado.
           </StaleNotice>
         )}
-        <BackLink href={back}>Volver a las tareas</BackLink>
+        {/* En el celular ya está la flecha del encabezado: dos «Volver» seguidos empujan la entrega debajo de la
+            barra de abajo. */}
+        <BackLink href={back} className='max-lg:hidden'>
+          Volver a las tareas
+        </BackLink>
         <TaskBody
           task={task}
           personId={session.personId}
