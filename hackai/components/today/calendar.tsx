@@ -10,6 +10,7 @@
    y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
+import Link from 'next/link'
 import { Fragment, type ReactNode, useState } from 'react'
 import { ZoomLink } from '@/components/subjects/zoom-link'
 import {
@@ -81,19 +82,32 @@ const describe = (e: CalendarEvent) =>
     .join(' · ')
 
 /* Un evento: pastel, con el borde de arriba del color de lo que es. Se ve
-   entero: el nombre baja de línea en vez de cortarse, y nada se pisa. */
+   entero: el nombre baja de línea en vez de cortarse, y nada se pisa. Si tiene
+   destino (la tarea, el espacio de la materia, la mesa), es un enlace. */
 function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
+  const className = cn(
+    'flex min-w-0 flex-1 flex-col gap-1 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
+    fill && 'overflow-hidden',
+    TONES[e.tone].block,
+    e.past && 'opacity-50',
+    e.next && 'shadow-[0_4px_12px_-4px_rgb(16_20_44/0.2)]',
+    e.href && 'transition-[filter] hover:brightness-[0.97] focus-ring'
+  )
+  const content = <BlockContent e={e} short={short} />
+  return e.href ? (
+    <Link href={e.href} title={describe(e)} className={className}>
+      {content}
+    </Link>
+  ) : (
+    <span title={describe(e)} className={className}>
+      {content}
+    </span>
+  )
+}
+
+function BlockContent({ e, short }: { e: CalendarEvent; short: boolean }) {
   return (
-    <span
-      title={describe(e)}
-      className={cn(
-        'flex min-w-0 flex-1 flex-col gap-1 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
-        fill && 'overflow-hidden',
-        TONES[e.tone].block,
-        e.past && 'opacity-50',
-        e.next && 'shadow-[0_4px_12px_-4px_rgb(16_20_44/0.2)]'
-      )}
-    >
+    <>
       <b className='text-[0.75rem] leading-snug font-semibold break-words hyphens-auto'>{e.title}</b>
       {!short && (!e.code || e.tone === 'clase') && (
         <span className='text-[0.6875rem] leading-snug break-words text-ink/70'>{e.subject}</span>
@@ -112,7 +126,7 @@ function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: bo
         </span>
       )}
       <span className='sr-only'>, {describe(e)}</span>
-    </span>
+    </>
   )
 }
 

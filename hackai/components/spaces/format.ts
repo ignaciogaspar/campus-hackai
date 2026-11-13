@@ -114,6 +114,8 @@ export type SpaceQuery = {
   vista?: 'directos'
   /** Lo buscado en el material. */
   buscar?: string
+  /** La comisión que abre el espacio, para el docente que dicta más de una. */
+  comision?: string
 }
 
 /** Donde viven los espacios: `/materias/<id de la materia>`. */

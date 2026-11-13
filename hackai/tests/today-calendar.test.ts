@@ -110,6 +110,8 @@ test('un final dice su turno y su lugar, y el cierre de una actividad dice que e
 // Análisis I, comisión B: martes y jueves de 14 a 16, del 10/8 al 28/11.
 const am1: ClassSlot[] = [1, 3].map((weekday) => ({
   id: `clase:am1-b:${weekday}`,
+  subjectId: 'am1',
+  sectionId: 'am1-b',
   code: 'AM1',
   subject: 'Análisis Matemático I',
   section: 'B',
@@ -132,6 +134,39 @@ test('las clases se repiten cada semana de su período, y no antes ni después',
     ]
   )
   assert.deepEqual(classesIn(weekOf('2026-11-30'), am1, '2026-11-18'), [], 'el cuatrimestre terminó el 28/11')
+})
+
+test('cada evento lleva a donde lleva su fecha en Hoy; una clase, al espacio en su comisión', () => {
+  const task = { ...item('tarea-hackai:t-1', '2026-11-14T02:59:00.000Z', 'entrega'), source: 'hackai' as const }
+  const libre = { ...item('final', '2026-12-10T12:00:00.000Z', 'final'), subjectId: 'fi1', hasSection: false }
+  const closing = {
+    kind: 'examen' as const,
+    subjectId: 'fi1',
+    subjectName: 'Física I',
+    opensAt: '2026-11-09T03:00:00.000Z',
+    closesAt: '2026-11-17T02:59:00.000Z',
+    closesInDays: 6,
+    spotsLeft: 30,
+    needsRegularity: false,
+    credits: null
+  }
+
+  const [own, parcial, final, inscripcion] = eventsOf(
+    [task, item('parcial', '2026-11-17T17:00:00.000Z'), libre],
+    [closing],
+    null,
+    '2026-11-10T12:00:00.000Z',
+    'alumno'
+  )
+  const [teacherFinal] = eventsOf([libre], [], null, '2026-11-10T12:00:00.000Z', 'profesor')
+  const [clase] = classesIn(['2026-11-17'], am1, '2026-11-10')
+
+  assert.equal(own.href, '/materias/am1/tareas/t-1')
+  assert.equal(parcial.href, '/materias/am1')
+  assert.equal(final.href, '/inscripciones?tab=examenes&materia=fi1')
+  assert.equal(teacherFinal.href, undefined)
+  assert.equal(inscripcion.href, '/inscripciones?tab=examenes&materia=fi1')
+  assert.equal(clase.href, '/materias/am1?comision=am1-b')
 })
 
 test('un parcial durante la clase de su materia la reemplaza y dura lo que la clase', () => {

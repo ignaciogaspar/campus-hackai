@@ -9,9 +9,11 @@
    inscripción para mostrar la cursada nueva. */
 import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Suspense } from 'react'
 import { dueTime } from '@/components/dates'
 import { PageHeader } from '@/components/shell/page-header'
+import { dateHref } from '@/components/today/agenda'
 import { TodayCalendar } from '@/components/today/calendar'
 import { classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
@@ -19,6 +21,7 @@ import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import type { Role } from '@/lib/core/people'
 import type { UpcomingItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
@@ -34,8 +37,9 @@ const KIND: Record<UpcomingItem['kind'], string> = {
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
-/* Las próximas fechas, en lista: lo mismo que el calendario, para leerlo de un vistazo. */
-function NextDates({ items }: { items: UpcomingItem[] }) {
+/* Las próximas fechas, en lista: lo mismo que el calendario, para leerlo de un vistazo. Cada una lleva a
+   donde lleva en Hoy. */
+function NextDates({ items, role }: { items: UpcomingItem[]; role: Role }) {
   const next = items.filter((i) => !i.past).slice(0, 6)
   return (
     <section aria-labelledby='proximas' className='rounded-2xl border border-border bg-card p-4'>
@@ -46,16 +50,33 @@ function NextDates({ items }: { items: UpcomingItem[] }) {
         <p className='text-[0.8125rem] text-muted-foreground'>No tenés parciales, finales ni entregas por delante.</p>
       ) : (
         <ul className='flex flex-col divide-y divide-border'>
-          {next.map((i) => (
-            <li key={i.id} className='flex flex-col gap-0.5 py-2'>
-              <span className='text-[0.8125rem] font-semibold text-ink'>
-                {KIND[i.kind]} · {i.subjectName}
-              </span>
-              <span className='text-[0.75rem] text-muted-foreground'>
-                {i.name} · <time dateTime={i.date}>{dueTime(i.date)}</time>
-              </span>
-            </li>
-          ))}
+          {next.map((i) => {
+            const href = dateHref(i, role)
+            const body = (
+              <>
+                <span className='text-[0.8125rem] font-semibold text-ink'>
+                  {KIND[i.kind]} · {i.subjectName}
+                </span>
+                <span className='text-[0.75rem] text-muted-foreground'>
+                  {i.name} · <time dateTime={i.date}>{dueTime(i.date)}</time>
+                </span>
+              </>
+            )
+            return (
+              <li key={i.id}>
+                {href ? (
+                  <Link
+                    href={href}
+                    className='-mx-2 flex min-h-11 flex-col justify-center gap-0.5 rounded-lg px-2 py-2 transition-colors hover:bg-background focus-ring'
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <span className='flex flex-col gap-0.5 py-2'>{body}</span>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </section>
@@ -81,7 +102,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
             </div>
           }
         >
-          <CalendarContent personId={session.personId} searchParams={searchParams} />
+          <CalendarContent personId={session.personId} role={session.role} searchParams={searchParams} />
         </Suspense>
       </main>
     </>
@@ -90,9 +111,11 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
 
 async function CalendarContent({
   personId,
+  role,
   searchParams
 }: {
   personId: string
+  role: Role
   searchParams: Promise<{ semana?: string }>
 }) {
   const [{ semana }, result] = await Promise.all([searchParams, system().today.today(personId)])
@@ -121,7 +144,8 @@ async function CalendarContent({
           result.value.upcoming,
           result.value.openEnrollments,
           result.value.next?.id ?? null,
-          result.value.now
+          result.value.now,
+          role
         )}
         classes={classSlotsOf(result.value.subjects.current)}
         now={result.value.now}
@@ -143,7 +167,7 @@ async function CalendarContent({
               <CalendarPlus aria-hidden='true' data-icon='inline-start' />
               Agregar a mi calendario
             </a>
-            <NextDates items={result.value.upcoming} />
+            <NextDates items={result.value.upcoming} role={role} />
           </div>
         }
       />

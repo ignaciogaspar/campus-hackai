@@ -3,7 +3,11 @@
    hay cada semana y cómo se agrupa lo que se pisa. Todo en la hora de Buenos
    Aires y con semanas de lunes a domingo. Qué es un parcial, qué pasó y cuál
    es el próximo lo decide Hoy: acá solo se ubica. */
+import { offerHref } from '@/components/enrollment/offer-href'
+import { spaceHref } from '@/components/spaces/format'
+import { dateHref } from '@/components/today/agenda'
 import type { Origin } from '@/components/ui/origin-badge'
+import type { Role } from '@/lib/core/people'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE, weekdayIndex } from '@/lib/dates'
 
@@ -30,11 +34,15 @@ export type CalendarEvent = {
   next: boolean
   /** El enlace de Zoom de una clase virtual o híbrida, si el docente lo cargó. */
   zoomUrl?: string | null
+  /** A dónde lleva tocarlo: el mismo destino que la fecha en Hoy. Sin destino, no se toca. */
+  href?: string
 }
 
 /** Los días y horarios de clase de una comisión, entre el inicio y el fin de su período. */
 export type ClassSlot = {
   id: string
+  subjectId: string
+  sectionId: string
   code: string
   subject: string
   section: string
@@ -100,12 +108,14 @@ const CLOSING: Record<OpenEnrollment['kind'], string> = {
 }
 
 /** Las fechas de Hoy como eventos. Los parciales y finales van en su hora; las
-    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. */
+    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día.
+    Cada una lleva a donde lleva en Hoy (`dateHref`); un cierre, a la oferta de la materia. */
 export function eventsOf(
   upcoming: UpcomingItem[],
   enrollments: OpenEnrollment[],
   nextId: string | null,
-  now: string
+  now: string,
+  viewer: Role = 'alumno'
 ): CalendarEvent[] {
   const dates = upcoming.map((item): CalendarEvent => {
     const minutes = minutesOf(item.date)
@@ -122,7 +132,8 @@ export function eventsOf(
       tone: item.kind,
       origin: item.source,
       past: item.past,
-      next: item.id === nextId
+      next: item.id === nextId,
+      href: dateHref(item, viewer)
     }
   })
   // Una inscripción sin fecha de cierre informada no tiene día en el calendario.
@@ -146,7 +157,8 @@ function closingEvent(e: OpenEnrollment, closesAt: string, now: string): Calenda
     tone: 'inscripcion',
     origin: 'siu',
     past: closesAt < now,
-    next: false
+    next: false,
+    href: offerHref(e.subjectId, e.kind)
   }
 }
 
@@ -165,6 +177,8 @@ export function classSlotsOf(subjects: MySubject[]): ClassSlot[] {
     s.schedule.map(
       (slot, i): ClassSlot => ({
         id: `clase:${s.sectionId}:${i}`,
+        subjectId: s.subjectId,
+        sectionId: s.sectionId,
         code: s.code,
         subject: s.name,
         section: s.sectionName,
@@ -200,7 +214,8 @@ export function classesIn(days: string[], slots: ClassSlot[], today: string): Ca
           origin: 'siu',
           past: day < today,
           next: false,
-          zoomUrl: slot.zoomUrl
+          zoomUrl: slot.zoomUrl,
+          href: spaceHref(slot.subjectId, { comision: slot.sectionId })
         })
       )
   )
