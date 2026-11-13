@@ -27,6 +27,9 @@ truncate table coursework_promotions, coursework_exams, coursework_weights, cour
 truncate table section_classes;
 delete from siu_absences where id like 'ia-%';
 
+-- A4: los enlaces de Zoom que se cargaron en un ensayo.
+truncate table section_zoom_links;
+
 commit;
 
 -- Que PostgREST relea el esquema, por si las migraciones de recién sumaron algo.

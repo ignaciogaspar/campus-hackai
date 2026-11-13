@@ -133,6 +133,7 @@ import {
   type SectionStudentsError
 } from '@/lib/core/studies/section-students'
 import type { StoredClass, StudiesStore } from '@/lib/core/studies/store'
+import { createZoom, hasZoom, type ZoomError } from '@/lib/core/studies/zoom'
 import { daysBetween } from '@/lib/dates'
 import type { Fresh } from '@/lib/fresh'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
@@ -186,6 +187,7 @@ export type {
   SubjectStanding,
   SubjectStatus
 } from '@/lib/core/studies/career'
+export { type ClassSchedule, currentClass, hasClassOn } from '@/lib/core/studies/classes'
 export type {
   Pase,
   SectionSnapshot,
@@ -194,6 +196,7 @@ export type {
   StudiesStore,
   StudiesStoreError
 } from '@/lib/core/studies/store'
+export { hasZoom, type ZoomError } from '@/lib/core/studies/zoom'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
@@ -243,6 +246,8 @@ export type MySubject = {
   location: string
   modality: SiuSection['modality']
   role: Role
+  /** El enlace de Zoom que cargó el docente de la comisión. Solo en las virtuales o híbridas; si no, `null`. */
+  zoomUrl: string | null
   /** Cursos de Moodle vinculados a la comisión, con el enlace a cada aula. */
   classrooms: MyClassroom[]
   /** Tareas con fecha de esos cursos, por fecha. Solo las de materias actuales; las archivadas, vacío. */
@@ -514,6 +519,9 @@ export type Studies = {
     classAt: string,
     absent: string[]
   ): Promise<Result<TakenResult, AttendanceError>>
+  /** Carga el enlace de Zoom de la comisión, lo cambia o, con texto vacío, lo borra. Solo para un docente de la
+      comisión (`sin-acceso` si no) y solo `https://` (`enlace-invalido`). Devuelve el enlace guardado o `null`. */
+  setZoomLink(personId: PersonId, sectionId: string, url: string): Promise<Result<string | null, ZoomError>>
   /** Reintenta pasar al SIU las listas pendientes, de la más vieja a la más nueva. Lo corre la sincronización
       periódica. */
   retryPases(): Promise<Result<RetryReport, ExternalFailure>>
@@ -878,6 +886,7 @@ function asUnknownPerson<E extends string>(
 export function createStudies({ people, siu, classroom, clock, store }: StudiesDeps): Studies {
   const sectionStudents = createSectionStudents({ people, siu })
   const attendance = createAttendance({ people, siu, clock, store, sectionStudents })
+  const zoom = createZoom({ people, siu, store })
   const classHistory = createClassHistory({ siu, classesOf: attendance.classesOf, sectionStudents })
   const sectionAssessments = createSectionAssessments({ people, siu })
   const passGrades = createPassGrades({ people, siu })
@@ -1006,6 +1015,7 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
     const mine = await sectionsInTermsOf(who.value)
     if (!mine.ok) return mine
     const classrooms = await classroomsOf(mine.value.sections)
+    const zoomLinks = await zoom.linksOf(mine.value.sections.map((p) => p.section.id))
     const subjects = mine.value.sections.map(({ section, subject, term, current }, i) => {
       const item: MySubject = {
         subjectId: subject.id,
@@ -1022,6 +1032,7 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
         location: section.location,
         modality: section.modality,
         role: mine.value.role,
+        zoomUrl: hasZoom(section.modality) ? (zoomLinks[section.id] ?? null) : null,
         classrooms: classrooms.courses[i].map((c) => ({
           courseId: c.id,
           name: c.fullName,
@@ -2097,6 +2108,7 @@ export function createStudies({ people, siu, classroom, clock, store }: StudiesD
     sectionAssessments: (personId, sectionId) =>
       fresh(`sectionAssessments:${personId}:${sectionId}`, () => sectionAssessments(personId, sectionId)),
     passGrades,
+    setZoomLink: zoom.setZoomLink,
     offer: offerNow,
     enroll,
     drop,

@@ -15,19 +15,22 @@ import { ClassList } from '@/components/subjects/class-list'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
 import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { ZoomForm } from '@/components/subjects/zoom-form'
 import { Card } from '@/components/ui/card'
 import { Pagination } from '@/components/ui/pagination'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type {
-  AttendanceError,
-  SectionStudent,
-  SectionStudentsError,
-  Studies,
-  StudiesReadError
+import {
+  type AttendanceError,
+  hasZoom,
+  type SectionStudent,
+  type SectionStudentsError,
+  type Studies,
+  type StudiesReadError
 } from '@/lib/core/studies'
+import { saveZoomLinkAction } from './zoom-actions'
 
 export const metadata: Metadata = { title: 'Alumnos · Campus HackAI' }
 
@@ -167,6 +170,23 @@ function ClassesBlock({
   )
 }
 
+type Subjects = Awaited<ReturnType<Studies['subjectsOf']>>
+
+/** El enlace de Zoom de la comisión. Es de las comisiones virtuales o híbridas; si no se pudo leer, no se ofrece. */
+function ZoomBlock({
+  subjects,
+  sectionId,
+  sectionName
+}: {
+  subjects: Subjects
+  sectionId: string
+  sectionName: string
+}) {
+  const subject = subjects.ok ? subjects.value.data.current.find((c) => c.sectionId === sectionId) : undefined
+  if (!subject || !hasZoom(subject.modality)) return null
+  return <ZoomForm action={saveZoomLinkAction} sectionId={sectionId} sectionName={sectionName} url={subject.zoomUrl} />
+}
+
 export default async function AlumnosPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const session = await requireSession('profesor')
   const [{ subjectId }, raw] = await Promise.all([params, searchParams])
@@ -179,11 +199,13 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
   if (!mine.ok || !section)
     return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} />
 
-  const [students, classes, history] = await Promise.all([
+  const [students, classes, history, subjects] = await Promise.all([
     system().studies.sectionStudents(session.personId, section.sectionId),
     system().studies.classesOf(session.personId, section.sectionId),
-    system().studies.classHistory(session.personId, section.sectionId)
+    system().studies.classHistory(session.personId, section.sectionId),
+    system().studies.subjectsOf(session.personId)
   ])
+
   const staleRead = mine.value.stale ? mine.value : students.ok && students.value.stale ? students.value : null
   const several = taught.length > 1
 
@@ -213,6 +235,8 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
           hrefFor={(sectionId) => subjectTabHref(subjectId, ALUMNOS_TAB, sectionId)}
         />
         {staleRead && <StaleBanner since={staleRead.readAt} now={system().now()} />}
+
+        <ZoomBlock subjects={subjects} sectionId={section.sectionId} sectionName={section.name} />
 
         <ClassesBlock
           classes={classes}

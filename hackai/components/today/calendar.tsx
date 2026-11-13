@@ -9,7 +9,7 @@
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
    y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
-import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, MapPin, Video } from 'lucide-react'
 import { Fragment, type ReactNode, useState } from 'react'
 import {
   type CalendarEvent,
@@ -116,6 +116,24 @@ function Block({ e }: { e: CalendarEvent }) {
   )
 }
 
+/* El enlace de Zoom de una clase virtual o híbrida, en un bloque propio debajo del evento: va afuera del bloque
+   para que no haya un enlace dentro de otro y para que el toque tenga el tamaño de un botón. */
+function ZoomLink({ e }: { e: CalendarEvent }) {
+  if (!e.zoomUrl || e.past) return null
+  return (
+    <a
+      href={e.zoomUrl}
+      target='_blank'
+      rel='noopener noreferrer'
+      className='inline-flex min-h-11 items-center gap-1.5 self-start rounded-md px-1 text-[0.75rem] font-semibold text-blue hover:underline focus-ring'
+    >
+      <Video aria-hidden='true' className='size-3.5' />
+      Entrar a Zoom
+      <span className='sr-only'>a la clase de {e.title} (se abre en otra pestaña)</span>
+    </a>
+  )
+}
+
 /** Las horas de la grilla: al menos de 8 a 19, estiradas si algo empieza antes o termina después. */
 function hoursFor(clusters: Cluster[]): number[] {
   const first = Math.min(FIRST_HOUR, ...clusters.map((c) => Math.floor(c.start / 60)))
@@ -219,7 +237,10 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
             }}
           >
             {c.events.map((e) => (
-              <Block key={e.id} e={e} />
+              <div key={e.id} className='flex min-w-0 flex-col'>
+                <Block e={e} />
+                <ZoomLink e={e} />
+              </div>
             ))}
           </div>
         ))}
@@ -263,7 +284,10 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
             ) : (
               <div className='flex min-w-0 flex-1 flex-col gap-2'>
                 {ofDay.map((e) => (
-                  <Block key={e.id} e={e} />
+                  <div key={e.id} className='flex min-w-0 flex-col'>
+                    <Block e={e} />
+                    <ZoomLink e={e} />
+                  </div>
                 ))}
               </div>
             )}

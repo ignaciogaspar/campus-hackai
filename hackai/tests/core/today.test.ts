@@ -450,7 +450,7 @@ test('con el SIU caído, el Hoy del docente muestra lo último que leyó; sin na
   assert.deepEqual(stale.value.unavailable, [])
   assert.ok(empty.ok)
   assert.deepEqual(empty.value.sections, [])
-  assert.deepEqual(empty.value.unavailable, ['sections', 'dates', 'questions', 'unread'])
+  assert.deepEqual(empty.value.unavailable, ['sections', 'dates', 'questions', 'unread', 'class'])
   assert.deepEqual(await today.teaching('p-nadie'), { ok: false, error: 'persona-desconocida' })
 })
 

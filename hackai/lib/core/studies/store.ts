@@ -1,5 +1,5 @@
 /* Almacén propio de Cursada: lo que HackAI guarda y los sistemas de origen no
-   tienen. Hoy, las clases con la lista tomada (tomar lista, #108). Es un seam
+   tienen: las clases con la lista tomada (tomar lista, #108) y el enlace de Zoom de cada comisión (#109). Es un seam
    interno, no un puerto: se inyecta al armar el módulo (`StudiesDeps.store`) y
    tiene un adaptador en memoria y uno de Supabase, con la misma batería de
    contrato (tests/contracts/studies-store.test.ts). */
@@ -58,4 +58,8 @@ export type StudiesStore = {
     pase: Pase,
     paseAt: string | null
   ): Promise<Result<null, StudiesStoreError>>
+  /** Los enlaces de Zoom cargados de esas comisiones, por id de comisión. Las que no tienen no figuran. */
+  zoomLinks(sectionIds: string[]): Promise<Result<Record<string, string>, StudiesStoreError>>
+  /** Guarda el enlace de Zoom de la comisión, o lo borra con `null`. Reemplaza el anterior. */
+  setZoomLink(sectionId: string, url: string | null): Promise<Result<null, StudiesStoreError>>
 }
