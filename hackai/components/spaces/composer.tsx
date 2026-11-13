@@ -8,13 +8,15 @@
    escribiendo; si no, el texto vuelve para corregirlo y el error se anuncia.
    En la compu Enter
    envía y Shift+Enter salta de línea; en el celular Enter salta de línea y se
-   envía con el botón (composer-keys.ts). Ctrl o ⌘ + Enter envía siempre.
+   envía con el botón (composer-keys.ts). Ctrl o ⌘ + Enter envía siempre. En
+   Avisos, Enter salta de línea en todos lados y el botón dice «Publicar».
    Dónde se ubica (pegado abajo en el celular) lo pone ComposerDock. */
 import { Paperclip, SendHorizontal, X } from 'lucide-react'
 import { type ChangeEvent, type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { postMessage } from '@/app/actions/spaces'
 import { FormFeedback, useSpaceAction } from '@/components/spaces/action-form'
 import { sendsOnKey } from '@/components/spaces/composer-keys'
+import { cn } from '@/lib/utils'
 
 const MAX_HEIGHT = 160
 /** Cuánto queda a la vista la confirmación de que se envió. */
@@ -33,9 +35,11 @@ type Props = {
   /** El mensaje al que se responde, en un hilo. */
   replyTo?: string
   placeholder: string
+  /** En Avisos, a quién le llega: Enter salta de línea y se publica con el botón «Publicar» o Ctrl o ⌘ + Enter. */
+  announcementFor?: string
 }
 
-export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) {
+export function Composer({ subjectId, channelId, replyTo, placeholder, announcementFor }: Props) {
   const { state, dispatch, pending, submit, error } = useSpaceAction(postMessage)
   const [text, setText] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -93,7 +97,8 @@ export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) 
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches
-    if (!sendsOnKey(event.nativeEvent, { finePointer, canSend: !empty && !pending })) return
+    const context = { finePointer, canSend: !empty && !pending, announcement: announcementFor !== undefined }
+    if (!sendsOnKey(event.nativeEvent, context)) return
     event.preventDefault()
     form.current?.requestSubmit()
   }
@@ -155,13 +160,25 @@ export function Composer({ subjectId, channelId, replyTo, placeholder }: Props) 
           type='submit'
           disabled={empty || pending}
           aria-busy={pending || undefined}
-          className='grid size-10 flex-none place-items-center rounded-[10px] bg-primary text-primary-foreground transition-opacity focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none'
+          className={cn(
+            'flex h-10 flex-none items-center justify-center gap-1.5 rounded-[10px] bg-primary text-primary-foreground transition-opacity focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none',
+            announcementFor ? 'px-3 text-sm font-bold' : 'w-10'
+          )}
         >
           <SendHorizontal aria-hidden='true' className='size-5' strokeWidth={2} />
-          <span className='sr-only'>{pending ? 'Enviando…' : 'Enviar'}</span>
+          {announcementFor ? (
+            <span>{pending ? 'Publicando…' : 'Publicar'}</span>
+          ) : (
+            <span className='sr-only'>{pending ? 'Enviando…' : 'Enviar'}</span>
+          )}
         </button>
       </div>
 
+      {announcementFor && (
+        <p className='hidden px-1 text-xs text-muted-foreground lg:block'>
+          Enter salta de línea. Ctrl o ⌘ + Enter publica el aviso para {announcementFor}.
+        </p>
+      )}
       <FormFeedback error={error} success={notice} />
     </form>
   )

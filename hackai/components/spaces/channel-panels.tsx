@@ -127,7 +127,12 @@ export function AnnouncementsPanel({ subjectId, channel, threads, viewerId }: Pa
       </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
-          <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Aviso para ${audience(channel)}`} />
+          <Composer
+            subjectId={subjectId}
+            channelId={channel.id}
+            placeholder={`Aviso para ${audience(channel)}`}
+            announcementFor={audience(channel)}
+          />
         ) : (
           <LockedNote>Solo los docentes publican avisos. Si tenés una duda, usá Consultas.</LockedNote>
         )}
