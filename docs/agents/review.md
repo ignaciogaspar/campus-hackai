@@ -31,6 +31,7 @@ Esto ya lo cubre otra cosa o ya está decidido:
 - Las reglas que chequea `scripts/checks/reglas.sh` (`campus/` en un commit aparte, lo simulado fuera de `migrations/`, RLS, imports del núcleo y de los adaptadores, ADR por paquete nuevo, secretos): lo marca CI.
 - Las funciones que ya llevan un `biome-ignore` de complejidad: están anotadas en la issue #30.
 - El `!` de TypeScript: decisión de la ADR 0007.
+- Al revisar sondeo de Espacios, distinguí la sincronización de Discord en `spaces/sync.ts` de la importación de Moodle en `spaces/module.ts` (#94).
 - Lo que el PR deja escrito como pendiente o «a confirmar con el equipo»: entra solo si es un riesgo para la demo.
 
 ## 4. Cómo comentar

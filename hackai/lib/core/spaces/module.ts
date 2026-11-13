@@ -7,7 +7,7 @@
    regla de quién ve qué.
 
    `open` trae los avisos y los recursos nuevos de Moodle antes de armar la
-   vista, no más de una vez cada `SYNC_EVERY_MS` por espacio. La
+   vista, no más de una vez cada `CLASSROOM_SYNC_EVERY_MS` por espacio. La
    sincronización con el canal externo es su propia pieza (sync): `open` y
    `version` traen lo nuevo, `post` envía, `link` vincula y trae lo que ya
    había, y `syncAll` es la corrida periódica. */
@@ -71,7 +71,7 @@ import { isFileId } from '@/lib/ports/files'
 import { fail, ok, type Result } from '@/lib/result'
 
 /** Cada cuánto, como mucho, `open` trae lo nuevo de los sistemas de origen a un mismo espacio. */
-const SYNC_EVERY_MS = 10_000
+const CLASSROOM_SYNC_EVERY_MS = 10_000
 
 /** Un canal que la persona ve, con su espacio y su membresía. */
 type InChannel = { channel: StoredChannel; space: StoredSpace; member: Membership }
@@ -107,7 +107,7 @@ export function createSpacesModule(deps: SpacesDeps): Spaces {
     if (clock.capabilities.fixed) return true
     const now = clock.now().getTime()
     const last = lastSync.get(spaceId)
-    if (last !== undefined && now - last < SYNC_EVERY_MS) return false
+    if (last !== undefined && now - last < CLASSROOM_SYNC_EVERY_MS) return false
     lastSync.set(spaceId, now)
     return true
   }

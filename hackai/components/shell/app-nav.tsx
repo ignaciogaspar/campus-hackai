@@ -25,7 +25,7 @@ import { useSidebar } from '@/components/shell/sidebar-context'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { UnreadCount } from '@/components/ui/unread-count'
-import type { Person } from '@/lib/core/people'
+import type { Person, Role } from '@/lib/core/people'
 import { cn } from '@/lib/utils'
 
 export type NavSubject = { href: string; code: string; name: string; unread: number }
@@ -280,14 +280,31 @@ function MoreSheet({ sections, pathname }: { sections: Section[]; pathname: stri
    debajo; Tu carrera (solo alumnos) y, al pie, la cuenta con Salir. Lo del
    medio scrollea si no entra. Se pliega a solo íconos; su ancho sale de
    --sidebar-w (sidebar-frame.tsx). */
+export function SidebarNews({ unread = 0 }: { unread?: number }) {
+  const pathname = usePathname()
+  const { collapsed } = useSidebar()
+  const section = STUDENT.find((item) => item.href === '/novedades')!
+  return <SectionLink section={section} pathname={pathname} collapsed={collapsed} count={unread} />
+}
+
+export function SidebarSubjects({ subjects }: { subjects: NavSubject[] }) {
+  return <SubjectBranch subjects={subjects} pathname={usePathname()} />
+}
+
 export function AppNav({
   subjects,
   unread = 0,
+  subjectLinks,
+  newsLink,
+  role,
   person,
   detail
 }: {
   school?: string
-  subjects: NavSubject[]
+  subjects?: NavSubject[]
+  subjectLinks?: ReactNode
+  newsLink?: ReactNode
+  role?: Role
   /** Lo sin leer de todas las materias, para Novedades. */
   unread?: number
   person: Person | null
@@ -295,7 +312,7 @@ export function AppNav({
 }) {
   const pathname = usePathname()
   const { collapsed } = useSidebar()
-  const student = person?.role !== 'profesor'
+  const student = (role ?? person?.role) !== 'profesor'
   const main = student ? STUDENT : TEACHER
   const career = student ? CAREER : []
   const more = [...main, ...career].filter((s) => !s.bottom && !s.desktopOnly)
@@ -313,13 +330,18 @@ export function AppNav({
         <GroupLabel>Menú principal</GroupLabel>
         {main.map((section) => (
           <div key={section.href} className='max-lg:contents'>
-            <SectionLink
-              section={section}
-              pathname={pathname}
-              collapsed={collapsed}
-              count={section.href === '/novedades' ? unread : 0}
-            />
-            {section.href === '/materias' && <SubjectBranch subjects={subjects} pathname={pathname} />}
+            {section.href === '/novedades' && newsLink ? (
+              newsLink
+            ) : (
+              <SectionLink
+                section={section}
+                pathname={pathname}
+                collapsed={collapsed}
+                count={section.href === '/novedades' ? unread : 0}
+              />
+            )}
+            {section.href === '/materias' &&
+              (subjectLinks ?? <SubjectBranch subjects={subjects ?? []} pathname={pathname} />)}
           </div>
         ))}
         {career.length > 0 && (

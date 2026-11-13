@@ -733,9 +733,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
 
   /** Materias del SIU por id. Una que el SIU no encuentra se saltea; si no responde, falla. */
   async function subjectsById(ids: string[]): Promise<Result<Map<string, SiuSubject>, ExternalFailure>> {
-    const found = await Promise.all(unique(ids).map((id) => siu.subject(id)))
-    if (found.some((r) => !r.ok && r.error === 'falla-externa')) return fail('falla-externa')
-    return ok(new Map(found.flatMap((r) => (r.ok ? [[r.value.id, r.value] as const] : []))))
+    const found = await siu.subjects(unique(ids))
+    return found.ok ? ok(new Map(found.value.map((subject) => [subject.id, subject]))) : found
   }
 
   /** Las comisiones que dicta un docente, o las de las inscripciones aceptadas o
@@ -891,9 +890,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       : ok(new Map<string, SiuAssessment[]>())
     if (!schedules.ok) return schedules
     const subjectOf = (r: RawGrade) => r.subjectId ?? sections.value.get(r.sectionId)?.subjectId ?? null
-    const subjects = await lookup(unique([...subjectIds, ...raw.flatMap((r) => subjectOf(r) ?? [])]), (id) =>
-      siu.subject(id)
-    )
+    const subjects = await subjectsById([...subjectIds, ...raw.flatMap((r) => subjectOf(r) ?? [])])
     if (!subjects.ok) return subjects
     return ok({
       subjectOf,
