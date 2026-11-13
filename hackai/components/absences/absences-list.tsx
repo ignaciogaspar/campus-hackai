@@ -1,5 +1,5 @@
 /* Inasistencias del alumno: una fila por materia actual en la que tiene faltas, con el
-   máximo si lo hay y cuántas le quedan antes de quedar libre. Se despliega con cada falta. Solo
+   máximo si lo hay. Se despliega con cada falta. Solo
    muestra lo que le da Cursada: el aviso de cerca del máximo lo decide ella. */
 import { CalendarX, ChevronRight, TriangleAlert } from 'lucide-react'
 import { absencesLine } from '@/components/absences/line'
