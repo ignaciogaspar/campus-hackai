@@ -1,6 +1,6 @@
 # Guion del pitch
 
-Pitch del 13/11/2026, en el orden de «La historia de su demo»: problema, usuario, antes y después, demo, evidencia y próximo paso. Dura unos 13 minutos con la demo adentro, repartidos entre cuatro personas de a unos 3 minutos cada una.
+Pitch del 13/11/2026, en el orden de «La historia de su demo»: problema, usuario, demo, evidencia (con el antes y después) y próximo paso. Dura unos 12 minutos con la demo adentro, repartidos entre cuatro personas de a unos 3 minutos cada una.
 
 **Regla de todo el pitch:** decir qué es real y qué está simulado, sin esperar a que lo pregunten.
 
@@ -9,10 +9,12 @@ Pitch del 13/11/2026, en el orden de «La historia de su demo»: problema, usuar
 | Persona | Slides | Tiempo | Además |
 | --- | --- | --- | --- |
 | **Persona 1** | 1 a 6: portada, problema, usuario y estrategia | 3:30 | Abre el pitch |
-| **Persona 2** | 7 y 8.1: antes y después, demo del alumno | 3:00 | Maneja la compu en la demo del alumno |
-| **Persona 3** | 8.2 y 8.3: demo del docente y de secretaría | 3:00 | Publica el aviso en vivo durante la demo del alumno |
-| **Persona 4** | 9 a 13: real y simulado, evidencia, iteraciones, próximo paso y cierre | 3:00 | Cierra el pitch |
-| | | **12:30** | |
+| **Persona 2** | 7.1: demo del alumno | 2:00 | Maneja la compu en la demo del alumno |
+| **Persona 3** | 7.2 y 7.3: demo del docente y de secretaría | 3:00 | Publica el aviso en vivo durante la demo del alumno |
+| **Persona 4** | 8 a 12: real y simulado, evidencia con el antes y después, iteraciones, próximo paso y cierre | 3:30 | Cierra el pitch |
+| | | **12:00** | |
+
+**Sin confirmar con el equipo:** el reparto. Al salir la slide «Cómo cambia cada trámite» (decisión del 13/11), Persona 2 perdió su minuto y Persona 4 sumó 0:30 para contar el antes y después en la slide 9.
 
 Cada persona termina con una frase de pase que nombra a la siguiente.
 
@@ -31,7 +33,7 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 
 - La migración `0014_reports_follow_ups.sql` está aplicada. Si falta, «Seguir a este alumno» falla con «No pudimos guardarlo porque la base no responde».
 - El Planning tiene una planilla cargada. Si está vacío, el alumno ve «Secretaría todavía no cargó las aulas» y la ficha de Reportes marca «No figura en el Planning» en cada materia.
-- Esa planilla trae un cambio de aula de **Análisis Matemático I, comisión A**, entre el día de la demo y una semana después: es el aviso que le llega a Tomás en el paso 8.1-6. Tiene que caer el día de su clase semanal; si no, cuenta como clase extra y no se avisa. La planilla de ejemplo de «Cargar clases» trae los dos: la clase de los lunes y el cambio del lunes 16/11. Tocar el aviso lo marca visto en ese navegador: en el ensayo, mirarlo sin tocarlo, o ensayar en otra ventana de incógnito.
+- Esa planilla trae un cambio de aula de **Análisis Matemático I, comisión A**, entre el día de la demo y una semana después: es el aviso que le llega a Tomás en el paso 7.1-6. Tiene que caer el día de su clase semanal; si no, cuenta como clase extra y no se avisa. La planilla de ejemplo de «Cargar clases» trae los dos: la clase de los lunes y el cambio del lunes 16/11. Tocar el aviso lo marca visto en ese navegador: en el ensayo, mirarlo sin tocarlo, o ensayar en otra ventana de incógnito.
 - La migración del Moodle simulado `supabase/simulados/0004_moodle_contenidos.sql` está aplicada: el material de las materias lee sus columnas nuevas.
 - Variables: `HACKAI_STORE=supabase`, `HACKAI_CLOCK=sistema`, `HACKAI_EXTERNAL_CHANNEL=discord` con `DISCORD_BOT_TOKEN`, `HACKAI_CACHE_SEGUNDOS=0` (si no, la nota publicada puede tardar hasta 5 minutos en verse) y `HACKAI_SIU_REAL_PUBLICO=no`, para que no aparezca «Entrá con tu cuenta del SIU» en el ingreso.
 - Los canales de Discord vinculados se pierden al correr `demo:preparar`: volver a vincularlos después.
@@ -41,10 +43,10 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 
 **Sin confirmar con el equipo:**
 
-- **Cuántas entrevistas y cuántos docentes** (slides 4 y 10). El guion dice «3 docentes» y «6 entrevistas». Según `docs/entrevistas/`, la persona de la Dirección de Estudios es también la docente de Comunicación de los 120 alumnos, así que cuenta dos veces; y lo del profesor del 12/11 lo contó por escrito un integrante, no fue una entrevista directa. Recontar y corregir las dos slides con el mismo número.
+- **Cuántas entrevistas y cuántos docentes** (slides 4 y 9). El guion dice «3 docentes» y «6 entrevistas». Según `docs/entrevistas/`, la persona de la Dirección de Estudios es también la docente de Comunicación de los 120 alumnos, así que cuenta dos veces; y lo del profesor del 12/11 lo contó por escrito un integrante, no fue una entrevista directa. Recontar y corregir las dos slides con el mismo número.
 - **Si se habló con secretaría** (slide 5). En la entrevista de la Dirección de Estudios alguien del equipo dice «recién hablábamos con secretaría», pero no hay notas de esa charla en `docs/entrevistas/`. El guion nombra a la secretaría sin decir si se la entrevistó; si hubo charla, decirlo.
 
-**Videos de la demo en el deck.** Después de la slide 8 hay dos slides, «Demo 1» y «Demo 2», con el recorrido completo del docente y de gestión en una sola toma, a ritmo lento y con un rótulo abajo para cada acción:
+**Videos de la demo en el deck.** Después de la slide 7 hay dos slides, «Demo 1» y «Demo 2», con el recorrido completo del docente y de gestión en una sola toma, a ritmo lento y con un rótulo abajo para cada acción:
 
 | Slide | Video | Dura | Datos |
 | --- | --- | --- | --- |
@@ -53,11 +55,11 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 
 Cada slide muestra el título y la compu con el video quieto; el primer avance lo agranda a pantalla completa y lo arranca, y el siguiente pasa de slide. No tienen sonido: se narra encima. No cuentan en la numeración de las slides. Se grabaron en localhost con los adaptadores en memoria, sin tocar Supabase ni Discord.
 
-**La parte del alumno va en vivo** (decisión del 13/11): Persona 2 hace 8.1 en la app, sin video.
+**La parte del alumno va en vivo** (decisión del 13/11): Persona 2 hace 7.1 en la app, sin video.
 
-**Sin decidir con el equipo:** si Persona 3 narra los videos o hace su parte en vivo. Los dos videos suman 3:04, lo mismo que su tiempo. Si va en vivo, las dos slides se pasan de largo con cuatro avances, o se salta a la 9 escribiendo `#11` al final de la dirección.
+**Sin decidir con el equipo:** si Persona 3 narra los videos o hace su parte en vivo. Los dos videos suman 3:04, lo mismo que su tiempo. Si va en vivo, las dos slides se pasan de largo con cuatro avances, o se salta a la 8 escribiendo `#10` al final de la dirección.
 
-**Si la demo falla:** el deck ya no tiene slides de respaldo (decisión del 13/11). Persona 3 pasa a los dos videos, que cubren docente y gestión. Para el alumno no hay respaldo en el deck: Persona 2 lo cuenta sobre la slide 7, «Cómo cambia cada trámite», sin cambiar el orden.
+**Si la demo falla:** el deck ya no tiene slides de respaldo (decisión del 13/11). Persona 3 pasa a los dos videos, que cubren docente y gestión. Para el alumno no hay respaldo en el deck: Persona 2 lo cuenta de palabra, o salta a la slide 9, «Qué medimos» (`#11`), que tiene el antes y después de sus trámites.
 
 ---
 
@@ -157,32 +159,14 @@ Pie: «Entrevistas a 3 docentes, Admisiones y la Dirección de Estudios, 12 y 13
 
 ---
 
-# Persona 2 · 3:00
+# Persona 2 · 2:00
 
-## 7. Antes y después: cómo cambia cada trámite · 1:00
-
-**En pantalla:**
-
-| Trámite | Hoy, en SIU y Campus | Con HackAI |
-| --- | --- | --- |
-| Saber qué me toca esta semana | Calendario del Campus + Cronograma del SIU: 3 clicks, en dos sistemas | 1 click: un solo calendario |
-| Enterarme de un aviso | Inicio › curso › Avisos › aviso: 3 clicks, y solo si entrás a mirar | Te llega por Discord; en HackAI, a 1 click |
-| Inscribirme a una materia | 3 clicks; el cupo se ve al final | 3 clicks, con el cupo y el horario antes de elegir, y quedás en el aula y el espacio |
-| Saber qué finales debo | Cruzar la historia académica con las mesas, a mano | 1 click: pestaña «Final pendiente», con su mesa |
-| **Docente:** tomar lista | 10 a 15 minutos, alumno por alumno | Todos presentes y tocás a los ausentes: 4 toques en una clase de 30 con 3 ausentes |
-| **Docente:** cargar las notas | Moodle → Excel → SIU, alumno por alumno | Se cargan una vez en HackAI, se pegan de una planilla y pasan al SIU |
-| **Gestión:** ver cómo viene una cohorte | 1 reporte por carrera y año de ingreso; 80 para toda la universidad en 4 años | 1 pantalla con varias facultades, carreras y cohortes, que se exporta |
-
-Pie: «Hoy: línea base del 10/11 y entrevistas.»
-
-> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla.
-
-## 8. Demo en vivo
+## 7. Demo en vivo
 
 **Frase de entrada:**
 > Ahora lo ven andando. Lo que van a ver corre con personas sintéticas. Discord es real; el SIU y el Moodle están simulados con la forma de sus APIs.
 
-### 8.1 Alumno · 2:00
+### 7.1 Alumno · 2:00
 
 | Paso | Qué se hace | Qué se dice |
 | --- | --- | --- |
@@ -191,7 +175,7 @@ Pie: «Hoy: línea base del 10/11 y entrevistas.»
 | 3 | En la misma pantalla, pestaña **Final pendiente** | «Lo que el SIU no responde: qué finales debo y su próxima mesa.» Tomás tiene dos, cada uno con su mesa |
 | 4 | Volver a «En curso» → entrar a **Análisis Matemático I** → pestaña **Avisos** | «Cada materia tiene su espacio, que se crea solo desde el SIU, con el material en el mismo orden que el aula.» En la app la pestaña es «Avisos»; `#avisos` es el nombre del canal en Discord |
 | 5 | Persona 3 publica un aviso como Mariana Ledesma desde su dispositivo; aparece en la pantalla del alumno y en Discord | «Se publica una vez y llega por Discord, al celular, por la aplicación que ya usa.» Es el momento fuerte: dejar que se vea llegar. La pantalla consulta cada 5 a 20 segundos, así que no prometer un tiempo en voz alta y dejar la pestaña visible |
-| 6 | **Campana** → «Cambió la clase de Análisis Matemático I (Comisión A)» → abre el **Planning** en esa clase | «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.» Sale de la planilla que Persona 3 muestra en 8.3 |
+| 6 | **Campana** → «Cambió la clase de Análisis Matemático I (Comisión A)» → abre el **Planning** en esa clase | «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.» Sale de la planilla que Persona 3 muestra en 7.3 |
 | 7 | **Calendario** → **Agregar a mi calendario** | «Clases, parciales, finales y entregas en un solo lugar. Los parciales, los finales y las entregas van al calendario del celular.» El archivo que se baja no lleva las clases |
 | 8 | (Si sobra tiempo) **Inscripciones** → Física I de verano → **Inscribirme** | «El cupo y el horario antes de elegir, y un paso para quedar adentro.» La comisión de la mañana está sin cupo y la de la tarde tiene lugar |
 
@@ -204,7 +188,7 @@ Pie: «Hoy: línea base del 10/11 y entrevistas.»
 
 Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Mariana Ledesma en su dispositivo: Análisis Matemático I → Avisos → **Publicar**.
 
-### 8.2 Docente · 1:30
+### 7.2 Docente · 1:30
 
 | Paso | Qué se hace | Qué se dice |
 | --- | --- | --- |
@@ -214,7 +198,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 
 **En video** (slide Demo 1, 1:27): Hoy, un aviso a la comisión A, la lista con un ausente y las notas del parcial pegadas de la planilla y publicadas. No muestra el botón «Tomar lista» de Hoy, porque la clase del viernes ya pasó a esa hora.
 
-### 8.3 Secretaría y Dirección de Estudios · 1:30
+### 7.3 Secretaría y Dirección de Estudios · 1:30
 
 | Paso | Qué se hace | Qué se dice |
 | --- | --- | --- |
@@ -231,21 +215,23 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 
 ---
 
-# Persona 4 · 3:00
+# Persona 4 · 3:30
 
-## 9. Evidencia: qué es real y qué está simulado · 0:40
+## 8. Evidencia: qué es real y qué está simulado · 0:40
 
 **En pantalla:**
 
-| Real | Simulado | Pendiente (depende de la universidad) |
-| --- | --- | --- |
-| Discord: un bot propio, en el servidor del equipo | El SIU y el Moodle de la demo: tablas propias con la forma de sus APIs | Ingreso con la cuenta Microsoft de la Austral |
-| La aplicación: publicada, se instala en el celular | Las personas: alumnos, docentes, notas y la población de los reportes son sintéticos | API del SIU y servicios web de Moodle |
-| El SIU y el Campus Virtual con la cuenta del propio alumno, desde la compu: leen en vivo sus materias y todo el contenido de sus aulas; el SIU, con su confirmación, inscribe y da de baja. Nada se guarda en la base ni en los logs | En la demo, la inscripción va contra el SIU simulado y el aula sale del Moodle simulado. El pase de notas y de asistencia al SIU es siempre simulado | Datos de toda la universidad para reportes (hoy en Power BI) y autorización de Gobierno de Datos |
+| Real | Simulado |
+| --- | --- |
+| Discord: un bot propio, en el servidor del equipo | El SIU y el Moodle de la demo: tablas propias con la forma de sus APIs |
+| La aplicación: publicada, se instala en el celular | Las personas: alumnos, docentes, notas y la población de los reportes son sintéticos |
+| El SIU y el Campus Virtual con la cuenta del propio alumno, desde la compu: leen en vivo sus materias y todo el contenido de sus aulas; el SIU, con su confirmación, inscribe y da de baja. Nada se guarda en la base ni en los logs | En la demo, la inscripción va contra el SIU simulado y el aula sale del Moodle simulado. El pase de notas y de asistencia al SIU es siempre simulado |
 
-> Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.
+Lo pendiente, que depende de la universidad, salió de esta slide (decisión del 13/11): queda en la slide 11, «Qué sigue».
 
-## 10. Evidencia: qué medimos · 0:40
+> Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética.
+
+## 9. Evidencia: qué medimos · 1:10
 
 **En pantalla:**
 
@@ -257,13 +243,23 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | **5 → 3** clicks, al integrar las dos plataformas | Reducción de clicks en los flujos |
 | **3 s** para cambiar de canal; antes, de 14 a 28 s | Reducción del tiempo en los flujos |
 
-La slide ya no dice qué falta medir (decisión del 13/11). El «5 → 3» lo pidió Facundo el 13/11. **Sin confirmar:** qué flujo es. No coincide con ninguna fila de la slide 7 ni de la línea base (`docs/product/problema.md`), donde saber qué te toca pasa de 3 clicks a 1 e inscribirse queda en 3. Antes de presentar, acordar qué flujo se nombra si lo preguntan. El «3 s» es una medición del equipo sobre HackAI, antes y después de un arreglo, no contra el SIU ni el Campus: si lo preguntan, decirlo así.
+Abajo, una segunda fila con el antes y después de cinco trámites, que viene de la slide «Cómo cambia cada trámite» (salió del deck el 13/11). Tomar lista y saber qué finales debo quedaron afuera:
 
-> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. Al integrar las dos plataformas reducimos los clicks de los flujos: de cinco a tres. Y redujimos el tiempo: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3.
+| Trámite | Hoy, en SIU y Campus | Con HackAI | En la slide |
+| --- | --- | --- | --- |
+| Saber qué me toca esta semana | Calendario del Campus + Cronograma del SIU: 3 clicks, en dos sistemas | 1 click: un solo calendario | **3 → 1** clicks |
+| Enterarme de un aviso | Inicio › curso › Avisos › aviso: 3 clicks, y solo si entrás a mirar | Te llega por Discord; en HackAI, a 1 click | **Te llega** por Discord |
+| Inscribirme a una materia | 3 clicks; el cupo se ve al final | 3 clicks, con el cupo y el horario antes de elegir, y quedás en el aula y el espacio | **3 → 3** clicks |
+| **Docente:** cargar las notas | Moodle → Excel → SIU, alumno por alumno | Se cargan una vez en HackAI, se pegan de una planilla y pasan al SIU | **3 → 1** cargas de cada nota |
+| **Gestión:** ver cómo viene una cohorte | 1 reporte por carrera y año de ingreso; 80 para toda la universidad en 4 años | 1 pantalla con varias facultades, carreras y cohortes, que se exporta | **80 → 1** reportes |
+
+La slide ya no dice qué falta medir (decisión del 13/11). El «5 → 3» lo pidió Facundo el 13/11. **Sin confirmar:** qué flujo es. No coincide con ningún trámite de la fila de abajo ni de la línea base (`docs/product/problema.md`), donde saber qué te toca pasa de 3 clicks a 1 e inscribirse queda en 3. Antes de presentar, acordar qué flujo se nombra si lo preguntan. El «3 s» es una medición del equipo sobre HackAI, antes y después de un arreglo, no contra el SIU ni el Campus: si lo preguntan, decirlo así.
+
+> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. Al integrar las dos plataformas reducimos los clicks de los flujos: de cinco a tres. Y redujimos el tiempo: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Abajo, trámite por trámite, lo de hoy contra HackAI. Saber qué te toca: de tres clicks en dos sistemas a uno, en un solo calendario. El aviso ya no hay que ir a buscarlo: te llega por Discord. Inscribirte son los mismos tres clicks, pero con el cupo y el horario antes de elegir. El docente carga cada nota una vez, no tres. Y lo que para gestión son ochenta reportes es una pantalla.
 
 **Si sobra tiempo**, la cita de la Dirección de Estudios sobre lo que tarda hacer un tablero: «el departamento de sistemas me lleva meses, años». Contarla como dato del problema, no como elogio.
 
-## 11. Evidencia: cada charla nos cambió el alcance · 0:45
+## 10. Evidencia: cada charla nos cambió el alcance · 0:45
 
 Una sola historia: cada vez que hablamos con alguien, cambió el alcance. Cierra lo que Persona 1 abre en la slide 4 («apareció un tercero que no teníamos»). La slide no lleva fechas ni números del repositorio; las fechas quedan acá para quien presenta.
 
@@ -281,7 +277,7 @@ Abajo, una línea: «Y el SIU real: su API no deja inscribir → HackAI usa la s
 
 **Si preguntan por lo técnico**, lo que salió de la slide: arrancamos sobre una base que no compilaba y pasamos a un sistema propio con puertos (10/11); Hoy le mostraba demasiado al alumno y Mis materias pasó a ser el inicio (12/11); entrar a una materia bajó de 17 segundos a unos 3 (13/11); y con la cuenta real, el aula dejó de ser la simulada: ahora se lee el Campus en vivo, sin guardarlo (13/11).
 
-## 12. Próximo paso: qué sigue · 0:40
+## 11. Próximo paso: qué sigue · 0:40
 
 **En pantalla:**
 
@@ -298,7 +294,7 @@ Abajo, una línea: «Y el SIU real: su API no deja inscribir → HackAI usa la s
 
 > Qué sigue. Con usuarios: un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.
 
-## 13. Cierre · 0:15
+## 12. Cierre · 0:15
 
 **En pantalla:** HackAI. «Un solo lugar que te dice qué te toca y te avisa a tiempo.» `campus-hackai.vercel.app`.
 
