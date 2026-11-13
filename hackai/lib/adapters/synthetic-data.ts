@@ -72,6 +72,8 @@ import type {
   SiuHistoryEntry,
   SiuHistoryResult,
   SiuPerson,
+  SiuPrerequisite,
+  SiuPrerequisiteCondition,
   SiuProgram,
   SiuProvisionalResult,
   SiuRole,
@@ -346,24 +348,105 @@ const planRows: PlanRow[] = [
   ]
 ]
 
+/* Correlativas para cursar cada materia: [materia que se pide, condición].
+   Valen en los planes que tienen las dos materias. Las de vida universitaria
+   no tienen. */
+const PREREQUISITES: Record<string, [string, SiuPrerequisiteCondition][]> = {
+  am2: [
+    ['am1', 'aprobada'],
+    ['aga', 'regular']
+  ],
+  fi1: [['am1', 'regular']],
+  fi2: [
+    ['fi1', 'regular'],
+    ['am2', 'regular']
+  ],
+  pye: [['am1', 'regular']],
+  pr2: [['pr1', 'aprobada']],
+  edd: [['pr2', 'regular']],
+  bdd: [['edd', 'regular']],
+  sop: [
+    ['edd', 'regular'],
+    ['pr2', 'aprobada']
+  ],
+  isw: [
+    ['bdd', 'regular'],
+    ['sop', 'regular']
+  ],
+  iop: [
+    ['pye', 'regular'],
+    ['am2', 'regular']
+  ],
+  ter: [['fi2', 'regular']],
+  gca: [['pye', 'regular']],
+  cst: [['iec', 'aprobada']],
+  etp: [['iin', 'aprobada']],
+  pfi: [
+    ['isw', 'aprobada'],
+    ['gca', 'aprobada'],
+    ['cst', 'regular'],
+    ['etp', 'regular']
+  ],
+  cda: [
+    ['pye', 'aprobada'],
+    ['bdd', 'regular']
+  ],
+  iar: [
+    ['pye', 'aprobada'],
+    ['edd', 'aprobada']
+  ],
+  log: [['iop', 'regular']],
+  mkt: [['iad', 'regular']],
+  fin: [
+    ['co1', 'regular'],
+    ['iec', 'aprobada']
+  ],
+  co2: [['co1', 'aprobada']],
+  ndg: [['mkt', 'regular']]
+}
+
+/** Las correlativas de una materia que están en el plan. */
+const prerequisitesIn = (subjectId: string, planIds: Set<string>): SiuPrerequisite[] =>
+  (PREREQUISITES[subjectId] ?? [])
+    .filter(([id]) => planIds.has(id))
+    .map(([id, condition]) => ({ subjectId: id, condition }))
+
 /* Las optativas van en el año desde el que se pueden cursar (el cuarto, o el
    tercero en las licenciaturas) y las de vida universitaria, en ninguno: se
    hacen en cualquier año. */
 const studyPlans: SiuStudyPlan[] = planRows.map(
-  ([programId, name, years, electivesRequired, universityLifeRequired, byYear, electives, universityLife]) => ({
-    programId,
-    name,
-    years,
-    electivesRequired,
-    universityLifeRequired,
-    subjects: [
-      ...Object.entries(byYear).flatMap(([year, ids]) =>
-        ids.map((subjectId) => ({ subjectId, year: Number(year), kind: 'obligatoria' as const }))
-      ),
-      ...electives.map((subjectId) => ({ subjectId, year: years === 4 ? 3 : 4, kind: 'optativa' as const })),
-      ...universityLife.map((subjectId) => ({ subjectId, year: null, kind: 'vida-universitaria' as const }))
-    ]
-  })
+  ([programId, name, years, electivesRequired, universityLifeRequired, byYear, electives, universityLife]) => {
+    const planIds = new Set([...Object.values(byYear).flat(), ...electives])
+    return {
+      programId,
+      name,
+      years,
+      electivesRequired,
+      universityLifeRequired,
+      subjects: [
+        ...Object.entries(byYear).flatMap(([year, ids]) =>
+          ids.map((subjectId) => ({
+            subjectId,
+            year: Number(year),
+            kind: 'obligatoria' as const,
+            prerequisites: prerequisitesIn(subjectId, planIds)
+          }))
+        ),
+        ...electives.map((subjectId) => ({
+          subjectId,
+          year: years === 4 ? 3 : 4,
+          kind: 'optativa' as const,
+          prerequisites: prerequisitesIn(subjectId, planIds)
+        })),
+        ...universityLife.map((subjectId) => ({
+          subjectId,
+          year: null,
+          kind: 'vida-universitaria' as const,
+          prerequisites: []
+        }))
+      ]
+    }
+  }
 )
 
 // Comisiones

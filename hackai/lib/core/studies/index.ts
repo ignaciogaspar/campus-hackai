@@ -180,6 +180,7 @@ export type {
   Career,
   CareerProgress,
   PlanKind,
+  PrerequisiteStanding,
   SubjectAssessment,
   SubjectStanding,
   SubjectStatus

@@ -17,7 +17,13 @@
      créditos de las actividades de vida universitaria aprobadas y las horas de
      las optativas aprobadas. */
 import { requirementsOf } from '@/lib/core/studies/requirements'
-import type { SiuAssessment, SiuHistoryEntry, SiuPlanSubjectKind, SiuStudyPlan } from '@/lib/ports/siu'
+import type {
+  SiuAssessment,
+  SiuHistoryEntry,
+  SiuPlanSubjectKind,
+  SiuPrerequisiteCondition,
+  SiuStudyPlan
+} from '@/lib/ports/siu'
 
 /** Cómo cuenta una materia: obligatoria, optativa, de vida universitaria o, si no está en su plan, fuera del plan. */
 export type PlanKind = SiuPlanSubjectKind | 'fuera-del-plan'
@@ -66,6 +72,17 @@ export type SubjectStanding = {
   approval: 'promocion' | 'examen' | 'equivalencia' | null
   /** Fecha del final al que está inscripto y todavía no rindió. */
   examDate: string | null
+  /** Las correlativas para cursarla, según el plan, y si ya las cumple. Vacío si no tiene o el SIU no las dio. */
+  prerequisites: PrerequisiteStanding[]
+  /** Si puede cursarla ya: la tiene pendiente y cumple todas sus correlativas. */
+  canTake: boolean
+}
+
+/** Una correlativa de una materia: qué materia pide, con qué condición y si el alumno ya la cumple. */
+export type PrerequisiteStanding = {
+  subjectId: string
+  condition: SiuPrerequisiteCondition
+  met: boolean
 }
 
 export type CareerProgress = { approved: number; total: number }
@@ -248,11 +265,38 @@ function standingOf(subjectId: string, input: CareerInput): SubjectStanding {
     finalGrade: approved?.grade ?? null,
     approvedAt: approved?.date ?? null,
     approval: approved?.approval ?? null,
-    examDate: input.exams.get(subjectId) ?? null
+    examDate: input.exams.get(subjectId) ?? null,
+    prerequisites: [],
+    canTake: false
   }
 }
 
 const isApproved = (s: SubjectStanding) => s.status === 'promocionada' || s.status === 'aprobada'
+
+/** Si el estado de una materia cumple la condición de una correlativa: «aprobada» pide el final, la promoción o la
+    equivalencia; «regular», al menos la cursada regular. Estar cursándola no alcanza. */
+function meets(status: SubjectStatus | undefined, condition: SiuPrerequisiteCondition): boolean {
+  if (status === 'promocionada' || status === 'aprobada') return true
+  return condition === 'regular' && status === 'regular'
+}
+
+/** Cada materia con sus correlativas del plan, si las cumple, y si ya puede cursarla. */
+function withPrerequisites(subjects: SubjectStanding[], plan: SiuStudyPlan | null): SubjectStanding[] {
+  const status = new Map(subjects.map((s) => [s.subjectId, s.status]))
+  return subjects.map((subject) => {
+    const entry = plan?.subjects.find((p) => p.subjectId === subject.subjectId)
+    const prerequisites = (entry?.prerequisites ?? []).map((p) => ({
+      subjectId: p.subjectId,
+      condition: p.condition,
+      met: meets(status.get(p.subjectId), p.condition)
+    }))
+    return {
+      ...subject,
+      prerequisites,
+      canTake: subject.status === 'pendiente' && prerequisites.every((p) => p.met)
+    }
+  })
+}
 
 function progressOf(subjects: SubjectStanding[], kind: PlanKind, required: number | null): CareerProgress {
   const ofKind = subjects.filter((s) => s.kind === kind)
@@ -307,7 +351,10 @@ export function buildCareer(input: CareerInput): Career {
     ...input.sections.map((s) => s.subjectId),
     ...input.history.filter((h) => h.type !== 'evaluacion').map((h) => h.subjectId)
   ])
-  const subjects = [...ids].map((id) => standingOf(id, input)).sort(bySubjectOrder)
+  const subjects = withPrerequisites(
+    [...ids].map((id) => standingOf(id, input)),
+    input.plan
+  ).sort(bySubjectOrder)
   const required = progressOf(subjects, 'obligatoria', null)
   const electives = progressOf(subjects, 'optativa', input.plan?.electivesRequired ?? 0)
   const universityLife = progressOf(subjects, 'vida-universitaria', input.plan?.universityLifeRequired ?? 0)

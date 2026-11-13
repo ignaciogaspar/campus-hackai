@@ -352,6 +352,15 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 43. ¿Cómo da el SIU real las correlativas del plan, y alcanza con «regular» o «aprobada» para cursar?
+
+- **Por qué importa:** el Plan de estudios tiene una pestaña «Correlativas» con el árbol del plan y lo que el alumno ya puede cursar, que es lo que el SIU no responde (`docs/entrevistas/hackai.md`, «Plan de estudios»). Con el SIU simulado las correlativas salen del set sintético; con la cuenta real hay que leerlas de Reportes > Plan de estudios, y nadie guardó todavía el HTML de esa parte.
+- **Lo que sabemos:** cada materia del plan tiene un botón «Ver» en la columna Correlativas que despliega «Para cursar» con una tabla Requisito / Condición y un botón «Verificar». La página trae una fila `tr.correlatividades` después de cada materia.
+- **Hipótesis (13/11/2026):** el adaptador real (`hackai/lib/adapters/siu-real/parse.ts`, `parsePlan` y `parsePrerequisites`) lee las correlativas de esa fila si vienen en la página; si viene vacía, las pide con los `data-*` del botón «Ver» a la URL del `info` del plan que nombre las correlativas. Toma solo «Para cursar». «Regularizada» o «Cursada aprobada» piden la regular; «Aprobada», «Examen aprobado» o «Promocionada», el final. Cursar la correlativa no alcanza. Si el SIU no las da, la pestaña lo dice y manda al SIU.
+- **Opciones:** guardar el HTML real de una materia con correlativas y el pedido de «Ver» (sin datos personales) y ajustar el parser; usar «Verificar» del SIU en vez de calcularlo; mostrar también las de «Para rendir».
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

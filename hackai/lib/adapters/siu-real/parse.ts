@@ -184,6 +184,10 @@ export function parseSchedule(html: string): ScheduleGroup[] {
     })
 }
 
+/** Una correlativa como la muestra el SIU: el requisito («Nombre (CÓDIGO)») y su condición («Regularizada»,
+    «Aprobada»…). */
+export type PrerequisiteRow = { name: string; code: string | null; condition: 'regular' | 'aprobada' }
+
 export type PlanRow = {
   name: string
   code: string | null
@@ -191,6 +195,11 @@ export type PlanRow = {
   type: string
   /** La columna «Créditos» del plan, si tiene. */
   credits: number | null
+  /** Las correlativas para cursarla, si vienen en la página (la fila `tr.correlatividades` que despliega «Ver»).
+      `null` si no vienen y hay que pedirlas con `prerequisitesRequest`. */
+  prerequisites: PrerequisiteRow[] | null
+  /** Los `data-*` del botón «Ver» de la columna Correlativas: con ellos se piden si no vinieron en la página. */
+  prerequisitesRequest: Record<string, string> | null
 }
 export type Plan = {
   programCode: string | null
@@ -215,18 +224,33 @@ export function parsePlan(html: string): Plan {
   const program = header('Propuesta').match(/^\(([^)]+)\)\s*(.*)$/)
   const rows: PlanRow[] = []
   let module = ''
-  for (const match of html.matchAll(
-    /<div\b[^>]*class="accordion-heading"[^>]*>([\s\S]*?)<\/div>|<tr\b[^>]*class="materia"[^>]*>([\s\S]*?)<\/tr>/g
-  )) {
+  const matches = [
+    ...html.matchAll(
+      /<div\b[^>]*class="accordion-heading"[^>]*>([\s\S]*?)<\/div>|<tr\b[^>]*class="materia"[^>]*>([\s\S]*?)<\/tr>/g
+    )
+  ]
+  matches.forEach((match, i) => {
     if (match[1] !== undefined) {
       const heading = textOf(match[1])
       if (heading.startsWith('Módulo:')) module = heading.slice('Módulo:'.length).trim()
-      continue
+      return
     }
-    const cells = [...match[2].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((c) => textOf(c[1]))
+    const raw = [...match[2].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map((c) => c[1])
+    const cells = raw.map(textOf)
     const { name, code } = nameAndCode(cells[0] ?? '')
-    rows.push({ name, code, module, type: cells[1] ?? '', credits: gradeOf(cells[6] ?? '') })
-  }
+    // Lo que sigue a la fila hasta la próxima materia o módulo: ahí está su `tr.correlatividades`.
+    const end = (match.index ?? 0) + match[0].length
+    const after = html.slice(end, matches[i + 1]?.index ?? html.length)
+    rows.push({
+      name,
+      code,
+      module,
+      type: cells[1] ?? '',
+      credits: gradeOf(cells[6] ?? ''),
+      prerequisites: inlinePrerequisites(after),
+      prerequisitesRequest: dataAttributes(raw[8] ?? '')
+    })
+  })
   return {
     programCode: program?.[1] ?? null,
     programName: program?.[2] ?? header('Propuesta'),
@@ -236,6 +260,50 @@ export function parsePlan(html: string): Plan {
     electivesElement: electivesElementOf(html),
     electivesCheck: electivesCheckOf(html)
   }
+}
+
+/** La condición de una correlativa. «Cursada aprobada» o «Regularizada» piden la regular; «Aprobada»,
+    «Examen aprobado» o «Promocionada», el final. */
+function conditionOf(text: string): PrerequisiteRow['condition'] | null {
+  if (/regular|cursad/i.test(text)) return 'regular'
+  if (/aprob|promoc/i.test(text)) return 'aprobada'
+  return null
+}
+
+/** Las correlativas de una tabla Requisito / Condición. Las filas sin una condición conocida no van. */
+export function parsePrerequisites(html: string): PrerequisiteRow[] {
+  // «Para cursar» y «Para rendir» van en bloques distintos: el árbol usa las de cursar.
+  const from = html.search(/Para cursar/i)
+  const rendir = html.search(/Para rendir/i)
+  if (from < 0 && rendir >= 0) return []
+  const part = html.slice(Math.max(from, 0), rendir > from ? rendir : html.length)
+  return tablesOf(part).flatMap((table) =>
+    rowsOf(table).flatMap((cells) => {
+      if (cells.length < 2) return []
+      const condition = conditionOf(textOf(cells[1]))
+      const requisite = textOf(cells[0]).replace(/^(Materia|Actividad)\s*:\s*/i, '')
+      return condition && requisite ? [{ ...nameAndCode(requisite), condition }] : []
+    })
+  )
+}
+
+/** Las correlativas que vienen en la página, en la fila `tr.correlatividades` que sigue a la materia. `null` si la
+    fila no está o está vacía (el SIU la llena al apretar «Ver»). */
+function inlinePrerequisites(after: string): PrerequisiteRow[] | null {
+  const start = after.search(/<tr\b[^>]*class="correlatividades"/)
+  if (start < 0) return null
+  const inner = after.slice(start)
+  return tablesOf(inner).length > 0 ? parsePrerequisites(inner) : null
+}
+
+/** Los `data-*` del primer botón o enlace de una celda, o `null` si no tiene. */
+function dataAttributes(cell: string): Record<string, string> | null {
+  const tag = cell.match(/<(?:a|button)\b[^>]*>/)?.[0]
+  if (!tag) return null
+  const entries = [...tag.matchAll(/\bdata-([a-z0-9_-]+)=(?:"([^"]*)"|'([^']*)')/gi)].map(
+    (m) => [m[1], m[2] ?? m[3] ?? ''] as const
+  )
+  return entries.length ? Object.fromEntries(entries) : null
 }
 
 /** La materia genérica dentro del módulo «Materias Optativas». */

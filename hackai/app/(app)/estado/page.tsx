@@ -2,17 +2,29 @@
    obligatorias en materias, las optativas y seminarios en horas y la vida
    universitaria en créditos, que es como lo pide la carrera—, el promedio, lo
    que cursa y los finales que le faltan, y el plan como mapa con el estado de
-   cada materia. Sin reglas de negocio: el avance, el promedio, los estados y
+   cada materia o como árbol de correlativas, con lo que ya puede cursar. Sin
+   reglas de negocio: el avance, el promedio, los estados, las correlativas y
    lo que pide la carrera los calcula Cursada. */
-import { BookOpen, ChevronRight, ClipboardCheck, GraduationCap, type LucideIcon, Sigma } from 'lucide-react'
+import {
+  BookOpen,
+  ChevronRight,
+  ClipboardCheck,
+  GitFork,
+  GraduationCap,
+  LayoutGrid,
+  type LucideIcon,
+  Sigma
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PlanLegend, PlanLink, PlanMap } from '@/components/career/plan-map'
+import { PrerequisiteTree, TreeLegend } from '@/components/career/prerequisite-tree'
 import { ProgressBar, ProgressRing } from '@/components/career/progress'
 import { gradeText, isApproved } from '@/components/grades/status'
 import { PageHeader } from '@/components/shell/page-header'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Career, StudiesReadError } from '@/lib/core/studies'
@@ -158,7 +170,9 @@ function Overview({ career }: { career: Career }) {
   )
 }
 
-export default async function EstadoPage() {
+export default async function EstadoPage({ searchParams }: { searchParams: Promise<{ vista?: string }> }) {
+  // `?vista=correlativas` abre el árbol, para llegar desde otra pantalla.
+  const view = (await searchParams).vista === 'correlativas' ? 'correlativas' : 'anio'
   const session = await requireSession('alumno')
   const result = await system().studies.career(session.personId)
   const career = result.ok ? result.value.data : null
@@ -177,21 +191,46 @@ export default async function EstadoPage() {
             {result.value.stale && <StaleBanner since={result.value.readAt} now={system().now()} />}
             <Overview career={career} />
             <section aria-labelledby='plan' className='flex flex-col gap-3'>
-              <div className='flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-1'>
-                <div className='flex flex-col gap-1'>
-                  <h2 id='plan' className='text-lg font-extrabold text-ink'>
+              {career.subjects.length ? (
+                <Tabs defaultValue={view} className='flex flex-col gap-3'>
+                  <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1'>
+                    <h2 id='plan' className='text-lg font-extrabold text-ink'>
+                      Materias del plan
+                    </h2>
+                    <TabsList aria-label='Cómo ver el plan' className='w-full sm:w-auto'>
+                      <TabsTrigger value='anio'>
+                        <LayoutGrid aria-hidden='true' className='size-4' />
+                        Por año
+                      </TabsTrigger>
+                      <TabsTrigger value='correlativas'>
+                        <GitFork aria-hidden='true' className='size-4 rotate-90' />
+                        Correlativas
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <TabsContent value='anio' className='flex flex-col gap-3 focus-visible:outline-none'>
+                    <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1'>
+                      <PlanLegend />
+                      <PlanLink />
+                    </div>
+                    <PlanMap subjects={career.subjects} />
+                  </TabsContent>
+                  <TabsContent value='correlativas' className='flex flex-col gap-3 focus-visible:outline-none'>
+                    <div className='px-1 py-2.5'>
+                      <TreeLegend />
+                    </div>
+                    <PrerequisiteTree subjects={career.subjects} />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <>
+                  <h2 id='plan' className='px-1 text-lg font-extrabold text-ink'>
                     Materias del plan
                   </h2>
-                  <PlanLegend />
-                </div>
-                <PlanLink />
-              </div>
-              {career.subjects.length ? (
-                <PlanMap subjects={career.subjects} />
-              ) : (
-                <EmptyState icon={BookOpen} title='No encontramos tu plan de estudios'>
-                  El SIU no tiene un plan vigente para tu carrera. Consultalo en la secretaría de tu facultad.
-                </EmptyState>
+                  <EmptyState icon={BookOpen} title='No encontramos tu plan de estudios'>
+                    El SIU no tiene un plan vigente para tu carrera. Consultalo en la secretaría de tu facultad.
+                  </EmptyState>
+                </>
               )}
             </section>
           </>

@@ -31,6 +31,8 @@ const subject = (subjectId: string, fields: Partial<SubjectStanding>): SubjectSt
   approvedAt: null,
   approval: null,
   examDate: null,
+  prerequisites: [],
+  canTake: false,
   ...fields
 })
 
