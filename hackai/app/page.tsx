@@ -2,13 +2,14 @@
    clave. En producción se entra con la cuenta de Microsoft de la Austral
    (docs/product/alcance.md). Sin reglas de negocio: quiénes son las personas
    y quién entra lo decide Personas. */
-import { ChevronRight, KeyRound, UsersRound } from 'lucide-react'
+import { ChevronRight, CornerDownRight, KeyRound, UsersRound } from 'lucide-react'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { SignInError } from '@/app/actions/session'
 import { PersonPicker } from '@/components/session/person-picker'
+import { returnNotice } from '@/components/session/return-notice'
 import { signInQr } from '@/components/session/sign-in-qr'
 import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
@@ -77,6 +78,16 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
       <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8 xl:grid xl:grid-cols-[minmax(0,1fr)_15rem] xl:items-start xl:gap-x-10'>
         <div className='flex min-w-0 flex-col gap-5'>
           {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
+
+          {returnTo && returnTo !== '/' && (
+            <p
+              role='status'
+              className='flex items-start gap-3 rounded-[14px] bg-accent px-4 py-3 text-[0.875rem] font-semibold text-accent-foreground'
+            >
+              <CornerDownRight aria-hidden='true' className='mt-px size-5 flex-none' strokeWidth={1.9} />
+              {returnNotice(returnTo)}
+            </p>
+          )}
 
           {system().siuLive?.canConnect && !mobile && (
             <Link

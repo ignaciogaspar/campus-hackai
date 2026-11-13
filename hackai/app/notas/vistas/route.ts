@@ -4,13 +4,12 @@
    Se enlaza con un <a> y no con <Link>, para que precargar la página no las
    marque como vistas sin que las toque. */
 import { redirect } from 'next/navigation'
-import { getSession, setServerCookie } from '@/lib/auth'
+import { requireSession, setServerCookie } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { GRADES_SEEN_COOKIE, GRADES_SEEN_MAX_AGE, seenValue } from '@/lib/grades-seen'
 
 export async function GET() {
-  const session = await getSession()
-  if (!session) redirect('/')
+  const session = await requireSession()
   await setServerCookie(GRADES_SEEN_COOKIE, seenValue(session.personId, system().now()), GRADES_SEEN_MAX_AGE)
   redirect('/notas')
 }

@@ -6,7 +6,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { backToSpace, redirectUriFor } from '@/app/discord/redirect-uri'
-import { getSession } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { consumeOAuthState, OAUTH_STATE_COOKIE } from '@/lib/oauth-state'
 
@@ -17,8 +17,7 @@ holder.__hackaiUsedOAuthStates ??= new Set()
 const used = holder.__hackaiUsedOAuthStates
 
 export async function GET(request: Request) {
-  const session = await getSession()
-  if (!session) redirect('/')
+  const session = await requireSession()
   const params = new URL(request.url).searchParams
   const jar = await cookies()
   const nonce = jar.get(OAUTH_STATE_COOKIE)?.value ?? null
