@@ -5,8 +5,12 @@ import {
   dueAtFromInput,
   dueLabel,
   durationLabel,
+  gradeFromInput,
+  gradeInputValue,
+  gradesHref,
   inputValueOf,
   newTaskHref,
+  nextStudent,
   rowStatus,
   sectionsLabel,
   submissionHref,
@@ -31,11 +35,43 @@ test('el alumno ve las pestañas Espacio y Tareas y el docente además Alumnos',
   )
   assert.deepEqual(
     tabsFor('profesor').map((t) => t.id),
-    ['espacio', 'alumnos', 'tareas']
+    ['espacio', 'alumnos', 'tareas', 'calificaciones']
   )
   const tareas = tabsFor('alumno')[1]
   assert.equal(subjectTabHref('am1', tareas), '/materias/am1/tareas')
   assert.equal(subjectTabHref('am1', tareas, 'sec-am1-fi-b'), '/materias/am1/tareas?comision=sec-am1-fi-b')
+})
+
+test('el enlace a Calificaciones lleva lo que se mira y escapa los ids', () => {
+  assert.equal(gradesHref('am1'), '/materias/am1/calificaciones')
+  assert.equal(
+    gradesHref('am1', { comision: 'sec-am1-fi-a', columna: 'tarea:t 1', alumno: 'p-taguirre' }),
+    '/materias/am1/calificaciones?comision=sec-am1-fi-a&columna=tarea%3At+1&alumno=p-taguirre'
+  )
+  assert.equal(
+    gradesHref('am1', { columna: 'evaluacion:ev-4', listo: true }),
+    '/materias/am1/calificaciones?columna=evaluacion%3Aev-4&listo=si'
+  )
+})
+
+test('la nota se lee con coma o con punto, y lo que no es un número no pasa', () => {
+  assert.equal(gradeFromInput('8,5'), 8.5)
+  assert.equal(gradeFromInput(' 7.25 '), 7.25)
+  assert.equal(gradeFromInput('10'), 10)
+  assert.equal(gradeFromInput(''), null)
+  assert.equal(gradeFromInput('   '), null)
+  for (const bad of ['abc', '8,5,1', '-3', '1e3', '8 puntos']) assert.ok(Number.isNaN(gradeFromInput(bad)), bad)
+  assert.equal(gradeInputValue(8.5), '8,5')
+  assert.equal(gradeInputValue(7), '7')
+  assert.equal(gradeInputValue(null), '')
+})
+
+test('después de calificar a un alumno viene el siguiente de la lista; el último no tiene siguiente', () => {
+  const ids = ['p-a', 'p-b', 'p-c']
+  assert.equal(nextStudent(ids, 'p-a'), 'p-b')
+  assert.equal(nextStudent(ids, 'p-b'), 'p-c')
+  assert.equal(nextStudent(ids, 'p-c'), null)
+  assert.equal(nextStudent(ids, 'p-x'), null)
 })
 
 test('la fecha límite dice si vence o venció, en la hora de Buenos Aires', () => {

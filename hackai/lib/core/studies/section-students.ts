@@ -19,17 +19,21 @@ export type SectionStudent = {
 
 export type SectionStudentsError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
 
-/** Un alumno y un docente de otra comisión reciben lo mismo: `sin-acceso`, también si la comisión no existe. */
-export function createSectionStudents({ people, siu }: { people: People; siu: SiuPort }) {
-  /** El id de la persona en el SIU si dicta la comisión; si no, el error que corresponde. */
-  async function teacherOf(personId: PersonId, sectionId: string): Promise<Result<string, SectionStudentsError>> {
-    const siuId = await people.accountIn(personId, 'siu')
-    if (!siuId.ok) return siuId.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
-    const taught = await siu.teacherSections(siuId.value)
-    if (!taught.ok) return taught.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
-    return taught.value.some((s) => s.id === sectionId) ? ok(siuId.value) : fail('sin-acceso')
-  }
+/** El id en el SIU de la persona si dicta la comisión; si no, el error que corresponde. Un alumno y un docente de
+    otra comisión reciben lo mismo: `sin-acceso`, también si la comisión no existe. */
+export async function teacherOfSection(
+  { people, siu }: { people: People; siu: SiuPort },
+  personId: PersonId,
+  sectionId: string
+): Promise<Result<string, SectionStudentsError>> {
+  const siuId = await people.accountIn(personId, 'siu')
+  if (!siuId.ok) return siuId.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
+  const taught = await siu.teacherSections(siuId.value)
+  if (!taught.ok) return taught.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
+  return taught.value.some((s) => s.id === sectionId) ? ok(siuId.value) : fail('sin-acceso')
+}
 
+export function createSectionStudents({ people, siu }: { people: People; siu: SiuPort }) {
   async function studentOf(siuId: string): Promise<Result<SectionStudent | null, ExternalFailure>> {
     const [person, owner] = await Promise.all([siu.person(siuId), people.byExternalAccount('siu', siuId)])
     if (!person.ok) return person.error === 'falla-externa' ? fail('falla-externa') : ok(null)
@@ -41,7 +45,7 @@ export function createSectionStudents({ people, siu }: { people: People; siu: Si
     personId: PersonId,
     sectionId: string
   ): Promise<Result<SectionStudent[], SectionStudentsError>> {
-    const teacher = await teacherOf(personId, sectionId)
+    const teacher = await teacherOfSection({ people, siu }, personId, sectionId)
     if (!teacher.ok) return teacher
     const enrollments = await siu.sectionEnrollments(sectionId)
     if (!enrollments.ok) return enrollments.error === 'falla-externa' ? fail('falla-externa') : fail('sin-acceso')

@@ -33,21 +33,35 @@
    - Las fechas son los parciales de sus comisiones y las mesas que integra,
      según Cursada, sin las que ya pasaron.
 
-   Usa Cursada, Espacios y el reloj. */
+   Las notas del alumno (`grades` y `newGrades`) juntan lo del SIU (Cursada) con
+   lo publicado en HackAI (Seguimiento), que Cursada no conoce:
+   - Una evaluación calificada y publicada en HackAI se ve con la nota y el
+     comentario de HackAI; una tarea con nota publicada es una fila más. Lo del
+     SIU que no pasó por HackAI se ve como siempre. Si Seguimiento no responde,
+     salen las notas del SIU y `hackaiUnavailable` lo avisa.
+   - Las notas nuevas de la campana son las del SIU y las publicadas en HackAI,
+     lo más nuevo primero, sin repetir una que está en los dos. Con el SIU caído
+     no se cuentan las del SIU: una nota vieja no se anuncia como nueva.
+
+   Usa Cursada, Espacios, Seguimiento y el reloj. */
 import type { Coursework, DatedTask } from '@/lib/core/coursework'
 import type { PersonId } from '@/lib/core/people'
 import type { OpenQuestion, Spaces, UnreadItem } from '@/lib/core/spaces'
 import {
+  type AssessmentGrade,
+  type Career,
   compareUpcoming,
   type MySection,
   type MySubject,
   type MySubjects,
   type OpenEnrollment,
   type Studies,
+  type StudiesReadError,
   type UpcomingItem
 } from '@/lib/core/studies'
+import { asNewGrade, newestFirst, withoutPublished, withPublished } from '@/lib/core/today/grades'
 import { daysBetween } from '@/lib/dates'
-import { staleSince } from '@/lib/fresh'
+import { type Fresh, staleSince } from '@/lib/fresh'
 import type { ClockPort } from '@/lib/ports/clock'
 import { fail, ok, type Result } from '@/lib/result'
 
@@ -110,6 +124,11 @@ export type Today = {
   today(personId: PersonId): Promise<Result<TodayView, 'persona-desconocida'>>
   /** El Hoy del docente: sus comisiones, las consultas que le tocan, sus fechas y lo que no leyó. */
   teaching(personId: PersonId): Promise<Result<TeachingView, 'persona-desconocida'>>
+  /** Notas, por materia: la carrera del alumno con lo publicado en HackAI puesto donde corresponde. */
+  grades(personId: PersonId): Promise<Result<Fresh<Career> & { hackaiUnavailable: boolean }, StudiesReadError>>
+  /** Las notas nuevas del alumno, del SIU y de HackAI, después de `seenAt` (cuando vio sus notas por última vez, o
+      `null`), la más nueva primero. */
+  newGrades(personId: PersonId, seenAt: string | null): Promise<Result<AssessmentGrade[], 'persona-desconocida'>>
 }
 
 export type TodayDeps = {
@@ -203,6 +222,28 @@ function failed<P extends string>(reads: Record<P, Read<unknown>>): P[] {
 
 export function createToday({ studies, spaces, coursework, clock }: TodayDeps): Today {
   return {
+    async grades(personId) {
+      const [career, published] = await Promise.all([studies.career(personId), coursework.publishedFor(personId)])
+      if (!career.ok) return career
+      if (!published.ok) return ok({ ...career.value, hackaiUnavailable: published.error === 'falla-externa' })
+      const data = withPublished(career.value.data, published.value, clock.now().toISOString())
+      return ok({ ...career.value, data, hackaiUnavailable: false })
+    },
+    async newGrades(personId, seenAt) {
+      const [siu, hackai, published] = await Promise.all([
+        studies.newGrades(personId, seenAt),
+        coursework.newGrades(personId, seenAt),
+        coursework.publishedFor(personId)
+      ])
+      if (!siu.ok && siu.error === 'persona-desconocida') return fail('persona-desconocida')
+      const fromSiu = siu.ok && !siu.value.stale ? siu.value.data : []
+      return ok(
+        newestFirst([
+          ...withoutPublished(fromSiu, published.ok ? published.value : []),
+          ...(hackai.ok ? hackai.value.map(asNewGrade) : [])
+        ])
+      )
+    },
     async teaching(personId) {
       const [sections, dates, questions, unread] = await Promise.all([
         studies.sectionsOf(personId),

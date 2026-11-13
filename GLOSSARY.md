@@ -278,6 +278,13 @@ _Avoid_: «integración» a secas.
 Mensaje privado entre un alumno y un docente de su espacio. Entre alumnos no hay.
 _Avoid_: «mensaje» a secas: choca con el Mensaje del SIU y con la mensajería de Moodle.
 
+**Calificaciones (Gradebook)**:
+Pestaña del docente en la materia donde carga las notas de una comisión. Tiene una columna por cada tarea con nota de la comisión y una por cada evaluación del cronograma del SIU (parcial, recuperatorio, TP). Una tarea sin nota no tiene columna. En cada columna el docente pone a cada alumno una nota o un ausente y un comentario.
+_Avoid_: «planilla», «libreta».
+
+**Nota publicada (Published grade)**:
+Nota de una columna que el docente publicó en HackAI: desde ese momento el alumno la ve, con el comentario entero, en Notas, y le llega a la campana y a Novedades. Una nota sin publicar no la ve nadie más que el docente. Es una nota de HackAI, distinta de la nota cargada en el SIU: para una evaluación calificada y publicada en HackAI, Notas muestra la de HackAI.
+
 ### Este repo
 
 **Snapshot de campus (Campus snapshot)**:

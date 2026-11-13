@@ -2574,3 +2574,31 @@ test('sectionStudents: con el SIU caído devuelve lo último leído, desactualiz
   const stale = await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a')
   assert.deepEqual(stale, { ok: true, value: { data: first.value.data, readAt: NOW, stale: true } })
 })
+
+test('sectionAssessments: un docente ve las evaluaciones del SIU de su comisión, por fecha', async () => {
+  const { studies } = build()
+  const result = await studies.sectionAssessments('p-mledesma', 'sec-am1-fi-a')
+  assert.ok(result.ok)
+  assert.equal(result.value.stale, false)
+  assert.deepEqual(
+    result.value.data.map((a) => [a.id, a.name, a.kind]),
+    [
+      ['ev-4', 'Primer parcial', 'parcial'],
+      ['ev-5', 'Segundo parcial', 'parcial'],
+      ['ev-6', 'Recuperatorio', 'recuperatorio']
+    ]
+  )
+})
+
+test('sectionAssessments: un alumno o un docente de otra comisión no las ven', async () => {
+  const { studies } = build()
+  assert.deepEqual(await studies.sectionAssessments('p-taguirre', 'sec-am1-fi-a'), { ok: false, error: 'sin-acceso' })
+  assert.deepEqual(await studies.sectionAssessments('p-gferreyra', 'sec-am1-fi-a'), { ok: false, error: 'sin-acceso' })
+})
+
+test('sectionAssessments: sin cronograma en el SIU (la API real) la lista sale vacía', async () => {
+  const { studies } = build(syntheticData, {}, { siu: { capabilities: { hasAssessmentSchedule: false } } })
+  const result = await studies.sectionAssessments('p-mledesma', 'sec-am1-fi-a')
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.data, [])
+})

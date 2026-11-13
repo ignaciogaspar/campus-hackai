@@ -96,6 +96,7 @@ import {
   type LoadedGrade,
   type TakenSection
 } from '@/lib/core/studies/career'
+import { createSectionAssessments, type SectionAssessment } from '@/lib/core/studies/section-assessments'
 import {
   createSectionStudents,
   type SectionStudent,
@@ -137,7 +138,7 @@ export type {
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
-export type { Fresh, SectionStudent, SectionStudentsError }
+export type { Fresh, SectionAssessment, SectionStudent, SectionStudentsError }
 
 /** Una comisión (cursada) o una mesa (examen). */
 export type Target = { kind: 'comision'; sectionId: string } | { kind: 'mesa'; examBoardId: string }
@@ -364,7 +365,8 @@ export type AssessmentGrade = {
   date: string
   /** Cuándo se cargó la nota, si el SIU lo dice; si no, `null`. */
   loadedAt: string | null
-  source: 'historia' | 'actuacion-provisoria'
+  /** Cursada solo da las del SIU; `hackai` es de una nota publicada en Seguimiento, que junta Hoy. */
+  source: 'historia' | 'actuacion-provisoria' | 'hackai'
 }
 
 /** Cómo se aprobó una materia: promoción, final o equivalencia. */
@@ -417,6 +419,13 @@ export type Studies = {
     personId: PersonId,
     sectionId: string
   ): Promise<Result<Fresh<SectionStudent[]>, ReadError | SectionStudentsError>>
+  /** Las evaluaciones del cronograma del SIU de una comisión (parciales, recuperatorios, TP), por fecha, solo para un
+      docente de esa comisión: un alumno o un docente de otra recibe `sin-acceso`. Sin cronograma en el SIU, la lista
+      sale vacía. */
+  sectionAssessments(
+    personId: PersonId,
+    sectionId: string
+  ): Promise<Result<Fresh<SectionAssessment[]>, ReadError | SectionStudentsError>>
   /** Comisiones o mesas de examen con cupo, horario y docentes. */
   offer(personId: PersonId, query: OfferQuery): Promise<Result<Fresh<OfferItem[]>, ReadError>>
   /** Inscribe en el SIU y matricula en Moodle, todo o nada. */
@@ -602,7 +611,7 @@ type RawGrade = {
   grade: number | null
   date: string
   loadedAt: string | null
-  source: AssessmentGrade['source']
+  source: Exclude<AssessmentGrade['source'], 'hackai'>
 }
 
 /** Nombre de una evaluación cuando el SIU no expone el cronograma (la API real). */
@@ -701,6 +710,7 @@ function asUnknownPerson<E extends string>(
 
 export function createStudies({ people, siu, classroom, clock }: StudiesDeps): Studies {
   const sectionStudents = createSectionStudents({ people, siu })
+  const sectionAssessments = createSectionAssessments({ people, siu })
 
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
@@ -1790,6 +1800,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     sectionStudents: (personId, sectionId) =>
       fresh(`sectionStudents:${personId}:${sectionId}`, () => sectionStudents(personId, sectionId)),
+    sectionAssessments: (personId, sectionId) =>
+      fresh(`sectionAssessments:${personId}:${sectionId}`, () => sectionAssessments(personId, sectionId)),
     offer: offerNow,
     enroll,
     drop,

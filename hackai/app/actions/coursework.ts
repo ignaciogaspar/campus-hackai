@@ -1,5 +1,5 @@
 /* Lo que se hace con las tareas de una materia: crearlas, editarlas y, el
-   alumno, entregarlas. Quién puede hacer qué lo decide Seguimiento; estas acciones validan lo que llega
+   alumno, entregarlas; y, el docente, calificar y publicar las notas. Quién puede hacer qué lo decide Seguimiento; estas acciones validan lo que llega
    del navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
    Se usan con useActionState: devuelven el estado que muestra el formulario. */
 'use server'
@@ -7,7 +7,14 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
-import { dueAtFromInput, durationLabel, taskHref, tasksHref } from '@/components/coursework/format'
+import {
+  dueAtFromInput,
+  durationLabel,
+  gradeFromInput,
+  gradesHref,
+  taskHref,
+  tasksHref
+} from '@/components/coursework/format'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Coursework } from '@/lib/core/coursework'
@@ -42,6 +49,20 @@ const SUBMIT_ERRORS: Record<SubmitError, string> = {
   'demasiado-grande': 'Los archivos pasan los 10 MB en total. Subí unos más livianos.',
   'ya-calificada': 'Tu docente ya calificó esta entrega, así que no se puede reemplazar.',
   'falla-externa': 'No pudimos guardar tu entrega porque un sistema no responde. Probá de nuevo en un rato.'
+}
+
+type GradeActionError = ErrorOf<ReturnType<Coursework['grade']>> | ErrorOf<ReturnType<Coursework['publish']>>
+
+const GRADE_ERRORS: Record<GradeActionError, string> = {
+  'persona-desconocida': ERRORS['persona-desconocida'],
+  'sin-acceso': 'No dictás esa comisión.',
+  'solo-docentes': 'Solo los docentes de la comisión califican.',
+  'columna-desconocida': 'Esa columna ya no existe en esta comisión. Volvé a Calificaciones.',
+  'alumno-desconocido': 'Ese alumno no está en la comisión o todavía no entró a HackAI.',
+  'nota-invalida': 'La nota va de 1 a 10, con coma o punto para los decimales. Si faltó, marcá «Ausente».',
+  'comentario-invalido': 'El comentario es demasiado largo: usá hasta 2.000 caracteres.',
+  'sin-notas': 'Todavía no cargaste ninguna nota en esta columna.',
+  'falla-externa': ERRORS['falla-externa']
 }
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
@@ -121,6 +142,59 @@ export async function updateTask(_prev: SpaceActionState, form: FormData): Promi
   revalidatePath(tasksHref(result.value.subjectId))
   revalidatePath(taskHref(result.value.subjectId, taskId))
   return { status: 'ok', message: 'Guardamos los cambios.', at: Date.now() }
+}
+
+/** Pone la nota (o el ausente) y el comentario de un alumno en una columna y pasa al siguiente de la lista; del
+    último vuelve a la lista avisando que terminó. */
+export async function gradeStudent(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const columnId = text(form, 'columnId')
+  const studentId = text(form, 'studentId')
+  if (!subjectId || !sectionId || !columnId || !studentId) return failed(UNEXPECTED)
+
+  const result = await system().coursework.grade(session.personId, {
+    sectionId,
+    columnId,
+    studentId,
+    value: gradeFromInput(text(form, 'value') ?? ''),
+    absent: text(form, 'absent') === 'si',
+    comment: text(form, 'comment') ?? ''
+  })
+  if (!result.ok) return failed(GRADE_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  const next = text(form, 'next')
+  redirect(
+    gradesHref(
+      subjectId,
+      next
+        ? { comision: sectionId, columna: columnId, alumno: next }
+        : { comision: sectionId, columna: columnId, listo: true }
+    )
+  )
+}
+
+/** Publica las notas cargadas de una columna: desde ahí las ven los alumnos y les llega el aviso. */
+export async function publishColumn(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const columnId = text(form, 'columnId')
+  if (!subjectId || !sectionId || !columnId) return failed(UNEXPECTED)
+
+  const result = await system().coursework.publish(session.personId, sectionId, columnId)
+  if (!result.ok) return failed(GRADE_ERRORS[result.error])
+  revalidatePath(gradesHref(subjectId))
+  const { published } = result.value
+  return {
+    status: 'ok',
+    message:
+      published === 0
+        ? 'No había notas nuevas para publicar: los alumnos ya ven todas.'
+        : `Publicamos ${published === 1 ? '1 nota' : `${published} notas`}. Los alumnos ya las ven y les llegó el aviso.`,
+    at: Date.now()
+  }
 }
 
 /** El alumno entrega uno o más archivos, o reemplaza su entrega anterior. */

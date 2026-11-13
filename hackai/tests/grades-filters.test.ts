@@ -22,6 +22,7 @@ const subject = (subjectId: string, fields: Partial<SubjectStanding>): SubjectSt
   status: 'pendiente',
   academicYear: null,
   termName: null,
+  sectionId: null,
   sectionName: null,
   assessments: [],
   courseGrade: null,

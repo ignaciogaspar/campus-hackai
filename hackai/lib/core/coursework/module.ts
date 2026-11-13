@@ -23,6 +23,7 @@ import {
   subjectOf,
   teaches
 } from '@/lib/core/coursework/access'
+import { createGradebook } from '@/lib/core/coursework/gradebook'
 import { countsOf, rowsOf, studentInTaught, studentsOf } from '@/lib/core/coursework/roster'
 import { checkedFiles, removeAll, saveAll } from '@/lib/core/coursework/submissions'
 import { byDue, checkedTexts, datedOf, submissionFor, taskFor } from '@/lib/core/coursework/tasks'
@@ -31,7 +32,10 @@ import type { MySection } from '@/lib/core/studies'
 import { isFileId, type NewFile } from '@/lib/ports/files'
 import { fail, ok, type Result } from '@/lib/result'
 
-export function createCourseworkModule({ studies, files, clock, store }: CourseworkDeps): Coursework {
+export function createCourseworkModule(deps: CourseworkDeps): Coursework {
+  const { studies, files, clock, store } = deps
+  const gradebook = createGradebook(deps)
+
   /** La tarea como la ve la persona, con sus comisiones en la materia. */
   function viewOf(
     task: StoredTask,
@@ -345,6 +349,7 @@ export function createCourseworkModule({ studies, files, clock, store }: Coursew
     submissions,
     submission,
     dated,
-    file
+    file,
+    ...gradebook
   }
 }

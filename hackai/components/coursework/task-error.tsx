@@ -12,26 +12,28 @@ export type TaskErrorKind = AccessError | 'tarea-desconocida' | 'entrega-descono
 const ERRORS: Record<TaskErrorKind, string> = {
   'sin-acceso': 'No sos parte de esta materia. Si recién te inscribiste, puede tardar un rato en aparecer.',
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
-  'falla-externa': 'No pudimos abrir las tareas porque un sistema no responde. Probá de nuevo en un rato.',
+  'falla-externa': 'No pudimos abrir la pantalla porque un sistema no responde. Probá de nuevo en un rato.',
   'tarea-desconocida': 'Esa tarea no existe o no es de tu comisión.',
   'entrega-desconocida': 'Esa entrega no existe o no es de una comisión tuya.',
-  'solo-docentes': 'Solo los docentes de la comisión ven quién entregó.'
+  'solo-docentes': 'Esta pantalla es solo para los docentes de la comisión.'
 }
 
 export function TaskError({
   error,
   retryHref,
+  title = 'Tareas',
   backHref = '/materias',
   backLabel = 'Ir a Mis materias'
 }: {
   error: TaskErrorKind
   retryHref: string
+  title?: string
   backHref?: string
   backLabel?: string
 }) {
   return (
     <>
-      <PageHeader title='Tareas' backHref={backHref} hideBackOnDesktop art='general' />
+      <PageHeader title={title} backHref={backHref} hideBackOnDesktop art='general' />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{ERRORS[error]}</p>
