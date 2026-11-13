@@ -2,9 +2,9 @@
    memoria siempre, y contra el SIU simulado solo si hay una base de prueba:
    HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY, con
    supabase/simulados/0001_siu.sql y siu_seed.sql aplicados. Las inscripciones
-   que hace la batería las da de baja al terminar. */
+   que hace la batería las da de baja al terminar, y borra las notas que cargó. */
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { after, test } from 'node:test'
 import { createClient } from '@supabase/supabase-js'
 import { createOutageSwitch, withSiuOutage } from '@/lib/adapters/caida'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
@@ -21,7 +21,12 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     test(`${name}: ${title}`, { skip }, () => fn(make()))
 
   it('declara que puede inscribir y que tiene cronograma, y que no matricula en Moodle', (siu) => {
-    assert.deepEqual(siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
+    assert.deepEqual(siu.capabilities, {
+      canEnroll: true,
+      hasAssessmentSchedule: true,
+      enrolsInClassroom: false,
+      canWriteGrades: true
+    })
   })
 
   it('devuelve una persona con su facultad y sus propuestas, o «no encontrado»', async (siu) => {
@@ -265,6 +270,80 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     assert.deepEqual(await siu.absences('99999'), { ok: false, error: 'no-encontrado' })
   })
 
+  // --- B: notas ---
+  it('declara que puede cargar notas', (siu) => {
+    assert.equal(siu.capabilities.canWriteGrades, true)
+  })
+
+  it('carga la nota de una evaluación y la lee de vuelta; cargarla de nuevo la reemplaza y no la duplica', async (siu) => {
+    const alumno = siuId('p-taguirre')
+    const evaluation = syntheticData.siu.assessments.find((a) => a.id === 'ev-5')!
+
+    const first = await siu.writeAssessmentGrade(alumno, 'sec-am1-fi-a', 'ev-5', 7)
+    assert.ok(first.ok)
+    const again = await siu.writeAssessmentGrade(alumno, 'sec-am1-fi-a', 'ev-5', 8.5)
+    assert.ok(again.ok)
+
+    const read = await siu.provisionalResults(alumno)
+    assert.ok(read.ok)
+    const rows = read.value.filter((r) => r.assessmentId === 'ev-5')
+    assert.equal(rows.length, 1)
+    assert.deepEqual(
+      { sectionId: rows[0].sectionId, grade: rows[0].grade, date: rows[0].date, loadedAt: rows[0].loadedAt },
+      { sectionId: 'sec-am1-fi-a', grade: 8.5, date: evaluation.date, loadedAt: again.value.date }
+    )
+    // Las notas que ya había no se tocan.
+    assert.ok(read.value.some((r) => r.assessmentId === 'ev-4'))
+  })
+
+  it('carga un ausente como una nota sin número', async (siu) => {
+    const alumno = siuId('p-lbenitez')
+
+    assert.ok((await siu.writeAssessmentGrade(alumno, 'sec-am1-fi-a', 'ev-5', null)).ok)
+
+    const read = await siu.provisionalResults(alumno)
+    assert.ok(read.ok)
+    assert.equal(read.value.find((r) => r.assessmentId === 'ev-5')?.grade, null)
+  })
+
+  it('carga la nota de cursada y la lee de vuelta en la historia, sin duplicarla', async (siu) => {
+    const alumno = siuId('p-jescobar')
+
+    const first = await siu.writeCourseGrade(alumno, 'sec-am1-fi-a', 3)
+    assert.ok(first.ok)
+    assert.ok((await siu.writeCourseGrade(alumno, 'sec-am1-fi-a', 6)).ok)
+
+    const history = await siu.history(alumno)
+    assert.ok(history.ok)
+    const rows = history.value.filter((h) => h.type === 'cursada' && h.subjectId === 'am1')
+    assert.equal(rows.length, 1)
+    assert.deepEqual([rows[0].grade, rows[0].result, rows[0].sectionId], [6, 'regular', null])
+  })
+
+  it('no carga notas fuera de 1 a 10, ni de personas, comisiones o evaluaciones que no existen', async (siu) => {
+    const alumno = siuId('p-taguirre')
+    assert.deepEqual(await siu.writeAssessmentGrade(alumno, 'sec-am1-fi-a', 'ev-5', 11), {
+      ok: false,
+      error: 'nota-invalida'
+    })
+    assert.deepEqual(await siu.writeAssessmentGrade(alumno, 'sec-am1-fi-a', 'ev-5', 0.5), {
+      ok: false,
+      error: 'nota-invalida'
+    })
+    assert.deepEqual(await siu.writeCourseGrade(alumno, 'sec-am1-fi-a', 0), { ok: false, error: 'nota-invalida' })
+    assert.deepEqual(await siu.writeAssessmentGrade('99999', 'sec-am1-fi-a', 'ev-5', 7), {
+      ok: false,
+      error: 'no-encontrado'
+    })
+    // ev-7 es de la otra comisión.
+    assert.deepEqual(await siu.writeAssessmentGrade(alumno, 'sec-am1-fi-a', 'ev-7', 7), {
+      ok: false,
+      error: 'no-encontrado'
+    })
+    assert.deepEqual(await siu.writeCourseGrade(alumno, 'nada', 7), { ok: false, error: 'no-encontrado' })
+  })
+  // --- fin B: notas ---
+
   it('rechaza inscripciones sin cupo, fuera de período o a lo que no existe', async (siu) => {
     const lucia = siuId('p-lbenitez')
     assert.deepEqual(await siu.enroll(lucia, { kind: 'comision', sectionId: 'sec-fi1-fi-v' }), {
@@ -348,6 +427,22 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
 
 const clock = () => createFixedClock(syntheticData.now)
 
+test('un SIU que no deja escribir notas lo declara y devuelve «no soportado»', async () => {
+  const siu = createMemorySiu(syntheticData, clock(), { capabilities: { canWriteGrades: false } })
+
+  assert.equal(siu.capabilities.canWriteGrades, false)
+  assert.deepEqual(await siu.writeAssessmentGrade(siuId('p-taguirre'), 'sec-am1-fi-a', 'ev-5', 7), {
+    ok: false,
+    error: 'no-soportado'
+  })
+  assert.deepEqual(await siu.writeCourseGrade(siuId('p-taguirre'), 'sec-am1-fi-a', 7), {
+    ok: false,
+    error: 'no-soportado'
+  })
+  const read = await siu.provisionalResults(siuId('p-taguirre'))
+  assert.ok(read.ok && read.value.every((r) => r.assessmentId !== 'ev-5'))
+})
+
 siuContract('SIU en memoria', () => createMemorySiu(syntheticData, clock()))
 // Con el interruptor de caídas levantado, el SIU que envuelve se porta igual.
 siuContract('SIU con caídas de la demo', () =>
@@ -356,6 +451,13 @@ siuContract('SIU con caídas de la demo', () =>
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL
 const key = process.env.HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY
+// Contra una base de verdad, borra las notas que cargó la batería: las que cargó HackAI llevan estos ids.
+after(async () => {
+  if (!url || !key) return
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+  await client.from('siu_provisional_results').delete().like('id', 'ap-hackai-%')
+  await client.from('siu_history').delete().like('id', 'hk-cursada-%')
+})
 siuContract(
   'SIU simulado',
   () =>

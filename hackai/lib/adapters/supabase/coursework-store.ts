@@ -19,6 +19,7 @@ import { createQueryRunner } from '@/lib/adapters/supabase/query'
 import type {
   ColumnKey,
   CourseworkStore,
+  PassStatus,
   StoredGrade,
   StoredSubmission,
   StoredTask,
@@ -70,10 +71,12 @@ type GradeRow = {
   comment: string
   graded_at: string
   published_at: string | null
+  pass_status: PassStatus | null
+  pass_by: string | null
 }
 
 const GRADE_COLUMNS =
-  'id, section_id, kind, ref_id, person_id, column_name, value, absent, comment, graded_at, published_at'
+  'id, section_id, kind, ref_id, person_id, column_name, value, absent, comment, graded_at, published_at, pass_status, pass_by'
 
 function toGrade(row: GradeRow): StoredGrade {
   return {
@@ -87,7 +90,8 @@ function toGrade(row: GradeRow): StoredGrade {
     absent: row.absent,
     comment: row.comment,
     gradedAt: iso(row.graded_at),
-    publishedAt: row.published_at ? iso(row.published_at) : null
+    publishedAt: row.published_at ? iso(row.published_at) : null,
+    pass: row.pass_status && row.pass_by ? { status: row.pass_status, by: row.pass_by } : null
   }
 }
 
@@ -102,7 +106,9 @@ function gradeRow(grade: Omit<StoredGrade, 'id'>): Omit<GradeRow, 'id'> {
     absent: grade.absent,
     comment: grade.comment,
     graded_at: grade.gradedAt,
-    published_at: grade.publishedAt
+    published_at: grade.publishedAt,
+    pass_status: grade.pass?.status ?? null,
+    pass_by: grade.pass?.by ?? null
   }
 }
 
@@ -335,7 +341,7 @@ export function createSupabaseCourseworkStore({
       return ok((rows.value ?? []).map(toGrade))
     },
 
-    async publishColumn(column, at) {
+    async publishColumn(column, at, pass) {
       const rows = await findColumn(run, client, column)
       if (!rows.ok) return rows
       const ids = rows.value.filter((g) => g.publishedAt === null && (g.value !== null || g.absent)).map((g) => g.id)
@@ -343,7 +349,7 @@ export function createSupabaseCourseworkStore({
       const updated = await run<GradeRow[]>('publicar columna', (s) =>
         client
           .from('coursework_grades')
-          .update({ published_at: at })
+          .update({ published_at: at, pass_status: pass?.status ?? null, pass_by: pass?.by ?? null })
           .in('id', ids)
           .select(GRADE_COLUMNS)
           .order('seq')
@@ -351,6 +357,28 @@ export function createSupabaseCourseworkStore({
       )
       if (!updated.ok) return fail('falla-externa')
       return ok((updated.value ?? []).map(toGrade))
+    },
+
+    async setPassStatus(gradeIds, status) {
+      if (gradeIds.length === 0) return ok(undefined)
+      const updated = await run('estado del pase', (s) =>
+        client.from('coursework_grades').update({ pass_status: status }).in('id', gradeIds).abortSignal(s)
+      )
+      return updated.ok ? ok(undefined) : fail('falla-externa')
+    },
+
+    async pendingPasses() {
+      const rows = await run<GradeRow[]>('pases pendientes', (s) =>
+        client
+          .from('coursework_grades')
+          .select(GRADE_COLUMNS)
+          .eq('pass_status', 'pendiente')
+          .order('published_at')
+          .order('seq')
+          .abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      return ok((rows.value ?? []).map(toGrade))
     },
 
     async publishedGradesOf(personId) {

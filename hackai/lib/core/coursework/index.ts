@@ -1,9 +1,8 @@
 /* Seguimiento (coursework): las tareas de una materia y sus entregas. Interfaz y
    reglas en hackai/docs/ARQUITECTURA.md. Hoy el docente crea y edita tareas, ve
    quién entregó, califica y publica las notas; el alumno las ve y las entrega y
-   ve sus notas publicadas. Los pesos, la nota de cursada y el pase al SIU se
-   suman en
-   los tickets siguientes.
+   ve sus notas publicadas. Los pesos y la nota de cursada se suman en los
+   tickets siguientes.
 
    - Una tarea es de una o más comisiones vigentes de una materia, y la crea un
      docente que las dicta todas. La gestionan los docentes de esas comisiones.
@@ -46,6 +45,15 @@
      leyó cada nota (de 1 a 10 o de 0 a 100, coma o punto, «A» de ausente).
      `applyPaste` vuelve a leer el mismo texto y guarda; antes no se guarda nada.
      Una nota pegada no pisa el comentario que ya tenía.
+
+   - Pase al SIU: publicar una columna de una evaluación del SIU pasa sus notas al
+     SIU por Cursada (`passGrades`); una tarea no existe en el SIU y queda solo en
+     HackAI. Cada nota guarda su estado de pase: `pendiente` (todavía no pasó, o el
+     SIU falló y se reintenta, sin duplicar), `pasado`, o `no-permitido` (el SIU no
+     deja escribir notas). El alumno ve la nota igual en los tres estados. Una nota
+     que se cambia en una columna publicada vuelve a pasar. Reintenta `retryPass`
+     (la corrida periódica), en el orden en que se publicaron, y el docente desde
+     Calificaciones.
 
    Usa Cursada, el puerto de Archivos y el reloj. Cursada no lo llama. */
 import { createCourseworkModule } from '@/lib/core/coursework/module'
@@ -140,6 +148,9 @@ export type DatedTask = {
 
 export type ColumnKind = 'tarea' | 'evaluacion'
 
+/** Cuántas notas de una columna pasaron al SIU, esperan pasar o el SIU no permite pasar. */
+export type PassCounts = { passed: number; pending: number; refused: number }
+
 /** Una columna de Calificaciones de una comisión: una tarea con nota o una evaluación del cronograma del SIU. */
 export type GradeColumn = {
   /** `tarea:<id de la tarea>` o `evaluacion:<id de la evaluación del SIU>`. */
@@ -156,7 +167,16 @@ export type GradeColumn = {
   graded: number
   /** De esos, cuántos todavía no los ve el alumno. */
   unpublished: number
+  /** Cómo va el pase al SIU de sus notas publicadas; `null` en una tarea, que no existe en el SIU. */
+  pass: PassCounts | null
 }
+
+/** Cómo va el pase de una nota al SIU: todavía no pasó, ya pasó o el SIU no lo permite. */
+export type PassStatus = 'pendiente' | 'pasado' | 'no-permitido'
+
+/** Una nota que se pasa al SIU en nombre de un docente de la comisión: `by` es la persona que publicó o cambió la
+    nota, con la que se reintenta. */
+export type GradePass = { status: PassStatus; by: PersonId }
 
 /** La nota de un alumno en una columna. */
 export type GradeCell = {
@@ -168,6 +188,8 @@ export type GradeCell = {
   gradedAt: string
   /** Si el alumno ya la ve. */
   published: boolean
+  /** Cómo va el pase al SIU: solo una nota publicada de una evaluación del SIU se pasa; si no, `null`. */
+  pass: PassStatus | null
 }
 
 export type GradebookStudent = {
@@ -189,6 +211,8 @@ export type Gradebook = {
   /** Por fecha. */
   columns: GradeColumn[]
   students: GradebookStudent[]
+  /** Cuántas notas de la comisión esperan pasar al SIU. */
+  pendingPass: number
   staleSince: string | null
 }
 
@@ -250,6 +274,9 @@ export type SubmissionDetail = {
   submission: Submission
   staleSince: string | null
 }
+
+/** Cuántas notas pasaron al SIU en un reintento y cuántas siguen esperando. */
+export type PassRetry = { passed: number; pending: number }
 
 export type AccessError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
 /** La escala de las notas que se pegan: de 1 a 10 como se guardan, o de 0 a 100 (se pasan a de 1 a 10). */
@@ -379,6 +406,13 @@ export type Coursework = {
     sectionId: string,
     columnId: string
   ): Promise<Result<{ published: number }, AccessError | ColumnError | 'sin-notas'>>
+  /** Pasa al SIU las notas que esperan, de todas las comisiones, en el orden en que se publicaron. Es lo que corre la
+      corrida periódica. Cada nota se pasa en nombre de quien la publicó. Corta en cuanto el SIU falla, para no
+      insistir ni desordenar. Devuelve cuántas pasaron y cuántas siguen esperando. */
+  retryPass(): Promise<Result<PassRetry, ExternalFailure>>
+  /** Lo mismo para las notas de una comisión que dicta el docente, en su nombre: el botón «Reintentar el pase» de
+      Calificaciones. */
+  retryPassOf(personId: PersonId, sectionId: string): Promise<Result<PassRetry, AccessError | 'solo-docentes'>>
   /** Qué entendería `applyPaste` del texto pegado en una columna de una comisión que dicta el docente: una línea por
       alumno con a quién reconoció y qué nota leyó. No guarda nada. */
   previewPaste(
@@ -452,6 +486,8 @@ export type StoredGrade = {
   gradedAt: string
   /** Desde cuándo la ve el alumno, o `null` si es borrador. */
   publishedAt: string | null
+  /** El pase al SIU: `null` si no se pasa (una tarea, o todavía un borrador). */
+  pass: GradePass | null
 }
 
 export type ColumnKey = Pick<StoredGrade, 'sectionId' | 'kind' | 'refId'>
@@ -477,9 +513,17 @@ export type CourseworkStore = {
   saveGrade(grade: Omit<StoredGrade, 'id'>): Promise<Result<StoredGrade, CourseworkStoreError>>
   /** Todas las notas de la comisión, en el orden en que se cargaron por primera vez. */
   gradesOfSection(sectionId: string): Promise<Result<StoredGrade[], CourseworkStoreError>>
-  /** Publica en `at` las notas de la columna que tienen nota o ausente y todavía no estaban publicadas. Devuelve las
-      que se publicaron ahora. */
-  publishColumn(column: ColumnKey, at: string): Promise<Result<StoredGrade[], CourseworkStoreError>>
+  /** Publica en `at` las notas de la columna que tienen nota o ausente y todavía no estaban publicadas, con ese pase
+      (`null` si la columna no se pasa al SIU). Devuelve las que se publicaron ahora. */
+  publishColumn(
+    column: ColumnKey,
+    at: string,
+    pass: GradePass | null
+  ): Promise<Result<StoredGrade[], CourseworkStoreError>>
+  /** Cambia el estado de pase de esas notas, sin tocar quién las pasa. Las que no tienen pase no se tocan. */
+  setPassStatus(gradeIds: string[], status: PassStatus): Promise<Result<void, CourseworkStoreError>>
+  /** Las notas que esperan pasar al SIU, en el orden en que se publicaron (a igual hora, en el que se cargaron). */
+  pendingPasses(): Promise<Result<StoredGrade[], CourseworkStoreError>>
   /** Las notas publicadas de la persona, de todas sus comisiones, en el orden en que se cargaron. */
   publishedGradesOf(personId: PersonId): Promise<Result<StoredGrade[], CourseworkStoreError>>
   /** Cierra en `at` la entrega de la persona a la tarea (si ya estaba cerrada, no la toca). La entrega, o `null` si

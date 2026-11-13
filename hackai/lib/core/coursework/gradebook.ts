@@ -30,6 +30,7 @@ import {
   newOnes,
   parseColumnId
 } from '@/lib/core/coursework/grades'
+import { createPass, isPending } from '@/lib/core/coursework/pass'
 import { MAX_PASTE_CHARS, previewOf } from '@/lib/core/coursework/paste'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
@@ -58,7 +59,9 @@ function chooseTeaching(
 
 type Teaching = { section: MySection; staleSince: string | null }
 
-export function createGradebook({ studies, store, clock }: CourseworkDeps) {
+export function createGradebook(deps: CourseworkDeps) {
+  const { studies, store, clock } = deps
+  const pass = createPass(deps)
   /** La comisión que dicta la persona. Una comisión que no es suya es `sin-acceso`; la de un alumno, `solo-docentes`. */
   async function teachingSection(
     personId: PersonId,
@@ -129,6 +132,7 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
       sectionId: selected.sectionId,
       columns: columns.value.defs.map((d) => columnWith(d, grades.value)),
       students: students.value.data.map((s): GradebookStudent => ({ ...s, cells: cellsOf(s.personId, grades.value) })),
+      pendingPass: grades.value.filter(isPending).length,
       staleSince: oldest([read.value.staleSince, columns.value.staleSince, studentsStale])
     })
   }
@@ -172,13 +176,15 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     if (!checked.ok) return checked
     const { column, published } = target.value
 
-    const saved = await save(column, published, input.sectionId, input.studentId, checked.value)
+    const saved = await save(personId, column, published, input.sectionId, input.studentId, checked.value)
     return saved.ok ? ok(cellOf(saved.value)) : saved
   }
 
   /** Guarda la nota de un alumno en una columna. En una columna ya publicada, la nota que se carga o se cambia sale
-      publicada en ese momento. Calificar la entrega de una tarea cierra su reemplazo. */
+      publicada en ese momento, y si es de una evaluación del SIU espera pasar al SIU: se intenta pasar en nombre del
+      docente. Calificar la entrega de una tarea cierra su reemplazo. */
   async function save(
+    personId: PersonId,
     column: ColumnDef,
     published: boolean,
     sectionId: string,
@@ -186,6 +192,7 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     checked: Pick<StoredGrade, 'value' | 'absent' | 'comment'>
   ): Promise<Result<StoredGrade, 'falla-externa'>> {
     const now = clock.now().toISOString()
+    const passes = published && column.kind === 'evaluacion'
     const saved = await store.saveGrade({
       sectionId,
       kind: column.kind,
@@ -194,14 +201,31 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
       columnName: column.name,
       ...checked,
       gradedAt: now,
-      publishedAt: published ? now : null
+      publishedAt: published ? now : null,
+      pass: passes ? { status: 'pendiente', by: personId } : null
     })
     if (!saved.ok) return saved
-    if (column.kind === 'tarea') {
-      const closed = await store.gradeSubmission(column.refId, studentId, now)
-      if (!closed.ok) return closed
-    }
-    return ok(saved.value)
+    const closed = await closeSubmission(column, studentId, now)
+    if (!closed.ok) return closed
+    return passes ? passed(personId, saved.value) : ok(saved.value)
+  }
+
+  /** Calificar la entrega de una tarea cierra su reemplazo. */
+  async function closeSubmission(
+    column: ColumnDef,
+    studentId: PersonId,
+    at: string
+  ): Promise<Result<void, 'falla-externa'>> {
+    if (column.kind !== 'tarea') return ok(undefined)
+    const closed = await store.gradeSubmission(column.refId, studentId, at)
+    return closed.ok ? ok(undefined) : closed
+  }
+
+  /** La nota recién guardada, que espera pasar al SIU, después de intentar pasarla. */
+  async function passed(personId: PersonId, saved: StoredGrade): Promise<Result<StoredGrade, 'falla-externa'>> {
+    const states = await pass.passAs(personId, saved.sectionId, [saved])
+    if (!states.ok) return states
+    return ok({ ...saved, pass: { status: states.value.get(saved.id) ?? 'pendiente', by: personId } })
   }
 
   /** Lo que se entiende del texto pegado en la columna, con la columna y lo ya cargado en ella. */
@@ -243,7 +267,7 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     const published = grades.some((g) => inColumn(g, column) && g.publishedAt)
     for (const row of rows) {
       const before = grades.find((g) => inColumn(g, column) && g.personId === row.personId)
-      const saved = await save(column, published, sectionId, row.personId as PersonId, {
+      const saved = await save(personId, column, published, sectionId, row.personId as PersonId, {
         value: row.value,
         absent: row.outcome === 'ausente',
         comment: before?.comment ?? ''
@@ -261,12 +285,41 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     const grades = await store.gradesOfSection(sectionId)
     if (!grades.ok) return grades
     if (!grades.value.some((g) => inColumn(g, column.value) && isGraded(g))) return fail('sin-notas')
+    return publishAndPass(personId, sectionId, column.value)
+  }
+
+  /** Publica la columna y, si es una evaluación del SIU, pasa sus notas. Una tarea no existe en el SIU: queda solo en
+      HackAI. Si el SIU falla, las notas ya quedaron publicadas y pendientes, y se reintentan solas. */
+  async function publishAndPass(
+    personId: PersonId,
+    sectionId: string,
+    column: ColumnDef
+  ): Promise<Result<{ published: number }, 'falla-externa'>> {
+    const passes = column.kind === 'evaluacion'
     const published = await store.publishColumn(
-      { sectionId, kind: column.value.kind, refId: column.value.refId },
-      clock.now().toISOString()
+      { sectionId, kind: column.kind, refId: column.refId },
+      clock.now().toISOString(),
+      passes ? { status: 'pendiente', by: personId } : null
     )
     if (!published.ok) return published
+    const passed = await pass.passAs(personId, sectionId, passes ? published.value : [])
+    if (!passed.ok) return passed
     return ok({ published: published.value.length })
+  }
+
+  const retryPass: Coursework['retryPass'] = async () => {
+    const pending = await store.pendingPasses()
+    if (!pending.ok) return pending
+    return pass.retry(pending.value, (g) => g.pass?.by ?? null)
+  }
+
+  const retryPassOf: Coursework['retryPassOf'] = async (personId, sectionId) => {
+    const teaching = await teachingSection(personId, sectionId)
+    if (!teaching.ok) return teaching
+    const grades = await store.gradesOfSection(sectionId)
+    if (!grades.ok) return grades
+    // En nombre de quien lo pide: ya se comprobó que dicta la comisión.
+    return pass.retry(grades.value.filter(isPending), () => personId)
   }
 
   /** El nombre y la fecha de lo que se calificó: una tarea, por la tarea (que puede cambiar de nombre); una
@@ -324,5 +377,5 @@ export function createGradebook({ studies, store, clock }: CourseworkDeps) {
     return ok(newOnes(published.value, clock.now().toISOString(), seenAt))
   }
 
-  return { gradebook, grade, previewPaste, applyPaste, publish, publishedFor, newGrades }
+  return { gradebook, grade, previewPaste, applyPaste, publish, publishedFor, newGrades, retryPass, retryPassOf }
 }

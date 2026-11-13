@@ -26,7 +26,12 @@ function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000) {
 
 test('declara que puede inscribir y que tiene cronograma', () => {
   const { siu } = siuWith(async () => new Response('[]'))
-  assert.deepEqual(siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
+  assert.deepEqual(siu.capabilities, {
+    canEnroll: true,
+    hasAssessmentSchedule: true,
+    enrolsInClassroom: false,
+    canWriteGrades: true
+  })
 })
 
 test('si la base no responde a tiempo devuelve «falla externa» en vez de quedarse esperando', async () => {
@@ -104,3 +109,87 @@ test('si la base responde con error devuelve «falla externa»', async () => {
 
   assert.deepEqual(await siu.subject('am1'), { ok: false, error: 'falla-externa' })
 })
+
+// --- B: notas ---
+/** Una base de mentira que contesta las lecturas y anota lo que se escribe. */
+function writableBase(options: { failWrites?: boolean } = {}) {
+  const writes: { table: string; query: string; body: unknown }[] = []
+  const tables: Record<string, unknown[]> = {
+    siu_persons: [{ id: '30101' }],
+    siu_assessments: [
+      {
+        id: 'ev-5',
+        section_id: 'sec-am1-fi-a',
+        name: 'Segundo parcial',
+        kind: 'parcial',
+        date: '2026-11-16T11:00:00+00:00'
+      }
+    ],
+    siu_sections: [{ id: 'sec-am1-fi-a', subject_id: 'am1' }]
+  }
+  const fetch: typeof globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input))
+    const table = url.pathname.split('/').at(-1) ?? ''
+    if (init?.method === 'POST') {
+      if (options.failWrites) return new Response(JSON.stringify({ code: '42501', message: 'denied' }), { status: 403 })
+      writes.push({ table, query: url.search, body: JSON.parse(String(init.body)) })
+      return new Response(null, { status: 201 })
+    }
+    return new Response(JSON.stringify(tables[table] ?? []), { headers: { 'content-type': 'application/json' } })
+  }
+  return { fetch, writes }
+}
+
+test('carga la nota de una evaluación con un upsert por el id de la nota, con la hora de la carga', async () => {
+  const base = writableBase()
+  const { siu } = siuWith(base.fetch)
+
+  const result = await siu.writeAssessmentGrade('30101', 'sec-am1-fi-a', 'ev-5', 8)
+
+  assert.deepEqual(result, { ok: true, value: { date: syntheticData.now } })
+  assert.equal(base.writes.length, 1)
+  assert.equal(base.writes[0].table, 'siu_provisional_results')
+  assert.match(base.writes[0].query, /on_conflict=id/)
+  assert.deepEqual(base.writes[0].body, {
+    id: 'ap-hackai-30101-ev-5',
+    person_id: '30101',
+    section_id: 'sec-am1-fi-a',
+    assessment_id: 'ev-5',
+    grade: 8,
+    date: '2026-11-16T11:00:00+00:00',
+    loaded_at: syntheticData.now
+  })
+})
+
+test('carga la nota de cursada en la historia con un id propio por alumno y comisión', async () => {
+  const base = writableBase()
+  const { siu } = siuWith(base.fetch)
+
+  assert.ok((await siu.writeCourseGrade('30101', 'sec-am1-fi-a', 3)).ok)
+
+  assert.equal(base.writes[0].table, 'siu_history')
+  assert.deepEqual(base.writes[0].body, {
+    id: 'hk-cursada-30101-sec-am1-fi-a',
+    person_id: '30101',
+    subject_id: 'am1',
+    type: 'cursada',
+    date: syntheticData.now,
+    grade: 3,
+    result: 'desaprobado',
+    grade_record: 'HK-sec-am1-fi-a',
+    section_id: null,
+    assessment_id: null,
+    loaded_at: null
+  })
+})
+
+test('si la base rechaza la escritura de una nota devuelve «falla externa» y no tira', async () => {
+  const { siu } = siuWith(writableBase({ failWrites: true }).fetch)
+
+  assert.deepEqual(await siu.writeAssessmentGrade('30101', 'sec-am1-fi-a', 'ev-5', 8), {
+    ok: false,
+    error: 'falla-externa'
+  })
+  assert.deepEqual(await siu.writeCourseGrade('30101', 'sec-am1-fi-a', 8), { ok: false, error: 'falla-externa' })
+})
+// --- fin B: notas ---

@@ -97,6 +97,36 @@ test('ni la respuesta ni el log llevan el secreto ni lo que trajo el pedido', as
   assert.deepEqual(logs, ['[corrida-periodica] ok: 3 canales, 5 importados, 2 enviados, 1 pendientes'])
 })
 
+test('si la corrida reintenta el pase, lo suma al resumen y al log, y un pase que falla no corta la sincronización', async () => {
+  const logs: string[] = []
+  const { syncAll } = spySync({ channels: 1, imported: 0, sent: 0, pending: 0 })
+
+  const done = await handlePeriodicSync(request(`Bearer ${SECRET}`), {
+    secret: SECRET,
+    syncAll,
+    retryPass: async () => ok({ passed: 2, pending: 1 }),
+    log: (m) => logs.push(m)
+  })
+  const failed = await handlePeriodicSync(request(`Bearer ${SECRET}`), {
+    secret: SECRET,
+    syncAll,
+    retryPass: async () => fail('falla-externa'),
+    log: (m) => logs.push(m)
+  })
+
+  assert.deepEqual(await done.json(), {
+    channels: 1,
+    imported: 0,
+    sent: 0,
+    pending: 0,
+    notas: { passed: 2, pending: 1 }
+  })
+  assert.equal(failed.status, 200)
+  assert.deepEqual(await failed.json(), { channels: 1, imported: 0, sent: 0, pending: 0, notas: null })
+  assert.ok(logs.includes('[corrida-periodica] pase de notas: 2 pasadas, 1 pendientes'))
+  assert.ok(logs.includes('[corrida-periodica] pase de notas: falla-externa'))
+})
+
 // La ruta de verdad, con el sistema armado sobre los adaptadores en memoria.
 
 test('la ruta toma el secreto de CRON_SECRET y sincroniza los canales vinculados', async () => {
@@ -109,7 +139,7 @@ test('la ruta toma el secreto de CRON_SECRET y sincroniza los canales vinculados
     const post = await POST(request(`Bearer ${SECRET}`))
 
     // En memoria arranca sin canales vinculados: no hay nada que sincronizar.
-    const nothing = { channels: 0, imported: 0, sent: 0, pending: 0 }
+    const nothing = { channels: 0, imported: 0, sent: 0, pending: 0, notas: { passed: 0, pending: 0 } }
     assert.deepEqual([get.status, await get.json()], [200, nothing])
     assert.deepEqual([post.status, await post.json()], [200, nothing])
   } finally {

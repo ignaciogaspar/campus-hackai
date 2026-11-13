@@ -93,7 +93,7 @@ export function createMemoryCourseworkStore(): CourseworkStore {
       return ok(copy(grades.filter((g) => g.sectionId === sectionId)))
     },
 
-    async publishColumn(column, at) {
+    async publishColumn(column, at, pass) {
       const published = grades.filter(
         (g) =>
           g.sectionId === column.sectionId &&
@@ -102,8 +102,21 @@ export function createMemoryCourseworkStore(): CourseworkStore {
           g.publishedAt === null &&
           (g.value !== null || g.absent)
       )
-      for (const g of published) g.publishedAt = at
+      for (const g of published) {
+        g.publishedAt = at
+        g.pass = pass ? copy(pass) : null
+      }
       return ok(copy(published))
+    },
+
+    async setPassStatus(gradeIds, status) {
+      for (const g of grades) if (g.pass && gradeIds.includes(g.id)) g.pass.status = status
+      return ok(undefined)
+    },
+
+    async pendingPasses() {
+      const pending = grades.filter((g) => g.pass?.status === 'pendiente')
+      return ok(copy(pending.sort((a, b) => (a.publishedAt ?? '').localeCompare(b.publishedAt ?? ''))))
     },
 
     async publishedGradesOf(personId) {

@@ -6,6 +6,8 @@ import type {
   GradeColumn,
   GradeError,
   NewGrade,
+  PassCounts,
+  PassStatus,
   PublishedGrade,
   StoredGrade,
   StoredTask
@@ -49,7 +51,8 @@ export const cellOf = (g: StoredGrade): GradeCell => ({
   absent: g.absent,
   comment: g.comment,
   gradedAt: g.gradedAt,
-  published: g.publishedAt !== null
+  published: g.publishedAt !== null,
+  pass: g.pass?.status ?? null
 })
 
 /** Una columna de la comisión sin sus conteos: lo que dicen la tarea o el cronograma del SIU. */
@@ -95,8 +98,15 @@ export function columnWith(def: ColumnDef, grades: StoredGrade[]): GradeColumn {
     assessmentKind: def.assessmentKind,
     publishedAt: published,
     graded: ofColumn.length,
-    unpublished: ofColumn.filter((g) => g.publishedAt === null).length
+    unpublished: ofColumn.filter((g) => g.publishedAt === null).length,
+    pass: def.kind === 'evaluacion' ? passCounts(ofColumn) : null
   }
+}
+
+/** Cuántas notas pasaron al SIU, esperan pasar o el SIU no permite pasar. */
+function passCounts(grades: StoredGrade[]): PassCounts {
+  const count = (status: PassStatus) => grades.filter((g) => g.pass?.status === status).length
+  return { passed: count('pasado'), pending: count('pendiente'), refused: count('no-permitido') }
 }
 
 /** Las notas publicadas con número en la última semana y después de `seenAt`, no después de ahora, la más nueva

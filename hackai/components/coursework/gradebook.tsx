@@ -5,7 +5,7 @@
    Sin tablas anchas: la misma lista sirve en la compu. */
 import { ClipboardList, ClipboardPaste, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
-import { publishColumn } from '@/app/actions/coursework'
+import { publishColumn, retryGradePass } from '@/app/actions/coursework'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import { dueTime, gradesHref, pasteGradesHref } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -16,7 +16,7 @@ import { OriginBadge } from '@/components/ui/origin-badge'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { GradebookStudent, GradeCell, GradeColumn } from '@/lib/core/coursework'
+import type { GradebookStudent, GradeCell, GradeColumn, PassCounts, PassStatus } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
 export function NoColumns() {
@@ -119,7 +119,62 @@ export function ColumnSummary({
           Al publicar, cada alumno ve su nota y tu comentario, y le llega el aviso a la campana.
         </p>
       </ActionForm>
+      {column.pass && <PassSummary subjectId={subjectId} sectionId={sectionId} pass={column.pass} />}
     </Card>
+  )
+}
+
+const PASS_PILL: Record<PassStatus, { tone: 'success' | 'warning' | 'neutral'; label: string }> = {
+  pasado: { tone: 'success', label: 'Pasada al SIU' },
+  pendiente: { tone: 'warning', label: 'Pendiente de pasar' },
+  'no-permitido': { tone: 'neutral', label: 'Sin pasar al SIU' }
+}
+
+/** Si la nota ya pasó al SIU. Una tarea no se pasa: no existe en el SIU, y no lleva estado. */
+function PassPill({ status }: { status: PassStatus }) {
+  const { tone, label } = PASS_PILL[status]
+  return <StatusPill tone={tone}>{label}</StatusPill>
+}
+
+/** Cómo va el pase al SIU de una evaluación del SIU, con el botón para reintentar lo pendiente. */
+function PassSummary({ subjectId, sectionId, pass }: { subjectId: string; sectionId: string; pass: PassCounts }) {
+  if (pass.passed + pass.pending + pass.refused === 0) return null
+  return (
+    <ActionForm action={retryGradePass} className='flex flex-col gap-2'>
+      <input type='hidden' name='subjectId' value={subjectId} />
+      <input type='hidden' name='sectionId' value={sectionId} />
+      <div className='flex flex-wrap items-center gap-1.5'>
+        {pass.passed > 0 && <StatusPill tone='success'>{pass.passed} pasadas al SIU</StatusPill>}
+        {pass.pending > 0 && (
+          <StatusPill tone='warning'>
+            {pass.pending === 1 ? '1 pendiente de pasar' : `${pass.pending} pendientes de pasar`}
+          </StatusPill>
+        )}
+        {pass.refused > 0 && <StatusPill tone='neutral'>{pass.refused} sin pasar al SIU</StatusPill>}
+      </div>
+      {pass.pending > 0 && (
+        <>
+          <p className='text-[0.8125rem] text-muted-foreground'>
+            El SIU no respondió. Las notas ya las ven los alumnos y las reintentamos solas.
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            <SubmitButton
+              className={cn(
+                buttonVariants({ variant: 'outline' }),
+                'min-h-11 rounded-[10px] px-4 text-[0.9375rem] font-bold'
+              )}
+            >
+              Reintentar el pase
+            </SubmitButton>
+          </div>
+        </>
+      )}
+      {pass.refused > 0 && (
+        <p className='text-[0.8125rem] text-muted-foreground'>
+          El SIU no permite cargar notas desde HackAI: esas notas quedan solo acá, y los alumnos las ven igual.
+        </p>
+      )}
+    </ActionForm>
   )
 }
 
@@ -159,6 +214,7 @@ export function StudentList({
               <span>Legajo {s.legajo}</span>
               {s.personId === null && <span>· Todavía no entró a HackAI</span>}
               {cell && <span>· {cell.published ? 'Publicada' : 'Sin publicar'}</span>}
+              {cell?.pass && <PassPill status={cell.pass} />}
             </>
           )
           return (
