@@ -33,6 +33,9 @@ export type MoodleClientOptions = {
   warn?: (message: string) => void
 }
 
+/** Donde Moodle sirve los archivos a quien tiene un token. */
+const PLUGINFILE_PATH = '/webservice/pluginfile.php/'
+
 /** Lo más grande que se baja de un archivo del Campus para mostrarlo en HackAI. */
 const MAX_FILE_BYTES = 50 * 1024 * 1024
 
@@ -96,7 +99,10 @@ export function createMoodleClient(options: MoodleClientOptions): MoodleClient {
 
   async function download(url: string) {
     const target = new URL(url)
-    if (target.origin !== new URL(baseUrl).origin) return fail('no-encontrado' as const)
+    // El token va solo a los archivos del Campus: la URL ya normalizada (sin `..`) tiene que quedar adentro de
+    // `webservice/pluginfile.php/`. Cualquier otra ruta o sitio no existe para HackAI.
+    if (target.origin !== new URL(baseUrl).origin || !target.pathname.startsWith(PLUGINFILE_PATH))
+      return fail('no-encontrado' as const)
     target.searchParams.set('token', token)
     target.searchParams.delete('forcedownload')
     try {

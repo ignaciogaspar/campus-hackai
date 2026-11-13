@@ -357,6 +357,18 @@ function campusRegistryOf(env: Env, fallback: ClassroomPort, siu: RealSiuRegistr
   })
 }
 
+/** Los tramos de la ruta de un archivo del Campus, decodificados, o `null` si alguno sacaría el pedido de
+    pluginfile.php: vacío, `.`, `..` o con una barra (también codificados), o mal codificado. */
+function fileSegments(path: string): string[] | null {
+  try {
+    const segments = path.split('/').map((segment) => decodeURIComponent(segment))
+    const unsafe = (segment: string) => segment === '' || segment === '.' || segment === '..' || /[/\\]/.test(segment)
+    return segments.some(unsafe) ? null : segments
+  } catch {
+    return null
+  }
+}
+
 /** El Campus real para las pantallas: conectar, saber cómo está y abrir un archivo. `null` sin Campus real. */
 function campusLiveOf(campus: RealMoodleRegistry | null, baseUrl: string): CampusLive | null {
   if (!campus) return null
@@ -385,7 +397,9 @@ function campusLiveOf(campus: RealMoodleRegistry | null, baseUrl: string): Campu
       const key = keyOf(personId)
       const account = key ? campus.accountOf(key) : null
       if (!account) return fail('sin-acceso')
-      const name = decodeURIComponent(path.split('/').pop() ?? '')
+      const segments = fileSegments(path)
+      if (!segments) return fail('archivo-desconocido')
+      const name = segments.at(-1) ?? ''
       const found = await account.download(`${baseUrl}/webservice/pluginfile.php/${path}`)
       if (found.ok) return ok({ name, contentType: found.value.contentType, bytes: found.value.bytes })
       return fail(found.error === 'no-encontrado' ? 'archivo-desconocido' : 'falla-externa')

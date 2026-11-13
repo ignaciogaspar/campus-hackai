@@ -419,6 +419,14 @@ test('un archivo del Campus se pide con el token y nunca a otro sitio', async ()
     ok: false,
     error: 'no-encontrado'
   })
+  // Una ruta que con `..` sale de pluginfile.php no lleva el token a otra pantalla del Campus.
+  for (const escape of [
+    '/webservice/pluginfile.php/../../login/index.php',
+    '/webservice/pluginfile.php/%2e%2e/x',
+    '/user/profile.php'
+  ])
+    assert.deepEqual(await moodle.download(`${BASE}${escape}`), { ok: false, error: 'no-encontrado' }, escape)
+  assert.deepEqual(calls, ['archivo con token'], 'ningún pedido más')
 })
 
 // El registro: cada id a su cuenta, lo demás al aula de la demo.
