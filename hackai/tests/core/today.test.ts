@@ -381,8 +381,9 @@ test('el Hoy del docente trae sus comisiones con sus no leídos, las consultas s
   const view = result.value
   assert.equal(view.now, NOW)
   // Las comisiones actuales: Álgebra es del cuatrimestre que terminó. Sus no leídos son
-  // todos los de AM1, porque es su única comisión: también lo que trajo de Moodle.
-  const total = view.unread.reduce((n, u) => n + u.count, 0)
+  // todos los de AM1, porque es su única comisión: también lo que trajo de Moodle y la
+  // consulta, que cuenta como sin leer aunque no se repita en la lista.
+  const total = view.unread.reduce((n, u) => n + u.count, 0) + 2
   assert.deepEqual(
     view.sections.map((s) => [s.subjectCode, s.name, s.unread]),
     [['AM1', 'A', total]]
@@ -391,12 +392,10 @@ test('el Hoy del docente trae sus comisiones con sus no leídos, las consultas s
     view.questions.map((q) => [q.text, q.author.name, q.replies]),
     [['¿Entra límites?', 'Tomás Aguirre', 1]]
   )
+  // La consulta ya está en las consultas sin resolver: no se repite en lo sin leer.
   assert.deepEqual(
     view.unread.filter((u) => u.kind === 'consultas' || u.kind === 'directo').map((u) => [u.kind, u.count]),
-    [
-      ['consultas', 2],
-      ['directo', 1]
-    ]
+    [['directo', 1]]
   )
   // Sin lo que ya pasó, por fecha: los parciales de su comisión y las mesas que integra.
   assert.deepEqual(
@@ -410,6 +409,43 @@ test('el Hoy del docente trae sus comisiones con sus no leídos, las consultas s
   )
   assert.equal(view.staleSince, null)
   assert.deepEqual(view.unavailable, [])
+})
+
+test('una consulta sin leer va solo a las consultas sin resolver; lo resuelto y el material siguen sin leer', async () => {
+  const { today, spaces } = build()
+  const am1 = await am1A(spaces)
+  const open = await spaces.post('p-taguirre', am1.consultas, { text: '¿Entra límites?' })
+  assert.ok(open.ok)
+
+  const before = await today.teaching('p-mledesma')
+
+  assert.ok(before.ok)
+  assert.deepEqual(
+    before.value.questions.map((q) => q.text),
+    ['¿Entra límites?']
+  )
+  assert.equal(
+    before.value.unread.some((u) => u.kind === 'consultas'),
+    false
+  )
+  // El material que trajo de Moodle sigue en lo sin leer.
+  assert.deepEqual(
+    before.value.unread.map((u) => u.kind),
+    ['material']
+  )
+
+  // Ya resuelta, la respuesta nueva no está entre las consultas: va a lo sin leer.
+  assert.ok((await spaces.resolve('p-mledesma', open.value.id)).ok)
+  await spaces.post('p-taguirre', am1.consultas, { text: 'Gracias', replyTo: open.value.id })
+
+  const after = await today.teaching('p-mledesma')
+
+  assert.ok(after.ok)
+  assert.deepEqual(after.value.questions, [])
+  assert.deepEqual(
+    after.value.unread.filter((u) => u.kind === 'consultas').map((u) => [u.count, u.thread]),
+    [[2, open.value.id]]
+  )
 })
 
 test('sin nada pendiente, el Hoy del docente sale con sus comisiones y sin consultas ni no leídos', async () => {
