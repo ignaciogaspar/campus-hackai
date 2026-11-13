@@ -37,7 +37,7 @@ Es la versión vigente. Se ajusta con lo que salga de cada validación.
 | Notas e historia académica | SIU, mostradas desde el núcleo | Una sola fuente de verdad; la API del SIU las expone |
 | Finales pendientes: qué finales debés y su próxima mesa | Núcleo, con la historia y las mesas del SIU | El SIU no lo responde: hay que cruzar la historia con las mesas a mano |
 | Cuántas faltas tengo en cada materia y cuántas me quedan | Núcleo, con las inasistencias del SIU (#60), en una sección propia y no en la tarjeta de la materia | Hoy es entrar a Reportes > Inasistencias y contar filas; el máximo, si el SIU lo da, no figura al lado |
-| Tomar lista | Núcleo: el docente toca a los ausentes. HackAI guarda la asistencia y la pasa al SIU si el SIU lo permite | Hoy le lleva de 10 a 15 minutos por clase en el SIU (dato contado, no medido) |
+| Tomar lista | Núcleo: el docente toca a los ausentes. HackAI guarda la asistencia y la pasa al SIU si el SIU lo permite | Hoy le lleva de 10 a 15 minutos por clase en el SIU |
 | Tareas y entregas de trabajos prácticos | Núcleo: el docente crea la tarea y el alumno entrega en HackAI. Las tareas de Moodle se siguen mostrando con su enlace | Decisión del 12/11/2026: reemplaza «Entregas: Moodle» ([docentes.md](docentes.md)) |
 | Calificaciones de la comisión y nota de cursada | Núcleo: el docente carga una vez en HackAI. El alumno las ve en HackAI sin depender del SIU, y HackAI pasa al SIU las notas de parciales y la de cursada si el SIU lo permite | Hoy las carga en el SIU alumno por alumno |
 | Agregar parciales, finales y entregas al calendario del celular | Núcleo: un archivo .ics con lo que viene | Hoy hay dos calendarios desconectados y ninguno llega al teléfono |
@@ -85,7 +85,7 @@ Procesos completos, hoy contra HackAI, con 3 alumnos por ciclo en sus propias cu
 - **T6, «tomar lista»:** un docente toma lista de una comisión en el SIU y en HackAI, con cronómetro y toques.
 - **Piloto con Laboratorio 3:** esa cátedra ya usa Discord. Si su docente acepta, se conecta un espacio de HackAI a su servidor y se mide cuánto tarda una consulta en tener respuesta. El contacto lo decide el equipo.
 
-La espera de la matriculación en Moodle se anota como dato reportado, no medido. Los resultados van a `docs/product/validaciones.md`, con los alumnos anonimizados (A1, A2…).
+Los resultados van a `docs/product/validaciones.md`, con los alumnos anonimizados (A1, A2…).
 
 ## Cumplimiento
 

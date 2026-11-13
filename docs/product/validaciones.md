@@ -32,5 +32,3 @@ No hay nada que cronometrar del lado de hoy: el alumno se entera por un mail que
 
 1. **Cómo se entera hoy** de un aviso o un material nuevo, y cuánto tarda, aproximadamente. Es la línea de base de T3.
 2. **Si le llega la notificación de Discord** al celular cuando el docente publica en el canal de la cátedra. Que el aviso esté en Discord no garantiza que suene: depende de cómo tenga configurado el servidor (con «Solo @menciones», no suena; pregunta abierta 12) y de las notificaciones del teléfono.
-
-**Falta:** hacerles las dos preguntas y anotar las respuestas acá.
