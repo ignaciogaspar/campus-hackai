@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   countsLabel,
+  dateTimeInWords,
+  dateTimeParts,
   dueAtFromInput,
+  dueAtFromParts,
   dueLabel,
   durationLabel,
   gradeFromInput,
@@ -95,6 +98,28 @@ test('una fecha que no es una fecha con hora no se acepta', () => {
   assert.equal(dueAtFromInput('mañana'), null)
   assert.equal(dueAtFromInput('2026-11-13'), null)
   assert.equal(dueAtFromInput('2026-13-45T10:00'), null)
+})
+
+test('la fecha y la hora se escriben en dos campos y se toman en Buenos Aires', () => {
+  assert.equal(dueAtFromParts('2026-11-13', '23:59'), '2026-11-14T02:59:00.000Z')
+  assert.equal(dueAtFromParts(' 2026-11-20 ', ' 18:00 '), '2026-11-20T21:00:00.000Z')
+  assert.deepEqual(dateTimeParts('2026-11-14T02:59:00.000Z'), { date: '2026-11-13', time: '23:59' })
+  assert.deepEqual(dateTimeParts('2027-01-02T03:05:00.000Z'), { date: '2027-01-02', time: '00:05' })
+})
+
+test('sin fecha o sin hora no hay fecha límite', () => {
+  assert.equal(dueAtFromParts('', '18:00'), null)
+  assert.equal(dueAtFromParts('2026-11-20', ''), null)
+  assert.equal(dueAtFromParts('2026-11-20', '25:00'), null)
+})
+
+test('debajo de los campos, la fecha se lee en palabras y en 24 horas, con el año solo si no es el actual', () => {
+  assert.equal(dateTimeInWords('2026-11-20', '18:00', 2026), 'viernes 20 de noviembre a las 18:00')
+  assert.equal(dateTimeInWords('2026-12-07', '14:00', 2026), 'lunes 7 de diciembre a las 14:00')
+  assert.equal(dateTimeInWords('2026-11-21', '01:30', 2026), 'sábado 21 de noviembre a la 01:30')
+  assert.equal(dateTimeInWords('2027-03-01', '09:00', 2026), 'lunes 1 de marzo de 2027 a las 09:00')
+  assert.equal(dateTimeInWords('', '18:00', 2026), null)
+  assert.equal(dateTimeInWords('2026-11-20', '', 2026), null)
 })
 
 test('las comisiones de una tarea se nombran en una frase', () => {

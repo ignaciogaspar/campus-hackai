@@ -157,6 +157,37 @@ export function dueAtFromInput(value: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+/** La fecha ISO de lo que se escribió en un campo de fecha (`AAAA-MM-DD`) y uno de hora (`HH:MM`), en Buenos Aires.
+    `null` si falta alguno o no forman una fecha con hora. */
+export const dueAtFromParts = (date: string, time: string): string | null =>
+  dueAtFromInput(`${date.trim()}T${time.trim()}`)
+
+/** Los valores de los campos de fecha y de hora para una fecha, en Buenos Aires: `2026-11-13` y `23:59`. */
+export function dateTimeParts(iso: string): { date: string; time: string } {
+  const [date = '', time = ''] = inputValueOf(iso).split('T')
+  return { date, time }
+}
+
+/** Lo que se escribió en los campos de fecha y hora, en palabras y en 24 horas, para confirmarlo debajo: «viernes 20
+    de noviembre a las 18:00», con el año solo si no es `currentYear`. `null` si todavía no es una fecha con hora. */
+export function dateTimeInWords(date: string, time: string, currentYear: number): string | null {
+  const iso = dueAtFromParts(date, time)
+  if (!iso) return null
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: TIME_ZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).formatToParts(new Date(iso))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ''
+  const year = Number(part('year')) === currentYear ? '' : ` de ${part('year')}`
+  const { time: hour } = dateTimeParts(iso)
+  // «a la 01:30», como «a la una»; las demás horas son plurales.
+  const at = hour.startsWith('01:') ? 'a la' : 'a las'
+  return `${part('weekday')} ${part('day')} de ${part('month')}${year} ${at} ${hour}`
+}
+
 /** Cuánto es un atraso: «45 min», «2 h 30 min», «1 día», «3 días 4 h». */
 export function durationLabel(minutes: number): string {
   const total = Math.max(1, Math.round(minutes))

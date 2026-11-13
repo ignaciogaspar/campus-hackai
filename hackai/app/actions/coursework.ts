@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation'
 import type { SpaceActionState } from '@/app/actions/spaces'
 import {
   COURSE_COLUMN,
-  dueAtFromInput,
+  dueAtFromParts,
   durationLabel,
   evaluationHref,
   gradeFromInput,
@@ -43,7 +43,7 @@ const ERRORS: Record<TaskError, string> = {
 const TASK_FIELDS: Partial<Record<TaskError, string>> = {
   'nombre-invalido': 'name',
   'consigna-invalida': 'instructions',
-  'fecha-invalida': 'dueAt',
+  'fecha-invalida': 'dueDate',
   'sin-comisiones': 'sectionIds',
   'demasiado-grande': 'file',
   'archivo-vacio': 'file'
@@ -133,6 +133,15 @@ function chosenFiles(form: FormData, key: string): File[] {
   })
 }
 
+/** La fecha límite de los campos de día y hora de la tarea, o `null` si falta alguno. */
+const dueAtFrom = (form: FormData) => dueAtFromParts(text(form, 'dueDate') ?? '', text(form, 'dueTime') ?? '')
+
+/** El campo de un error de la tarea. Si la fecha no sirve y el día está, lo que falta es la hora. */
+function taskField(error: TaskError, form: FormData): string | undefined {
+  if (error === 'fecha-invalida' && text(form, 'dueDate')) return 'dueTime'
+  return TASK_FIELDS[error]
+}
+
 /** Crea una tarea para las comisiones marcadas. Si sale bien, lleva a la lista de tareas de la primera. */
 export async function createTask(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
   const session = await requireSession()
@@ -140,7 +149,7 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
   if (!subjectId) return failed(UNEXPECTED)
   // Una fecha que no se entiende llega vacía: Seguimiento la rechaza después de mirar el nombre y la consigna, así el
   // error que se ve primero es el del primer campo.
-  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '') ?? ''
+  const dueAt = dueAtFrom(form) ?? ''
   const sectionIds = form.getAll('sectionIds').filter((id): id is string => typeof id === 'string' && id !== '')
   const file = chosenFile(form, 'file')
 
@@ -159,7 +168,7 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
         }
       : undefined
   })
-  if (!result.ok) return failed(ERRORS[result.error], TASK_FIELDS[result.error])
+  if (!result.ok) return failed(ERRORS[result.error], taskField(result.error, form))
   revalidatePath(tasksHref(subjectId))
   redirect(tasksHref(subjectId, sectionIds[0]))
 }
@@ -169,14 +178,14 @@ export async function updateTask(_prev: SpaceActionState, form: FormData): Promi
   const session = await requireSession()
   const taskId = text(form, 'taskId')
   if (!taskId) return failed(UNEXPECTED)
-  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '') ?? ''
+  const dueAt = dueAtFrom(form) ?? ''
 
   const result = await system().coursework.updateTask(session.personId, taskId, {
     name: text(form, 'name') ?? '',
     instructions: text(form, 'instructions') ?? '',
     dueAt
   })
-  if (!result.ok) return failed(ERRORS[result.error], TASK_FIELDS[result.error])
+  if (!result.ok) return failed(ERRORS[result.error], taskField(result.error, form))
   revalidatePath(tasksHref(result.value.subjectId))
   revalidatePath(taskHref(result.value.subjectId, taskId))
   return { status: 'ok', message: 'Guardamos los cambios.', at: Date.now() }
@@ -494,8 +503,9 @@ export async function saveExam(_prev: SpaceActionState, form: FormData): Promise
   const kind = text(form, 'kind') ?? ''
   if (!subjectId || !sectionId) return failed(UNEXPECTED)
   if (!EXAM_KINDS.has(kind)) return failed(EXAM_ERRORS['tipo-invalido'])
-  const date = dueAtFromInput(text(form, 'date') ?? '')
-  if (!date) return failed(EXAM_ERRORS['fecha-invalida'])
+  const day = text(form, 'date') ?? ''
+  const date = dueAtFromParts(day, text(form, 'time') ?? '')
+  if (!date) return failed(EXAM_ERRORS['fecha-invalida'], day ? 'time' : 'date')
   const columnId = text(form, 'columnId') || undefined
 
   const result = await system().coursework.saveExam(session.personId, {
@@ -505,7 +515,7 @@ export async function saveExam(_prev: SpaceActionState, form: FormData): Promise
     name: text(form, 'name') ?? '',
     date
   })
-  if (!result.ok) return failed(EXAM_ERRORS[result.error])
+  if (!result.ok) return failed(EXAM_ERRORS[result.error], result.error === 'nombre-invalido' ? 'name' : undefined)
   revalidatePath(evaluationHref(subjectId))
   revalidatePath(gradesHref(subjectId))
   return { status: 'ok', message: columnId ? 'Guardamos los cambios.' : 'Sumamos la instancia.', at: Date.now() }

@@ -1,12 +1,13 @@
 /* El formulario de una tarea, para el docente. Al crearla se elige para qué
    comisiones (de las vigentes que dicta), si lleva nota y, si quiere, un
    archivo; al editarla solo se cambian el nombre, la consigna y la fecha
-   límite: las comisiones y si lleva nota quedan como estaban. La fecha se
-   escribe en la hora de Buenos Aires (components/coursework/format.ts). */
+   límite: las comisiones y si lleva nota quedan como estaban. La fecha y la
+   hora van en dos campos, en la hora de Buenos Aires (date-time-fields.tsx). */
 import { ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { createTask, updateTask } from '@/app/actions/coursework'
-import { inputValueOf, sectionLabel } from '@/components/coursework/format'
+import { DateTimeFields } from '@/components/coursework/date-time-fields'
+import { sectionLabel } from '@/components/coursework/format'
 import { ActionForm, FieldError, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import type { Task, TaskSection } from '@/lib/core/coursework'
@@ -73,26 +74,15 @@ function Fields({ task }: { task?: Task }) {
         )}
         <FieldError field='instructions' />
       </div>
-      <div className={FIELD}>
-        <label htmlFor='tarea-fecha'>
-          Fecha límite<Need>obligatorio</Need>
-        </label>
-        <span className={BOX}>
-          <input
-            id='tarea-fecha'
-            type='datetime-local'
-            name='dueAt'
-            required
-            defaultValue={task ? inputValueOf(task.dueAt) : undefined}
-            aria-describedby='tarea-fecha-ayuda'
-            className='min-h-11 w-full bg-transparent px-3 text-[0.9375rem] font-normal outline-none'
-          />
-        </span>
-        <span id='tarea-fecha-ayuda' className={HELP}>
-          En hora de Buenos Aires
-        </span>
-        <FieldError field='dueAt' />
-      </div>
+      <DateTimeFields
+        legend='Fecha límite'
+        lead='Vence el'
+        dateName='dueDate'
+        timeName='dueTime'
+        idPrefix='tarea-fecha'
+        value={task?.dueAt}
+        suggestedTime='23:59'
+      />
     </>
   )
 }

@@ -5,10 +5,11 @@
    borrar, en el panel de cada una, con confirmación. */
 import { CalendarClock, ChevronDown, Lock, Plus, Trash2 } from 'lucide-react'
 import { deleteExam, saveExam, savePromotion } from '@/app/actions/coursework'
+import { DateTimeFields } from '@/components/coursework/date-time-fields'
 import { BOX, GHOST, HELP, INPUT, LABEL, PRIMARY } from '@/components/coursework/fields'
-import { gradeInputValue, inputValueOf } from '@/components/coursework/format'
+import { gradeInputValue } from '@/components/coursework/format'
 import { dueTime } from '@/components/dates'
-import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import { ActionForm, FieldError, SubmitButton } from '@/components/spaces/action-form'
 import { Card } from '@/components/ui/card'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { Select } from '@/components/ui/select'
@@ -31,24 +32,30 @@ const KIND_LABEL: Record<ExamInstance['kind'], string> = {
 
 type Ids = { subjectId: string; sectionId: string }
 
-/** Nombre, tipo y fecha: los mismos campos para sumar una instancia o corregir una. */
+/** Nombre, tipo y fecha: los mismos campos para sumar una instancia o corregir una. La fecha y la hora van en su
+    propia fila, para que se vean enteras también con el navegador al 125 %. */
 function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string }) {
   const kind = exam && exam.kind !== 'tp' ? exam.kind : 'parcial'
   return (
     <div className='grid gap-3 sm:grid-cols-2'>
-      <label className={cn(LABEL, 'sm:col-span-2')}>
-        Nombre
-        <span className={BOX}>
-          <input
-            name='name'
-            required
-            maxLength={120}
-            defaultValue={exam?.name}
-            placeholder='Segundo parcial'
-            className={INPUT}
-          />
-        </span>
-      </label>
+      <div className={cn(LABEL, 'sm:col-span-2')}>
+        <label className={LABEL}>
+          <span>
+            Nombre<span className={HELP}> (obligatorio)</span>
+          </span>
+          <span className={cn(BOX, 'has-[[aria-invalid=true]]:border-destructive')}>
+            <input
+              name='name'
+              required
+              maxLength={120}
+              defaultValue={exam?.name}
+              placeholder='Segundo parcial'
+              className={INPUT}
+            />
+          </span>
+        </label>
+        <FieldError field='name' />
+      </div>
       <label className={LABEL}>
         Tipo
         <Select
@@ -58,22 +65,17 @@ function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string 
           className='h-11 rounded-[10px] pl-3 text-[0.9375rem] font-normal'
         />
       </label>
-      <label className={LABEL}>
-        Fecha y hora
-        <span className={BOX}>
-          <input
-            type='datetime-local'
-            name='date'
-            required
-            defaultValue={exam ? inputValueOf(exam.date) : undefined}
-            aria-describedby={`${idPrefix}-fecha`}
-            className={INPUT}
-          />
-        </span>
-        <span id={`${idPrefix}-fecha`} className={HELP}>
-          En hora de Buenos Aires
-        </span>
-      </label>
+      <div className='sm:col-span-2'>
+        <DateTimeFields
+          legend='Fecha y hora'
+          lead='Es el'
+          dateName='date'
+          timeName='time'
+          idPrefix={`${idPrefix}-fecha`}
+          value={exam?.date}
+          suggestedTime='18:00'
+        />
+      </div>
     </div>
   )
 }
@@ -144,7 +146,7 @@ function ExamRow({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
           />
         </summary>
         <div className='flex flex-col gap-4 border-t border-border bg-ice/40 px-4 py-4'>
-          <ActionForm action={saveExam} className='flex flex-col gap-3'>
+          <ActionForm action={saveExam} noValidate className='flex flex-col gap-3'>
             <input type='hidden' name='subjectId' value={ids.subjectId} />
             <input type='hidden' name='sectionId' value={ids.sectionId} />
             <input type='hidden' name='columnId' value={exam.columnId} />
@@ -188,6 +190,7 @@ function AddExam({ ids }: { ids: Ids }) {
       <ActionForm
         action={saveExam}
         resetOnSuccess
+        noValidate
         className='flex flex-col gap-3 border-t border-border bg-ice/40 px-4 py-4'
       >
         <input type='hidden' name='subjectId' value={ids.subjectId} />
