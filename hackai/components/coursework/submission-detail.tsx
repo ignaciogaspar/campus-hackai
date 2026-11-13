@@ -3,7 +3,8 @@
    abren o se bajan con un toque. Es de una columna. Sin reglas de negocio. */
 import { CircleCheck, Clock } from 'lucide-react'
 import { FileRow } from '@/components/coursework/file-row'
-import { dueTime, submissionStatus } from '@/components/coursework/format'
+import { submissionStatus } from '@/components/coursework/format'
+import { dueTime } from '@/components/dates'
 import { StatusPill } from '@/components/ui/status-pill'
 import type { SubmissionDetail } from '@/lib/core/coursework'
 

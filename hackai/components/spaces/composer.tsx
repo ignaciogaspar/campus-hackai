@@ -152,6 +152,7 @@ export function Composer({ subjectId, channelId, replyTo, placeholder, announcem
             onChange={onText}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
+            aria-describedby={announcementFor ? `${id}-help` : undefined}
             className='max-h-40 min-h-10 w-full resize-none bg-transparent py-2 text-[0.9375rem] leading-6 outline-none placeholder:text-muted-foreground'
           />
         </div>
@@ -175,7 +176,7 @@ export function Composer({ subjectId, channelId, replyTo, placeholder, announcem
       </div>
 
       {announcementFor && (
-        <p className='hidden px-1 text-xs text-muted-foreground lg:block'>
+        <p id={`${id}-help`} className='hidden px-1 text-xs text-muted-foreground lg:block'>
           Enter salta de línea. Ctrl o ⌘ + Enter publica el aviso para {announcementFor}.
         </p>
       )}

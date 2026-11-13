@@ -196,7 +196,7 @@ export function PasteGrades({
             </p>
             {published && (
               <p className='rounded-xl bg-ice/70 px-3 py-2 text-[0.8125rem] text-ink'>
-                Esta columna ya está publicada: los alumnos ven las notas que guardes al toque
+                Esta columna ya está publicada: los alumnos ven enseguida las notas que guardes.
               </p>
             )}
             {stale && (

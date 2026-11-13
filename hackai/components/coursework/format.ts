@@ -128,9 +128,6 @@ export function sectionsLabel(names: string[]): string {
   return `Comisiones ${names.slice(0, -1).join(', ')} y ${last}`
 }
 
-/** «vie, 13 nov, 23:59»: la misma fecha límite que en el resto de la app. */
-export { dueTime }
-
 /** «Vence vie, 13 nov, 23:59» o «Venció vie, 13 nov, 23:59». */
 export function dueLabel(task: { dueAt: string; past: boolean }): string {
   return `${task.past ? 'Venció' : 'Vence'} ${dueTime(task.dueAt)}`
