@@ -5,9 +5,11 @@
    exportar a CSV e imprimir. Sin reglas de negocio: la arma Reportes. */
 import { Download } from 'lucide-react'
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { FollowUpForm } from '@/components/reports/follow-up-form'
 import { cutoffText } from '@/components/reports/format'
 import { REPORTS_ERROR } from '@/components/reports/frame'
+import { studentIdFrom } from '@/components/reports/params'
 import { PrintButton } from '@/components/reports/print-button'
 import {
   DataBlock,
@@ -53,7 +55,9 @@ export default async function StudentFilePage({ params, searchParams }: Props) {
   const [{ id }, query] = await Promise.all([params, searchParams])
   const year = Number(first(query.anio)) || undefined
   const back = backOf(first(query.volver))
-  const report = await system().reports.student(session.personId, decodeURIComponent(id), year)
+  const studentId = studentIdFrom(id)
+  if (studentId === null) notFound()
+  const report = await system().reports.student(session.personId, studentId, year)
 
   if (!report.ok) {
     return (

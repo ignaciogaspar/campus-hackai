@@ -17,6 +17,15 @@ import {
 
 export type SearchParams = Record<string, string | string[] | undefined>
 
+/** El legajo del segmento `[id]` de la ficha. Un `%` mal formado no es un legajo: `null`, y la ruta responde 404. */
+export function studentIdFrom(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return null
+  }
+}
+
 /** Lo que el listado suma a los filtros: búsqueda, orden y página. */
 export type ListParams = { search: string; sort: StudentSort; order: 'asc' | 'desc'; page: number }
 

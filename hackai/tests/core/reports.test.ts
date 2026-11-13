@@ -239,6 +239,7 @@ test('solo secretaría ve los reportes: un alumno recibe solo-secretaria', async
   assert.deepEqual(await reports.dashboard(ALUMNO, {}), { ok: false, error: 'solo-secretaria' })
   assert.deepEqual(await reports.student(ALUMNO, '240001'), { ok: false, error: 'solo-secretaria' })
   assert.deepEqual(await reports.follow(ALUMNO, '240001', ''), { ok: false, error: 'solo-secretaria' })
+  assert.deepEqual(await reports.unfollow(ALUMNO, '240001'), { ok: false, error: 'solo-secretaria' })
 })
 
 test('el corte de un año pasado es el 31 de diciembre y el del año actual, hoy', () => {
@@ -479,6 +480,8 @@ test('seguimiento: marcar con nota, cambiarla, verlo en su lista en cualquier es
 
   value(await reports.unfollow(SECRETARIA, '240001'))
   value(await reports.unfollow(SECRETARIA, '240001'))
+  // Sacar a un legajo que no está en el padrón no falla: unfollow es idempotente.
+  value(await reports.unfollow(SECRETARIA, 'nadie'))
   assert.deepEqual(
     value(await reports.students(SECRETARIA, { followed: true })).rows.map((r) => r.id),
     ['220001']

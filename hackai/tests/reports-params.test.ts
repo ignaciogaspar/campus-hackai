@@ -9,7 +9,8 @@ import {
   filtersFromParams,
   hrefOf,
   listFromParams,
-  paramsOf
+  paramsOf,
+  studentIdFrom
 } from '@/components/reports/params'
 
 test('los años de ingreso se leen sueltos o como rango, sin repetir y en orden', () => {
@@ -94,4 +95,10 @@ test('el botón de filtros del celular cuenta cada filtro de perfil una vez', ()
     followed: false
   }
   assert.equal(activeCount(base), 4)
+})
+
+test('el legajo del segmento se decodifica, y un % mal formado no es un legajo', () => {
+  assert.equal(studentIdFrom('240001'), '240001')
+  assert.equal(studentIdFrom('24%2D0001'), '24-0001')
+  assert.equal(studentIdFrom('%zz'), null)
 })

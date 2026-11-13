@@ -401,6 +401,8 @@ export function createReports({
       return saved.ok ? ok(followUp) : saved
     },
 
+    /* Idempotente a propósito, y sin mirar el padrón: así se puede sacar de la lista a un legajo que ya no figura
+       (por ejemplo, si el SIU lo dio de baja del padrón después de marcarlo). */
     async unfollow(personId, studentId) {
       const allowed = await secretary(personId)
       if (!allowed.ok) return allowed
