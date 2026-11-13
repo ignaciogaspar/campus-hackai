@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { compose } from '@/lib/composition'
-import { deliverFile } from '@/lib/file-delivery'
+import { deliverFile, fileFrom } from '@/lib/file-delivery'
 
 /** Un PDF chico: alcanza con que empiece como uno. */
 const PDF = new TextEncoder().encode('%PDF-1.4\n%%EOF\n')
@@ -203,4 +203,45 @@ test('el texto plano se muestra, pero con la CSP que no deja correr nada', async
 
   assert.match(response.headers.get('content-disposition') ?? '', /^inline;/)
   assert.equal(response.headers.get('content-security-policy'), "default-src 'none'; sandbox")
+})
+
+test('la consigna de una tarea la abren los de su comisión y no otros alumnos ni docentes', async () => {
+  const system = compose({})
+  const created = await system.coursework.createTask('p-mledesma', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-a'],
+    name: 'Práctica 3',
+    instructions: 'Resolvé los ejercicios.',
+    dueAt: '2026-11-13T23:59:00-03:00',
+    graded: true,
+    file: { name: 'guia.pdf', contentType: 'application/pdf', bytes: PDF }
+  })
+  assert.ok(created.ok && created.value.file)
+  const [, , id] = created.value.file.url.split('/')
+  const name = 'guia.pdf'
+  const file = fileFrom(system)
+  const open = (personId: string) => deliverFile(get(id, name), { id, name }, { personId, file })
+
+  assert.equal((await open('p-taguirre')).status, 200)
+  assert.equal((await open('p-mledesma')).status, 200)
+  // Un alumno de la B, el docente de la B y alguien de otra facultad ven la misma página que un archivo inexistente.
+  for (const personId of ['p-mcabrera', 'p-gferreyra', 'p-agimenez']) {
+    assert.equal((await open(personId)).status, 404, personId)
+  }
+})
+
+test('el material de un espacio se sigue abriendo por la misma ruta con la consigna de las tareas', async () => {
+  const { spaces, id, name } = await upload('Guía 2.pdf', 'application/pdf')
+  const system = compose({})
+
+  const response = await deliverFile(
+    get(id, name),
+    { id, name },
+    {
+      personId: 'p-taguirre',
+      file: fileFrom({ spaces, coursework: system.coursework })
+    }
+  )
+
+  assert.equal(response.status, 200)
 })

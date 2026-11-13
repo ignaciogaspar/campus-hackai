@@ -5,7 +5,7 @@ Cómo se organiza el código de `hackai/`. Sale de la skill `codebase-design` ap
 ## La idea en dos reglas
 
 1. **Puertos y adaptadores en los bordes.** SIU, Moodle y los canales externos son sistemas que no controlamos: cada uno entra por un puerto, con un adaptador para la demo y otro en memoria para los tests.
-2. **Módulos profundos adentro.** El núcleo son cuatro módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
+2. **Módulos profundos adentro.** El núcleo son cinco módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
 
 ## Módulos del núcleo
 
@@ -117,6 +117,27 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 **Por qué la sincronización no es un módulo aparte:** separada, Espacios tendría que exponer operaciones que solo existen para ella («dame lo pendiente de enviar», «guardá este mensaje externo»), y cada pantalla tendría que acordarse de sincronizar. Adentro, todas las reglas de un mensaje (permisos, origen, duplicados, reintentos) están en un solo lugar y se prueban por la misma interfaz. La sincronización sigue siendo una pieza propia dentro de Espacios, con su seam interno.
 
+### Seguimiento (`coursework`)
+
+Las tareas de una materia, y a futuro sus entregas y calificaciones. Hoy tiene la primera rebanada: el docente crea y edita tareas y el alumno las ve.
+
+| Operación | Qué hace |
+| --- | --- |
+| `createTask(persona, tarea)` | Crea una tarea de una materia con nombre, consigna, archivo opcional (por Archivos), fecha límite y si lleva nota, para una o varias comisiones vigentes que dicta el docente. Si algo falla después de guardar el archivo, lo borra |
+| `updateTask(persona, tarea, cambios)` | Cambia el nombre, la consigna y la fecha límite. Las comisiones y si lleva nota no se cambian |
+| `tasksOf(persona, materia, comisión?)` | Las tareas de una comisión, por fecha límite. Al docente le devuelve las comisiones vigentes que dicta de la materia y las de la elegida (la primera si falta o no es suya); al alumno, las de su comisión. Una comisión que la persona no tiene nunca trae tareas |
+| `task(persona, tarea)` | Una tarea con lo que la persona puede hacer con ella (`canManage`) y sus comisiones, solo las que la persona tiene |
+| `file(persona, archivo)` | Los bytes del archivo de la consigna de una tarea, si la persona la ve |
+
+**Reglas que hace cumplir:**
+
+- **Quién gestiona:** los docentes de las comisiones de la tarea. Una tarea es de una o más comisiones de la misma materia, y quien la crea tiene que dictar todas.
+- **Quién la ve:** los docentes y los alumnos de esas comisiones; un alumno de la A no ve una tarea que es solo de la B. La pertenencia se deduce de `sectionsOf` de Cursada en cada llamada y no se guarda: nunca se confía en una comisión que llega del navegador.
+- **Una tarea sin nota** queda marcada así: no tendrá columna en Calificaciones.
+- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `tarea-desconocida`, `nombre-invalido`, `fecha-invalida`, `demasiado-grande`, `falla-externa`).
+
+Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la persona), el puerto de Archivos y el reloj. Cursada no lo llama.
+
 ### Hoy (`today`)
 
 | Operación | Qué hace |
@@ -131,9 +152,12 @@ Compone Cursada y Espacios, y usa el reloj para el próximo parcial. No tiene al
 ```text
 today ──► studies ──► people
   │          ▲          ▲
-  └──► spaces ┘          │
-          └──────────────┘
+  ├──► spaces ┘          │
+  │       └──────────────┤
+  └──► coursework ──► studies
 ```
+
+Hoy todavía no llama a Seguimiento: las tareas con fecha en Hoy y el Calendario son de un ticket siguiente. Seguimiento usa además el puerto de Archivos y el reloj.
 
 Cursada usa Personas solo para traducir ids: una persona a sus ids del SIU y de Moodle (`accountIn`), y un docente del SIU a su persona de HackAI (`byExternalAccount`), porque los puertos hablan en ids de cada sistema. El rol y la facultad los lee del SIU con ese id.
 
@@ -162,14 +186,14 @@ Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales
 
 **Capacidades:** cada adaptador de un sistema de origen declara qué soporta: por ejemplo, si permite inscribir, si tiene cronograma, si ya matricula en Moodle, o si avisa por evento en vez de leerse desde un cursor. El núcleo decide con esas declaraciones, nunca preguntando qué adaptador es. Así el mismo núcleo funciona con el simulado de la demo y con el sistema real, que tiene menos capacidades.
 
-**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas. Los archivos guardados se entregan por la ruta `/archivos/<id>/<nombre>`, que pide sesión y pasa por `file` de Espacios: este busca en su almacén de qué material o de qué mensaje es el archivo y chequea que la persona sea del espacio o vea el canal. El bucket es privado y nada se lee desde el navegador directo a Supabase.
+**Almacén de cada módulo:** cada módulo guarda lo suyo en tablas propias, con un adaptador de Supabase y otro en memoria. Es un seam interno: se inyecta al armar el módulo y no forma parte de su interfaz. Un módulo nunca lee las tablas de otro, y solo el adaptador de un sistema de origen toca sus tablas. Los archivos guardados se entregan por la ruta `/archivos/<id>/<nombre>`, que pide sesión y pasa por `file` de Espacios: este busca en su almacén de qué material o de qué mensaje es el archivo y chequea que la persona sea del espacio o vea el canal. Si no es de Espacios, la ruta le pregunta a `file` de Seguimiento, que hace lo mismo con la consigna de una tarea. El bucket es privado y nada se lee desde el navegador directo a Supabase.
 
 ## Estructura de carpetas
 
 ```text
 hackai/
 ├── lib/
-│   ├── core/            people/, studies/, spaces/, today/
+│   ├── core/            people/, studies/, spaces/, coursework/, today/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/, caida/, cache/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos

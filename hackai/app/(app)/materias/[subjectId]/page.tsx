@@ -14,8 +14,8 @@
    del canal externo o de otros aparece sin recargar. Al leer un canal, la
    barra lateral baja sus no leídos (UnreadRefresh, en el layout).
 
-   Para el docente, arriba de todo, la barra de pestañas de la materia (Espacio,
-   Alumnos) que conserva `?comision=`.
+   Arriba de todo, la barra de pestañas de la materia (Espacio, Tareas y, para el
+   docente, Alumnos) que conserva `?comision=`.
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
@@ -450,7 +450,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        {view.viewer.role === 'profesor' && <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} />}
+        <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} role={view.viewer.role} />
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs

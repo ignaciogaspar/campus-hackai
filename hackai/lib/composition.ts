@@ -27,8 +27,8 @@
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
    necesita las mismas dos variables. Lo usan Personas, para los vínculos con
-   cada sistema, y Espacios, para espacios, canales, mensajes, material y lo
-   leído.
+   cada sistema, Espacios, para espacios, canales, mensajes, material y lo
+   leído, y Seguimiento, para las tareas.
 
    Archivos con `supabase` guarda en el bucket privado de Supabase Storage
    (supabase/migrations/0003_files.sql), con las mismas dos variables.
@@ -54,6 +54,7 @@ import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-ch
 import { createDiscordOAuth, type DiscordOAuth } from '@/lib/adapters/discord/oauth'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
+import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -64,10 +65,12 @@ import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
+import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursework-store'
 import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
+import { type Coursework, createCoursework } from '@/lib/core/coursework'
 import { createPeople, type People } from '@/lib/core/people'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
 import { createStudies, type Studies } from '@/lib/core/studies'
@@ -133,6 +136,7 @@ export type System = {
   people: People
   studies: Studies
   spaces: Spaces
+  coursework: Coursework
   today: Today
 }
 
@@ -235,6 +239,15 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     // El tiempo real del proceso, aunque el reloj sea el fijo de la demo.
     timer: () => performance.now()
   })
+  const coursework = createCoursework({
+    studies,
+    files: ports.files,
+    clock,
+    store:
+      adapters.store === 'supabase'
+        ? createSupabaseCourseworkStore({ client: supabase() })
+        : createMemoryCourseworkStore()
+  })
   const today = createToday({ studies, spaces, clock })
 
   const now = () => clock.now().toISOString()
@@ -248,6 +261,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
     people,
     studies,
     spaces,
+    coursework,
     today
   }
 }

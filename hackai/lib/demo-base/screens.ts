@@ -39,6 +39,7 @@ export const DEMO_SCREENS: DemoScreens[] = [
       '/materias',
       '/materias/am1',
       '/materias/am1?vista=directos',
+      '/materias/am1/tareas',
       '/materias/pr1',
       '/materias?ver=final-pendiente',
       '/calendario',
@@ -53,7 +54,15 @@ export const DEMO_SCREENS: DemoScreens[] = [
   {
     personId: 'p-gferreyra',
     role: 'profesor',
-    paths: ['/hoy', '/novedades', '/materias', '/materias/am1', '/calendario']
+    paths: [
+      '/hoy',
+      '/novedades',
+      '/materias',
+      '/materias/am1',
+      '/materias/am1/tareas',
+      '/materias/am1/tareas/nueva',
+      '/calendario'
+    ]
   }
 ]
 
