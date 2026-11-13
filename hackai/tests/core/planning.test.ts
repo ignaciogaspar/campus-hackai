@@ -258,3 +258,13 @@ test('el set sintético arranca con el planning de las comisiones del cuatrimest
     'trae materias de otra facultad'
   )
 })
+
+test('una clase semanal no se suspende: para suspender hace falta la fecha', () => {
+  const preview = build().preview([
+    HEADER,
+    ['Física I', 'A', 'FI', '', 'A9', 'lunes', '', '8:00', '10:00', 'suspendida']
+  ])
+  assert.deepEqual(preview.rows, [
+    { line: 2, error: 'Para suspender una clase, poné la fecha del día que no se dicta.' }
+  ])
+})

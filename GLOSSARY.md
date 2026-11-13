@@ -338,5 +338,6 @@ El contenido de `campus/`: una copia del repo de Nacho en una fecha, sin histori
 - **Entrega**: en Moodle es lo que sube el alumno; en Campus Austral nombra también la consigna.
 - **Inscripción y matriculación**: inscripción es del SIU (a cursada o a examen); matriculación es de Moodle. Que no estén conectadas es uno de los problemas del research.
 - **«Campus»** en boca del equipo puede ser el Campus Virtual (Moodle), Campus Austral o HackAI. Decir cuál.
+- **Clase**: la `SectionClass` de Cursada es un día del horario de una comisión del SIU (la que lleva lista); la clase del Planning (`PlanningClass`) es una fila de la planilla de secretaría, unida a la materia por su nombre y no a una comisión del SIU. Decir cuál.
 - **Actividad**: en el SIU es una materia o una extracurricular; en Moodle, un recurso del curso (tarea, foro); en Campus Austral, una dinámica de clase. Preferir el término específico.
 - **Nota**: la del acta (oficial, SIU), la calificación (Moodle) y la nota calculada al leer de Campus Austral son tres cosas distintas.

@@ -5,15 +5,10 @@
 import type { CalendarEvent } from '@/components/today/calendar-layout'
 import { hhmm } from '@/components/today/calendar-layout'
 import type { PlanningClass, PlanningEntryInput } from '@/lib/core/planning'
+import { plainText } from '@/lib/plain-text'
 
 /** Sin tildes ni mayúsculas, para comparar el nombre de una materia con el del SIU. */
-export const plainName = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
+export const plainName = plainText
 
 const CHANGE: Record<NonNullable<PlanningClass['change']>, string> = {
   cambio: 'Cambio de último momento',
@@ -28,7 +23,8 @@ export function eventOf(c: PlanningClass, today: string): CalendarEvent {
     day: c.day,
     minutes: c.start,
     end: c.end,
-    time: `${hhmm(c.start)} – ${hhmm(c.end)}`,
+    // Un bloque de menos de hora y media en la grilla muestra solo el nombre y la hora: el aula va con la hora.
+    time: `${hhmm(c.start)} – ${hhmm(c.end)}${c.end - c.start < 90 ? ` · ${c.room}` : ''}`,
     code: c.school || null,
     title: c.subject,
     subject: [c.section && `Comisión ${c.section}`, c.change && CHANGE[c.change]].filter(Boolean).join(' · '),
@@ -64,9 +60,6 @@ export function matches(c: PlanningClass, f: PlanningFilters, mine: Set<string>)
 /** Los valores distintos de un campo, ordenados, para un filtro. */
 export const optionsOf = (classes: PlanningClass[], pick: (c: PlanningClass) => string) =>
   [...new Set(classes.map(pick).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
-
-/** «540» → «9:00», para la pantalla de secretaría. */
-export const timeOf = (minutes: number) => hhmm(minutes)
 
 const WEEKDAYS: Record<NonNullable<PlanningEntryInput['weekday']>, string> = {
   lunes: 'Lunes',

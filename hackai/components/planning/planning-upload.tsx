@@ -8,8 +8,9 @@
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { useActionState } from 'react'
 import { type PlanningPreviewState, previewPlanning, savePlanning } from '@/app/actions/planning'
-import { timeOf, whenLabel } from '@/components/planning/format'
+import { whenLabel } from '@/components/planning/format'
 import { ActionForm, FormFeedback, SubmitButton } from '@/components/spaces/action-form'
+import { hhmm } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
@@ -42,7 +43,7 @@ function PreviewRow({ row }: { row: PlanningPreviewRow }) {
         <>
           <span>Línea {row.line}</span>
           <span>
-            · {whenLabel(e)}, {timeOf(e.start)} a {timeOf(e.end)}
+            · {whenLabel(e)}, {hhmm(e.start)} a {hhmm(e.end)}
           </span>
           <span>· {[e.room, e.building, e.school].filter(Boolean).join(' · ')}</span>
         </>

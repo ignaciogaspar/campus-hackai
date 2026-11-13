@@ -5,7 +5,7 @@ Cómo se organiza el código de `hackai/`. Sale de la skill `codebase-design` ap
 ## La idea en dos reglas
 
 1. **Puertos y adaptadores en los bordes.** SIU, Moodle y los canales externos son sistemas que no controlamos: cada uno entra por un puerto, con un adaptador para la demo y otro en memoria para los tests.
-2. **Módulos profundos adentro.** El núcleo son cinco módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
+2. **Módulos profundos adentro.** El núcleo son seis módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
 
 ## Módulos del núcleo
 
@@ -258,7 +258,7 @@ Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales
 ```text
 hackai/
 ├── lib/
-│   ├── core/            people/, studies/, spaces/, coursework/, today/
+│   ├── core/            people/, studies/, spaces/, coursework/, today/, planning/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, siu-real/, moodle-simulado/, discord/, supabase/, memoria/, caida/, cache/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos

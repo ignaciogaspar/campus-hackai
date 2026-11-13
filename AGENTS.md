@@ -18,7 +18,7 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 
 ## Reglas duras
 
-- **Puertos y adaptadores en los bordes, módulos profundos adentro** (ADR 0004). Los sistemas de origen (SIU, Moodle, canales externos) entran por un puerto con un adaptador real y uno en memoria. El núcleo son cinco módulos (`people`, `studies`, `spaces`, `coursework`, `today`) que se llaman por su interfaz. `core/` nunca importa `adapters/` ni `app/`, y solo `composition` arma los módulos con sus adaptadores. Leer `hackai/docs/ARQUITECTURA.md` antes de crear o mover un archivo de `hackai/lib/`.
+- **Puertos y adaptadores en los bordes, módulos profundos adentro** (ADR 0004). Los sistemas de origen (SIU, Moodle, canales externos) entran por un puerto con un adaptador real y uno en memoria. El núcleo son seis módulos (`people`, `studies`, `spaces`, `coursework`, `today`, `planning`) que se llaman por su interfaz. `core/` nunca importa `adapters/` ni `app/`, y solo `composition` arma los módulos con sus adaptadores. Leer `hackai/docs/ARQUITECTURA.md` antes de crear o mover un archivo de `hackai/lib/`.
 - **`campus/` es de solo lectura.** Es la referencia de la lógica de Campus Austral: se lee y se reimplementa en `hackai/`, sin copiar código. Se reemplaza entero con la skill `sync-campus`, en un commit aparte.
 - **Stack fijo, sin dependencias nuevas** (ADR 0002, 0006 y 0007): Node 22, Next.js 15, React 19, TypeScript estricto, Supabase, Tailwind CSS 4 con componentes de shadcn/ui en `components/ui/`, tests con `node:test`, formato y lint con Biome. Sumar un paquete requiere una ADR.
 - **Datos en el servidor.** Todo acceso a la base pasa por el servidor con el service role. Las migraciones son idempotentes y activan RLS sin políticas.

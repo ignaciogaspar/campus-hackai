@@ -6,6 +6,7 @@
    semana; con «Fecha» es de ese día solo: un cambio de aula o de horario, una
    clase suspendida o una clase extra. Las columnas se reconocen por el
    encabezado, en cualquier orden; sin encabezado van en el orden de `COLUMNS`. */
+
 import type {
   PlanningCell,
   PlanningEntryInput,
@@ -13,6 +14,7 @@ import type {
   PlanningPreviewRow,
   Weekday
 } from '@/lib/core/planning'
+import { plainText as plain } from '@/lib/plain-text'
 
 export type PlanningColumn =
   | 'materia'
@@ -41,7 +43,7 @@ export const COLUMNS: { column: PlanningColumn; header: string }[] = [
 ]
 
 const ALIASES: Record<PlanningColumn, string[]> = {
-  materia: ['materia', 'asignatura', 'actividad'],
+  materia: ['materia', 'asignatura'],
   comision: ['comision', 'com'],
   facultad: ['facultad', 'unidad academica', 'fac'],
   edificio: ['edificio', 'sede', 'sede y edificio'],
@@ -77,15 +79,6 @@ const WEEKDAYS: Record<string, Weekday> = {
   sa: 'sabado',
   sab: 'sabado'
 }
-
-/** Sin tildes, sin mayúsculas y sin espacios de más, para comparar. */
-export const plain = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
 
 const textOf = (cell: PlanningCell | undefined) => (cell === null || cell === undefined ? '' : String(cell).trim())
 
@@ -165,6 +158,8 @@ function entryOf(cells: Cells): PlanningEntryInput | string {
   if (start === null) return `No entendimos la hora de inicio «${textOf(cells.inicio)}». Usá horas:minutos, como 9:00.`
   if (end === null) return `No entendimos la hora de fin «${textOf(cells.fin)}». Usá horas:minutos, como 13:00.`
   if (end <= start) return 'La clase termina antes de empezar: revisá el inicio y el fin.'
+  const cancelled = /suspend|cancel/.test(plain(textOf(cells.estado)))
+  if (cancelled && when.date === null) return 'Para suspender una clase, poné la fecha del día que no se dicta.'
   return {
     subject: clip(subject),
     section: clip(textOf(cells.comision).replace(/^com(isi[oó]n)?\.?\s*/i, '')) || null,
@@ -174,7 +169,7 @@ function entryOf(cells: Cells): PlanningEntryInput | string {
     ...when,
     start,
     end,
-    cancelled: /suspend|cancel/.test(plain(textOf(cells.estado)))
+    cancelled
   }
 }
 

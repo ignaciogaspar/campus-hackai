@@ -5,10 +5,11 @@
 import { Trash2 } from 'lucide-react'
 import type { Metadata } from 'next'
 import { addPlanningClass, removePlanningClass } from '@/app/actions/planning'
-import { timeOf, whenLabel } from '@/components/planning/format'
+import { whenLabel } from '@/components/planning/format'
 import { PlanningUpload } from '@/components/planning/planning-upload'
 import { PageHeader } from '@/components/shell/page-header'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import { hhmm } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
@@ -100,7 +101,7 @@ function EntryRow({ entry }: { entry: PlanningEntry }) {
       meta={
         <>
           <span>
-            {whenLabel(entry)}, {timeOf(entry.start)} a {timeOf(entry.end)}
+            {whenLabel(entry)}, {hhmm(entry.start)} a {hhmm(entry.end)}
           </span>
           <span>· {[entry.room, entry.building, entry.school].filter(Boolean).join(' · ')}</span>
         </>

@@ -4,8 +4,8 @@
    con fecha sin clase semanal que pisar es una clase extra. */
 
 import type { PlanningClass, PlanningEntry, Weekday } from '@/lib/core/planning'
-import { plain } from '@/lib/core/planning/sheet'
 import { addDays, weekdayIndex } from '@/lib/dates'
+import { plainText as plain } from '@/lib/plain-text'
 
 const WEEKDAY_INDEX: Record<Weekday, number> = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4, sabado: 5 }
 
