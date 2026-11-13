@@ -69,11 +69,12 @@ import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { focusSection, type SectionFocus } from '@/components/spaces/section-focus'
 import { UnreadMemory } from '@/components/spaces/unread-memory'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
-import { SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
+import { noAccessText, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
 import { SUBJECT_WIDTH, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import type { Role } from '@/lib/core/people'
 import type { AccessError, Channel, ChannelView, SpaceSection, Spaces, SpaceView } from '@/lib/core/spaces'
 import type { Fail } from '@/lib/result'
 import { cn } from '@/lib/utils'
@@ -93,8 +94,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return { title: `${opened?.ok ? opened.value.space.name : 'Materia'} · Campus HackAI` }
 }
 
-const OPEN_ERRORS: Record<AccessError, string> = {
-  'sin-acceso': 'No sos parte de esta materia. Si recién te inscribiste, puede tardar un rato en aparecer.',
+/** `sin-acceso` depende del rol: lo dice `noAccessText`. */
+const OPEN_ERRORS: Record<Exclude<AccessError, 'sin-acceso'>, string> = {
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
   'falla-externa': 'No pudimos abrir el espacio porque el SIU no responde. Probá de nuevo en un rato.'
 }
@@ -168,13 +169,13 @@ function RetryLink({ href }: { href: string }) {
   )
 }
 
-function SpaceError({ error, retryHref }: { error: AccessError; retryHref: string }) {
+function SpaceError({ error, retryHref, role }: { error: AccessError; retryHref: string; role: Role }) {
   return (
     <>
       <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop art='general' />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
-          <p>{OPEN_ERRORS[error]}</p>
+          <p>{error === 'sin-acceso' ? noAccessText(role) : OPEN_ERRORS[error]}</p>
           {error === 'falla-externa' && <RetryLink href={retryHref} />}
           {error === 'sin-acceso' && (
             <Link href='/materias' className='inline-flex min-h-10 items-center gap-1 font-bold underline'>
@@ -477,7 +478,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const notice = singleParam(raw.discord)
 
   const opened = await openSpace(session.personId, subjectId)
-  if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} />
+  if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} role={session.role} />
   const view = opened.value
   const taught = taughtSections(view)
   const focus = focusSection(

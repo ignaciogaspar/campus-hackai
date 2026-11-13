@@ -58,10 +58,14 @@ function ThreadLink({ subjectId, channel, thread }: { subjectId: string; channel
 const PILL = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold'
 
 /** En qué está la consulta, con las mismas palabras que el Hoy del docente. «Falta marcarla resuelta» lo lee solo
-    quien la puede marcar: al alumno le alcanza con saber que ya le respondieron. */
+    quien la puede marcar: al alumno le alcanza con saber que ya le respondieron. En Consultas, lo que abre un
+    docente no es una consulta: se rotula como suyo. */
 function QuestionStatus({ channel, thread }: { channel: Channel; thread: Thread }) {
   const state = questionState(thread)
-  if (state === null) return null
+  if (state === null) {
+    if (channel.kind !== 'consultas' || thread.message.author.role !== 'profesor') return null
+    return <span className={cn(PILL, 'bg-accent text-blue')}>Mensaje del docente</span>
+  }
   if (state === 'resuelta') {
     return (
       <span className={cn(PILL, 'bg-success-background text-success')}>
@@ -226,6 +230,13 @@ function QuestionList({
   filter
 }: ListProps & { shown: Thread[]; filter: QuestionFilter }) {
   if (!threads.length) {
+    if (channel.canResolve) {
+      return (
+        <EmptyState icon={MessagesSquare} title='Todavía nadie preguntó'>
+          Cuando un alumno pregunte, te aparece en Hoy y acá, hasta que la marques resuelta.
+        </EmptyState>
+      )
+    }
     return (
       <EmptyState icon={MessagesSquare} title='Nadie preguntó todavía'>
         {`Si tenés una duda, escribila abajo: la ven todos los de ${audience(channel)} y los docentes responden acá.`}

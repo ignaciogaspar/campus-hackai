@@ -4,6 +4,7 @@
    Aires y con semanas de lunes a domingo. Qué es un parcial, qué pasó y cuál
    es el próximo lo decide Hoy: acá solo se ubica. */
 import type { Origin } from '@/components/ui/origin-badge'
+import type { Role } from '@/lib/core/people'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE, weekdayIndex } from '@/lib/dates'
 
@@ -99,13 +100,19 @@ const CLOSING: Record<OpenEnrollment['kind'], string> = {
   examen: 'al final'
 }
 
+/** El docente no rinde el final: integra la mesa. «Final» se lee como la mesa; otro nombre queda como está. */
+const titleOf = (item: UpcomingItem, viewer: Role) =>
+  viewer === 'profesor' && item.kind === 'final' && item.name === 'Final' ? 'Mesa de final' : item.name
+
 /** Las fechas de Hoy como eventos. Los parciales y finales van en su hora; las
-    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. */
+    entregas de Moodle y de HackAI y los cierres de inscripción, en la fila de todo el día. Para el docente
+    (`viewer`), el final se titula como la mesa que integra. */
 export function eventsOf(
   upcoming: UpcomingItem[],
   enrollments: OpenEnrollment[],
   nextId: string | null,
-  now: string
+  now: string,
+  viewer: Role = 'alumno'
 ): CalendarEvent[] {
   const dates = upcoming.map((item): CalendarEvent => {
     const minutes = minutesOf(item.date)
@@ -116,7 +123,7 @@ export function eventsOf(
       end: null,
       time: hhmm(minutes),
       code: item.subjectCode,
-      title: item.name,
+      title: titleOf(item, viewer),
       subject: item.examPeriod ? `${item.subjectName} · ${item.examPeriod}` : item.subjectName,
       place: item.location,
       tone: item.kind,

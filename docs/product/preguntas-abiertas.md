@@ -300,7 +300,23 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
-### 37. ¿Los archivos adjuntos a un aviso entran al material y a la búsqueda?
+### 37. ¿Las entregas del aula de Moodle van mezcladas en la lista de Tareas?
+
+- **Por qué importa:** la tarjeta de Mis materias y el Calendario muestran las entregas de Moodle («Guía 3 resuelta»), pero la pestaña Tareas lista solo las de HackAI. Un alumno con la lista vacía puede concluir que no tiene nada pendiente (#132, U-24).
+- **Hipótesis (13/11/2026):** para la demo, una nota arriba de la lista nombra la próxima entrega del aula y lleva al aula y al Calendario, sin mezclarlas.
+- **Opciones:** como está; mezclarlas en la lista con el sello de Moodle y el enlace al aula; una sección aparte «En Moodle» debajo de la lista.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 38. ¿Notas lista las tareas con nota que todavía no se corrigieron?
+
+- **Por qué importa:** la tarea del alumno ya muestra la nota y la devolución cuando se publican, y avisa que van a aparecer en Notas (#132, U-26). Pero en Notas, «Parciales y trabajos prácticos» no nombra la tarea hasta que tiene nota publicada, ni como pendiente.
+- **Hipótesis (13/11/2026):** alcanza con que aparezca cuando se publica, como cualquier nota.
+- **Opciones:** como está; listarla como «Entregada · sin corregir» desde que se entrega; listarla también sin entregar, con su fecha límite.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 39. ¿Los archivos adjuntos a un aviso entran al material y a la búsqueda?
 
 - **Por qué importa:** en el recorrido de UX (#130, U-23), en Contabilidad I el aviso del 3/11 trae `temas-segundo-parcial.pdf`, pero Material dice «Todavía no hay material» y buscar «parcial» no encuentra nada. El alumno busca el archivo donde está el resto y no lo encuentra.
 - **Hipótesis (13/11/2026):** no entran: el material es lo que el docente sube o importa como material, y un adjunto queda en su aviso. Mientras, el estado vacío de Material dice que los adjuntos de los avisos quedan en Avisos.

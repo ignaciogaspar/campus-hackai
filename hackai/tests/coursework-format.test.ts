@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import {
   columnStatus,
   countsLabel,
+  createdTaskHref,
   dueAtFromInput,
   dueLabel,
   durationLabel,
@@ -16,12 +17,17 @@ import {
   notesLabel,
   pastedText,
   pasteGradesHref,
+  progressLabel,
+  relativeDue,
   rowStatus,
   sectionsLabel,
   sheetChange,
+  subjectNotesHref,
   submissionHref,
   submissionStatus,
+  taskGradeLabel,
   taskHref,
+  taskStatus,
   tasksHref
 } from '@/components/coursework/format'
 import { subjectTabHref, tabsFor } from '@/components/subjects/subject-nav'
@@ -32,6 +38,14 @@ test('los enlaces de Seguimiento conservan la comisión elegida y escapan los id
   assert.equal(newTaskHref('am1', 'sec-am1-fi-a'), '/materias/am1/tareas/nueva?comision=sec-am1-fi-a')
   assert.equal(taskHref('am1', 'tarea-1', 'sec a'), '/materias/am1/tareas/tarea-1?comision=sec+a')
   assert.equal(tasksHref('a/b'), '/materias/a%2Fb/tareas')
+})
+
+test('después de crear una tarea se vuelve a la lista de su comisión, marcando cuál es la nueva', () => {
+  assert.equal(
+    createdTaskHref('am1', 'sec-am1-fi-a', 'tarea 7'),
+    '/materias/am1/tareas?comision=sec-am1-fi-a&creada=tarea+7'
+  )
+  assert.equal(createdTaskHref('am1', undefined, 'tarea-7'), '/materias/am1/tareas?creada=tarea-7')
 })
 
 test('el alumno ve las pestañas Espacio y Tareas y el docente además Alumnos', () => {
@@ -84,6 +98,12 @@ test('la fecha límite dice si vence o venció, en la hora de Buenos Aires', () 
   const dueAt = '2026-11-14T02:59:00.000Z'
   assert.match(dueLabel({ dueAt, past: false }), /^Vence vie.*13 nov.*23:59$/)
   assert.match(dueLabel({ dueAt, past: true }), /^Venció vie.*13 nov.*23:59$/)
+})
+
+test('la fecha límite de una tarea de otro año dice de qué año es', () => {
+  const now = '2026-11-13T12:00:00-03:00'
+  assert.equal(dueLabel({ dueAt: '2025-03-02T04:00:00.000Z', past: true }, now), 'Venció dom, 2 mar 2025, 01:00')
+  assert.equal(dueLabel({ dueAt: '2026-11-14T02:59:00.000Z', past: false }, now), 'Vence vie, 13 nov, 23:59')
 })
 
 test('lo que escribe la persona en el campo de fecha se toma en Buenos Aires y vuelve igual', () => {
@@ -203,4 +223,60 @@ test('el enlace a la evaluación lleva la comisión y la columna de la que se vi
     evaluationHref('am1', 'sec-a', { columna: 'cursada', pesos: true }),
     '/materias/am1/calificaciones/evaluacion?comision=sec-a&columna=cursada#pesos'
   )
+})
+
+test('cuánto falta para una fecha límite se dice en días de Buenos Aires', () => {
+  // Martes 10/11/2026 a las 23:00 en Buenos Aires.
+  const now = '2026-11-11T02:00:00.000Z'
+  assert.equal(relativeDue('2026-11-10T23:59:00-03:00', now), 'vence hoy')
+  assert.equal(relativeDue('2026-11-11T00:30:00-03:00', now), 'vence mañana')
+  assert.equal(relativeDue('2026-11-13T23:59:00-03:00', now), 'vence en 3 días')
+  assert.equal(relativeDue('2026-11-10T22:00:00-03:00', now), 'venció')
+})
+
+test('la nota de una tarea se busca en Notas, con la materia elegida', () => {
+  assert.equal(subjectNotesHref('am1'), '/notas?materia=am1')
+  assert.equal(subjectNotesHref('a/b'), '/notas?materia=a%2Fb')
+})
+
+test('la nota que el docente cargó en una tarea dice si el alumno ya la ve', () => {
+  const grade = { value: 8.5, absent: false, comment: '', published: true }
+  assert.equal(taskGradeLabel(grade), 'Nota 8,5')
+  assert.equal(taskGradeLabel({ ...grade, published: false }), 'Nota 8,5 · sin publicar')
+  assert.equal(taskGradeLabel({ ...grade, value: null, absent: true }), 'Ausente')
+  assert.equal(taskGradeLabel({ ...grade, value: null, absent: true, published: false }), 'Ausente · sin publicar')
+})
+
+test('el estado de una tarea: al docente, si sigue vigente; al alumno, cómo está su entrega', () => {
+  // Martes 10/11/2026 a las 12:00 en Buenos Aires.
+  const now = '2026-11-10T15:00:00.000Z'
+  const due = '2026-11-13T23:59:00-03:00'
+  const open = { dueAt: due, past: false, submission: null }
+  const closed = { dueAt: '2026-11-09T23:59:00-03:00', past: true, submission: null }
+  const delivered = { late: null, grade: null }
+
+  assert.deepEqual(taskStatus(open, 'profesor', now), { label: 'Vigente', tone: 'info' })
+  assert.deepEqual(taskStatus(closed, 'profesor', now), { label: 'Venció', tone: 'neutral' })
+  assert.deepEqual(taskStatus(open, 'alumno', now), { label: 'Sin entregar · vence en 3 días', tone: 'info' })
+  assert.deepEqual(taskStatus(closed, 'alumno', now), { label: 'Atrasada, podés entregarla igual', tone: 'warning' })
+  assert.deepEqual(taskStatus({ ...open, submission: delivered }, 'alumno', now), {
+    label: 'Entregada',
+    tone: 'success'
+  })
+  assert.deepEqual(taskStatus({ ...closed, submission: { ...delivered, late: { minutes: 451_000 } } }, 'alumno', now), {
+    label: 'Entregada con atraso',
+    tone: 'warning'
+  })
+  const grade = { value: 8, absent: false, comment: '', published: true }
+  assert.deepEqual(taskStatus({ ...closed, submission: { ...delivered, grade } }, 'alumno', now), {
+    label: 'Nota 8',
+    tone: 'success'
+  })
+})
+
+test('cómo va una tarea en la comisión se dice en una línea: entregas y las que falta corregir', () => {
+  assert.equal(progressLabel({ delivered: 2, ungraded: 2, missing: 1 }), '2 entregas · 2 sin corregir')
+  assert.equal(progressLabel({ delivered: 1, ungraded: 1, missing: 0 }), '1 entrega · 1 sin corregir')
+  assert.equal(progressLabel({ delivered: 3, ungraded: 0, missing: 0 }), '3 entregas')
+  assert.equal(progressLabel({ delivered: 0, ungraded: 0, missing: 3 }), 'Sin entregas')
 })

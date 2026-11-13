@@ -2,7 +2,12 @@
    presentes, y un toque para marcar a los ausentes. La comisión va en
    `?comision=` y la clase en `?clase=` (su instante ISO). Se llega desde «Alumnos
    y clases» de la materia. Sin reglas de negocio: quién puede tomar lista, que
-   sea la clase de hoy y el pase al SIU los decide Cursada. */
+   sea la clase de hoy y el pase al SIU los decide Cursada.
+
+   En el celular se vuelve con la flecha del encabezado. En compu, donde el
+   encabezado no la lleva, arriba de la lista va «Volver a Alumnos y clases» de
+   la comisión, y lo mismo junto al mensaje de lista guardada. */
+import { ChevronLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { longDay, timeOf } from '@/components/dates'
@@ -84,10 +89,18 @@ export default async function TomarListaPage({ params, searchParams }: { params:
         </span>
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-40 lg:px-8 lg:pt-8 lg:pb-16'>
+      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-40 lg:px-8 lg:pt-6 lg:pb-16'>
+        <Link
+          href={backHref}
+          className='-ml-1 hidden min-h-11 items-center gap-1 self-start rounded-lg px-1 text-sm font-semibold text-blue underline-offset-2 hover:underline focus-ring lg:inline-flex'
+        >
+          <ChevronLeft aria-hidden='true' className='size-4' />
+          Volver a Alumnos y clases
+        </Link>
         {staleRead && <StaleBanner since={staleRead.readAt} now={system().now()} />}
         <AttendanceForm
           action={saveAttendanceAction}
+          backHref={backHref}
           sectionId={section.sectionId}
           classAt={data.classAt}
           students={data.students.map((s) => ({ legajo: s.legajo, name: s.name }))}

@@ -12,7 +12,9 @@
    - Una tarea sin nota queda marcada (`graded: false`): no tendrá columna en
      Calificaciones.
    - «Vencida» (`past`) se calcula al leer, con el reloj: si el docente corre la
-     fecha límite, se recalcula.
+     fecha límite, se recalcula. Una tarea no se crea con la fecha límite ya
+     pasada, ni se le corre la fecha al pasado (`fecha-pasada`); una vencida se
+     sigue editando si no se le toca la fecha.
    - El archivo de la consigna se guarda en Archivos y se entrega solo a quien
      ve la tarea.
    - Entregar es cosa del alumno de una de las comisiones de la tarea: sube uno
@@ -21,9 +23,11 @@
      leer, con la fecha límite vigente. Volver a entregar reemplaza la entrega
      anterior (y borra sus archivos) hasta que el docente la califica. Los
      archivos de una entrega los baja quien la hizo y los docentes de la
-     comisión del alumno.
+     comisión del alumno. En su entrega, el alumno ve la nota y la devolución
+     recién cuando se publican; el docente ve la que cargó.
    - Quién entregó: el docente ve todos los alumnos de una comisión suya (los de
-     Cursada) con su estado, y abre cada entrega. Una comisión que no dicta es
+     Cursada) con su estado y la nota que les cargó, y abre cada entrega. Una
+     comisión que no dicta es
      `sin-acceso`; la entrega de un alumno de otra comisión, para él, no existe.
    - Las tareas con fecha de las materias actuales del alumno (`dated`) las
      compone Hoy para el calendario y el `.ics`.
@@ -83,6 +87,18 @@ export type TaskFile = { name: string; contentType: string; size: number; url: s
 /** La materia de una tarea, para el título de la pantalla. */
 export type TaskSubject = { subjectId: string; subjectName: string; subjectCode: string; termName: string }
 
+/** La nota de un alumno en una tarea, como la ve quien mira: el alumno, solo la publicada; el docente, la que
+    cargó, publicada o no. */
+export type TaskGrade = {
+  /** De 1 a 10; `null` si estuvo ausente. */
+  value: number | null
+  absent: boolean
+  /** La devolución del docente. */
+  comment: string
+  /** Si el alumno ya la ve. */
+  published: boolean
+}
+
 /** Una entrega del alumno a una tarea. */
 export type Submission = {
   id: string
@@ -94,6 +110,9 @@ export type Submission = {
   late: { minutes: number } | null
   /** Si el docente ya la calificó: desde entonces no se reemplaza. */
   graded: boolean
+  /** La nota y la devolución: al alumno, recién cuando se publican (calificada sin publicar es `graded` sin
+      `grade`); al docente, la que cargó. `null` si no hay. */
+  grade: TaskGrade | null
 }
 
 export type Task = {
@@ -113,6 +132,19 @@ export type Task = {
   createdAt: string
   /** La entrega de quien mira, si es alumno y ya entregó; si no, `null`. */
   submission: Submission | null
+  /** Solo al docente, en la lista de la comisión elegida: cuántos entregaron, cuántos falta corregir y cuántos no
+      entregaron. `null` en cualquier otro caso, o si no se pudieron leer los alumnos. */
+  progress: TaskProgress | null
+}
+
+/** Cómo va una tarea en una comisión, con los mismos alumnos que «quién entregó». */
+export type TaskProgress = {
+  /** Entregaron, a tiempo o atrasados. */
+  delivered: number
+  /** De esos, cuántos todavía no tienen nota. Una tarea sin nota no tiene nada que corregir: 0. */
+  ungraded: number
+  /** Cuántos no entregaron. */
+  missing: number
 }
 
 export type TaskView = Task & { subject: TaskSubject; role: Role; canManage: boolean; staleSince: string | null }
@@ -362,8 +394,14 @@ export type SubmissionStudent = SectionStudent
 /** Entregó a tiempo, entregó tarde o todavía no entregó. */
 export type SubmissionState = 'entregada' | 'atrasada' | 'sin-entrega'
 
-/** Un alumno de la comisión y su entrega a la tarea, si la hizo. */
-export type SubmissionRow = { student: SubmissionStudent; state: SubmissionState; submission: Submission | null }
+/** Un alumno de la comisión y su entrega a la tarea, si la hizo, con la nota que le cargó el docente (también sin
+    entrega). */
+export type SubmissionRow = {
+  student: SubmissionStudent
+  state: SubmissionState
+  submission: Submission | null
+  grade: TaskGrade | null
+}
 
 export type SubmissionCounts = { onTime: number; late: number; missing: number }
 
@@ -454,6 +492,8 @@ export type GradeError = 'nota-invalida' | 'comentario-invalido'
 export type CourseGradeError = 'peso-invalido' | 'sin-nota-calculada'
 export type ColumnError = 'solo-docentes' | 'columna-desconocida'
 export type TaskTextError = 'nombre-invalido' | 'consigna-invalida' | 'fecha-invalida'
+/** La fecha límite ya pasó: una tarea no se crea vencida ni se le corre la fecha al pasado. */
+export type TaskDueError = 'fecha-pasada'
 export type TaskFileError = 'demasiado-grande' | 'archivo-vacio'
 export type SubmitError =
   | AccessError
@@ -465,19 +505,23 @@ export type SubmitError =
   | TaskFileError
 
 export type Coursework = {
-  /** Crea una tarea para una o varias comisiones vigentes que dicta el docente. Si algo falla después de
-      guardar el archivo, lo borra. */
+  /** Crea una tarea para una o varias comisiones vigentes que dicta el docente, con la fecha límite por venir. Si
+      algo falla después de guardar el archivo, lo borra. */
   createTask(
     personId: PersonId,
     task: NewTask
-  ): Promise<Result<TaskView, AccessError | 'solo-docentes' | 'sin-comisiones' | TaskTextError | TaskFileError>>
-  /** Cambia el nombre, la consigna y la fecha límite. Lo hacen los docentes de las comisiones de la tarea. */
+  ): Promise<
+    Result<TaskView, AccessError | 'solo-docentes' | 'sin-comisiones' | TaskTextError | TaskDueError | TaskFileError>
+  >
+  /** Cambia el nombre, la consigna y la fecha límite. Lo hacen los docentes de las comisiones de la tarea. Una tarea
+      vencida se edita igual; si se le cambia la fecha, la nueva no puede haber pasado. */
   updateTask(
     personId: PersonId,
     taskId: TaskId,
     changes: TaskChanges
-  ): Promise<Result<TaskView, AccessError | 'tarea-desconocida' | 'solo-docentes' | TaskTextError>>
-  /** Las tareas de una comisión de la materia: al docente, la que elige de las que dicta; al alumno, la suya. */
+  ): Promise<Result<TaskView, AccessError | 'tarea-desconocida' | 'solo-docentes' | TaskTextError | TaskDueError>>
+  /** Las tareas de una comisión de la materia: al docente, la que elige de las que dicta, con cuántos entregaron y
+      cuántos falta corregir; al alumno, la suya. */
   tasksOf(personId: PersonId, subjectId: string, sectionId?: string): Promise<Result<TaskList, AccessError>>
   /** Una tarea, si la persona es de una de sus comisiones; si no, `tarea-desconocida`, como si no existiera. */
   task(personId: PersonId, taskId: TaskId): Promise<Result<TaskView, AccessError | 'tarea-desconocida'>>
