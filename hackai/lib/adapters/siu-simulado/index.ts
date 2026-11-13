@@ -10,7 +10,7 @@
 
 import { randomInt, randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createStore, STATIC_TTL_MS } from '@/lib/adapters/cache'
+import { createStore, STATIC_TTL_MS } from '@/lib/adapters/cache/store'
 import { createQueryRunner, type Query } from '@/lib/adapters/supabase/query'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
@@ -41,6 +41,8 @@ export type SimulatedSiuOptions = {
   /** Tiempo máximo de cada consulta a la base. */
   timeoutMs?: number
   personTtlMs?: number
+  /** Tiempo real para el vencimiento de la caché, independiente del reloj académico. */
+  nowMs?: () => number
   log?: (message: string) => void
 }
 
@@ -241,6 +243,7 @@ export function createSimulatedSiu({
   selfServiceBaseUrl,
   timeoutMs = 5000,
   personTtlMs = STATIC_TTL_MS,
+  nowMs = Date.now,
   log = console.warn
 }: SimulatedSiuOptions): SiuPort {
   /** Fijas: el simulado siempre inscribe y tiene cronograma, a diferencia de la API real. */
@@ -262,7 +265,7 @@ export function createSimulatedSiu({
   }
 
   // El padrón y la validación comparten la lectura, incluso en el primer pedido.
-  const person = createStore(Date.now).read('person', personTtlMs, async (personId: string) => {
+  const person = createStore(nowMs).read('person', personTtlMs, async (personId: string) => {
     const row = await read<PersonRow>('persona', (s) =>
       client.from('siu_persons').select(PERSON).eq('id', personId).abortSignal(s).maybeSingle()
     )

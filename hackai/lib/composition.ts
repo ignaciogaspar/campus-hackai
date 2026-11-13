@@ -321,11 +321,13 @@ function memoSpaces(spaces: Spaces, scope: RequestScope | undefined): Spaces {
     unreadFor: memoRead(scope, 'spaces.unreadFor', spaces.unreadFor),
     open: clearAfter(spaces.open, clear),
     channel: clearAfter(spaces.channel, clear),
+    version: clearAfter(spaces.version, clear),
     post: clearAfter(spaces.post, clear),
     addMaterial: clearAfter(spaces.addMaterial, clear),
     createChannel: clearAfter(spaces.createChannel, clear),
     openDirect: clearAfter(spaces.openDirect, clear),
     link: clearAfter(spaces.link, clear),
+    createExternalChannels: clearAfter(spaces.createExternalChannels, clear),
     syncAll: clearAfter(spaces.syncAll, clear)
   }
 }

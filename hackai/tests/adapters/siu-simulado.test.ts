@@ -8,7 +8,7 @@ import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 
-function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000) {
+function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000, nowMs?: () => number) {
   const logs: string[] = []
   const client = createClient('http://siu-simulado.test', 'clave-de-prueba', {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -19,6 +19,7 @@ function siuWith(fetch: typeof globalThis.fetch, timeoutMs = 1000) {
     clock: createFixedClock(syntheticData.now),
     selfServiceBaseUrl: syntheticData.siu.selfServiceBaseUrl,
     timeoutMs,
+    nowMs,
     log: (message) => logs.push(message)
   })
   return { siu, logs }
@@ -129,5 +130,26 @@ test('una persona inexistente se vuelve a buscar y las lecturas mantienen no-enc
 
   assert.deepEqual(await siu.history('99999'), { ok: false, error: 'no-encontrado' })
   assert.deepEqual(await siu.provisionalResults('99999'), { ok: false, error: 'no-encontrado' })
+  assert.equal(reads, 2)
+})
+
+test('vuelve a consultar el padrón cuando vence su caché aunque el reloj académico esté fijo', async () => {
+  let time = 0
+  let reads = 0
+  const { siu } = siuWith(
+    async () => {
+      reads += 1
+      return Response.json([{ id: '30101', programs: [] }])
+    },
+    1000,
+    () => time
+  )
+
+  assert.ok((await siu.person('30101')).ok)
+  time = 299_999
+  assert.ok((await siu.person('30101')).ok)
+  assert.equal(reads, 1)
+  time = 300_000
+  assert.ok((await siu.person('30101')).ok)
   assert.equal(reads, 2)
 })
