@@ -11,7 +11,7 @@
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import Link from 'next/link'
-import { Fragment, type ReactNode, useState } from 'react'
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react'
 import { ZoomLink } from '@/components/subjects/zoom-link'
 import { CalendarSummary, NextDates } from '@/components/today/calendar-dates'
 import {
@@ -437,12 +437,15 @@ function WeekToolbar({
   week,
   onDay,
   onToday,
-  legend
+  legend,
+  rangeRef
 }: {
   week: string[]
   onDay: (day: string) => void
   onToday: () => void
   legend: boolean
+  /** El rango de la semana: al elegir un día en el mes chico, el foco va ahí. */
+  rangeRef: RefObject<HTMLParagraphElement | null>
 }) {
   const arrow =
     'grid size-8 cursor-pointer place-items-center rounded-lg text-ink transition-colors hover:bg-ink/5 focus-ring'
@@ -461,7 +464,12 @@ function WeekToolbar({
       <button type='button' aria-label='Semana siguiente' onClick={() => onDay(addDays(week[0], 7))} className={arrow}>
         <ChevronRight aria-hidden='true' className='size-4.5' strokeWidth={1.8} />
       </button>
-      <p aria-live='polite' className='ml-1 text-[0.8125rem] font-medium text-muted-foreground'>
+      <p
+        ref={rangeRef}
+        tabIndex={-1}
+        aria-live='polite'
+        className='ml-1 rounded-md px-1 text-[0.8125rem] font-medium text-muted-foreground focus-ring'
+      >
         {format(week[0], { day: 'numeric', month: 'short' })} – {format(week[6], { day: 'numeric', month: 'short' })}
       </p>
       <p className={cn('ml-auto hidden flex-wrap gap-x-3 text-[0.6875rem] text-muted-foreground', legend && 'xl:flex')}>
@@ -591,6 +599,21 @@ export function TodayCalendar({
     setMonday(mondayOf(day))
     setMonth(day)
   }
+  // Al elegir un día en el mes chico, que está debajo de la semana, se sube a la semana elegida y el foco va a su
+  // rango: si no, la semana cambia fuera de la pantalla.
+  const weekRef = useRef<HTMLElement>(null)
+  const rangeRef = useRef<HTMLParagraphElement>(null)
+  const [reveal, setReveal] = useState(0)
+  useEffect(() => {
+    if (reveal === 0) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    weekRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+    rangeRef.current?.focus({ preventScroll: true })
+  }, [reveal])
+  const pickDay = (day: string) => {
+    goTo(day)
+    setReveal((n) => n + 1)
+  }
   const toggle = (group: Group) =>
     setHidden((current) => {
       const next = new Set(current)
@@ -611,8 +634,12 @@ export function TodayCalendar({
       <div className='flex min-w-0 flex-col gap-5'>
         {top}
         {upcoming && <CalendarSummary items={upcoming} now={now} viewer={viewer} />}
-        <section aria-label='Semana' className='overflow-hidden rounded-2xl border border-border bg-card'>
-          <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} />
+        <section
+          ref={weekRef}
+          aria-label='Semana'
+          className='scroll-mt-4 overflow-hidden rounded-2xl border border-border bg-card'
+        >
+          <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} rangeRef={rangeRef} />
           {filters && (
             <Filters
               hidden={hidden}
@@ -640,7 +667,7 @@ export function TodayCalendar({
           today={today}
           events={events.filter(visible)}
           onMonth={(step) => setMonth((m) => shiftMonth(m, step))}
-          onDay={goTo}
+          onDay={pickDay}
         />
         {(aside || upcoming) && (
           <div className='flex flex-col gap-3'>
