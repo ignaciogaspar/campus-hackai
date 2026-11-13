@@ -117,6 +117,8 @@ type Props = {
   canManage: boolean
   /** Lo que devolvió la búsqueda de `?buscar=`, o `null` si no se buscó nada. */
   search: MaterialSearchResult | null
+  /** La comisión elegida en el selector del docente que dicta varias: la conserva la búsqueda. */
+  comision?: string
 }
 
 function MaterialSections({ material }: { material: MaterialView }) {
@@ -161,7 +163,7 @@ function MaterialSections({ material }: { material: MaterialView }) {
   )
 }
 
-export function MaterialPanel({ subjectId, spaceId, channelId, material, canManage, search }: Props) {
+export function MaterialPanel({ subjectId, spaceId, channelId, material, canManage, search, comision }: Props) {
   const query = search?.query ?? ''
   return (
     <>
@@ -171,9 +173,9 @@ export function MaterialPanel({ subjectId, spaceId, channelId, material, canMana
           <UploadForm subjectId={subjectId} spaceId={spaceId} sectionNames={material.sectionNames} />
         </div>
       )}
-      <MaterialSearchForm subjectId={subjectId} channelId={channelId} query={query} />
+      <MaterialSearchForm subjectId={subjectId} channelId={channelId} query={query} comision={comision} />
       {search ? (
-        <MaterialSearchResults subjectId={subjectId} channelId={channelId} search={search} />
+        <MaterialSearchResults subjectId={subjectId} channelId={channelId} search={search} comision={comision} />
       ) : (
         <MaterialSections material={material} />
       )}

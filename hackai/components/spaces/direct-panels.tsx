@@ -38,12 +38,12 @@ function otherPersonIn(channel: Channel): Author {
   return channel.counterpart ?? { personId: null, name: 'Persona sin datos', role: null }
 }
 
-function ConversationRow({ subjectId, channel }: { subjectId: string; channel: Channel }) {
+function ConversationRow({ subjectId, comision, channel }: { subjectId: string; comision?: string; channel: Channel }) {
   const other = otherPersonIn(channel)
   return (
     <li>
       <Link
-        href={spaceHref(subjectId, { canal: channel.id })}
+        href={spaceHref(subjectId, { canal: channel.id, comision })}
         className='flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-background focus-ring-inset'
       >
         <AuthorAvatar author={other} />
@@ -81,12 +81,15 @@ export function DirectsPanel({
   space,
   role,
   directs,
-  contacts
+  contacts,
+  comision
 }: {
   space: SpaceRef
   role: Role
   directs: Channel[]
   contacts: DirectContact[]
+  /** La comisión elegida en el selector del docente: la llevan los enlaces, para que no se mueva. */
+  comision?: string
 }) {
   const text = DIRECTS_TEXT[role]
   const written = new Set(directs.map((c) => c.counterpart?.personId))
@@ -100,7 +103,7 @@ export function DirectsPanel({
       ) : (
         <ul className='divide-y divide-border overflow-hidden rounded-[22px] bg-card shadow-card'>
           {directs.map((c) => (
-            <ConversationRow key={c.id} subjectId={space.subjectId} channel={c} />
+            <ConversationRow key={c.id} subjectId={space.subjectId} comision={comision} channel={c} />
           ))}
           {toWrite.map((c) => (
             <ContactRow key={c.personId} space={space} contact={c} />
@@ -115,13 +118,13 @@ export function DirectsPanel({
 /* Una conversación privada: los mensajes en orden, el más nuevo abajo y a la
    vista, y el campo para escribirle a la otra persona. La flecha vuelve a
    Directos. */
-export function DirectPanel({ subjectId, channel, threads, viewerId }: PanelProps) {
+export function DirectPanel({ subjectId, channel, threads, viewerId, comision }: PanelProps) {
   const other = otherPersonIn(channel)
   const firstName = other.name.split(/\s+/)[0]
   const messages = threads.flatMap((t) => [t.message, ...t.replies])
   return (
     <>
-      <BackLink href={spaceHref(subjectId, { vista: 'directos' })}>Volver a Directos</BackLink>
+      <BackLink href={spaceHref(subjectId, { vista: 'directos', comision })}>Volver a Directos</BackLink>
       <LatestMark scope={channel.id} latest={latestOf(threads, viewerId)} at='bottom'>
         {messages.length ? (
           <ol className='flex flex-col gap-3'>

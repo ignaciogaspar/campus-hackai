@@ -29,6 +29,9 @@ export type PanelProps = {
   threads: Thread[]
   /** Quien mira: lo que acaba de enviar se deja a la vista. */
   viewerId: string
+  /** La comisión elegida en el selector del docente que dicta varias, para los enlaces que no son de un canal de
+      comisión (los de un directo). */
+  comision?: string
 }
 
 type ListProps = Omit<PanelProps, 'viewerId'>
