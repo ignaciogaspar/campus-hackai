@@ -113,9 +113,15 @@ export type Message = {
 /** Un mensaje con sus respuestas, en orden. En `#consultas`, una consulta y su hilo. */
 export type Thread = { message: Message; replies: Message[] }
 
+/** Qué es un elemento del material: un archivo o un enlace, como lo que se sube en HackAI o en Discord, o, del
+    aula de Moodle, una carpeta, una página de texto, un texto suelto o una actividad que se hace en el aula. */
+export type MaterialKind = 'archivo' | 'enlace' | 'carpeta' | 'pagina' | 'texto' | 'actividad'
+
 export type MaterialItem = {
   id: MaterialId
+  kind: MaterialKind
   name: string
+  /** El archivo, el enlace, o la carpeta, la página o la actividad en el aula. Vacío en un texto suelto. */
   url: string
   contentType: string
   /** En bytes; 0 si no se sabe, como en los recursos de Moodle. */
@@ -127,6 +133,15 @@ export type MaterialItem = {
   addedAt: string
   /** Si la persona que mira no lo había visto. Lo que subió ella nunca está sin ver. */
   unread: boolean
+  /** Los archivos de una carpeta. Vacío en lo demás. */
+  files: Attachment[]
+  /** El texto de una página o de un texto suelto; `null` en lo demás. */
+  text: string | null
+  /** El módulo de Moodle de una actividad (`quiz`, `forum`, `assign`…); `null` en lo demás. */
+  activity: string | null
+  /** Su lugar en el aula de Moodle, para mostrar los temas y lo de adentro en el mismo orden que allá; `null` en lo
+      que no vino de un aula. */
+  position: number | null
 }
 
 /** Cómo organiza el material el docente: por unidad o tema, por semana, o sin secciones. */

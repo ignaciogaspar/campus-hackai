@@ -83,7 +83,12 @@ test('ningún enlace de la demo sale de HackAI: «Ir al aula», el material, los
   const selfService = createMemorySiu(syntheticData, createFixedClock(syntheticData.now))
   const links: [string, string][] = [
     ...moodle.courses.map((c): [string, string] => ['aula', classroom.courseUrl(c.id)]),
-    ...moodle.contents.map((c): [string, string] => [c.type === 'url' ? 'enlace' : 'archivo', c.url]),
+    // Un texto suelto no lleva enlace; una página, una carpeta o una actividad se abren en el aula.
+    ...moodle.contents
+      .filter((c) => c.type !== 'label')
+      .map((c): [string, string] => [c.type === 'url' ? 'enlace' : c.type === 'file' ? 'archivo' : 'actividad', c.url]),
+    ...moodle.contents.flatMap((c) => c.files.map((f): [string, string] => ['archivo', f.url])),
+    ...moodle.assignments.map((a): [string, string] => ['actividad', a.url]),
     ...moodle.announcements.flatMap((a) => a.attachments.map((f): [string, string] => ['archivo', f.url])),
     ...siu.sections.map((s): [string, string] => [
       'cursada',

@@ -191,6 +191,14 @@ _Avoid_: «aviso» (es de un curso de Moodle).
 Espacio de una materia en el Campus Virtual: material por tema o semana, foro de avisos, tareas y calificaciones. No está atado a una comisión del SIU; el único puente visible es un botón «Ir» en Mis inscripciones.
 _Avoid_: «curso» a secas; «aula» y «materia» como sinónimos.
 
+**Elemento del curso (ClassroomContent)**:
+Cada cosa que el docente pone en un tema de un curso de Moodle: un archivo (resource), un enlace (url), una carpeta, una página de texto, un texto suelto entre los demás (label) o una actividad que se hace en el aula (cuestionario, foro, tarea, lista de control). En HackAI van al material de la materia, en el orden del aula; las actividades llevan al aula.
+_Avoid_: «recurso» para todos (en Moodle, «recurso» es solo el archivo); «etiqueta» para el texto suelto en la UI.
+
+**Token de la app (Moodle mobile token)**:
+La clave del servicio de la app de Moodle (`moodle_mobile_app`) de un alumno: con ella se leen sus cursos por la API oficial. HackAI la saca al conectar el Campus con la sesión del alumno y la guarda cifrada en su navegador (ADR 0010). En el Campus se ve y se da de baja en Preferencias › Claves de seguridad.
+_Avoid_: «contraseña» o «clave» a secas.
+
 **Matriculación (Enrolment)**:
 Alta de un usuario en un curso de Moodle con un rol. Hoy es manual o por auto-inscripción y no se sincroniza con las inscripciones del SIU.
 _Avoid_: «inscripción» (es del SIU).

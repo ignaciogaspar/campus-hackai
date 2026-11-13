@@ -120,6 +120,9 @@ export type RealSiuOptions = {
 export type RealSiu = SiuPort & {
   /** Los enlaces «Moodle» de las comisiones de la persona real, para vincular sus cursos del Campus. */
   moodleLinks(): Promise<Result<Snapshot['moodleLinks'], ExternalFailure>>
+  /** El id del curso del Campus de cada comisión de la persona real que tiene enlace «Moodle». Una comisión cuyo
+      enlace no redirige a un curso no aparece. */
+  moodleCourses(): Promise<Result<{ sectionId: string; courseId: string }[], ExternalFailure>>
   /** Una huella de lo que el SIU muestra hoy de la persona real: cambia si cambia algo (una nota, un cupo, una
       inscripción). La usa la pantalla para redibujarse sola, sin pedir todo de nuevo. */
   version(): Promise<Result<string, ExternalFailure>>
@@ -204,6 +207,30 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
       })
       return response.status === 200 ? json(response) : null
     }
+  }
+
+  /** El enlace «Moodle» de Mis inscripciones redirige (`302`) al curso del Campus: `course/view.php?id=<n>`.
+      Confirmado el 12/11 (docs/research/2026-11-12-datos-reales-siu-campus.md). El vínculo no cambia, así que se
+      guarda mientras corre el proceso; uno que no se pudo leer se vuelve a pedir la próxima vez. */
+  const coursesByLink = new Map<string, Promise<string | null>>()
+  function courseOfLink(url: string): Promise<string | null> {
+    const kept = coursesByLink.get(url)
+    if (kept) return kept
+    const read = doFetch(new URL(url, `${baseUrl}/`), {
+      headers: { cookie: `${SESSION_COOKIE}=${session}` },
+      redirect: 'manual',
+      cache: 'no-store'
+    })
+      .then(
+        (response) =>
+          (response.headers.get('location') ?? '').match(/\/course\/view\.php\?(?:.*&)?id=(\d+)/)?.[1] ?? null
+      )
+      .catch(() => null)
+    coursesByLink.set(url, read)
+    void read.then((courseId) => {
+      if (!courseId) coursesByLink.delete(url)
+    })
+    return read
   }
 
   const contOf = (value: Record<string, unknown> | null) =>
@@ -704,6 +731,15 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
 
     async moodleLinks() {
       return fromSnapshot((s) => s.moodleLinks)
+    },
+
+    async moodleCourses() {
+      const links = await fromSnapshot((s) => s.moodleLinks)
+      if (!links.ok) return links
+      const found = await Promise.all(
+        links.value.map(async (link) => ({ link, courseId: await courseOfLink(link.url) }))
+      )
+      return ok(found.flatMap(({ link, courseId }) => (courseId ? [{ sectionId: link.sectionId, courseId }] : [])))
     },
 
     peek: () => last,

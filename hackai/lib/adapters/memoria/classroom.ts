@@ -56,7 +56,14 @@ export function createMemoryClassroom(data: SyntheticData, options: MemoryClassr
 
     async contents(courseId) {
       if (!hasCourse(courseId)) return fail('curso-inexistente')
-      return ok(copy(db.contents.filter((c) => c.courseId === courseId)))
+      // En el orden del aula, como el simulado.
+      return ok(
+        copy(
+          db.contents
+            .filter((c) => c.courseId === courseId)
+            .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
+        )
+      )
     },
 
     async assignments(courseId) {

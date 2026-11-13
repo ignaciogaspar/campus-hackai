@@ -3,7 +3,8 @@
    de las tareas de HackAI; mezclar ahí las entregas de Moodle se decide con el
    equipo. Mientras tanto, esta nota las nombra y lleva al aula, para que una
    lista vacía no parezca «no tengo nada pendiente». Sin reglas de negocio:
-   qué entregas tiene el aula lo da Cursada. */
+   qué entregas tiene el aula lo da Cursada. Con la cuenta real del Campus,
+   Cursada sabe además cuáles ya entregó: esas no se cuentan. */
 import { CalendarDays, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { relativeDue } from '@/components/coursework/format'
@@ -33,7 +34,8 @@ function summary(role: Role, upcoming: MyAssignment[], now: string) {
   return (
     <>
       En el aula de Moodle tenés {count} con fecha: <b className='font-semibold'>{next.name}</b>,{' '}
-      <time dateTime={next.dueDate}>{relativeDue(next.dueDate, now)}</time>.
+      <time dateTime={next.dueDate}>{relativeDue(next.dueDate, now)}</time>
+      {next.submission === 'borrador' ? ' (tenés un borrador sin enviar)' : ''}.
     </>
   )
 }
@@ -53,7 +55,8 @@ export function MoodleNote({
   /** ISO: la hora del reloj de la app, para decir cuánto falta. */
   now: string
 }) {
-  const upcoming = assignments.filter((a) => !a.past)
+  // Lo que ya entregó con su cuenta real del Campus (ADR 0010) no cuenta como por venir.
+  const upcoming = assignments.filter((a) => !a.past && a.submission !== 'entregada')
   const student = role !== 'profesor'
   if (!classroom && upcoming.length === 0 && !student) return null
   return (

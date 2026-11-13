@@ -30,7 +30,7 @@ Es la versión vigente. Se ajusta con lo que salga de cada validación.
 | Qué me toca: parciales y finales | Núcleo, con las fechas del SIU | Hoy están en el Cronograma de evaluaciones y en las mesas, ordenados por materia y no por fecha |
 | Espacio de la materia: avisos, consultas y mensajes con el docente | Núcleo, sincronizado con el canal externo de la cátedra | La mensajería y el foro del Campus no avisan y nadie los usa |
 | Notificaciones | El canal externo de la cátedra | Ya está en el celular de alumnos y docentes |
-| Material de la materia | Núcleo: lo reúne de Moodle, del canal externo y de lo que se sube a HackAI, e indica de dónde viene cada archivo | Hoy está suelto y repartido |
+| Material de la materia | Núcleo: lo reúne de Moodle, del canal externo y de lo que se sube a HackAI, e indica de dónde viene cada archivo. De Moodle trae todo el curso en el orden del aula: archivos, carpetas, páginas, textos y enlaces a las actividades | Hoy está suelto y repartido |
 | Inscribirse a una materia y quedar adentro de su aula y de su espacio | Núcleo: pide la inscripción al SIU y la matriculación a Moodle en un solo paso | Hoy son dos sistemas y la matriculación depende de otro proceso |
 | Inscripción a finales con cupo | SIU, por el mismo flujo de inscripción | La queja número uno del SIU (54%) |
 | Constancias y certificados | SIU, con enlace directo a su Autogestión | Lo burocrático se queda donde está |
@@ -71,7 +71,7 @@ No queda nada afuera. Este es el orden en que se construye, para que siempre hay
 4. Notas e historia académica, constancias e inscripción a finales con cupo.
 5. **Docentes** (decisión del 12/11/2026): inasistencias del alumno en su sección, tomar lista, Excel de la materia, tareas y entregas, calificaciones. Orden y detalle en [docentes.md](docentes.md#recorte-para-la-demo).
 
-**Real y simulado:** en la demo se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. SIU y Moodle se simulan en tablas propias (`siu_*`, `moodle_*`) con datos sintéticos, modeladas sobre sus APIs reales; no levantamos un Moodle propio porque la máquina no lo aguanta. Campus Austral y WhatsApp quedan fuera de la demo.
+**Real y simulado:** en la demo se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. SIU y Moodle se simulan en tablas propias (`siu_*`, `moodle_*`) con datos sintéticos, modeladas sobre sus APIs reales; no levantamos un Moodle propio porque la máquina no lo aguanta. Además, cualquiera de la Austral entra con su cuenta real del SIU ([ADR 0009](../adr/0009-siu-real-con-la-sesion-del-alumno.md)) y puede conectar su Campus Virtual, que se lee en vivo sin guardarlo ([ADR 0010](../adr/0010-campus-real-con-el-token-de-la-app.md)). Campus Austral y WhatsApp quedan fuera de la demo.
 
 ## Cómo se mide
 

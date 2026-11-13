@@ -34,7 +34,10 @@ test('el seed carga cursos, matrículas, avisos, contenidos y tareas del set', (
 })
 
 test('una tarea sin fecha se carga como null', () => {
-  assert.match(moodleSeedSql(syntheticData), /\('t-4', 'c-co1-fce-a', 'Práctico de asientos', null\)/)
+  assert.match(
+    moodleSeedSql(syntheticData),
+    /\('t-4', 'c-co1-fce-a', 'Práctico de asientos', null, null, '\/simulado\/moodle\/mod\/assign\/view\.php\?id=t-4'\)/
+  )
 })
 
 test('si no hay matrículas, el seed borra todas las de la base', () => {

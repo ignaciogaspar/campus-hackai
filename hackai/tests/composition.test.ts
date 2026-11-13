@@ -249,6 +249,24 @@ test('con HACKAI_CAIDAS=si, tirar Moodle deja las materias sin el aula y el SIU 
   assert.equal(result.value.data.classroomUnavailable, true)
 })
 
+test('el Campus real va junto con las cuentas reales del SIU, y HACKAI_CAMPUS_REAL=no lo apaga', async () => {
+  const system = compose({})
+  assert.ok(system.campusLive)
+  assert.equal(system.campusLive.status('p-taguirre'), null, 'una persona de la demo no tiene Campus real')
+  assert.equal(system.campusLive.status('p-siu-abcdef123456'), 'sin-conectar')
+  assert.deepEqual(await system.campusLive.file('p-siu-abcdef123456', '1/a.pdf'), { ok: false, error: 'sin-acceso' })
+  // Las personas de la demo siguen con el aula elegida.
+  assert.equal(system.ports.classroom.courseUrl('c-am1-fi-a'), '/simulado/moodle/course/view.php?id=c-am1-fi-a')
+
+  assert.equal(compose({ HACKAI_CAMPUS_REAL: 'no' }).campusLive, null)
+  assert.equal(
+    compose({ HACKAI_SIU_REAL_PUBLICO: 'no' }).campusLive,
+    null,
+    'sin cuentas reales del SIU no hay Campus real'
+  )
+  assert.throws(() => compose({ HACKAI_CAMPUS_REAL: 'tal vez' }), /HACKAI_CAMPUS_REAL tiene que ser si o no/)
+})
+
 test('Conectar con Discord se arma solo con el canal externo de Discord y la aplicación configurada', () => {
   const bot = { HACKAI_EXTERNAL_CHANNEL: 'discord', DISCORD_BOT_TOKEN: 'token-de-prueba' }
   const app = { DISCORD_CLIENT_ID: '1569889274470334484', DISCORD_CLIENT_SECRET: 'secreto-de-prueba' }

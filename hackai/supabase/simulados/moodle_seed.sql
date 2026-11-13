@@ -106,20 +106,29 @@ insert into moodle_announcements (id, course_id, author_id, subject, message, cr
   ('av-3', 'c-pr1-fi-a', '304', 'Consulta antes del parcial', 'El jueves 19 a las 18 hay consulta por Meet para el parcial del viernes 20. Entra todo hasta recursión. El enlace está en el aula.', '2026-11-09T22:30:00.000Z', '[]'::jsonb)
 on conflict (id) do update set course_id = excluded.course_id, author_id = excluded.author_id, subject = excluded.subject, message = excluded.message, created_at = excluded.created_at, attachments = excluded.attachments;
 
-insert into moodle_contents (id, course_id, topic, name, type, url, modified_at) values
-  ('r-1', 'c-am1-fi-a', 'Unidad 1: Límites', 'Guía de ejercicios 1', 'file', '/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf', '2026-08-11T12:00:00.000Z'),
-  ('r-2', 'c-am1-fi-a', 'Unidad 2: Derivadas', 'Guía de ejercicios 2', 'file', '/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf', '2026-09-29T12:00:00.000Z'),
-  ('r-3', 'c-am1-fi-b', 'Bibliografía', 'Apunte de la cátedra', 'url', '/simulado/moodle/mod/url/view.php?id=r-3', '2026-08-12T18:00:00.000Z'),
-  ('r-4', 'c-pr1-fi-a', 'Trabajos prácticos', 'Enunciado del TP integrador', 'file', '/simulado/moodle/pluginfile.php/pr1-fi-a/tp-integrador.pdf', '2026-09-04T13:00:00.000Z'),
-  ('r-5', 'c-am1-fce-a', 'Unidad 1', 'Apunte de funciones', 'file', '/simulado/moodle/pluginfile.php/am1-fce-a/funciones.pdf', '2026-08-14T22:00:00.000Z'),
-  ('r-6', 'c-pr1-fi-a', 'Unidad 4: Recursión', 'Guía de ejercicios de recursión', 'file', '/simulado/moodle/pluginfile.php/pr1-fi-a/guia-recursion.pdf', '2026-11-06T14:00:00.000Z')
-on conflict (id) do update set course_id = excluded.course_id, topic = excluded.topic, name = excluded.name, type = excluded.type, url = excluded.url, modified_at = excluded.modified_at;
+insert into moodle_contents (id, course_id, topic, name, type, url, modified_at, position, files, text, activity) values
+  ('r-7', 'c-am1-fi-a', 'General', 'Programa de la materia', 'page', '/simulado/moodle/mod/page/view.php?id=r-7', '2026-08-03T13:00:00.000Z', 0, '[]'::jsonb, 'Análisis Matemático I cubre límites, continuidad, derivadas y sus aplicaciones.
 
-insert into moodle_assignments (id, course_id, name, due_date) values
-  ('t-1', 'c-pr1-fi-a', 'Entrega del TP integrador', '2026-10-17T02:59:00.000Z'),
-  ('t-2', 'c-pr1-fi-a', 'Ejercicios de recursión', '2026-11-22T02:59:00.000Z'),
-  ('t-3', 'c-am1-fi-a', 'Guía 3 resuelta', '2026-11-14T02:59:00.000Z'),
-  ('t-4', 'c-co1-fce-a', 'Práctico de asientos', null)
-on conflict (id) do update set course_id = excluded.course_id, name = excluded.name, due_date = excluded.due_date;
+Se aprueba con dos parciales de 4 o más, o con el recuperatorio. La asistencia mínima es del 75 %.
+
+Bibliografía: el apunte de la cátedra y Stewart, Cálculo de una variable.', null),
+  ('r-8', 'c-am1-fi-a', 'General', 'Foro de consultas', 'activity', '/simulado/moodle/mod/forum/view.php?id=r-8', '2026-08-03T13:05:00.000Z', 1, '[]'::jsonb, null, 'forum'),
+  ('r-9', 'c-am1-fi-a', 'Unidad 1: Límites', 'Esta semana repasamos límites laterales', 'label', '', '2026-08-10T21:00:00.000Z', 2, '[]'::jsonb, 'Esta semana repasamos límites laterales. Traigan la guía 1 impresa a la clase del jueves.', null),
+  ('r-1', 'c-am1-fi-a', 'Unidad 1: Límites', 'Guía de ejercicios 1', 'file', '/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf', '2026-08-11T12:00:00.000Z', 3, '[{"name":"guia-1.pdf","url":"/simulado/moodle/pluginfile.php/am1-fi-a/guia-1.pdf","contentType":"application/pdf","size":182344}]'::jsonb, null, null),
+  ('r-2', 'c-am1-fi-a', 'Unidad 2: Derivadas', 'Guía de ejercicios 2', 'file', '/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf', '2026-09-29T12:00:00.000Z', 4, '[{"name":"guia-2.pdf","url":"/simulado/moodle/pluginfile.php/am1-fi-a/guia-2.pdf","contentType":"application/pdf","size":204918}]'::jsonb, null, null),
+  ('r-10', 'c-am1-fi-a', 'Unidad 2: Derivadas', 'Parciales de años anteriores', 'folder', '/simulado/moodle/mod/folder/view.php?id=r-10', '2026-10-20T15:00:00.000Z', 5, '[{"name":"parcial-2-2024.pdf","url":"/simulado/moodle/pluginfile.php/am1-fi-a/parcial-2-2024.pdf","contentType":"application/pdf","size":96120},{"name":"parcial-2-2025.pdf","url":"/simulado/moodle/pluginfile.php/am1-fi-a/parcial-2-2025.pdf","contentType":"application/pdf","size":101502}]'::jsonb, null, null),
+  ('r-11', 'c-am1-fi-a', 'Unidad 2: Derivadas', 'Autoevaluación de derivadas', 'activity', '/simulado/moodle/mod/quiz/view.php?id=r-11', '2026-10-21T15:00:00.000Z', 6, '[]'::jsonb, null, 'quiz'),
+  ('r-3', 'c-am1-fi-b', 'Bibliografía', 'Apunte de la cátedra', 'url', '/simulado/moodle/mod/url/view.php?id=r-3', '2026-08-12T18:00:00.000Z', 0, '[]'::jsonb, null, null),
+  ('r-4', 'c-pr1-fi-a', 'Trabajos prácticos', 'Enunciado del TP integrador', 'file', '/simulado/moodle/pluginfile.php/pr1-fi-a/tp-integrador.pdf', '2026-09-04T13:00:00.000Z', 0, '[{"name":"tp-integrador.pdf","url":"/simulado/moodle/pluginfile.php/pr1-fi-a/tp-integrador.pdf","contentType":"application/pdf","size":143007}]'::jsonb, null, null),
+  ('r-5', 'c-am1-fce-a', 'Unidad 1', 'Apunte de funciones', 'file', '/simulado/moodle/pluginfile.php/am1-fce-a/funciones.pdf', '2026-08-14T22:00:00.000Z', 0, '[{"name":"funciones.pdf","url":"/simulado/moodle/pluginfile.php/am1-fce-a/funciones.pdf","contentType":"application/pdf","size":88230}]'::jsonb, null, null),
+  ('r-6', 'c-pr1-fi-a', 'Unidad 4: Recursión', 'Guía de ejercicios de recursión', 'file', '/simulado/moodle/pluginfile.php/pr1-fi-a/guia-recursion.pdf', '2026-11-06T14:00:00.000Z', 1, '[{"name":"guia-recursion.pdf","url":"/simulado/moodle/pluginfile.php/pr1-fi-a/guia-recursion.pdf","contentType":"application/pdf","size":120455}]'::jsonb, null, null)
+on conflict (id) do update set course_id = excluded.course_id, topic = excluded.topic, name = excluded.name, type = excluded.type, url = excluded.url, modified_at = excluded.modified_at, position = excluded.position, files = excluded.files, text = excluded.text, activity = excluded.activity;
+
+insert into moodle_assignments (id, course_id, name, due_date, description, url) values
+  ('t-1', 'c-pr1-fi-a', 'Entrega del TP integrador', '2026-10-17T02:59:00.000Z', 'Subí el código del TP integrador en un .zip, con el informe en PDF. Grupos de hasta tres.', '/simulado/moodle/mod/assign/view.php?id=t-1'),
+  ('t-2', 'c-pr1-fi-a', 'Ejercicios de recursión', '2026-11-22T02:59:00.000Z', 'Resolvé los ejercicios 1 a 8 de la guía de recursión y subí un solo archivo.', '/simulado/moodle/mod/assign/view.php?id=t-2'),
+  ('t-3', 'c-am1-fi-a', 'Guía 3 resuelta', '2026-11-14T02:59:00.000Z', 'Subí la guía 3 resuelta, escaneada o en foto, en un solo PDF.', '/simulado/moodle/mod/assign/view.php?id=t-3'),
+  ('t-4', 'c-co1-fce-a', 'Práctico de asientos', null, null, '/simulado/moodle/mod/assign/view.php?id=t-4')
+on conflict (id) do update set course_id = excluded.course_id, name = excluded.name, due_date = excluded.due_date, description = excluded.description, url = excluded.url;
 
 commit;

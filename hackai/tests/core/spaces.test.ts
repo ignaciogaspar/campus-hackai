@@ -55,6 +55,13 @@ function withoutMoodleContent(data: SyntheticData): SyntheticData {
   return copy
 }
 
+/** Copia del set con solo los archivos y los enlaces del aula: lo que se trae y se guarda en el espacio. */
+function onlyFilesAndLinks(data: SyntheticData): SyntheticData {
+  const copy = structuredClone(data)
+  copy.moodle.contents = copy.moodle.contents.filter((c) => c.type === 'file' || c.type === 'url')
+  return copy
+}
+
 /** Por defecto el aula no tiene avisos ni recursos, para que los tests que no son
     de Moodle no cuenten lo que se importa al abrir. Los de Moodle pasan su aula. */
 function build(
@@ -744,7 +751,12 @@ test('el docente sube material, que se guarda con Archivos y aparece con su orig
       section: 'Unidad 2',
       addedBy: { personId: 'p-mledesma', name: 'Mariana Ledesma' },
       addedAt: NOW,
-      unread: false
+      unread: false,
+      kind: 'archivo',
+      files: [],
+      text: null,
+      activity: null,
+      position: null
     }
   )
   assertFileUrl(added.value.url, 'Guía 4.pdf')
@@ -1697,29 +1709,15 @@ const materialRows = (view: SpaceView) =>
   ])
 
 test('al abrir el espacio, los recursos del curso de Moodle aparecen en el material con su tema y el enlace al recurso', async () => {
-  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+  const data = onlyFilesAndLinks(syntheticData)
+  const { spaces } = build(data, { classroom: createMemoryClassroom(data) })
 
   const opened = await spaces.open('p-taguirre', 'am1')
 
   assert.ok(opened.ok)
-  // Moodle no da el tamaño de un recurso: 0 es «sin dato». El apunte es del curso de la B, que también
-  // es una comisión vigente de la materia.
+  // Moodle no da el tamaño de un recurso: 0 es «sin dato». Los temas del aula de la comisión van primero, en el
+  // orden del aula; el apunte es del curso de la B, que también es una comisión vigente de la materia.
   assert.deepEqual(materialRows(opened.value), [
-    [
-      'Bibliografía',
-      [
-        [
-          'Apunte de la cátedra',
-          'moodle',
-          '/simulado/moodle/mod/url/view.php?id=r-3',
-          'text/uri-list',
-          0,
-          null,
-          '2026-08-12T18:00:00.000Z',
-          true
-        ]
-      ]
-    ],
     [
       'Unidad 1: Límites',
       [
@@ -1749,13 +1747,29 @@ test('al abrir el espacio, los recursos del curso de Moodle aparecen en el mater
           true
         ]
       ]
+    ],
+    [
+      'Bibliografía',
+      [
+        [
+          'Apunte de la cátedra',
+          'moodle',
+          '/simulado/moodle/mod/url/view.php?id=r-3',
+          'text/uri-list',
+          0,
+          null,
+          '2026-08-12T18:00:00.000Z',
+          true
+        ]
+      ]
     ]
   ])
   assert.equal(named(opened.value, 'material').unread, 3)
 })
 
 test('el material reúne los recursos de Moodle de todas las comisiones vigentes, aunque nadie de la otra haya abierto el espacio, sin duplicarlos', async () => {
-  const { spaces } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+  const data = onlyFilesAndLinks(syntheticData)
+  const { spaces } = build(data, { classroom: createMemoryClassroom(data) })
 
   // Nadie de la B abrió el espacio todavía: sus recursos salen igual, de la oferta de la materia.
   await spaces.open('p-taguirre', 'am1')
@@ -1766,16 +1780,109 @@ test('el material reúne los recursos de Moodle de todas las comisiones vigentes
   assert.deepEqual(
     opened.value.material.sections.map((s) => [s.title, s.items.map((i) => [i.name, i.contentType])]),
     [
-      ['Bibliografía', [['Apunte de la cátedra', 'text/uri-list']]],
       ['Unidad 1: Límites', [['Guía de ejercicios 1', 'application/pdf']]],
-      ['Unidad 2: Derivadas', [['Guía de ejercicios 2', 'application/pdf']]]
+      ['Unidad 2: Derivadas', [['Guía de ejercicios 2', 'application/pdf']]],
+      ['Bibliografía', [['Apunte de la cátedra', 'text/uri-list']]]
     ]
   )
   assert.equal(named(opened.value, 'material').unread, 3)
 })
 
+test('carpetas, páginas, textos y actividades del aula van al material en vivo, en el orden del aula, sin guardarse', async () => {
+  const { spaces, store } = build(syntheticData, { classroom: createMemoryClassroom(syntheticData) })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.deepEqual(
+    opened.value.material.sections.map((s) => [s.title, s.items.map((i) => [i.kind, i.name])]),
+    [
+      [
+        'General',
+        [
+          ['pagina', 'Programa de la materia'],
+          ['actividad', 'Foro de consultas']
+        ]
+      ],
+      [
+        'Unidad 1: Límites',
+        [
+          ['texto', 'Esta semana repasamos límites laterales'],
+          ['archivo', 'Guía de ejercicios 1']
+        ]
+      ],
+      [
+        'Unidad 2: Derivadas',
+        [
+          ['archivo', 'Guía de ejercicios 2'],
+          ['carpeta', 'Parciales de años anteriores'],
+          ['actividad', 'Autoevaluación de derivadas']
+        ]
+      ],
+      ['Bibliografía', [['enlace', 'Apunte de la cátedra']]]
+    ]
+  )
+  const items = opened.value.material.sections.flatMap((s) => s.items)
+  const item = (name: string) => items.find((i) => i.name === name)!
+  assert.deepEqual(
+    item('Parciales de años anteriores').files.map((f) => f.name),
+    ['parcial-2-2024.pdf', 'parcial-2-2025.pdf']
+  )
+  assert.match(item('Programa de la materia').text ?? '', /dos parciales/)
+  assert.equal(item('Autoevaluación de derivadas').activity, 'quiz')
+  // Solo los archivos y los enlaces se guardan y cuentan como nuevos; lo demás se lee del aula cada vez.
+  assert.equal(named(opened.value, 'material').unread, 3)
+  const stored = await store.material([opened.value.space.id])
+  assert.ok(stored.ok)
+  assert.deepEqual(stored.value.map((m) => m.externalId).sort(), ['r-1', 'r-2', 'r-3'])
+  // «Lo último» son archivos y enlaces: ni el texto suelto ni las actividades.
+  assert.deepEqual(
+    opened.value.material.recent.map((i) => i.name),
+    ['Parciales de años anteriores', 'Guía de ejercicios 2', 'Apunte de la cátedra']
+  )
+})
+
+test('de un curso que se lee con la cuenta real de la persona no se guarda nada: el material y los avisos se leen en vivo', async () => {
+  const inner = createMemoryClassroom(syntheticData)
+  const classroom: ClassroomPort = {
+    ...inner,
+    coursesForSection: async (id) => {
+      const found = await inner.coursesForSection(id)
+      return found.ok ? { ok: true, value: found.value.map((c) => ({ ...c, liveOnly: true })) } : found
+    }
+  }
+  const { spaces, store } = build(syntheticData, { classroom })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  const stored = await store.material([opened.value.space.id])
+  assert.ok(stored.ok)
+  assert.deepEqual(stored.value, [], 'no se guarda ningún elemento del aula')
+  const names = opened.value.material.sections.flatMap((s) => s.items.map((i) => [i.name, i.origin, i.unread]))
+  assert.deepEqual(
+    names.filter(([name]) => String(name).startsWith('Guía')),
+    [
+      ['Guía de ejercicios 1', 'moodle', false],
+      ['Guía de ejercicios 2', 'moodle', false]
+    ]
+  )
+  assert.equal(named(opened.value, 'material').unread, 0)
+
+  const avisos = named(opened.value, 'avisos', 'A')
+  const read = await spaces.channel('p-taguirre', avisos.id)
+  assert.ok(read.ok)
+  assert.deepEqual(
+    read.value.threads.map((t) => [t.message.externalId, t.message.origin, t.message.unread]),
+    [['av-1', 'moodle', false]]
+  )
+  const messages = await store.messages([avisos.id])
+  assert.ok(messages.ok)
+  assert.deepEqual(messages.value, [], 'el aviso no se guarda en el canal')
+})
+
 test('lo que trae de Moodle entra por fecha, así lo más nuevo queda primero aunque Moodle lo liste en otro orden', async () => {
-  const data = structuredClone(syntheticData)
+  const data = onlyFilesAndLinks(syntheticData)
   data.moodle.contents.reverse()
   data.moodle.announcements.push({
     ...data.moodle.announcements[0],
@@ -1902,12 +2009,13 @@ test('un aviso que se publica en Moodle después de abrir el espacio entra en la
 
 test('con un reloj que avanza, abrir el espacio no vuelve a Moodle antes de 10 segundos, y después sí', async () => {
   const { classroom, publish } = classroomWithNewAnnouncements(syntheticData)
+  // Lo que se trae y se guarda: los avisos. Lo que se muestra en vivo (carpetas, páginas…) se lee en cada apertura.
   const reads = { courses: 0 }
   const counted: ClassroomPort = {
     ...classroom,
-    coursesForSection: async (id) => {
+    announcements: async (id, since) => {
       reads.courses++
-      return classroom.coursesForSection(id)
+      return classroom.announcements(id, since)
     }
   }
   const { spaces, setNow } = build(syntheticData, { classroom: counted, clockMoves: true })

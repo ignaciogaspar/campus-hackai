@@ -9,9 +9,11 @@ import { test } from 'node:test'
 import { createClient } from '@supabase/supabase-js'
 import { createOutageSwitch, withClassroomOutage } from '@/lib/adapters/caida'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
+import { createRealMoodleRegistry } from '@/lib/adapters/moodle-real/registry'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import type { ClassroomPort } from '@/lib/ports/classroom'
+import { ok } from '@/lib/result'
 
 const moodle = syntheticData.moodle
 const moodleId = (personId: string) => syntheticData.people.find((p) => p.id === personId)!.moodleId
@@ -158,9 +160,35 @@ function classroomContract(name: string, make: () => ClassroomPort, skip: string
     const found = await classroom.contents('c-am1-fi-a')
     assert.ok(found.ok)
     assert.deepEqual(byId(found.value), byId(moodle.contents.filter((c) => c.courseId === 'c-am1-fi-a')))
-    assert.deepEqual(found.value.map((c) => c.id).sort(), ['r-1', 'r-2'])
+    assert.deepEqual(
+      found.value.map((c) => [c.position, c.id, c.type]),
+      [
+        [0, 'r-7', 'page'],
+        [1, 'r-8', 'activity'],
+        [2, 'r-9', 'label'],
+        [3, 'r-1', 'file'],
+        [4, 'r-2', 'file'],
+        [5, 'r-10', 'folder'],
+        [6, 'r-11', 'activity']
+      ],
+      'en el orden del aula'
+    )
     assert.deepEqual(await classroom.contents('c-co1-fce-a'), { ok: true, value: [] })
     assert.deepEqual(await classroom.contents('nada'), { ok: false, error: 'curso-inexistente' })
+  })
+
+  it('devuelve cada elemento con lo suyo: la carpeta con sus archivos, la página y el texto con su texto, la actividad con su módulo', async (classroom) => {
+    const found = await classroom.contents('c-am1-fi-a')
+    assert.ok(found.ok)
+    const byIdOf = (id: string) => found.value.find((c) => c.id === id)!
+    assert.deepEqual(
+      byIdOf('r-10').files.map((f) => f.name),
+      ['parcial-2-2024.pdf', 'parcial-2-2025.pdf']
+    )
+    assert.match(byIdOf('r-7').text ?? '', /dos parciales/)
+    assert.equal(byIdOf('r-9').url, '')
+    assert.deepEqual([byIdOf('r-11').activity, byIdOf('r-1').activity], ['quiz', null])
+    assert.equal(byIdOf('r-1').files[0].contentType, 'application/pdf')
   })
 
   it('devuelve las tareas del curso, con fecha o sin ella', async (classroom) => {
@@ -172,7 +200,17 @@ function classroomContract(name: string, make: () => ClassroomPort, skip: string
     const undated = await classroom.assignments('c-co1-fce-a')
     assert.deepEqual(undated, {
       ok: true,
-      value: [{ id: 't-4', courseId: 'c-co1-fce-a', name: 'Práctico de asientos', dueDate: null }]
+      value: [
+        {
+          id: 't-4',
+          courseId: 'c-co1-fce-a',
+          name: 'Práctico de asientos',
+          dueDate: null,
+          description: null,
+          url: `${moodle.baseUrl}/mod/assign/view.php?id=t-4`,
+          submission: null
+        }
+      ]
     })
 
     assert.deepEqual(await classroom.assignments('c-am1-fi-b'), { ok: true, value: [] })
@@ -189,6 +227,18 @@ classroomContract('Aula en memoria', () => createMemoryClassroom(syntheticData))
 // Con el interruptor de caídas levantado, el aula que envuelve se porta igual.
 classroomContract('Aula con caídas de la demo', () =>
   withClassroomOutage(createMemoryClassroom(syntheticData), createOutageSwitch())
+)
+
+// Con el Campus real prendido (ADR 0010), lo de las personas de la demo va al aula de abajo, igual que sin él.
+classroomContract('Aula con el Campus real encima', () =>
+  createRealMoodleRegistry({
+    baseUrl: 'https://campus.example.edu.ar',
+    fallback: createMemoryClassroom(syntheticData),
+    linksOf: async () => ok([]),
+    fetch: async () => {
+      throw new Error('las personas de la demo nunca llegan al Campus real')
+    }
+  })
 )
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL

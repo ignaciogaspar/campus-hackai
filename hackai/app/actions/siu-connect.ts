@@ -36,5 +36,6 @@ export async function connectSiuAction(_previous: ConnectState, form: FormData):
 
   await setServerCookie(SIU_SESSION_COOKIE, sealSiuSession({ key: who.key, session }), SIU_SESSION_MAX_AGE)
   await startSession({ personId: who.personId, role: 'alumno' })
-  redirect(homeFor('alumno'))
+  // El segundo paso, que se puede saltear: conectar el Campus Virtual (ADR 0010).
+  redirect(system().campusLive ? '/conectar-campus' : homeFor('alumno'))
 }
