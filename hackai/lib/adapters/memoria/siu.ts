@@ -186,7 +186,8 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       const found = lookup(personId, target)
       if (!found) return fail('no-encontrado')
       const at = now()
-      if (at < found.start || at > found.end) return fail('fuera-de-periodo')
+      if (found.start === null || found.end === null || at < found.start || at > found.end)
+        return fail('fuera-de-periodo')
       if (found.active) return fail('ya-inscripto')
       if (found.capacity !== null && found.enrolled >= found.capacity) return fail('sin-cupo')
 
@@ -207,7 +208,8 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       if (!found) return fail('no-encontrado')
       if (!found.active) return fail('no-inscripto')
       const at = now()
-      if (at < found.start || at > found.end) return fail('fuera-de-periodo')
+      if (found.start === null || found.end === null || at < found.start || at > found.end)
+        return fail('fuera-de-periodo')
       found.active.status = 'baja'
       return ok({ transactionNumber: nextTransaction(), date: at, target: copy(target) })
     },

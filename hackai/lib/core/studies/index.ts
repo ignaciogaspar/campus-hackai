@@ -88,7 +88,7 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail } from '@/lib/core/studies/absences'
+import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail, maxAbsences } from '@/lib/core/studies/absences'
 import {
   type Approved as ApprovedInCareer,
   buildCareer,
@@ -97,6 +97,7 @@ import {
   type LoadedGrade,
   type TakenSection
 } from '@/lib/core/studies/career'
+import { requirementsOf } from '@/lib/core/studies/requirements'
 import {
   createSectionStudents,
   type SectionStudent,
@@ -108,16 +109,21 @@ import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
   SiuAssessment,
+  SiuCertificateRequest,
   SiuCertificateType,
   SiuCourseEnrollment,
   SiuEnrollmentStatus,
   SiuExamBoard,
   SiuExamEnrollment,
   SiuHistoryEntry,
+  SiuNewCertificateRequest,
+  SiuOfficialDocument,
+  SiuOfficialDocumentKind,
   SiuPerson,
   SiuPort,
   SiuProvisionalResult,
   SiuReadError,
+  SiuRequestOutcome,
   SiuSchedule,
   SiuSection,
   SiuStudyPlan,
@@ -239,9 +245,10 @@ export type OfferItem = {
   enrolled: number
   /** Lugares que quedan. `0` es sin cupo; `null`, sin tope. */
   spotsLeft: number | null
-  enrollmentStart: string
-  enrollmentEnd: string
-  /** Si la inscripción todavía no abrió, está abierta o ya cerró, según el reloj. */
+  /** `null` si el SIU no informa la fecha. */
+  enrollmentStart: string | null
+  enrollmentEnd: string | null
+  /** Si la inscripción todavía no abrió, está abierta o ya cerró, según el reloj (o lo que dice el SIU hoy). */
   enrollmentWindow: EnrollmentWindow
   alreadyEnrolled: boolean
   /** Comisión: el nombre de otra comisión de la materia en la que ya está
@@ -321,10 +328,12 @@ export type OpenEnrollment = {
   kind: 'cursada' | 'actividad' | 'examen'
   subjectId: string
   subjectName: string
-  opensAt: string
-  closesAt: string
-  /** Días de calendario en Buenos Aires que faltan para que cierre, según el reloj de cada llamada: `0` si cierra hoy. */
-  closesInDays: number
+  /** `null` si el SIU no informa cuándo abre o cierra. */
+  opensAt: string | null
+  closesAt: string | null
+  /** Días de calendario en Buenos Aires que faltan para que cierre, según el reloj de cada llamada: `0` si cierra hoy.
+      `null` si no se sabe cuándo cierra. */
+  closesInDays: number | null
   /** Lugares que quedan entre todas las comisiones (o mesas) de la materia con la
       inscripción abierta: `0` si están todas llenas, `null` si alguna no tiene tope. */
   spotsLeft: number | null
@@ -449,6 +458,19 @@ export type Studies = {
   certificate(personId: PersonId, type: CertificateType): Promise<Result<Fresh<CertificateStatus>, ReadError>>
   /** Su plan de estudios con el estado y las notas de cada materia, y el avance de la carrera. */
   career(personId: PersonId): Promise<Result<Fresh<Career>, ReadError>>
+  /** Sus solicitudes de constancias en la Autogestión. `no-soportado` si el SIU no las da por API: entonces
+      Trámites muestra lo de la demo. */
+  certificateRequests(personId: PersonId): Promise<Result<SiuCertificateRequest[], ReadError | 'no-soportado'>>
+  /** Pide una constancia en el SIU. `no-soportado` si se pide en la Autogestión. */
+  requestCertificate(
+    personId: PersonId,
+    request: SiuNewCertificateRequest
+  ): Promise<Result<SiuRequestOutcome, ReadError | 'no-soportado'>>
+  /** Un documento oficial (historia académica, plan de estudios) como lo genera el SIU. */
+  officialDocument(
+    personId: PersonId,
+    kind: SiuOfficialDocumentKind
+  ): Promise<Result<SiuOfficialDocument, ReadError | 'no-soportado'>>
 }
 
 export type StudiesDeps = {
@@ -507,12 +529,17 @@ const isRegular = (h: SiuHistoryEntry) => h.type === 'cursada' && h.result === '
 
 const isApproved = (h: SiuHistoryEntry) => approvalOf(h) !== null
 
-function windowAt(at: string, start: string, end: string): EnrollmentWindow {
+/** En qué momento de la ventana está la inscripción. Si el SIU no da las fechas, manda lo que dice hoy (`open`);
+    sin fechas ni eso, cerrada. */
+function windowAt(at: string, start: string | null, end: string | null, open?: boolean): EnrollmentWindow {
+  if (open !== undefined) return open ? 'abierta' : 'cerrada'
+  if (start === null || end === null) return 'cerrada'
   if (at < start) return 'no-abrio'
   return at <= end ? 'abierta' : 'cerrada'
 }
 
-const isOpenAt = (at: string, start: string, end: string) => windowAt(at, start, end) === 'abierta'
+const isOpenAt = (at: string, start: string | null, end: string | null, open?: boolean) =>
+  windowAt(at, start, end, open) === 'abierta'
 
 /** Le sirve cursarla si no la está cursando, no la tiene regular y no la aprobó. */
 const needsCourseAttempt = (subjectId: string, p: SubjectProgress) =>
@@ -535,7 +562,8 @@ const addSpots = (a: number | null, b: number | null) => (a === null || b === nu
 
 /** La que cierra antes primero; el mismo día, por materia. */
 const byClosing = (a: NamedOpening, b: NamedOpening) =>
-  a.closesAt.localeCompare(b.closesAt) ||
+  // Las que no dicen cuándo cierran, al final.
+  (a.closesAt ?? '~').localeCompare(b.closesAt ?? '~') ||
   a.subjectName.localeCompare(b.subjectName, 'es') ||
   a.kind.localeCompare(b.kind)
 
@@ -761,7 +789,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   async function sectionsInTermsOf(who: SiuPersonRef): Promise<Result<MySectionsInTerms, ReadError>> {
     const sections = await siuSectionsOf(who)
     if (!sections.ok) return sections
-    const [terms, subjects] = await Promise.all([siu.terms(), subjectsById(sections.value.map((s) => s.subjectId))])
+    const [terms, subjects] = await Promise.all([
+      siu.terms(who.siuId),
+      subjectsById(sections.value.map((s) => s.subjectId))
+    ])
     if (!terms.ok) return terms
     if (!subjects.ok) return subjects
 
@@ -856,8 +887,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
-  /** Las faltas de cada materia actual del alumno. Sin las del SIU no hay
-      cuenta que valga: falla, y `fresh` devuelve lo último leído. */
+  /** Las faltas de las materias actuales del alumno en las que tiene alguna. El máximo es el que da el SIU o,
+      si no lo da, el que sale de la asistencia que pide la facultad y las clases de la comisión. Sin las del SIU
+      no hay cuenta que valga: falla, y `fresh` devuelve lo último leído. */
   async function absencesOf(personId: PersonId): Promise<Result<MyAbsencesDetail, ReadError>> {
     const who = await siuPersonOf(personId)
     if (!who.ok) return who
@@ -867,16 +899,26 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!report.ok) return fail(asUnknownPerson(report.error))
     // Por ahora la única fuente es el SIU; la toma de lista (#108) suma la de HackAI.
     const records: AbsenceRecord[] = report.value.absences
-      .map((a) => ({ id: a.id, sectionId: a.sectionId, date: a.date, justified: a.justified, source: 'siu' as const }))
+      .map((a) => ({
+        id: a.id,
+        sectionId: a.sectionId,
+        date: a.date,
+        justified: a.justified,
+        amount: a.amount ?? 1,
+        source: 'siu' as const
+      }))
       .sort((a, b) => a.date.localeCompare(b.date))
+    const rules = requirementsOf(activePrograms(who.value.person)[0]?.id ?? null)
     return ok({
       subjects: mine.value.sections
-        .filter((s) => s.current)
+        .filter((s) => s.current && records.some((a) => a.sectionId === s.section.id))
         .map(({ section, subject }) => {
           const mineHere = records.filter((a) => a.sectionId === section.id)
-          const max = report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
+          const fromSiu = report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
+          const classes = fromSiu === null && section.classCount ? section.classCount : null
+          const max = fromSiu ?? (classes ? maxAbsences(classes, rules.attendanceRequired) : null)
           return {
-            ...absencesFrom(mineHere, max),
+            ...absencesFrom(mineHere, max, classes),
             subjectId: subject.id,
             subjectCode: subject.code,
             subjectName: subject.name,
@@ -1004,8 +1046,22 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       type,
       meetsConditions: meets.value,
       reasons: meets.value ? [] : await reasonsWhy(siuId.value, type),
-      url: siu.selfServiceUrl({ kind: 'constancia', type })
+      url: siu.selfServiceUrl({ kind: 'constancia', type }, siuId.value)
     })
+  }
+
+  /** Lo que el SIU hace con la cuenta del alumno en Trámites: si no lo sabe hacer, `no-soportado`. */
+  async function withSiuAccount<T>(
+    personId: PersonId,
+    run: (siuId: string) => Promise<Result<T, string>> | undefined
+  ): Promise<Result<T, ReadError | 'no-soportado'>> {
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
+    const done = await run(siuId.value)
+    if (!done) return fail('no-soportado')
+    if (done.ok) return done
+    if (done.error === 'no-soportado') return fail('no-soportado')
+    return fail(done.error === 'no-encontrado' ? 'persona-desconocida' : 'falla-externa')
   }
 
   /** Docentes de una comisión, con su persona de HackAI si la tienen. */
@@ -1065,7 +1121,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     subject: SiuSubject,
     teachers: Teacher[],
     seats: { capacity: number | null; enrolled: number },
-    window: { enrollmentStart: string; enrollmentEnd: string }
+    window: { enrollmentStart: string | null; enrollmentEnd: string | null; enrollmentOpen?: boolean }
   ): OfferCommon {
     return {
       subjectId: subject.id,
@@ -1076,7 +1132,12 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
       spotsLeft: spotsLeft(seats.capacity, seats.enrolled),
       enrollmentStart: window.enrollmentStart,
       enrollmentEnd: window.enrollmentEnd,
-      enrollmentWindow: windowAt(clock.now().toISOString(), window.enrollmentStart, window.enrollmentEnd)
+      enrollmentWindow: windowAt(
+        clock.now().toISOString(),
+        window.enrollmentStart,
+        window.enrollmentEnd,
+        window.enrollmentOpen
+      )
     }
   }
 
@@ -1115,7 +1176,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   async function sectionOffer(person: SiuPersonRef, subject: SiuSubject): Promise<Result<OfferItem[], ReadError>> {
     const at = clock.now().toISOString()
     const [terms, sections, enrolledSections] = await Promise.all([
-      siu.terms(),
+      siu.terms(person.siuId),
       siu.sections({ subjectId: subject.id, schoolId: person.schoolId }),
       sectionsInCourse(person.siuId)
     ])
@@ -1209,7 +1270,12 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   type TargetError = 'objetivo-desconocido' | ExternalFailure
 
   /** La materia de una comisión o una mesa y su ventana de inscripción. */
-  type TargetInfo = { subjectId: string; enrollmentStart: string; enrollmentEnd: string }
+  type TargetInfo = {
+    subjectId: string
+    enrollmentStart: string | null
+    enrollmentEnd: string | null
+    enrollmentOpen?: boolean
+  }
 
   /** La mesa, si existe y es de la facultad. */
   async function boardInfo(examBoardId: string, schoolId: string): Promise<Result<TargetInfo, TargetError>> {
@@ -1221,14 +1287,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
 
   /** La comisión, si existe y es de su facultad y de su carrera, con la ventana de su período lectivo. */
   async function sectionInfo(sectionId: string, who: SiuPersonRef): Promise<Result<TargetInfo, TargetError>> {
-    const [section, terms] = await Promise.all([siu.section(sectionId), siu.terms()])
+    const [section, terms] = await Promise.all([siu.section(sectionId), siu.terms(who.siuId)])
     if (!section.ok) return fail(section.error === 'no-encontrado' ? 'objetivo-desconocido' : section.error)
     if (!terms.ok) return terms
     const term = terms.value.find((t) => t.id === section.value.termId)
     const mine = section.value.schoolId === who.schoolId && isForPrograms(section.value, who.person)
     if (!mine || !term) return fail('objetivo-desconocido')
-    const { enrollmentStart, enrollmentEnd } = term
-    return ok({ subjectId: section.value.subjectId, enrollmentStart, enrollmentEnd })
+    const { enrollmentStart, enrollmentEnd, enrollmentOpen } = term
+    return ok({ subjectId: section.value.subjectId, enrollmentStart, enrollmentEnd, enrollmentOpen })
   }
 
   /** La persona en el SIU, que tiene que ser alumno, y el objetivo, que tiene que existir y ser de su facultad. */
@@ -1389,11 +1455,13 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   async function siuIdToDrop(personId: PersonId, target: Target): Promise<Result<string, DropError | ReadError>> {
     const resolved = await resolveTarget(personId, target)
     if (!resolved.ok) return resolved
-    const { siuId, enrollmentStart, enrollmentEnd } = resolved.value
+    const { siuId, enrollmentStart, enrollmentEnd, enrollmentOpen } = resolved.value
     const enrolled = await isEnrolledIn(siuId, target)
     if (!enrolled.ok) return enrolled
     if (!enrolled.value) return fail('no-inscripto')
-    return isOpenAt(clock.now().toISOString(), enrollmentStart, enrollmentEnd) ? ok(siuId) : fail('fuera-de-periodo')
+    return isOpenAt(clock.now().toISOString(), enrollmentStart, enrollmentEnd, enrollmentOpen)
+      ? ok(siuId)
+      : fail('fuera-de-periodo')
   }
 
   /** Desmatricula del aula y da de baja en el SIU. Si el SIU la rechaza, vuelve
@@ -1580,9 +1648,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     progress: SubjectProgress,
     at: string
   ): Promise<Result<Opening[], ExternalFailure>> {
-    const terms = await siu.terms()
+    const terms = await siu.terms(who.siuId)
     if (!terms.ok) return terms
-    const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd))
+    const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd, t.enrollmentOpen))
     const found = all(await Promise.all(open.map((t) => siu.sections({ schoolId: who.schoolId, termId: t.id }))))
     if (!found.ok) return found
     return ok(
@@ -1743,7 +1811,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok(
       buildCareer({
         now: at,
-        program: program && { id: program.id, name: program.name },
+        program: program && { id: program.id, name: program.name, progressPercent: program.progressPercent ?? null },
         plan: read.value.plan,
         subjects: read.value.subjects,
         sections: read.value.sections.map(
@@ -1774,7 +1842,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const at = clock.now().toISOString()
     return ok({
       ...read.value,
-      data: read.value.data.map((o) => ({ ...o, closesInDays: daysBetween(at, o.closesAt) }))
+      data: read.value.data.map((o) => ({
+        ...o,
+        closesInDays: o.closesAt === null ? null : daysBetween(at, o.closesAt)
+      }))
     })
   }
 
@@ -1799,7 +1870,12 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const at = clock.now().toISOString()
     return ok({
       ...read.value,
-      data: read.value.data.map((o) => ({ ...o, enrollmentWindow: windowAt(at, o.enrollmentStart, o.enrollmentEnd) }))
+      // Sin fechas, la ventana es lo que dijo el SIU en la lectura: el reloj no la mueve.
+      data: read.value.data.map((o) =>
+        o.enrollmentStart === null || o.enrollmentEnd === null
+          ? o
+          : { ...o, enrollmentWindow: windowAt(at, o.enrollmentStart, o.enrollmentEnd) }
+      )
     })
   }
 
@@ -1823,6 +1899,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     record: recordFresh,
     newGrades: newGradesNow,
     certificate: (personId, type) => fresh(`certificate:${personId}:${type}`, () => certificate(personId, type)),
-    career: (personId) => fresh(`career:${personId}`, () => career(personId))
+    career: (personId) => fresh(`career:${personId}`, () => career(personId)),
+    certificateRequests: (personId) => withSiuAccount(personId, (id) => siu.certificateRequests?.(id)),
+    requestCertificate: (personId, request) => withSiuAccount(personId, (id) => siu.requestCertificate?.(id, request)),
+    officialDocument: (personId, kind) => withSiuAccount(personId, (id) => siu.officialDocument?.(id, kind))
   }
 }

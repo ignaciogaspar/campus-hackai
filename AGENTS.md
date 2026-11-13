@@ -23,9 +23,9 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - **Stack fijo, sin dependencias nuevas** (ADR 0002, 0006 y 0007): Node 22, Next.js 15, React 19, TypeScript estricto, Supabase, Tailwind CSS 4 con componentes de shadcn/ui en `components/ui/`, tests con `node:test`, formato y lint con Biome. Sumar un paquete requiere una ADR.
 - **Datos en el servidor.** Todo acceso a la base pasa por el servidor con el service role. Las migraciones son idempotentes y activan RLS sin políticas.
 - **Lo simulado va aparte.** Las tablas de los sistemas de origen simulados (`siu_*`, `moodle_*`), sus SQL y su seed van en `hackai/supabase/simulados/`, no en `supabase/migrations/`, para no aplicarlos en producción. El seed se genera desde `hackai/lib/adapters/synthetic-data.ts`, la misma fuente que los adaptadores en memoria.
-- **Datos sintéticos.** Alumnos, materias, inscripciones y notas son inventados y verosímiles. Del relevamiento de SIU y Campus solo entran estructuras y textos de interfaz, con los datos personales reemplazados por marcadores como `<nota>`.
+- **Datos sintéticos en el repo.** Alumnos, materias, inscripciones y notas del seed y de los tests son inventados y verosímiles. Del relevamiento de SIU y Campus solo entran estructuras y textos de interfaz, con los datos personales reemplazados por marcadores como `<nota>`. Los datos reales de quien entra con su cuenta del SIU (ADR 0009) se leen en vivo y quedan en memoria: nunca van al repo, a la base ni a los logs.
 - **Secretos solo en `.env.local`**, que está ignorado por git. En logs, reportes y commits van los nombres de las variables, nunca sus valores.
-- **SIU y Campus reales: solo lectura.** Al relevarlos o cronometrarlos en el navegador se mira y se navega; los botones que confirman, envían, inscriben o dan de baja quedan sin tocar.
+- **SIU y Campus reales: solo lectura al relevarlos.** Al relevarlos o cronometrarlos en el navegador se mira y se navega; los botones que confirman, envían, inscriben o dan de baja quedan sin tocar. Escribir en el SIU real solo lo hace HackAI, con la cuenta de quien lo pide y su confirmación (ADR 0009).
 
 ## Convenciones
 

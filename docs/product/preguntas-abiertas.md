@@ -39,6 +39,7 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** el pitch tiene que decirlo. Los datos de SIU y Moodle van a ser sintéticos; falta definir si la integración se simula con un seed, un CSV o un servicio mock, y si el login es el de campus (PIN).
 - **Estado:** decidida (10/11/2026)
 - **Decisión:** se entra eligiendo una persona sintética, alumno o docente, sin clave; en el pitch se cuenta que en producción se entra con la cuenta de Microsoft de la Austral. Discord es real, en un servidor del equipo. Campus Austral queda fuera de la demo. SIU y Moodle se simulan en tablas propias con datos sintéticos, modeladas sobre sus APIs reales (las confirma el research). No se levanta un Moodle propio con Docker: la máquina no lo aguanta. Campus Austral y WhatsApp quedan afuera.
+- **Actualización (12/11/2026, ADR 0009):** además de las personas sintéticas, cualquiera de la Austral entra con su cuenta real del SIU desde el ingreso y ve sus datos en vivo; las acciones (inscribirse, darse de baja, pedir la constancia de alumno regular) van al SIU de verdad. Las personas sintéticas siguen para mostrar los espacios y la vista docente. Moodle sigue simulado.
 
 ### 5. ¿Con qué métrica mostramos la mejora?
 
@@ -184,8 +185,8 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Lo que sabemos:** según el equipo, en la Austral el máximo suele ser 3 faltas por materia (12/11/2026).
 - **Hipótesis:** el SIU da ese máximo por comisión, y las justificadas cuentan para el máximo como las otras. En el SIU simulado todas las comisiones tienen máximo 3; si una no lo tiene, la tarjeta muestra solo la cuenta. Contar las justificadas es lo prudente: si no cuentan, el alumno tiene más margen del que ve. Avisa cuando le queda una falta y cuando llega al máximo.
 - **Opciones:** como está; no contar las justificadas; sacar el máximo de otra fuente (el reglamento de cada facultad o lo que cargue la cátedra en HackAI); mostrar solo la cuenta.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida (13/11/2026)
+- **Decisión:** el SIU no da el máximo: Reportes > Inasistencias solo trae las faltas, con su cantidad (puede ser media) y si están justificadas, y el porcentaje de asistencia de cada comisión solo lo ve la gestión. La facultad pide el 75% de asistencia en todas las materias, así que el máximo es el 25% de las clases de la comisión, redondeado hacia abajo. Las clases se cuentan con el calendario de asignaciones del SIU (día de la semana y fechas desde y hasta), sin descontar feriados. Las justificadas cuentan. Inasistencias muestra solo las materias con faltas.
 
 ### 23. ¿Cuántos créditos de vida universitaria y cuántas horas de optativas o seminarios pide cada carrera, y quién lo carga?
 

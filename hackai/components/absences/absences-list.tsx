@@ -1,5 +1,5 @@
-/* Inasistencias del alumno: una fila por materia actual, con sus faltas, el
-   máximo si lo hay y cuántas le quedan. Se despliega con cada falta. Solo
+/* Inasistencias del alumno: una fila por materia actual en la que tiene faltas, con el
+   máximo si lo hay. Se despliega con cada falta. Solo
    muestra lo que le da Cursada: el aviso de cerca del máximo lo decide ella. */
 import { CalendarX, ChevronRight, TriangleAlert } from 'lucide-react'
 import { absencesLine } from '@/components/absences/line'
@@ -23,7 +23,10 @@ function Summary({ subject }: { subject: SubjectAbsences }) {
       />
       <span className='flex min-w-0 flex-col gap-1.5'>
         <span className='font-bold'>{subject.subjectName}</span>
-        <span className='text-[0.75rem] text-muted-foreground'>Comisión {subject.sectionName}</span>
+        <span className='text-[0.75rem] text-muted-foreground'>
+          Comisión {subject.sectionName}
+          {subject.classes !== null && ` · ${subject.classes} clases en el período`}
+        </span>
         <span
           className={cn(
             'flex w-fit items-start gap-2 text-[0.8125rem]',

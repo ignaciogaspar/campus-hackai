@@ -2,8 +2,10 @@
    clave. En producción se entra con la cuenta de Microsoft de la Austral
    (docs/product/alcance.md). Sin reglas de negocio: quiénes son las personas
    y quién entra lo decide Personas. */
-import { UsersRound } from 'lucide-react'
+import { ChevronRight, KeyRound, UsersRound } from 'lucide-react'
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { SignInError } from '@/app/actions/session'
 import { PersonPicker } from '@/components/session/person-picker'
@@ -12,6 +14,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { isMobileUserAgent } from '@/lib/device'
 import type { ExternalFailure } from '@/lib/result'
 import { safeReturnTo } from '@/lib/return-to'
 
@@ -52,6 +55,8 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
   if (session) redirect(returnTo ?? homeFor(session.role))
 
   const listed = await system().people.demoPeople()
+  // Las cuentas reales del SIU se usan desde la compu; en el celular, las personas de la demo.
+  const mobile = isMobileUserAgent((await headers()).get('user-agent'))
   // El QR es un agregado: si no se puede armar, el ingreso sale igual, sin él.
   const qr = await signInQr().catch(() => null)
 
@@ -72,6 +77,24 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         {qr && <PhoneQr qr={qr.image} url={qr.url} />}
 
         {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
+
+        {system().siuLive?.canConnect && !mobile && (
+          <Link
+            href='/entrar-con-siu'
+            className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring'
+          >
+            <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
+              <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
+            </span>
+            <span className='min-w-0 flex-1'>
+              <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
+              <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
+                Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
+              </span>
+            </span>
+            <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
+          </Link>
+        )}
 
         {!listed.ok ? (
           <ErrorNotice>{LIST_ERRORS[listed.error]}</ErrorNotice>
