@@ -276,6 +276,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 34. ¿Se puede quitar una nota que los alumnos ya ven?
+
+- **Por qué importa:** en la planilla de Calificaciones (#125, U-30), vaciar un campo quita la nota. Si la nota ya estaba publicada, el alumno ya la vio y le llegó el aviso, y si es de una evaluación del SIU puede haber pasado al SIU. El pase al SIU manda un número o un ausente: no hay forma de decirle «sin nota».
+- **Hipótesis (13/11/2026):** solo se quita una nota que todavía no se publicó. Una publicada no se quita: la planilla lo dice junto al campo y pide escribir la nota corregida. Quitar una nota de una tarea tampoco reabre la entrega del alumno.
+- **Opciones:** como está; dejar quitar las de tareas y de instancias de HackAI (no pasan al SIU) y avisar al alumno; quitarla también en el SIU, si la API lo permite.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
