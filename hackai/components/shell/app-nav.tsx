@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CalendarRange,
   CalendarX,
+  ChartColumnBig,
   ClipboardList,
   FileText,
   GraduationCap,
@@ -65,16 +66,18 @@ const TEACHER: Section[] = [
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
 ]
 
-/* Secretaría carga el Planning de Aulas: no cursa ni dicta, así que solo ve eso. */
+/* Secretaría no cursa ni dicta: carga el Planning de Aulas y sigue a los alumnos de grado en Reportes
+   (el tablero, el listado y la ficha de cada uno). */
 const SECRETARY: Section[] = [
   { href: '/planning', label: 'Planning', icon: CalendarRange },
+  { href: '/reportes', label: 'Reportes', icon: ChartColumnBig },
   { href: '/cargar-clases', label: 'Cargar clases', icon: Upload }
 ]
 
 /* En el celular, qué va en la barra de abajo y en qué orden (Hoy del docente, al medio); el resto va en «Más». */
 const STUDENT_TABS = ['/calendario', '/notas', '/materias', '/inscripciones']
 const TEACHER_TABS = ['/materias', '/hoy', '/calendario']
-const SECRETARY_TABS = ['/planning', '/cargar-clases']
+const SECRETARY_TABS = ['/planning', '/reportes', '/cargar-clases']
 
 /* Lo que se apaga al plegar la barra: los nombres y los títulos de grupo. Se
    van rápido y, al desplegar, vuelven cuando la barra ya casi se abrió, para
