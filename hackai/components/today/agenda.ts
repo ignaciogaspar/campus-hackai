@@ -21,6 +21,14 @@ export function dateHref(item: UpcomingItem, viewer: Role): string | undefined {
   return item.kind === 'final' ? offerHref(item.subjectId, 'examen') : undefined
 }
 
+/** A dónde lleva una fecha en el Calendario: a donde lleva en Hoy, salvo que sea el mismo Calendario (las fechas
+    del docente); ahí, al espacio de la materia si tiene comisión y, si no, a ningún lado. */
+export function calendarHref(item: UpcomingItem, viewer: Role): string | undefined {
+  const href = dateHref(item, viewer)
+  if (!href?.startsWith('/calendario')) return href
+  return item.hasSection ? spaceHref(item.subjectId) : undefined
+}
+
 const KIND: Record<UpcomingItem['kind'], string> = {
   parcial: 'Parcial',
   recuperatorio: 'Recuperatorio',

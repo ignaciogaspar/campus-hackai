@@ -4,16 +4,18 @@
    el material y abrir un canal directo con un docente. Quién
    puede hacer qué lo decide Espacios; estas acciones validan lo que llega del
    navegador, llaman al módulo y traducen cada error a un mensaje en voseo.
-   Se usan con useActionState: devuelven el estado que muestra el formulario. */
+   Se usan con useActionState: devuelven el estado que muestra el formulario.
+   También «Marcar todo como leído» de Novedades. */
 'use server'
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { discordChannelIdFrom } from '@/components/spaces/discord-format'
 import { spaceHref } from '@/components/spaces/format'
-import { requireSession } from '@/lib/auth'
+import { requireSession, setServerCookie } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
+import { GRADES_SEEN_COOKIE, GRADES_SEEN_MAX_AGE, seenValue } from '@/lib/grades-seen'
 import type { ErrorOf } from '@/lib/result'
 
 /** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. */
@@ -296,4 +298,17 @@ export async function openDirect(_prev: SpaceActionState, form: FormData): Promi
   if (!result.ok) return failed(ERRORS[result.error])
   refresh(subjectId)
   redirect(spaceHref(subjectId, { canal: result.value.id }))
+}
+
+/** «Marcar todo como leído» de Novedades: lo sin leer de todos sus espacios y, al alumno, también sus notas
+    nuevas. Devuelve por qué no se pudo, o `null` si salió bien. */
+export async function markAllNewsRead(): Promise<string | null> {
+  const session = await requireSession()
+  const marked = await system().spaces.markAllRead(session.personId)
+  if (!marked.ok) return ERRORS[marked.error]
+  if (session.role === 'alumno') {
+    await setServerCookie(GRADES_SEEN_COOKIE, seenValue(session.personId, system().now()), GRADES_SEEN_MAX_AGE)
+  }
+  revalidatePath('/', 'layout')
+  return null
 }

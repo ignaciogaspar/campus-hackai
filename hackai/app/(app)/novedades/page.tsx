@@ -2,8 +2,10 @@
    tus espacios, agrupado por materia y canal, con quién publicó lo último, el
    texto y cuándo; cada fila lleva al canal o al hilo, que al abrirse queda
    leído. Arriba, el filtro por tipo (avisos, consultas, material, directos,
-   otros canales), con cuántos hay de cada uno, en `?tipo=`. Al alumno, antes
-   que todo y sin filtrar, las notas nuevas (components/news/grade-news.tsx).
+   otros canales y, al alumno, notas), con cuántos hay de cada uno, en
+   `?tipo=`, y «Marcar todo como leído», que se puede deshacer unos segundos.
+   Al alumno, antes que lo de los espacios, las notas nuevas
+   (components/news/grade-news.tsx).
    Sirve al alumno y al docente. En compu, una columna de lectura centrada. Se
    llega desde la campana o desde la barra lateral. «Volver» lleva a la
    pantalla de la que se llegó (`?desde=`, lib/home.ts) o al inicio del rol.
@@ -67,6 +69,7 @@ export default async function NovedadesPage({
                 items={read.value}
                 grades={grades.length}
                 gradeNews={grades.length > 0 && <GradeNews grades={grades} />}
+                teacher={session.role === 'profesor'}
               />
             </Suspense>
           ) : (

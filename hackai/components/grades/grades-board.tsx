@@ -2,10 +2,12 @@
 /* Notas, por materia: los filtros arriba y las materias agrupadas por año
    lectivo (el más reciente primero) o por año de la carrera. Tocar una abre el
    panel con su detalle (a la derecha en compu, desde abajo en el celular). Los
-   filtros, el agrupamiento y la materia abierta se guardan en la URL. */
+   filtros, el agrupamiento y la materia abierta se guardan en la URL. Abrir una
+   materia con notas nuevas las marca como vistas (app/actions/grades.ts). */
 import { CalendarCheck2, ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { markSubjectGradesSeen } from '@/app/actions/grades'
 import { gradeDate, termLabel } from '@/components/academic/format'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import {
@@ -295,7 +297,9 @@ export function GradesBoard({
   subjects,
   initialFilters,
   initialGrouping,
-  initialOpen
+  initialOpen,
+  highlight,
+  withNewGrades = []
 }: {
   /** Las materias que cursó o está cursando. */
   subjects: SubjectStanding[]
@@ -303,6 +307,10 @@ export function GradesBoard({
   initialGrouping: Grouping
   /** La materia que se abre al entrar, como la de «Ver notas» de una materia archivada. */
   initialOpen?: string
+  /** La evaluación que se resalta en la materia que se abre al entrar: la nota nueva que tocó en Novedades. */
+  highlight?: string
+  /** Las materias con notas nuevas: abrirlas las marca como vistas. */
+  withNewGrades?: string[]
 }) {
   const pathname = usePathname()
   const [filters, setFilters] = useState(initialFilters)
@@ -332,6 +340,14 @@ export function GradesBoard({
     const search = query.toString()
     window.history.replaceState(null, '', `${pathname}${search ? `?${search}` : ''}`)
   }, [filters, grouping, openId, pathname])
+
+  // Cada materia se marca una vez: al marcarla, la página se vuelve a armar con la campana al día.
+  const marked = useRef(new Set<string>())
+  useEffect(() => {
+    if (!openId || !withNewGrades.includes(openId) || marked.current.has(openId)) return
+    marked.current.add(openId)
+    void markSubjectGradesSeen(openId)
+  }, [openId, withNewGrades])
 
   const shown = applyFilters(subjects, filters)
   const open = subjects.find((s) => s.subjectId === openId) ?? null
@@ -406,7 +422,7 @@ export function GradesBoard({
               opener.current.focus()
             }}
           >
-            <SubjectDetail subject={open} />
+            <SubjectDetail subject={open} highlight={open.subjectId === initialOpen ? highlight : undefined} />
           </SheetContent>
         )}
       </Sheet>

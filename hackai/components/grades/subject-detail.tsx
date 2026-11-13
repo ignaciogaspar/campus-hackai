@@ -39,11 +39,14 @@ function assessmentResult(a: SubjectAssessment): { text: string; tone: string } 
   return { text: 'Sin nota todavía', tone: 'text-muted-foreground' }
 }
 
-function AssessmentRow({ a }: { a: SubjectAssessment }) {
+function AssessmentRow({ a, highlighted }: { a: SubjectAssessment; highlighted: boolean }) {
   const kind = a.kind ? ASSESSMENT_KIND[a.kind] : null
   const result = assessmentResult(a)
   return (
-    <li className='flex items-center gap-3 py-3'>
+    <li
+      aria-current={highlighted ? 'true' : undefined}
+      className={cn('flex items-center gap-3 py-3', highlighted && '-mx-2 rounded-xl bg-accent px-2')}
+    >
       <div className='flex min-w-0 flex-1 flex-col gap-1'>
         <p className='flex flex-wrap items-center gap-2 text-[0.875rem] font-semibold text-ink'>
           {a.name}
@@ -58,6 +61,7 @@ function AssessmentRow({ a }: { a: SubjectAssessment }) {
             </span>
           )}
           {a.source === 'hackai' && <OriginBadge origin='hackai' />}
+          {highlighted && <span className='text-[0.75rem] font-semibold text-blue'>Nueva</span>}
         </p>
         <p className='text-[0.75rem] text-muted-foreground'>
           <time dateTime={a.date}>{gradeDate(a.date)}</time>
@@ -146,7 +150,8 @@ function Standing({ subject }: { subject: SubjectStanding }) {
   )
 }
 
-export function SubjectDetail({ subject }: { subject: SubjectStanding }) {
+/** `highlight`: la evaluación que se resalta, la nota nueva que tocó en Novedades. */
+export function SubjectDetail({ subject, highlight }: { subject: SubjectStanding; highlight?: string }) {
   return (
     <div className='flex flex-col gap-5'>
       <div className='flex flex-wrap items-center gap-2'>
@@ -174,7 +179,7 @@ export function SubjectDetail({ subject }: { subject: SubjectStanding }) {
         {subject.assessments.length ? (
           <ul className='divide-y divide-border'>
             {subject.assessments.map((a) => (
-              <AssessmentRow key={`${a.date}-${a.name}`} a={a} />
+              <AssessmentRow key={`${a.date}-${a.name}`} a={a} highlighted={a.name === highlight} />
             ))}
           </ul>
         ) : (
