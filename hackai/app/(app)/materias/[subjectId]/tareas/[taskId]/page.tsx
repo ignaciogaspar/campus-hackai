@@ -8,6 +8,7 @@ import { cache } from 'react'
 import { FileRow } from '@/components/coursework/file-row'
 import { dueLabel, sectionsLabel, taskHref, tasksHref } from '@/components/coursework/format'
 import { SubmissionPanel } from '@/components/coursework/submission-panel'
+import { SubmissionsPanel } from '@/components/coursework/submissions-panel'
 import { TaskError } from '@/components/coursework/task-error'
 import { EditTaskForm } from '@/components/coursework/task-form'
 import { TaskHeader } from '@/components/coursework/task-header'
@@ -15,7 +16,7 @@ import { BackLink } from '@/components/spaces/back-link'
 import { messageTime } from '@/components/spaces/format'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import { OriginBadge } from '@/components/ui/origin-badge'
-import { StaleNotice } from '@/components/ui/states'
+import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -60,6 +61,31 @@ function TaskDetail({ task }: { task: TaskView }) {
       {task.file && <FileRow file={task.file} />}
     </article>
   )
+}
+
+/** Quién entregó en la comisión elegida, o por qué no se pudo leer. */
+async function SubmissionsBlock({
+  personId,
+  taskId,
+  subjectId,
+  comision
+}: {
+  personId: string
+  taskId: string
+  subjectId: string
+  comision: string
+}) {
+  const result = await system().coursework.submissions(personId, taskId, comision)
+  if (!result.ok) {
+    return (
+      <ErrorNotice>
+        {result.error === 'falla-externa'
+          ? 'No pudimos traer los alumnos porque el SIU no responde. Probá de nuevo en un rato.'
+          : 'No podés ver quién entregó en esta comisión.'}
+      </ErrorNotice>
+    )
+  }
+  return <SubmissionsPanel result={result.value} subjectId={subjectId} comision={comision} />
 }
 
 export default async function TaskPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
@@ -108,6 +134,9 @@ export default async function TaskPage({ params, searchParams }: { params: Param
         <div className='flex w-full max-w-3xl flex-col gap-4'>
           <TaskDetail task={task} />
           {!task.canManage && <SubmissionPanel task={task} />}
+          {task.canManage && comision && (
+            <SubmissionsBlock personId={session.personId} taskId={taskId} subjectId={subjectId} comision={comision} />
+          )}
           {task.canManage && <EditTaskForm task={task} />}
         </div>
       </main>

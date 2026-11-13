@@ -119,7 +119,7 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 ### Seguimiento (`coursework`)
 
-Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el docente crea y edita tareas, y el alumno las ve y las entrega.
+Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el docente crea y edita tareas y ve quién entregó, y el alumno las ve y las entrega.
 
 | Operación | Qué hace |
 | --- | --- |
@@ -128,8 +128,10 @@ Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el 
 | `tasksOf(persona, materia, comisión?)` | Las tareas de una comisión, por fecha límite. Al docente le devuelve las comisiones vigentes que dicta de la materia y las de la elegida (la primera si falta o no es suya); al alumno, las de su comisión. Una comisión que la persona no tiene nunca trae tareas |
 | `task(persona, tarea)` | Una tarea con lo que la persona puede hacer con ella (`canManage`) y sus comisiones, solo las que la persona tiene |
 | `submit(persona, tarea, archivos)` | El alumno entrega uno o más archivos (hasta 10, 10 MB en total) a una tarea de su comisión, o reemplaza su entrega anterior si el docente todavía no la calificó. Guarda cuándo entregó. Después de la fecha límite la acepta y queda atrasada, con cuántos minutos |
+| `submissions(persona, tarea, comisión)` | Quién entregó, para el docente de esa comisión: todos los alumnos de la comisión (los de Cursada), por apellido, cada uno con su estado (entregó, no entregó o atrasada con cuánto) y los totales |
+| `submission(persona, entrega)` | Una entrega con sus archivos y de qué alumno es, para el docente de la comisión del alumno |
 | `dated(persona)` | Las tareas de las materias actuales donde la persona cursa, por fecha límite: lo que Hoy suma al calendario. A un docente le da una lista vacía |
-| `file(persona, archivo)` | Los bytes de un archivo de Seguimiento: la consigna de una tarea, si la persona la ve, o un archivo de una entrega, solo si es de quien la hizo (el docente los abre desde la pantalla de entregas, que es de un ticket siguiente) |
+| `file(persona, archivo)` | Los bytes de un archivo de Seguimiento: la consigna de una tarea, si la persona la ve, o un archivo de una entrega, si es de quien la hizo o si la persona es docente de una comisión del alumno |
 
 **Reglas que hace cumplir:**
 
@@ -138,8 +140,9 @@ Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el 
 - **Una tarea sin nota** queda marcada así: no tendrá columna en Calificaciones.
 - **Quién entrega:** solo un alumno de una comisión de la tarea. Para quien no la ve, la tarea no existe (`tarea-desconocida`), así que un alumno de la A no entrega una tarea que es solo de la B; un docente recibe `solo-alumnos`. Cada alumno tiene una sola entrega por tarea: entregar de nuevo la reemplaza (y borra sus archivos) hasta que la califican (`ya-calificada`).
 - **Atrasada:** una entrega después de la fecha límite se acepta, nunca se bloquea. El atraso no se guarda: se calcula al leer con la fecha de la entrega y la fecha límite vigente (si el docente la corre, se recalcula). Menos de un minuto cuenta como uno.
+- **Quién entregó:** `submissions` es solo del docente de esa comisión de la tarea: una comisión que no dicta es `sin-acceso`, un alumno recibe `solo-docentes` y quien no ve la tarea, `tarea-desconocida`. La lista sale de los alumnos que da Cursada, no de las entregas guardadas, así que figura también quien no entregó. `submission` es `entrega-desconocida` para todos menos el docente de una comisión del alumno: la entrega de un alumno de otra comisión, para él, no existe.
 - **Sin archivos sueltos:** si falla guardar la entrega, se borran los archivos recién subidos y la entrega anterior sigue como estaba.
-- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
+- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `entrega-desconocida`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
 
 Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la persona), el puerto de Archivos y el reloj. Cursada no lo llama.
 

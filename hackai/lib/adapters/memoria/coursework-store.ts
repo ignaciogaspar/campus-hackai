@@ -67,6 +67,15 @@ export function createMemoryCourseworkStore(): CourseworkStore {
     async submissionByFile(fileId) {
       const found = submissions.find((s) => s.files.some((f) => f.id === fileId))
       return ok(found ? copy(found) : null)
+    },
+
+    async submissionById(submissionId) {
+      const found = submissions.find((s) => s.id === submissionId)
+      return ok(found ? copy(found) : null)
+    },
+
+    async submissionsOfTask(taskId) {
+      return ok(copy(submissions.filter((s) => s.taskId === taskId)))
     }
   }
 }
