@@ -204,15 +204,25 @@ function assessmentsOf(section: TakenSection | undefined, input: CareerInput): S
   return [...scheduled, ...loose].sort((a, b) => a.date.localeCompare(b.date))
 }
 
-/** El año calendario de lo último: la aprobación, la comisión o la cursada regular. */
+/** El año de un período lectivo: el que dice su nombre («Anual - 2026») y, si no trae, el de su inicio. El
+    SIU publica el anual con inicio en diciembre del año anterior, así que la fecha sola lo corre un año. */
+function termYearOf(section: TakenSection | undefined): number | null {
+  if (!section) return null
+  const named = section.termName.match(/\b20\d{2}\b/)?.[0]
+  if (named) return Number(named)
+  return section.termStart ? yearOf(section.termStart) : null
+}
+
+/** El año de lo último: la aprobación, la comisión o la cursada regular. */
 function academicYearOf(
   approved: Approved | undefined,
   section: TakenSection | undefined,
   regular: SiuHistoryEntry | null
 ): number | null {
-  const dates = [approved?.date, section?.termStart, regular?.date].filter((d): d is string => Boolean(d))
-  if (!dates.length) return null
-  return yearOf(dates.sort().at(-1)!)
+  const years = [approved?.date, regular?.date].filter((d): d is string => Boolean(d)).map(yearOf)
+  const termYear = termYearOf(section)
+  if (termYear !== null) years.push(termYear)
+  return years.length ? Math.max(...years) : null
 }
 
 function standingOf(subjectId: string, input: CareerInput): SubjectStanding {

@@ -2440,6 +2440,24 @@ test('la carrera trae cada materia del plan con su estado, sus notas y el avance
   assert.equal(career.percent, 17)
 })
 
+test('el año lectivo de una cursada es el del nombre del período, y sin año en el nombre, el de su inicio', async () => {
+  // El SIU publica el período anual con inicio en diciembre del año anterior.
+  const annual = structuredClone(syntheticData)
+  const term = annual.siu.terms.find((t) => t.id === '2c-2026')!
+  term.name = 'Grado Anual - 2026'
+  term.start = '2025-12-15T03:00:00.000Z'
+  const yearOfAm1 = async (data: SyntheticData) => {
+    const result = await build(data).studies.career('p-sdominguez')
+    assert.ok(result.ok)
+    return result.value.data.subjects.find((s) => s.subjectId === 'am1')?.academicYear
+  }
+
+  assert.equal(await yearOfAm1(annual), 2026)
+
+  term.name = 'Grado Anual'
+  assert.equal(await yearOfAm1(annual), 2025)
+})
+
 test('la carrera marca el final al que está inscripto y usa la propuesta activa, no la de aspirante', async () => {
   const { studies } = build()
 
