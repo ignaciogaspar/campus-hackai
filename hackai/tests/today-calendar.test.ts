@@ -7,6 +7,7 @@ import {
   agendaRows,
   type CalendarEvent,
   type ClassSlot,
+  calendarFiltersFrom,
   classesIn,
   clustersOf,
   eventsOf,
@@ -17,6 +18,7 @@ import {
   rangeOf,
   shiftMonth,
   weekOf,
+  withCalendarFilters,
   withClasses
 } from '@/components/today/calendar-layout'
 import type { UpcomingItem } from '@/lib/core/studies'
@@ -267,4 +269,20 @@ test('en la agenda del celular, los días vacíos seguidos van en una sola fila,
     { days: ['2026-11-21'], empty: false },
     { days: ['2026-11-22'], empty: true }
   ])
+})
+
+test('los filtros del calendario van en la URL, junto a lo que ya había, y se leen de vuelta', () => {
+  assert.deepEqual(calendarFiltersFrom({ ver: 'finales', materia: 'AM1' }), { kind: 'finales', subject: 'AM1' })
+  assert.deepEqual(
+    calendarFiltersFrom({ ver: 'cualquiera' }),
+    { kind: 'todo', subject: '' },
+    'un tipo que no existe es «Todo»'
+  )
+  assert.deepEqual(calendarFiltersFrom({}), { kind: 'todo', subject: '' })
+
+  assert.equal(
+    withCalendarFilters('?semana=2026-12-07', { kind: 'finales', subject: 'AM1' }),
+    '?semana=2026-12-07&ver=finales&materia=AM1'
+  )
+  assert.equal(withCalendarFilters('?ver=finales&materia=AM1', { kind: 'todo', subject: '' }), '')
 })

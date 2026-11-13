@@ -41,6 +41,42 @@ export type CalendarEvent = {
   href?: string
 }
 
+/** Qué se puede ver solo en Calendario: los parciales, recuperatorios y TP van juntos. */
+export type CalendarGroup = 'clases' | 'evaluaciones' | 'finales' | 'entregas' | 'inscripciones'
+
+export const CALENDAR_GROUPS: { group: CalendarGroup; label: string; tones: CalendarTone[] }[] = [
+  { group: 'clases', label: 'Clases', tones: ['clase'] },
+  { group: 'evaluaciones', label: 'Parciales y TP', tones: ['parcial', 'recuperatorio', 'tp'] },
+  { group: 'finales', label: 'Finales', tones: ['final'] },
+  { group: 'entregas', label: 'Entregas', tones: ['entrega'] },
+  { group: 'inscripciones', label: 'Inscripciones', tones: ['inscripcion'] }
+]
+
+export const groupOf = (tone: CalendarTone): CalendarGroup =>
+  CALENDAR_GROUPS.find((g) => g.tones.includes(tone))?.group ?? 'clases'
+
+/** Qué se ve en Calendario: todo o un solo tipo, de todas las materias o de una (por sigla). */
+export type CalendarFilters = { kind: CalendarGroup | 'todo'; subject: string }
+
+/** Los filtros de `?ver=` y `?materia=`. Un tipo que no existe es «Todo». */
+export function calendarFiltersFrom(params: { ver?: string; materia?: string }): CalendarFilters {
+  return {
+    kind: CALENDAR_GROUPS.find((g) => g.group === params.ver)?.group ?? 'todo',
+    subject: params.materia ?? ''
+  }
+}
+
+/** La query de la página con los filtros en `?ver=` y `?materia=`, sin tocar lo demás (como `?semana=`). */
+export function withCalendarFilters(search: string, { kind, subject }: CalendarFilters): string {
+  const query = new URLSearchParams(search)
+  if (kind === 'todo') query.delete('ver')
+  else query.set('ver', kind)
+  if (subject) query.set('materia', subject)
+  else query.delete('materia')
+  const text = query.toString()
+  return text ? `?${text}` : ''
+}
+
 /** Los días y horarios de clase de una comisión, entre el inicio y el fin de su período. */
 export type ClassSlot = {
   id: string

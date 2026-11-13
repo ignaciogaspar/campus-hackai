@@ -6,13 +6,14 @@
    cada comisión, así que al inscribirse a una materia aparecen solas.
 
    `?semana=AAAA-MM-DD` abre en la semana de ese día: lo usa el mensaje de
-   inscripción para mostrar la cursada nueva. */
+   inscripción para mostrar la cursada nueva. Los filtros van en `?ver=` (un
+   tipo) y `?materia=` (una sigla), así sobreviven a recargar. */
 import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { PageHeader } from '@/components/shell/page-header'
 import { TodayCalendar } from '@/components/today/calendar'
-import { classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
+import { calendarFiltersFrom, classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
@@ -25,7 +26,9 @@ export const metadata: Metadata = { title: 'Calendario · Campus HackAI' }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
-export default async function CalendarioPage({ searchParams }: { searchParams: Promise<{ semana?: string }> }) {
+type CalendarParams = { semana?: string; ver?: string; materia?: string }
+
+export default async function CalendarioPage({ searchParams }: { searchParams: Promise<CalendarParams> }) {
   const session = await requireSession()
   return (
     <>
@@ -58,9 +61,10 @@ async function CalendarContent({
 }: {
   personId: string
   role: Role
-  searchParams: Promise<{ semana?: string }>
+  searchParams: Promise<CalendarParams>
 }) {
-  const [{ semana }, result] = await Promise.all([searchParams, system().today.today(personId)])
+  const [params, result] = await Promise.all([searchParams, system().today.today(personId)])
+  const { semana } = params
   const initialDay = semana && DAY.test(semana) ? semana : undefined
 
   return !result.ok ? (
@@ -95,6 +99,7 @@ async function CalendarContent({
         now={result.value.now}
         initialDay={initialDay}
         filters
+        initialFilters={calendarFiltersFrom(params)}
         below={
           <p className='text-[0.8125rem] text-muted-foreground'>
             Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.

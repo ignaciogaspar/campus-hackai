@@ -16,12 +16,15 @@ import { ZoomLink } from '@/components/subjects/zoom-link'
 import { CalendarSummary, NextDates } from '@/components/today/calendar-dates'
 import {
   agendaRows,
+  CALENDAR_GROUPS,
   type CalendarEvent,
+  type CalendarFilters,
   type CalendarTone,
   type ClassSlot,
   type Cluster,
   classesIn,
   clustersOf,
+  groupOf,
   lanesOf,
   minutesOf,
   mondayOf,
@@ -30,8 +33,11 @@ import {
   SLOT_MINUTES,
   shiftMonth,
   weekOf,
+  withCalendarFilters,
   withClasses
 } from '@/components/today/calendar-layout'
+import { buttonVariants } from '@/components/ui/button'
+import { railItem, railTrack } from '@/components/ui/rail'
 import { Select } from '@/components/ui/select'
 import type { Role } from '@/lib/core/people'
 import type { UpcomingItem } from '@/lib/core/studies'
@@ -51,19 +57,6 @@ const TONES: Record<CalendarTone, { label: string; block: string; dot: string }>
   inscripcion: { label: 'Inscripción', block: 'bg-muted border-ink/45', dot: 'bg-ink/60' },
   clase: { label: 'Clase', block: 'bg-accent border-blue', dot: 'bg-blue' }
 }
-
-/** Qué se puede mostrar u ocultar en Calendario: los parciales, recuperatorios y TP van juntos. */
-type Group = 'clases' | 'evaluaciones' | 'finales' | 'entregas' | 'inscripciones'
-
-const GROUPS: { group: Group; label: string; tones: CalendarTone[] }[] = [
-  { group: 'clases', label: 'Clases', tones: ['clase'] },
-  { group: 'evaluaciones', label: 'Parciales y TP', tones: ['parcial', 'recuperatorio', 'tp'] },
-  { group: 'finales', label: 'Finales', tones: ['final'] },
-  { group: 'entregas', label: 'Entregas', tones: ['entrega'] },
-  { group: 'inscripciones', label: 'Inscripciones', tones: ['inscripcion'] }
-]
-
-const groupOf = (tone: CalendarTone) => GROUPS.find((g) => g.tones.includes(tone))!.group
 
 function format(day: string, options: Intl.DateTimeFormatOptions): string {
   return new Date(`${day}T12:00:00-03:00`).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, ...options })
@@ -400,7 +393,7 @@ function MiniMonth({
   onDay: (day: string) => void
 }) {
   const arrow =
-    'grid size-7 cursor-pointer place-items-center rounded-lg bg-accent text-blue transition-colors hover:bg-blue/10 focus-ring'
+    'grid size-11 cursor-pointer place-items-center rounded-xl bg-accent text-blue transition-colors hover:bg-blue/10 focus-ring'
   return (
     <section aria-labelledby='mes' className='rounded-2xl border border-border bg-card p-4'>
       <div className='flex items-center justify-between gap-2 pb-3'>
@@ -409,10 +402,10 @@ function MiniMonth({
         </h2>
         <span className='flex gap-1.5'>
           <button type='button' aria-label='Mes anterior' onClick={() => onMonth(-1)} className={arrow}>
-            <ChevronLeft aria-hidden='true' className='size-4' strokeWidth={2} />
+            <ChevronLeft aria-hidden='true' className='size-5' strokeWidth={2} />
           </button>
           <button type='button' aria-label='Mes siguiente' onClick={() => onMonth(1)} className={arrow}>
-            <ChevronRight aria-hidden='true' className='size-4' strokeWidth={2} />
+            <ChevronRight aria-hidden='true' className='size-5' strokeWidth={2} />
           </button>
         </span>
       </div>
@@ -435,17 +428,20 @@ function MiniMonth({
               aria-label={`${capitalize(format(d, { weekday: 'long', day: 'numeric', month: 'long' }))}${said ? `: ${said}` : ''}`}
               aria-current={d === today ? 'date' : undefined}
               className={cn(
-                'relative grid h-8 cursor-pointer place-items-center text-[0.75rem] tabular-nums transition-colors focus-ring',
+                'relative grid h-11 cursor-pointer place-items-center text-[0.8125rem] tabular-nums transition-colors focus-ring',
                 inWeek ? 'bg-accent' : 'rounded-lg hover:bg-ink/5',
                 inWeek && i % 7 === 0 && 'rounded-l-lg',
                 inWeek && i % 7 === 6 && 'rounded-r-lg',
-                d.slice(0, 7) === month.slice(0, 7) ? 'text-ink' : 'text-gray-light',
+                d.slice(0, 7) === month.slice(0, 7) ? 'text-ink' : 'text-muted-foreground',
                 d === today && 'font-bold text-blue'
               )}
             >
               {Number(d.slice(8))}
               {dot && (
-                <span aria-hidden='true' className={cn('absolute bottom-1 size-1 rounded-full', TONES[dot.tone].dot)} />
+                <span
+                  aria-hidden='true'
+                  className={cn('absolute bottom-1.5 size-1.5 rounded-full', TONES[dot.tone].dot)}
+                />
               )}
             </button>
           )
@@ -470,14 +466,10 @@ function WeekToolbar({
   rangeRef: RefObject<HTMLParagraphElement | null>
 }) {
   const arrow =
-    'grid size-8 cursor-pointer place-items-center rounded-lg text-ink transition-colors hover:bg-ink/5 focus-ring'
+    'grid size-11 cursor-pointer place-items-center rounded-xl text-ink transition-colors hover:bg-ink/5 focus-ring'
   return (
-    <div className='flex items-center gap-1 border-b border-border px-3 py-2'>
-      <button
-        type='button'
-        onClick={onToday}
-        className='h-8 cursor-pointer rounded-lg px-3 text-[0.8125rem] font-semibold text-blue transition-colors hover:bg-accent focus-ring'
-      >
+    <div className='flex items-center gap-1 border-b border-border px-3 py-1.5'>
+      <button type='button' onClick={onToday} className={cn(buttonVariants({ variant: 'outline' }), 'h-11 px-4')}>
         Hoy
       </button>
       <button type='button' aria-label='Semana anterior' onClick={() => onDay(addDays(week[0], -7))} className={arrow}>
@@ -506,62 +498,47 @@ function WeekToolbar({
   )
 }
 
-/* Los filtros de Calendario: qué tipo de cosas y de qué materia. Cada tipo es
-   un botón que se prende y se apaga. */
+/* Los filtros de Calendario: qué tipo de cosas y de qué materia. Se elige un
+   tipo (o «Todo») en un riel de una fila que, en el celular, se desliza de costado. */
 function Filters({
-  hidden,
-  onToggle,
-  subjects,
-  subject,
-  onSubject
+  value,
+  onChange,
+  subjects
 }: {
-  hidden: Set<Group>
-  onToggle: (group: Group) => void
+  value: CalendarFilters
+  onChange: (next: CalendarFilters) => void
   subjects: { code: string; name: string }[]
-  subject: string
-  onSubject: (code: string) => void
 }) {
+  const kinds = [{ group: 'todo' as const, label: 'Todo', tones: [] as CalendarTone[] }, ...CALENDAR_GROUPS]
   return (
-    <div className='flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5'>
-      <span className='sr-only'>Mostrar</span>
-      {GROUPS.map(({ group, label, tones }) => {
-        const on = !hidden.has(group)
-        return (
+    <div className='flex flex-col gap-2 border-b border-border px-3 py-2.5 lg:flex-row lg:items-center'>
+      <fieldset className={cn(railTrack({ size: 'sm' }), 'min-w-0 overflow-x-auto [scrollbar-width:none] lg:flex-1')}>
+        <legend className='sr-only'>Mostrar</legend>
+        {kinds.map(({ group, label, tones }) => (
           <button
             key={group}
             type='button'
-            aria-pressed={on}
-            onClick={() => onToggle(group)}
-            className={cn(
-              'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-semibold transition-colors focus-ring',
-              on
-                ? 'border-ink/15 bg-card text-ink shadow-[0_1px_2px_rgb(16_20_44/0.08)] hover:border-blue/30'
-                : 'border-dashed border-border bg-transparent text-muted-foreground hover:text-ink'
-            )}
+            aria-pressed={value.kind === group}
+            onClick={() => onChange({ ...value, kind: group })}
+            className={railItem({ size: 'sm', className: 'flex-none' })}
           >
-            <span
-              aria-hidden='true'
-              className={cn(
-                'size-2.5 rounded-full',
-                on ? TONES[tones[0]].dot : 'border border-gray-light bg-transparent'
-              )}
-            />
+            {tones[0] && <span aria-hidden='true' className={cn('size-2.5 rounded-full', TONES[tones[0]].dot)} />}
             {label}
           </button>
-        )
-      })}
-      <div className='min-w-0 max-sm:w-full sm:ml-auto sm:w-60'>
+        ))}
+      </fieldset>
+      <div className='min-w-0 lg:w-60 lg:flex-none'>
         <Select
           aria-label='Materia'
-          value={subject}
-          onValueChange={onSubject}
+          value={value.subject}
+          onValueChange={(subject) => onChange({ ...value, subject })}
           options={[
             { value: '', label: 'Todas las materias' },
             ...subjects.map((s) => ({ value: s.code, label: s.name }))
           ]}
           className={cn(
-            'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-9',
-            subject && 'border-blue/40 text-blue'
+            'h-11 rounded-full pl-4 text-[0.8125rem] font-medium',
+            value.subject && 'border-blue/40 text-blue'
           )}
         />
       </div>
@@ -569,11 +546,27 @@ function Filters({
   )
 }
 
+/* Lo que el filtro deja afuera de la semana, dicho, con cómo volver a verlo. */
+function HiddenNotice({ count, onShowAll }: { count: number; onShowAll: () => void }) {
+  return (
+    <p className='flex flex-wrap items-center gap-x-2 border-b border-border bg-background px-4 py-1.5 text-[0.8125rem] text-muted-foreground'>
+      {count === 1 ? '1 evento oculto' : `${count} eventos ocultos`} por el filtro esta semana
+      <button
+        type='button'
+        onClick={onShowAll}
+        className='inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 font-semibold text-blue hover:underline focus-ring'
+      >
+        Mostrar todo
+      </button>
+    </p>
+  )
+}
+
 /** Las materias que aparecen en el calendario, para el filtro: por sigla, sin repetir. */
 function subjectsIn(events: CalendarEvent[], classes: ClassSlot[]) {
   const found = new Map<string, string>()
   for (const c of classes) found.set(c.code, c.subject)
-  for (const e of events) if (e.code && !found.has(e.code)) found.set(e.code, e.subject)
+  for (const e of events) if (e.code && !found.has(e.code)) found.set(e.code, e.subjectName)
   return [...found].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name, 'es'))
 }
 
@@ -583,6 +576,7 @@ export function TodayCalendar({
   now,
   initialDay,
   filters = false,
+  initialFilters = { kind: 'todo', subject: '' },
   upcoming,
   viewer = 'alumno',
   top,
@@ -597,6 +591,8 @@ export function TodayCalendar({
   initialDay?: string
   /** Muestra los filtros por tipo y por materia. */
   filters?: boolean
+  /** Los filtros con que abre, de `?ver=` y `?materia=`: al cambiarlos, se guardan ahí. */
+  initialFilters?: CalendarFilters
   /** Las fechas de Hoy: con ellas, arriba va lo próximo y al costado, las próximas fechas en lista. */
   upcoming?: UpcomingItem[]
   /** Quién mira, para saber a dónde lleva cada fecha. */
@@ -610,12 +606,31 @@ export function TodayCalendar({
   const start = initialDay ?? today
   const [monday, setMonday] = useState(mondayOf(start))
   const [month, setMonth] = useState(start)
-  const [hidden, setHidden] = useState<Set<Group>>(new Set())
-  const [subject, setSubject] = useState('')
+  const [shownKinds, setShownKinds] = useState<CalendarFilters>(initialFilters)
   const week = weekOf(monday)
+  const { kind, subject } = shownKinds
 
-  const visible = (e: CalendarEvent) => !hidden.has(groupOf(e.tone)) && (!subject || e.code === subject)
-  const shown = withClasses(events, classesIn(week, classes, today)).filter(visible)
+  const visible = (e: CalendarEvent) =>
+    (kind === 'todo' || groupOf(e.tone) === kind) && (!subject || e.code === subject)
+  const inWeek = withClasses(events, classesIn(week, classes, today))
+  const shown = inWeek.filter(visible)
+  // Las próximas fechas siguen a la materia y, si es un tipo de fecha, al tipo.
+  const datesKind = kind === 'clases' || kind === 'inscripciones' ? 'todo' : kind
+  const dates = upcoming?.filter(
+    (i) => (datesKind === 'todo' || groupOf(i.kind) === datesKind) && (!subject || i.subjectCode === subject)
+  )
+  const setFilters = (next: CalendarFilters) => {
+    setShownKinds(next)
+    try {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${withCalendarFilters(window.location.search, next)}`
+      )
+    } catch {
+      // Sin historial (una vista previa), el filtro vale igual hasta recargar.
+    }
+  }
 
   const goTo = (day: string) => {
     setMonday(mondayOf(day))
@@ -636,13 +651,6 @@ export function TodayCalendar({
     goTo(day)
     setReveal((n) => n + 1)
   }
-  const toggle = (group: Group) =>
-    setHidden((current) => {
-      const next = new Set(current)
-      if (next.has(group)) next.delete(group)
-      else next.add(group)
-      return next
-    })
 
   return (
     <div
@@ -662,13 +670,11 @@ export function TodayCalendar({
           className='scroll-mt-4 overflow-hidden rounded-2xl border border-border bg-card'
         >
           <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} rangeRef={rangeRef} />
-          {filters && (
-            <Filters
-              hidden={hidden}
-              onToggle={toggle}
-              subjects={subjectsIn(events, classes)}
-              subject={subject}
-              onSubject={setSubject}
+          {filters && <Filters value={shownKinds} onChange={setFilters} subjects={subjectsIn(events, classes)} />}
+          {filters && shown.length < inWeek.length && (
+            <HiddenNotice
+              count={inWeek.length - shown.length}
+              onShowAll={() => setFilters({ kind: 'todo', subject: '' })}
             />
           )}
           <div className='overflow-x-auto max-md:hidden'>
@@ -694,7 +700,7 @@ export function TodayCalendar({
         {(aside || upcoming) && (
           <div className='flex flex-col gap-3'>
             {aside}
-            {upcoming && <NextDates items={upcoming} viewer={viewer} />}
+            {dates && <NextDates items={dates} viewer={viewer} />}
           </div>
         )}
       </aside>
