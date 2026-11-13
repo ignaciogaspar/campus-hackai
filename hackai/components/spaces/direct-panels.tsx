@@ -140,7 +140,12 @@ export function DirectPanel({ subjectId, channel, threads, viewerId }: PanelProp
       </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
-          <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Escribile a ${firstName}`} />
+          <Composer
+            subjectId={subjectId}
+            channelId={channel.id}
+            placeholder={`Escribile a ${firstName}`}
+            confirmation={`Enviado a ${other.name}: lo ven solo ustedes dos.`}
+          />
         ) : (
           <LockedNote>No podés escribir en esta conversación.</LockedNote>
         )}

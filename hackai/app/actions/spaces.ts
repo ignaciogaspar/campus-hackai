@@ -123,7 +123,8 @@ export async function postMessage(_prev: SpaceActionState, form: FormData): Prom
   }
   if (replyTo && text(form, 'resolve') === '1') return resolveAfterReply(session.personId, subjectId, replyTo)
   refresh(subjectId)
-  return done(replyTo ? 'Respuesta enviada.' : 'Mensaje enviado.')
+  // La confirmación la pone el campo para escribir, que sabe a quién le llega.
+  return done()
 }
 
 /** «Responder y marcar resuelta»: la respuesta ya salió. Si marcarla falla se dice, pero como algo que salió: un

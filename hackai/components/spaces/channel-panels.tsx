@@ -163,6 +163,7 @@ export function AnnouncementsPanel({ subjectId, channel, threads, viewerId }: Pa
             channelId={channel.id}
             placeholder={`Aviso para ${audience(channel)}`}
             announcementFor={audience(channel)}
+            confirmation={`Publicado para ${audience(channel)}.`}
           />
         ) : (
           <LockedNote>Solo los docentes publican avisos. Si tenés una duda, usá Consultas.</LockedNote>
@@ -260,6 +261,7 @@ export function QuestionsPanel({
             subjectId={subjectId}
             channelId={channel.id}
             placeholder={role === 'alumno' ? 'Escribí tu consulta' : 'Escribí en Consultas'}
+            confirmation={`Publicado en Consultas para ${audience(channel)}.`}
           />
         </ComposerDock>
       )}
@@ -282,7 +284,12 @@ export function FreeChannelPanel({ subjectId, channel, threads, viewerId }: Pane
       </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
-          <Composer subjectId={subjectId} channelId={channel.id} placeholder='Escribí un mensaje' />
+          <Composer
+            subjectId={subjectId}
+            channelId={channel.id}
+            placeholder='Escribí un mensaje'
+            confirmation={`Publicado en #${channel.name} para ${audience(channel)}.`}
+          />
         ) : (
           <LockedNote>En este canal escriben solo los docentes.</LockedNote>
         )}
@@ -357,6 +364,7 @@ export function ThreadPanel({
             channelId={channel.id}
             replyTo={thread.message.id}
             placeholder='Escribí tu respuesta'
+            confirmation={`Respuesta publicada para ${audience(channel)}.`}
             resolvable={channel.canResolve && thread.message.question?.resolved === false}
           />
         </ComposerDock>
