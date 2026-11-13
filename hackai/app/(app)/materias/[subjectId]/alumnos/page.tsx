@@ -9,6 +9,7 @@ import { Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader } from '@/components/shell/page-header'
+import { ClassList } from '@/components/subjects/class-list'
 import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
@@ -19,18 +20,27 @@ import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { SectionStudent, SectionStudentsError, Studies, StudiesReadError } from '@/lib/core/studies'
+import type {
+  AttendanceError,
+  SectionStudent,
+  SectionStudentsError,
+  Studies,
+  StudiesReadError
+} from '@/lib/core/studies'
 
 export const metadata: Metadata = { title: 'Alumnos · Campus HackAI' }
 
 type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
-const ERRORS: Record<StudiesReadError | SectionStudentsError, string> = {
+const ERRORS: Record<StudiesReadError | SectionStudentsError | AttendanceError, string> = {
   'falla-externa': 'No pudimos traer los alumnos porque el SIU no responde. Probá de nuevo en un rato.',
   'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
   'sin-acceso': 'Solo los docentes de la comisión ven a sus alumnos.',
-  'no-implementado': 'Esta función todavía no está disponible.'
+  'no-implementado': 'Esta función todavía no está disponible.',
+  'clase-inexistente': 'Esa clase no está en el horario de la comisión.',
+  'clase-fuera-de-fecha': 'Solo se toma o se corrige la lista de la clase de hoy.',
+  'ausente-no-inscripto': 'Hay un alumno que no está inscripto a la comisión.'
 }
 
 const ALUMNOS_TAB = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
@@ -97,6 +107,32 @@ function StudentsBlock({ students, sectionName }: { students: Students; sectionN
   )
 }
 
+type Classes = Awaited<ReturnType<Studies['classesOf']>>
+
+/** Las clases de la comisión, o por qué no están. */
+function ClassesBlock({
+  classes,
+  subjectId,
+  section,
+  total
+}: {
+  classes: Classes
+  subjectId: string
+  section: { sectionId: string; name: string }
+  total: number
+}) {
+  if (!classes.ok) return <ErrorNotice>{ERRORS[classes.error]}</ErrorNotice>
+  return (
+    <ClassList
+      classes={classes.value}
+      subjectId={subjectId}
+      sectionId={section.sectionId}
+      sectionName={section.name}
+      total={total}
+    />
+  )
+}
+
 export default async function AlumnosPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const session = await requireSession('profesor')
   const [{ subjectId }, raw] = await Promise.all([params, searchParams])
@@ -109,7 +145,10 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
   if (!mine.ok || !section)
     return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} />
 
-  const students = await system().studies.sectionStudents(session.personId, section.sectionId)
+  const [students, classes] = await Promise.all([
+    system().studies.sectionStudents(session.personId, section.sectionId),
+    system().studies.classesOf(session.personId, section.sectionId)
+  ])
   const staleRead = mine.value.stale ? mine.value : students.ok && students.value.stale ? students.value : null
   const several = taught.length > 1
 
@@ -137,6 +176,12 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
         />
         {staleRead && <StaleBanner since={staleRead.readAt} now={system().now()} />}
 
+        <ClassesBlock
+          classes={classes}
+          subjectId={subjectId}
+          section={section}
+          total={students.ok ? students.value.data.length : 0}
+        />
         <StudentsBlock students={students} sectionName={section.name} />
       </main>
     </>

@@ -19,16 +19,22 @@ export type SectionStudent = {
 
 export type SectionStudentsError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
 
-/** Un alumno y un docente de otra comisión reciben lo mismo: `sin-acceso`, también si la comisión no existe. */
+/** El id de la persona en el SIU si dicta la comisión; si no, el error que corresponde. Un alumno y un docente de otra
+    comisión reciben lo mismo: `sin-acceso`, también si la comisión no existe. */
+export async function teacherOfSection(
+  { people, siu }: { people: People; siu: SiuPort },
+  personId: PersonId,
+  sectionId: string
+): Promise<Result<string, SectionStudentsError>> {
+  const siuId = await people.accountIn(personId, 'siu')
+  if (!siuId.ok) return siuId.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
+  const taught = await siu.teacherSections(siuId.value)
+  if (!taught.ok) return taught.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
+  return taught.value.some((s) => s.id === sectionId) ? ok(siuId.value) : fail('sin-acceso')
+}
+
 export function createSectionStudents({ people, siu }: { people: People; siu: SiuPort }) {
-  /** El id de la persona en el SIU si dicta la comisión; si no, el error que corresponde. */
-  async function teacherOf(personId: PersonId, sectionId: string): Promise<Result<string, SectionStudentsError>> {
-    const siuId = await people.accountIn(personId, 'siu')
-    if (!siuId.ok) return siuId.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
-    const taught = await siu.teacherSections(siuId.value)
-    if (!taught.ok) return taught.error === 'falla-externa' ? fail('falla-externa') : fail('persona-desconocida')
-    return taught.value.some((s) => s.id === sectionId) ? ok(siuId.value) : fail('sin-acceso')
-  }
+  const teacherOf = (personId: PersonId, sectionId: string) => teacherOfSection({ people, siu }, personId, sectionId)
 
   async function studentOf(siuId: string): Promise<Result<SectionStudent | null, ExternalFailure>> {
     const [person, owner] = await Promise.all([siu.person(siuId), people.byExternalAccount('siu', siuId)])

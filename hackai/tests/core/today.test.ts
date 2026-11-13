@@ -7,6 +7,7 @@ import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
 import { createSpaces } from '@/lib/core/spaces'
@@ -22,7 +23,7 @@ function build(data: SyntheticData = syntheticData) {
   const { port: siu, state: siuState } = fallible(createMemorySiu(data, clock))
   const { port: classroom, state: classroomState } = fallible(createMemoryClassroom(data))
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
-  const studies = createStudies({ people, siu, classroom, clock })
+  const studies = createStudies({ people, siu, classroom, clock, store: createMemoryStudiesStore() })
   const spaces = createSpaces({
     people,
     studies,

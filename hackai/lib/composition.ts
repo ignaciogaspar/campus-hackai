@@ -27,8 +27,8 @@
    El almacén no es un puerto: es el seam interno donde cada módulo guarda lo
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
    necesita las mismas dos variables. Lo usan Personas, para los vínculos con
-   cada sistema, y Espacios, para espacios, canales, mensajes, material y lo
-   leído.
+   cada sistema, Cursada, para las listas que toma el docente, y Espacios, para
+   espacios, canales, mensajes, material y lo leído.
 
    Archivos con `supabase` guarda en el bucket privado de Supabase Storage
    (supabase/migrations/0003_files.sql), con las mismas dos variables.
@@ -62,6 +62,7 @@ import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
+import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { createSimulatedMoodle } from '@/lib/adapters/moodle-simulado'
 import { createSystemClock } from '@/lib/adapters/sistema/clock'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
@@ -69,6 +70,7 @@ import { supabaseFromEnv } from '@/lib/adapters/supabase/client'
 import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
+import { createSupabaseStudiesStore } from '@/lib/adapters/supabase/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople, type People } from '@/lib/core/people'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
@@ -238,7 +240,14 @@ export function compose(
     requestScope
   )
   const studies = memoStudies(
-    createStudies({ people, siu: ports.siu, classroom: ports.classroom, clock }),
+    createStudies({
+      people,
+      siu: ports.siu,
+      classroom: ports.classroom,
+      clock,
+      store:
+        adapters.store === 'supabase' ? createSupabaseStudiesStore({ client: supabase() }) : createMemoryStudiesStore()
+    }),
     requestScope
   )
   const spaces = memoSpaces(
@@ -295,7 +304,8 @@ function memoStudies(studies: Studies, scope: RequestScope | undefined): Studies
     openEnrollments: memoRead(scope, 'studies.openEnrollments', studies.openEnrollments),
     sectionsOf: memoRead(scope, 'studies.sectionsOf', studies.sectionsOf),
     enroll: clearAfter(studies.enroll, () => scope?.()?.clear()),
-    drop: clearAfter(studies.drop, () => scope?.()?.clear())
+    drop: clearAfter(studies.drop, () => scope?.()?.clear()),
+    takeAttendance: clearAfter(studies.takeAttendance, () => scope?.()?.clear())
   }
 }
 

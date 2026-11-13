@@ -68,8 +68,8 @@ export function withSiuCache(
     const inFlight = inFlightStore.read(name, 0, reader)
     return (...args: A) => (requestScope?.() ? scoped(...args) : inFlight(...args))
   }
-  function write<R>(change: Reader<Parameters<SiuPort['enroll']>, R>) {
-    return async (...args: Parameters<SiuPort['enroll']>) => {
+  function write<A extends unknown[], R>(change: Reader<A, R>) {
+    return async (...args: A) => {
       try {
         return await change(...args)
       } finally {
@@ -99,6 +99,7 @@ export function withSiuCache(
     meetsCertificateConditions: dynamic('meetsCertificateConditions', siu.meetsCertificateConditions),
     enroll: write(siu.enroll),
     drop: write(siu.drop),
+    recordAttendance: write(siu.recordAttendance),
     selfServiceUrl: siu.selfServiceUrl
   }
 }

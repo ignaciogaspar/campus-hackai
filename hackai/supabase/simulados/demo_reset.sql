@@ -19,6 +19,10 @@ begin;
 
 truncate table space_reads, space_messages, space_material, space_channels, spaces restart identity cascade;
 
+-- A: asistencia. Las listas que se tomaron en un ensayo y las faltas que pasaron al SIU simulado.
+truncate table section_classes;
+delete from siu_absences where id like 'ia-%';
+
 commit;
 
 -- Que PostgREST relea el esquema, por si las migraciones de recién sumaron algo.

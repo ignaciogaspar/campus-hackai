@@ -18,8 +18,14 @@
      de inscripción de la oferta se mira con el reloj de ahora.
    - Las materias no llevan faltas: la tarjeta de la materia no las muestra.
      `absencesOf` da, por materia actual del alumno, el detalle de sus
-     inasistencias (por ahora solo del SIU; #108 suma las de HackAI). Un docente
-     recibe una lista vacía. Si el SIU no responde, devuelve lo último leído.
+     inasistencias, juntando las dos fuentes: el SIU y las listas que tomó el
+     docente en HackAI (`absence-sources.ts`). Un docente recibe una lista
+     vacía. Si el SIU no responde, devuelve lo último leído de él con las listas
+     de HackAI al día, marcado como desactualizado.
+   - Tomar lista (`attendance.ts`): solo el docente de la comisión, solo la
+     clase de hoy. Se guarda en HackAI y se pasa al SIU (`pasado`, `pendiente`
+     si el SIU no responde, o `sin-pasar` si no deja escribir). Reintentar no
+     duplica: el SIU reemplaza la lista de la clase.
    - Con Moodle caído y el SIU arriba, las materias salen al día del SIU, sin
      enlaces al aula ni tareas, y con `classroomUnavailable`.
 
@@ -88,7 +94,21 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail } from '@/lib/core/studies/absences'
+import { unionAbsences } from '@/lib/core/studies/absence-sources'
+import {
+  type AbsenceRecord,
+  absencesFrom,
+  type MyAbsencesDetail,
+  type SubjectAbsences
+} from '@/lib/core/studies/absences'
+import {
+  type AttendanceError,
+  type AttendanceSheet,
+  type ClassItem,
+  createAttendance,
+  type RetryReport,
+  type TakenResult
+} from '@/lib/core/studies/attendance'
 import {
   type Approved as ApprovedInCareer,
   buildCareer,
@@ -102,6 +122,7 @@ import {
   type SectionStudent,
   type SectionStudentsError
 } from '@/lib/core/studies/section-students'
+import type { StoredClass, StudiesStore } from '@/lib/core/studies/store'
 import { daysBetween } from '@/lib/dates'
 import type { Fresh } from '@/lib/fresh'
 import type { ClassroomAssignment, ClassroomCourse, ClassroomPort } from '@/lib/ports/classroom'
@@ -135,6 +156,14 @@ export type {
   SubjectAbsences
 } from '@/lib/core/studies/absences'
 export type {
+  AttendanceError,
+  AttendanceSheet,
+  ClassItem,
+  RetryReport,
+  TakenClass,
+  TakenResult
+} from '@/lib/core/studies/attendance'
+export type {
   Career,
   CareerProgress,
   PlanKind,
@@ -142,6 +171,14 @@ export type {
   SubjectStanding,
   SubjectStatus
 } from '@/lib/core/studies/career'
+export type {
+  Pase,
+  SectionSnapshot,
+  StoredClass,
+  StoredClassInput,
+  StudiesStore,
+  StudiesStoreError
+} from '@/lib/core/studies/store'
 
 /** Una lectura con la hora en que se hizo. `stale` si el sistema de origen no
     respondió y es lo último que se leyó. */
@@ -420,6 +457,30 @@ export type Studies = {
     personId: PersonId,
     sectionId: string
   ): Promise<Result<Fresh<SectionStudent[]>, ReadError | SectionStudentsError>>
+  /** Las clases de una comisión desde que empieza el período hasta hoy, la más nueva primero, con la lista de cada
+      una si ya se tomó. Solo para un docente de la comisión (`sin-acceso` si no). Reintenta los pases al SIU
+      pendientes de la comisión. */
+  classesOf(personId: PersonId, sectionId: string): Promise<Result<ClassItem[], AttendanceError>>
+  /** La lista de una clase para tomarla o corregirla: los alumnos de la comisión y los ausentes ya guardados. Solo
+      para un docente de la comisión. `clase-inexistente` si no hay una clase en ese instante. */
+  attendanceSheet(
+    personId: PersonId,
+    sectionId: string,
+    classAt: string
+  ): Promise<Result<AttendanceSheet, AttendanceError>>
+  /** Toma la lista de la clase de hoy, o la corrige: `absent` son los legajos de los ausentes y todos los demás
+      estuvieron presentes. La guarda en HackAI, así el alumno ve la falta aunque el SIU no responda, y la pasa al SIU:
+      `pasado`, `pendiente` (el SIU no respondió; se reintenta sin duplicar) o `sin-pasar` (el SIU no deja escribir la
+      asistencia). Solo para un docente de la comisión, y solo la clase de hoy (`clase-fuera-de-fecha`). */
+  takeAttendance(
+    personId: PersonId,
+    sectionId: string,
+    classAt: string,
+    absent: string[]
+  ): Promise<Result<TakenResult, AttendanceError>>
+  /** Reintenta pasar al SIU las listas pendientes, de la más vieja a la más nueva. Lo corre la sincronización
+      periódica. */
+  retryPases(): Promise<Result<RetryReport, ExternalFailure>>
   /** Comisiones o mesas de examen con cupo, horario y docentes. */
   offer(personId: PersonId, query: OfferQuery): Promise<Result<Fresh<OfferItem[]>, ReadError>>
   /** Inscribe en el SIU y matricula en Moodle, todo o nada. */
@@ -456,6 +517,42 @@ export type StudiesDeps = {
   siu: SiuPort
   classroom: ClassroomPort
   clock: ClockPort
+  /** El almacén propio de Cursada: las listas tomadas. */
+  store: StudiesStore
+}
+
+/** Lo que se lee del SIU para las faltas de un alumno, y lo último que se leyó si después no responde. */
+type SiuAbsencesBasis = {
+  readAt: string
+  sections: {
+    sectionId: string
+    sectionName: string
+    subjectId: string
+    subjectCode: string
+    subjectName: string
+    max: number | null
+  }[]
+  records: AbsenceRecord[]
+}
+
+/** El detalle de cada materia de la base: sus faltas de las dos fuentes (`unionAbsences`) contadas contra el máximo. */
+function subjectAbsences(basis: SiuAbsencesBasis, classes: StoredClass[], siuId: string): SubjectAbsences[] {
+  return basis.sections.map((s) => {
+    const mineHere = unionAbsences(
+      basis.records.filter((a) => a.sectionId === s.sectionId),
+      classes.filter((c) => c.sectionId === s.sectionId),
+      siuId
+    )
+    return {
+      ...absencesFrom(mineHere, s.max),
+      subjectId: s.subjectId,
+      subjectCode: s.subjectCode,
+      subjectName: s.subjectName,
+      sectionId: s.sectionId,
+      sectionName: s.sectionName,
+      absences: mineHere
+    }
+  })
 }
 
 /** La persona en el SIU con el id que le da Personas: su id, su facultad y sus datos (rol incluido). */
@@ -702,11 +799,14 @@ function asUnknownPerson<E extends string>(
     : (error as Exclude<E, 'no-encontrado' | 'sin-cuenta'>)
 }
 
-export function createStudies({ people, siu, classroom, clock }: StudiesDeps): Studies {
+export function createStudies({ people, siu, classroom, clock, store }: StudiesDeps): Studies {
   const sectionStudents = createSectionStudents({ people, siu })
+  const attendance = createAttendance({ people, siu, clock, store, sectionStudents })
 
   /** Lo último que se leyó de cada operación y persona, para cuando el sistema de origen no responde. */
   const lastRead = new Map<string, Fresh<unknown>>()
+  /** Lo último que el SIU dijo de las faltas de cada alumno: `absencesOf` junta las dos fuentes por su cuenta. */
+  const lastAbsences = new Map<PersonId, SiuAbsencesBasis>()
 
   /** Lee y guarda la lectura como lo último leído. Una lectura incompleta (`complete` da `false`, como las materias
       sin el aula de Moodle) se devuelve igual, pero no pisa una completa: si después se cae el SIU, vuelve la
@@ -856,35 +956,84 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
-  /** Las faltas de cada materia actual del alumno. Sin las del SIU no hay
-      cuenta que valga: falla, y `fresh` devuelve lo último leído. */
-  async function absencesOf(personId: PersonId): Promise<Result<MyAbsencesDetail, ReadError>> {
+  /** Lo que el SIU dice de las faltas de un alumno: sus materias actuales, sus faltas y el máximo de cada comisión. */
+  async function readSiuAbsences(personId: PersonId): Promise<Result<SiuAbsencesBasis | 'docente', ReadError>> {
     const who = await siuPersonOf(personId)
     if (!who.ok) return who
-    if (who.value.person.role !== 'alumno') return ok({ subjects: [] })
+    if (who.value.person.role !== 'alumno') return ok('docente')
     const [mine, report] = await Promise.all([sectionsInTermsOf(who.value), siu.absences(who.value.siuId)])
     if (!mine.ok) return mine
     if (!report.ok) return fail(asUnknownPerson(report.error))
-    // Por ahora la única fuente es el SIU; la toma de lista (#108) suma la de HackAI.
-    const records: AbsenceRecord[] = report.value.absences
-      .map((a) => ({ id: a.id, sectionId: a.sectionId, date: a.date, justified: a.justified, source: 'siu' as const }))
-      .sort((a, b) => a.date.localeCompare(b.date))
     return ok({
-      subjects: mine.value.sections
+      readAt: clock.now().toISOString(),
+      sections: mine.value.sections
         .filter((s) => s.current)
-        .map(({ section, subject }) => {
-          const mineHere = records.filter((a) => a.sectionId === section.id)
-          const max = report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
-          return {
-            ...absencesFrom(mineHere, max),
-            subjectId: subject.id,
-            subjectCode: subject.code,
-            subjectName: subject.name,
-            sectionId: section.id,
-            sectionName: section.name,
-            absences: mineHere
-          }
-        })
+        .map(({ section, subject }) => ({
+          sectionId: section.id,
+          sectionName: section.name,
+          subjectId: subject.id,
+          subjectCode: subject.code,
+          subjectName: subject.name,
+          max: report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
+        })),
+      records: report.value.absences.map((a) => ({
+        id: a.id,
+        sectionId: a.sectionId,
+        date: a.date,
+        justified: a.justified,
+        source: 'siu' as const
+      }))
+    })
+  }
+
+  /** Las materias con falta que se arman solo con lo que guardó HackAI: sin el SIU no se sabe cuáles son las materias
+      actuales ni el máximo, pero cada lista tomada guarda cómo se llamaban la materia y la comisión. */
+  function basisFromClasses(classes: StoredClass[]): SiuAbsencesBasis {
+    const sections = new Map<string, SiuAbsencesBasis['sections'][number]>()
+    for (const { sectionId, snapshot } of classes) {
+      if (!sections.has(sectionId)) sections.set(sectionId, { sectionId, ...snapshot, max: null })
+    }
+    return { readAt: clock.now().toISOString(), sections: [...sections.values()], records: [] }
+  }
+
+  /** Lo que se sabe del SIU para las faltas: lo que se lee ahora o, si no responde, lo último que se leyó (`stale`),
+      que puede no haber. */
+  async function siuBasisOf(
+    personId: PersonId
+  ): Promise<Result<{ basis: SiuAbsencesBasis | null; stale: boolean } | 'docente', ReadError>> {
+    const read = await readSiuAbsences(personId)
+    if (read.ok) {
+      if (read.value === 'docente') return ok('docente')
+      lastAbsences.set(personId, read.value)
+      return ok({ basis: read.value, stale: false })
+    }
+    if (read.error !== 'falla-externa') return read
+    return ok({ basis: lastAbsences.get(personId) ?? null, stale: true })
+  }
+
+  /** Las faltas de cada materia actual del alumno, de las dos fuentes (`unionAbsences`). Anda aunque el SIU no
+      responda: con lo último que se leyó de él (o, si nunca se leyó, solo con las listas de HackAI), marcado como
+      desactualizado. Si falla el almacén de HackAI se ve lo del SIU, también desactualizado. Solo falla si no
+      responde ninguna de las dos fuentes. */
+  async function absencesOf(personId: PersonId): Promise<Result<Fresh<MyAbsencesDetail>, ReadError>> {
+    const siuId = await people.accountIn(personId, 'siu')
+    if (!siuId.ok) return fail(asUnknownPerson(siuId.error))
+    const fromSiu = await siuBasisOf(personId)
+    if (!fromSiu.ok) return fromSiu
+    if (fromSiu.value === 'docente')
+      return ok({ data: { subjects: [] }, readAt: clock.now().toISOString(), stale: false })
+
+    let { basis } = fromSiu.value
+    const stored = basis
+      ? await store.classesOf(basis.sections.map((s) => s.sectionId))
+      : await store.classesAbsent(siuId.value)
+    if (!stored.ok && !basis) return stored
+    const classes = stored.ok ? stored.value : []
+    basis ??= basisFromClasses(classes)
+    return ok({
+      data: { subjects: subjectAbsences(basis, classes, siuId.value) },
+      readAt: basis.readAt,
+      stale: fromSiu.value.stale || !stored.ok
     })
   }
 
@@ -1810,10 +1959,14 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
         () => subjectsOf(personId),
         (s) => !s.classroomUnavailable
       ),
-    absencesOf: (personId) => fresh(`absencesOf:${personId}`, () => absencesOf(personId)),
+    absencesOf,
     sectionsOf: (personId) => fresh(`sectionsOf:${personId}`, () => sectionsOf(personId)),
     sectionStudents: (personId, sectionId) =>
       fresh(`sectionStudents:${personId}:${sectionId}`, () => sectionStudents(personId, sectionId)),
+    classesOf: attendance.classesOf,
+    attendanceSheet: attendance.sheet,
+    takeAttendance: attendance.take,
+    retryPases: attendance.retryPases,
     offer: offerNow,
     enroll,
     drop,

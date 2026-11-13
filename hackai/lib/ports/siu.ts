@@ -15,6 +15,10 @@ export type SiuCapabilities = {
   hasAssessmentSchedule: boolean
   /** El SIU ya matricula en Moodle (su interfaz oficial está activa). */
   enrolsInClassroom: boolean
+  // --- A: asistencia ---
+  /** Escribir la asistencia de una clase por API. La API real no lo permite. */
+  canRecordAttendance: boolean
+  // --- fin A: asistencia ---
 }
 
 /** El rol como lo informa el SIU. El de una persona de HackAI es `Role`, de
@@ -213,6 +217,12 @@ export type SiuEnrollError =
 export type SiuDropError = 'no-inscripto' | 'fuera-de-periodo' | 'no-encontrado' | 'no-soportado' | ExternalFailure
 export type SiuReadError = 'no-encontrado' | ExternalFailure
 
+// --- A: asistencia ---
+/** Cuándo el SIU recibió la asistencia de una clase. */
+export type SiuAttendanceReceipt = { date: string }
+export type SiuAttendanceError = 'no-encontrado' | 'no-soportado' | ExternalFailure
+// --- fin A: asistencia ---
+
 /** Dónde mandar al alumno en la Autogestión del SIU. */
 export type SiuSelfServiceTarget = SiuTarget | { kind: 'constancia'; type: SiuCertificateType }
 
@@ -259,6 +269,20 @@ export type SiuPort = {
   /** Sin `canEnroll` devuelven `no-soportado`. */
   enroll(personId: string, target: SiuTarget): Promise<Result<SiuReceipt, SiuEnrollError>>
   drop(personId: string, target: SiuTarget): Promise<Result<SiuReceipt, SiuDropError>>
+
+  // --- A: asistencia ---
+  /** Pasa al SIU la asistencia de una clase: `absentPersonIds` son los ausentes (ids del SIU) y todos los demás
+      inscriptos estuvieron presentes. REEMPLAZA la lista de esa clase y es idempotente por (comisión, instante de la
+      clase `classAt`, ISO): mandar la misma lista dos veces deja lo mismo, y una lista corregida pisa la anterior, así
+      que un reintento no duplica faltas. Lo escrito se lee de vuelta en `absences` como faltas de la comisión, con
+      `date = classAt` y sin justificar. Un id que el SIU no conoce es `no-encontrado` y no se escribe nada. Sin
+      `canRecordAttendance` devuelve `no-soportado`. */
+  recordAttendance(
+    sectionId: string,
+    classAt: string,
+    absentPersonIds: string[]
+  ): Promise<Result<SiuAttendanceReceipt, SiuAttendanceError>>
+  // --- fin A: asistencia ---
 
   selfServiceUrl(target: SiuSelfServiceTarget): string
 }
