@@ -28,6 +28,7 @@ import { TabSubtitle } from '@/components/enrollment/tab-subtitle'
 import { KIND, yearName } from '@/components/grades/status'
 import { activeProgram } from '@/components/session/person-text'
 import { PageHeader } from '@/components/shell/page-header'
+import { SkeletonRows } from '@/components/shell/screen-skeleton'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { examDetail } from '@/components/today/upcoming'
 import { StaleBanner } from '@/components/ui/stale-banner'
@@ -223,15 +224,7 @@ export default async function InscripcionesPage({
         {params.materia ? (
           content
         ) : (
-          <Suspense
-            fallback={
-              <div role='status' className='min-h-[30rem] text-sm text-muted-foreground'>
-                Cargando inscripciones…
-              </div>
-            }
-          >
-            {content}
-          </Suspense>
+          <Suspense fallback={<SkeletonRows label='Cargando inscripciones…' />}>{content}</Suspense>
         )}
       </main>
     </>

@@ -15,7 +15,9 @@
 import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { TEXTS } from '@/app/(app)/calendario/texts'
 import { PageHeader } from '@/components/shell/page-header'
+import { SkeletonRows } from '@/components/shell/screen-skeleton'
 import { TodayCalendar } from '@/components/today/calendar'
 import { calendarFiltersFrom, classSlotsOf, eventsOf } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
@@ -27,18 +29,6 @@ import type { Role } from '@/lib/core/people'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Calendario · Campus HackAI' }
-
-/** Lo que cambia para el docente: no rinde finales, integra la mesa, y las entregas son las que él carga. */
-const TEXTS: Record<Role, { subtitle: string; below: string }> = {
-  alumno: {
-    subtitle: 'Tus clases, parciales, finales y entregas en un solo lugar.',
-    below: 'Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.'
-  },
-  profesor: {
-    subtitle: 'Tus clases, parciales, mesas de final y entregas en un solo lugar.',
-    below: 'Las entregas vienen de Moodle y de HackAI: aparecen las tareas que cargaste con fecha.'
-  }
-}
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -56,13 +46,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
         hideBackOnDesktop
       />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
-        <Suspense
-          fallback={
-            <div role='status' className='min-h-[32rem] text-sm text-muted-foreground'>
-              Cargando calendario…
-            </div>
-          }
-        >
+        <Suspense fallback={<SkeletonRows label='Cargando calendario…' />}>
           <CalendarContent personId={session.personId} role={session.role} searchParams={searchParams} />
         </Suspense>
       </main>

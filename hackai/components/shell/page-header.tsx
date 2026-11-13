@@ -16,7 +16,7 @@ type Props = {
   /** Arriba del título, chico: de dónde es la pantalla («De todas tus materias»). */
   kicker?: string
   /** Debajo del título, en una línea: la fecha, la carrera o la comisión. Puede ser un componente que cambie con la
-      URL, como el de Inscripciones. */
+      URL, como el de Inscripciones, o un `HeaderLine` mientras carga. */
   subtitle?: ReactNode
   /** A la izquierda del título, como el ícono de la materia en su espacio. */
   icon?: ReactNode
@@ -127,8 +127,9 @@ export function PageHeader({
             {subtitle && <p className='mt-1 text-sm text-pretty text-white/75'>{subtitle}</p>}
           </div>
         </div>
+        {/* `empty:hidden`: si lo de adentro decide no mostrarse (`ByRole` sin nada para ese rol), no queda el margen. */}
         {children && (
-          <div className='col-span-2 mt-4 flex flex-wrap items-center gap-2 lg:col-span-1 lg:col-start-1'>
+          <div className='col-span-2 mt-4 flex flex-wrap items-center gap-2 empty:hidden lg:col-span-1 lg:col-start-1'>
             {children}
           </div>
         )}
