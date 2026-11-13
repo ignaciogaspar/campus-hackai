@@ -74,3 +74,21 @@ export function dueAtFromInput(value: string): string | null {
   const date = new Date(`${match[1]}T${match[2]}:00-03:00`)
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
+
+/** Cuánto es un atraso: «45 min», «2 h 30 min», «1 día», «3 días 4 h». */
+export function durationLabel(minutes: number): string {
+  const total = Math.max(1, Math.round(minutes))
+  const days = Math.floor(total / 1440)
+  const hours = Math.floor((total % 1440) / 60)
+  const mins = total % 60
+  if (days > 0) {
+    return [days === 1 ? '1 día' : `${days} días`, hours > 0 ? `${hours} h` : ''].filter(Boolean).join(' ')
+  }
+  if (hours > 0) return mins > 0 ? `${hours} h ${mins} min` : `${hours} h`
+  return `${mins} min`
+}
+
+/** El estado de una entrega en una palabra y cuánto se atrasó: «Entregada», «Atrasada · 2 h 30 min». */
+export function submissionStatus(submission: { late: { minutes: number } | null }): string {
+  return submission.late ? `Atrasada · ${durationLabel(submission.late.minutes)}` : 'Entregada'
+}

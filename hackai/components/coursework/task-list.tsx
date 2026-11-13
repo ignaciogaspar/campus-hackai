@@ -1,9 +1,9 @@
 /* Las tareas de una comisión, una fila por tarea: nombre, comienzo de la
    consigna, cuándo vence y si lleva nota. Cada fila lleva a la tarea. Es la
    misma lista para el docente y para el alumno; el docente además ve para qué
-   comisiones es cada una. */
+   comisiones es cada una, y el alumno si ya entregó y si fue tarde. */
 import { ClipboardList } from 'lucide-react'
-import { dueLabel, sectionsLabel, taskHref } from '@/components/coursework/format'
+import { dueLabel, sectionsLabel, submissionStatus, taskHref } from '@/components/coursework/format'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
@@ -11,6 +11,16 @@ import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
 import type { Task } from '@/lib/core/coursework'
 import type { Role } from '@/lib/core/people'
+
+/** El estado que ve quien mira: el alumno que ya entregó, su entrega (y si fue tarde); si no, si venció. */
+function TaskStatus({ task }: { task: Task }) {
+  if (task.submission) {
+    return (
+      <StatusPill tone={task.submission.late ? 'warning' : 'success'}>{submissionStatus(task.submission)}</StatusPill>
+    )
+  }
+  return task.past ? <StatusPill tone='neutral'>Venció</StatusPill> : <StatusPill tone='info'>Vigente</StatusPill>
+}
 
 function TaskRow({ task, role, comision }: { task: Task; role: Role; comision: string }) {
   const sharedWith = role === 'profesor' && task.sections.length > 1
@@ -32,7 +42,7 @@ function TaskRow({ task, role, comision }: { task: Task; role: Role; comision: s
           {sharedWith && <span>· {sectionsLabel(task.sections.map((s) => s.name))}</span>}
         </>
       }
-      end={task.past ? <StatusPill tone='neutral'>Venció</StatusPill> : <StatusPill tone='info'>Vigente</StatusPill>}
+      end={<TaskStatus task={task} />}
     />
   )
 }

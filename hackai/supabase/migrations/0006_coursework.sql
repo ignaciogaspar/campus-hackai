@@ -1,4 +1,4 @@
--- Seguimiento: las tareas que crean los docentes. Es el almacén del módulo
+-- Seguimiento: las tareas que crean los docentes y las entregas de los alumnos. Es el almacén del módulo
 -- Seguimiento (lib/core/coursework): solo lo lee y escribe su adaptador
 -- lib/adapters/supabase/coursework-store.ts.
 --
@@ -11,6 +11,12 @@
 -- comisiones que da Cursada; acá no se guarda ninguna membresía. El archivo de
 -- la consigna, si hay, es un archivo de Archivos (`file_id`) y se entrega por
 -- /archivos/<id>/<nombre> solo a quien ve la tarea.
+--
+-- Una entrega es de una persona a una tarea (una sola: volver a entregar la
+-- reemplaza). Sus archivos son archivos de Archivos y van en `files`, una lista
+-- de {id, name, contentType, size}; el índice gin los encuentra por id para
+-- saber de quién es cada uno. «Atrasada» no se guarda: se calcula al leer con
+-- `submitted_at` y la fecha límite vigente. `graded_at` cierra el reemplazo.
 --
 -- `seq` ordena las tareas que vencen a la misma hora.
 --
@@ -41,10 +47,25 @@ create table if not exists coursework_tasks (
 
 create index if not exists coursework_tasks_subject_idx on coursework_tasks (subject_id, due_at, seq);
 
--- Solo el servidor con service role la toca: RLS sin políticas y sin acceso
+create table if not exists coursework_submissions (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references coursework_tasks (id) on delete cascade,
+  person_id text not null,              -- id de la persona en HackAI
+  submitted_at timestamptz not null,    -- cuándo entregó (o reemplazó la entrega)
+  files jsonb not null,                 -- [{id, name, contentType, size}]
+  graded_at timestamptz,                -- desde cuándo está calificada: ya no se reemplaza
+  unique (task_id, person_id),
+  check (jsonb_array_length(files) >= 1)
+);
+
+create index if not exists coursework_submissions_person_idx on coursework_submissions (person_id, task_id);
+create index if not exists coursework_submissions_files_idx on coursework_submissions using gin (files jsonb_path_ops);
+
+-- Solo el servidor con service role las toca: RLS sin políticas y sin acceso
 -- para los roles públicos.
 alter table coursework_tasks enable row level security;
+alter table coursework_submissions enable row level security;
 
-revoke all on table coursework_tasks from anon, authenticated;
+revoke all on table coursework_tasks, coursework_submissions from anon, authenticated;
 
 commit;

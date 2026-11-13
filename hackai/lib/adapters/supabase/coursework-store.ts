@@ -1,5 +1,6 @@
-/* Almacén de Seguimiento sobre Supabase: las tareas, en la tabla propia
-   `coursework_tasks` (supabase/migrations/0006_coursework.sql). Se porta como
+/* Almacén de Seguimiento sobre Supabase: las tareas y las entregas, en las
+   tablas propias `coursework_tasks` y `coursework_submissions`
+   (supabase/migrations/0006_coursework.sql). Se porta como
    el almacén en memoria y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts).
 
@@ -14,7 +15,7 @@
    no filtra por comisión. */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createQueryRunner } from '@/lib/adapters/supabase/query'
-import type { CourseworkStore, StoredTask } from '@/lib/core/coursework'
+import type { CourseworkStore, StoredSubmission, StoredTask, StoredTaskFile } from '@/lib/core/coursework'
 import { fail, ok } from '@/lib/result'
 
 export type SupabaseCourseworkStoreOptions = {
@@ -39,6 +40,17 @@ type TaskRow = {
   created_by: string
   created_at: string
 }
+
+type SubmissionRow = {
+  id: string
+  task_id: string
+  person_id: string
+  submitted_at: string
+  files: StoredTaskFile[]
+  graded_at: string | null
+}
+
+const SUBMISSION_COLUMNS = 'id, task_id, person_id, submitted_at, files, graded_at'
 
 const TASK_COLUMNS =
   'id, subject_id, section_ids, name, instructions, file_id, file_name, file_content_type, file_size, due_at, graded, created_by, created_at'
@@ -71,6 +83,27 @@ function toTask(row: TaskRow): StoredTask {
   }
 }
 
+function toSubmission(row: SubmissionRow): StoredSubmission {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    personId: row.person_id,
+    submittedAt: iso(row.submitted_at),
+    files: row.files ?? [],
+    gradedAt: row.graded_at ? iso(row.graded_at) : null
+  }
+}
+
+function submissionRow(submission: Omit<StoredSubmission, 'id'>): Omit<SubmissionRow, 'id'> {
+  return {
+    task_id: submission.taskId,
+    person_id: submission.personId,
+    submitted_at: submission.submittedAt,
+    files: submission.files,
+    graded_at: submission.gradedAt
+  }
+}
+
 function taskRow(task: Omit<StoredTask, 'id'>): Omit<TaskRow, 'id'> {
   return {
     subject_id: task.subjectId,
@@ -94,6 +127,49 @@ export function createSupabaseCourseworkStore({
   log = console.warn
 }: SupabaseCourseworkStoreOptions): CourseworkStore {
   const run = createQueryRunner({ name: 'coursework-store', timeoutMs, log })
+
+  const submissionOf: CourseworkStore['submission'] = async (taskId, personId) => {
+    if (!isUuid(taskId)) return ok(null)
+    const row = await run<SubmissionRow>('entrega', (s) =>
+      client
+        .from('coursework_submissions')
+        .select(SUBMISSION_COLUMNS)
+        .eq('task_id', taskId)
+        .eq('person_id', personId)
+        .abortSignal(s)
+        .maybeSingle()
+    )
+    if (!row.ok) return fail('falla-externa')
+    return ok(row.value ? toSubmission(row.value) : null)
+  }
+
+  const create = (submission: Omit<StoredSubmission, 'id'>) =>
+    run<SubmissionRow>('crear entrega', (s) =>
+      client
+        .from('coursework_submissions')
+        .insert(submissionRow(submission))
+        .select(SUBMISSION_COLUMNS)
+        .abortSignal(s)
+        .single()
+    )
+
+  /** Reemplaza la entrega que ganó una carrera de altas. */
+  const replaceRaced = async (submission: Omit<StoredSubmission, 'id'>) => {
+    const raced = await submissionOf(submission.taskId, submission.personId)
+    return raced.ok && raced.value ? replace(raced.value.id, submission) : fail('falla-externa' as const)
+  }
+
+  /** Reemplaza la entrega que ya existe, por su id. */
+  const replace = (id: string, submission: Omit<StoredSubmission, 'id'>) =>
+    run<SubmissionRow>('reemplazar entrega', (s) =>
+      client
+        .from('coursework_submissions')
+        .update(submissionRow(submission))
+        .eq('id', id)
+        .select(SUBMISSION_COLUMNS)
+        .abortSignal(s)
+        .single()
+    )
 
   return {
     async createTask(task) {
@@ -149,6 +225,48 @@ export function createSupabaseCourseworkStore({
       )
       if (!row.ok) return fail('falla-externa')
       return ok(row.value ? toTask(row.value) : null)
+    },
+
+    submission: submissionOf,
+
+    async saveSubmission(submission) {
+      if (!isUuid(submission.taskId)) return fail('falla-externa')
+      const existing = await submissionOf(submission.taskId, submission.personId)
+      if (!existing.ok) return existing
+      let saved = existing.value ? await replace(existing.value.id, submission) : await create(submission)
+      // Otra entrega del mismo alumno llegó entre la lectura y el alta: esta la reemplaza.
+      if (!saved.ok && saved.error === 'duplicado') saved = await replaceRaced(submission)
+      if (!saved.ok || !saved.value) return fail('falla-externa')
+      return ok(toSubmission(saved.value))
+    },
+
+    async submissionsBy(personId, taskIds) {
+      const ids = taskIds.filter(isUuid)
+      if (ids.length === 0) return ok([])
+      const rows = await run<SubmissionRow[]>('entregas de la persona', (s) =>
+        client
+          .from('coursework_submissions')
+          .select(SUBMISSION_COLUMNS)
+          .eq('person_id', personId)
+          .in('task_id', ids)
+          .abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      return ok((rows.value ?? []).map(toSubmission))
+    },
+
+    async submissionByFile(fileId) {
+      if (!isUuid(fileId)) return ok(null)
+      const rows = await run<SubmissionRow[]>('entrega de un archivo', (s) =>
+        client
+          .from('coursework_submissions')
+          .select(SUBMISSION_COLUMNS)
+          .contains('files', JSON.stringify([{ id: fileId }]))
+          .abortSignal(s)
+      )
+      if (!rows.ok) return fail('falla-externa')
+      const [row] = rows.value ?? []
+      return ok(row ? toSubmission(row) : null)
     }
   }
 }

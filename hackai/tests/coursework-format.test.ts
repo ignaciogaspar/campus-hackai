@@ -3,9 +3,11 @@ import { test } from 'node:test'
 import {
   dueAtFromInput,
   dueLabel,
+  durationLabel,
   inputValueOf,
   newTaskHref,
   sectionsLabel,
+  submissionStatus,
   taskHref,
   tasksHref
 } from '@/components/coursework/format'
@@ -57,4 +59,20 @@ test('las comisiones de una tarea se nombran en una frase', () => {
   assert.equal(sectionsLabel(['A']), 'Comisión A')
   assert.equal(sectionsLabel(['A', 'B']), 'Comisiones A y B')
   assert.equal(sectionsLabel(['A', 'B', 'Verano']), 'Comisiones A, B y Verano')
+})
+
+test('un atraso se escribe en la unidad que se entiende: minutos, horas con minutos, días con horas', () => {
+  assert.equal(durationLabel(1), '1 min')
+  assert.equal(durationLabel(45), '45 min')
+  assert.equal(durationLabel(60), '1 h')
+  assert.equal(durationLabel(150), '2 h 30 min')
+  assert.equal(durationLabel(24 * 60), '1 día')
+  assert.equal(durationLabel(24 * 60 + 4 * 60 + 20), '1 día 4 h')
+  assert.equal(durationLabel(3 * 24 * 60), '3 días')
+  assert.equal(durationLabel(0), '1 min')
+})
+
+test('el estado de una entrega dice si fue a tiempo o atrasada y cuánto', () => {
+  assert.equal(submissionStatus({ late: null }), 'Entregada')
+  assert.equal(submissionStatus({ late: { minutes: 150 } }), 'Atrasada · 2 h 30 min')
 })

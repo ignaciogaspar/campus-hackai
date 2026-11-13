@@ -14,7 +14,7 @@ import { after, test } from 'node:test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursework-store'
-import type { CourseworkStore, StoredTask } from '@/lib/core/coursework'
+import type { CourseworkStore, StoredSubmission, StoredTask } from '@/lib/core/coursework'
 import type { Result } from '@/lib/result'
 import { createFakePostgrest } from '@/tests/contracts/fake-postgrest'
 
@@ -48,6 +48,19 @@ const taskOf = (ids: Ids, fields: Partial<Omit<StoredTask, 'id'>> = {}): Omit<St
   graded: true,
   createdBy: ids.person(1),
   createdAt: CREATED_AT,
+  ...fields
+})
+
+const submissionOf = (
+  ids: Ids,
+  taskId: string,
+  fields: Partial<Omit<StoredSubmission, 'id'>> = {}
+): Omit<StoredSubmission, 'id'> => ({
+  taskId,
+  personId: ids.person(2),
+  submittedAt: '2026-11-12T13:00:00.000Z',
+  files: [{ id: randomUUID(), name: 'tp.pdf', contentType: 'application/pdf', size: 10 }],
+  gradedAt: null,
   ...fields
 })
 
@@ -120,6 +133,71 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     assert.equal(value(await store.taskByFile(randomUUID())), null)
   })
 
+  it('guarda la entrega de una persona a una tarea y la encuentra', async (store, ids) => {
+    const task = value(await store.createTask(taskOf(ids)))
+    const files = [
+      { id: randomUUID(), name: 'tp3.pdf', contentType: 'application/pdf', size: 1200 },
+      { id: randomUUID(), name: 'anexo.txt', contentType: 'text/plain', size: 30 }
+    ]
+
+    const saved = value(await store.saveSubmission(submissionOf(ids, task.id, { files })))
+
+    assert.match(saved.id, /\S/)
+    assert.deepEqual(withoutId(saved), submissionOf(ids, task.id, { files }))
+    assert.deepEqual(value(await store.submission(task.id, ids.person(2))), saved)
+    assert.equal(value(await store.submission(task.id, ids.person(3))), null)
+    assert.equal(value(await store.submission('no-es-un-uuid', ids.person(2))), null)
+  })
+
+  it('guardar de nuevo la entrega de la misma persona la reemplaza: queda una sola', async (store, ids) => {
+    const task = value(await store.createTask(taskOf(ids)))
+    const first = value(await store.saveSubmission(submissionOf(ids, task.id)))
+    const files = [{ id: randomUUID(), name: 'v2.pdf', contentType: 'application/pdf', size: 99 }]
+
+    const second = value(
+      await store.saveSubmission(
+        submissionOf(ids, task.id, {
+          files,
+          submittedAt: '2026-11-11T10:00:00.000Z',
+          gradedAt: '2026-11-12T10:00:00.000Z'
+        })
+      )
+    )
+
+    assert.equal(second.id, first.id)
+    assert.deepEqual(second.files, files)
+    assert.equal(second.submittedAt, '2026-11-11T10:00:00.000Z')
+    assert.equal(second.gradedAt, '2026-11-12T10:00:00.000Z')
+    assert.deepEqual(value(await store.submissionsBy(ids.person(2), [task.id])), [second])
+  })
+
+  it('las entregas de una persona salen solo para las tareas pedidas, y no se mezclan con las de otra', async (store, ids) => {
+    const one = value(await store.createTask(taskOf(ids, { name: 'Una' })))
+    const two = value(await store.createTask(taskOf(ids, { name: 'Dos' })))
+    const three = value(await store.createTask(taskOf(ids, { name: 'Tres' })))
+    const mineOne = value(await store.saveSubmission(submissionOf(ids, one.id)))
+    const mineTwo = value(await store.saveSubmission(submissionOf(ids, two.id)))
+    value(await store.saveSubmission(submissionOf(ids, one.id, { personId: ids.person(3) })))
+    value(await store.saveSubmission(submissionOf(ids, three.id)))
+
+    const found = value(await store.submissionsBy(ids.person(2), [one.id, two.id, 'no-es-un-uuid']))
+
+    assert.deepEqual(new Set(found.map((s) => s.id)), new Set([mineOne.id, mineTwo.id]))
+    assert.deepEqual(value(await store.submissionsBy(ids.person(2), [])), [])
+    assert.deepEqual(value(await store.submissionsBy(ids.person(2), ['no-es-un-uuid'])), [])
+  })
+
+  it('encuentra la entrega que tiene un archivo', async (store, ids) => {
+    const task = value(await store.createTask(taskOf(ids)))
+    const file = { id: randomUUID(), name: 'tp3.pdf', contentType: 'application/pdf', size: 1200 }
+    const saved = value(await store.saveSubmission(submissionOf(ids, task.id, { files: [file] })))
+    value(await store.saveSubmission(submissionOf(ids, task.id, { personId: ids.person(3) })))
+
+    assert.deepEqual(value(await store.submissionByFile(file.id)), saved)
+    assert.equal(value(await store.submissionByFile(randomUUID())), null)
+    assert.equal(value(await store.submissionByFile('no-es-un-uuid')), null)
+  })
+
   it('lo que se lee no se puede cambiar desde afuera', async (store, ids) => {
     const created = value(await store.createTask(taskOf(ids)))
     created.sectionIds.push('sec-hackeada')
@@ -156,6 +234,13 @@ const TABLES = {
     uuid: ['id', 'file_id'],
     generated: { id: 'uuid', seq: 'identity' },
     unique: [['id'], ['file_id']]
+  },
+  coursework_submissions: {
+    columns: ['id', 'task_id', 'person_id', 'submitted_at', 'files', 'graded_at'],
+    uuid: ['id', 'task_id'],
+    jsonb: ['files'],
+    generated: { id: 'uuid' },
+    unique: [['id'], ['task_id', 'person_id']]
   }
 } satisfies Parameters<typeof createFakePostgrest>[0]['tables']
 

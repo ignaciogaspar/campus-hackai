@@ -287,12 +287,14 @@ export type DropError =
   | TwoSystemsError
   | ExternalFailure
 
-/** Parcial o final del SIU, o, como complemento, una entrega con fecha de Moodle (esas las suma Hoy). */
+/** Parcial o final del SIU, o, como complemento, una entrega con fecha de Moodle o una tarea de HackAI (esas las
+    suma Hoy: Cursada solo produce los del SIU). */
 export type UpcomingItem = {
-  /** Único entre los próximos: el tipo de origen y su id (`evaluacion:…`, `mesa:…`, `tarea:…`). */
+  /** Único entre los próximos: el tipo de origen y su id (`evaluacion:…`, `mesa:…`, `tarea:…` de Moodle,
+      `tarea-hackai:…`). */
   id: string
   kind: 'parcial' | 'recuperatorio' | 'tp' | 'final' | 'entrega'
-  source: 'siu' | 'moodle'
+  source: 'siu' | 'moodle' | 'hackai'
   subjectId: string
   /** La sigla de la materia, para el calendario. */
   subjectCode: string

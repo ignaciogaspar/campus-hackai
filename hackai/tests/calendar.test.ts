@@ -87,3 +87,26 @@ test('van los próximos que no pasaron; con una mesa, solo ese final, y una mesa
   )
   assert.deepEqual(calendarItems(upcoming, 'mesa-sre-fi-dic'), [])
 })
+
+test('una tarea de HackAI sale como entrega con su propio UID, distinto del de una entrega de Moodle', () => {
+  const file = calendarFile(
+    [
+      item({
+        id: 'tarea-hackai:t-1',
+        kind: 'entrega',
+        source: 'hackai',
+        name: 'Práctica 3',
+        date: '2026-11-14T02:59:00.000Z'
+      }),
+      item({ id: 'tarea:77', kind: 'entrega', source: 'moodle', name: 'Práctica 3', date: '2026-11-14T02:59:00.000Z' })
+    ],
+    '2026-11-12T15:00:00.000Z'
+  )
+  const lines = file.split('\r\n')
+
+  assert.ok(lines.includes('UID:tarea-hackai:t-1@hackai'))
+  assert.ok(lines.includes('UID:tarea:77@hackai'))
+  assert.equal(lines.filter((l) => l === 'DTSTART:20261114T025900Z').length, 2)
+  assert.equal(lines.filter((l) => l === 'SUMMARY:Entrega: Práctica 3 · Análisis Matemático I').length, 2)
+  assert.equal(lines.filter((l) => l === 'CATEGORIES:Entrega').length, 2)
+})

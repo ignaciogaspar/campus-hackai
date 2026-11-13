@@ -2,16 +2,17 @@
    para qué comisiones es. El docente de sus comisiones además la edita (nombre,
    consigna y fecha límite). Sin reglas de negocio: quién ve y quién edita lo
    decide Seguimiento; una tarea de otra comisión es, acá, una tarea que no
-   existe. */
-import { Download, FileText } from 'lucide-react'
+   existe. El alumno además entrega ahí mismo y ve cuándo entregó. */
 import type { Metadata } from 'next'
 import { cache } from 'react'
+import { FileRow } from '@/components/coursework/file-row'
 import { dueLabel, sectionsLabel, taskHref, tasksHref } from '@/components/coursework/format'
+import { SubmissionPanel } from '@/components/coursework/submission-panel'
 import { TaskError } from '@/components/coursework/task-error'
 import { EditTaskForm } from '@/components/coursework/task-form'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { BackLink } from '@/components/spaces/back-link'
-import { fileSize, messageTime } from '@/components/spaces/format'
+import { messageTime } from '@/components/spaces/format'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { StaleNotice } from '@/components/ui/states'
@@ -30,24 +31,6 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { taskId } = await params
   const opened = session ? await read(session.personId, taskId) : null
   return { title: `${opened?.ok ? opened.value.name : 'Tarea'} · Campus HackAI` }
-}
-
-function FileRow({ file }: { file: NonNullable<TaskView['file']> }) {
-  return (
-    <a
-      href={file.url}
-      target='_blank'
-      rel='noopener noreferrer'
-      className='flex min-h-14 items-center gap-3 rounded-[14px] bg-ice px-3 py-2 text-foreground transition-colors hover:bg-blue/[0.08] focus-ring'
-    >
-      <FileText aria-hidden='true' className='size-6 flex-none text-blue' strokeWidth={1.8} />
-      <span className='flex min-w-0 flex-1 flex-col'>
-        <span className='truncate font-semibold'>{file.name}</span>
-        <span className='text-xs text-muted-foreground'>{fileSize(file.size)}</span>
-      </span>
-      <Download aria-hidden='true' className='size-5 flex-none text-gray-light' strokeWidth={1.8} />
-    </a>
-  )
 }
 
 function TaskDetail({ task }: { task: TaskView }) {
@@ -124,6 +107,7 @@ export default async function TaskPage({ params, searchParams }: { params: Param
         <BackLink href={back}>Volver a las tareas</BackLink>
         <div className='flex w-full max-w-3xl flex-col gap-4'>
           <TaskDetail task={task} />
+          {!task.canManage && <SubmissionPanel task={task} />}
           {task.canManage && <EditTaskForm task={task} />}
         </div>
       </main>

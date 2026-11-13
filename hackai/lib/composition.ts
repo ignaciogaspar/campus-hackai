@@ -248,7 +248,7 @@ export function compose(env: Env = process.env, data: SyntheticData = syntheticD
         ? createSupabaseCourseworkStore({ client: supabase() })
         : createMemoryCourseworkStore()
   })
-  const today = createToday({ studies, spaces, clock })
+  const today = createToday({ studies, spaces, coursework, clock })
 
   const now = () => clock.now().toISOString()
   return {

@@ -53,3 +53,6 @@ export function sectionsToCreateIn(
   if (!sectionIds.every((id) => dictated.some((s) => s.sectionId === id))) return fail('sin-acceso')
   return ok(sectionIds)
 }
+
+/** Si es alumno de alguna de esas comisiones. */
+export const learns = (sections: MySection[]) => sections.some((s) => s.role === 'alumno')

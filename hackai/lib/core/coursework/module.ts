@@ -4,13 +4,17 @@ import type {
   AccessError,
   Coursework,
   CourseworkDeps,
+  DatedTask,
   NewTask,
+  StoredSubmission,
   StoredTask,
   StoredTaskFile,
+  SubmitError,
   TaskChanges,
   TaskView
 } from '@/lib/core/coursework'
 import {
+  learns,
   sectionOf,
   sectionsOf,
   sectionsOfTask,
@@ -19,18 +23,24 @@ import {
   subjectOf,
   teaches
 } from '@/lib/core/coursework/access'
-import { byDue, checkedTexts, taskFor } from '@/lib/core/coursework/tasks'
+import { checkedFiles, removeAll, saveAll } from '@/lib/core/coursework/submissions'
+import { byDue, checkedTexts, datedOf, submissionFor, taskFor } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
-import { isFileId } from '@/lib/ports/files'
+import { isFileId, type NewFile } from '@/lib/ports/files'
 import { fail, ok, type Result } from '@/lib/result'
 
 export function createCourseworkModule({ studies, files, clock, store }: CourseworkDeps): Coursework {
   /** La tarea como la ve la persona, con sus comisiones en la materia. */
-  function viewOf(task: StoredTask, mine: MySection[], staleSince: string | null): TaskView {
+  function viewOf(
+    task: StoredTask,
+    mine: MySection[],
+    staleSince: string | null,
+    submission: StoredSubmission | null = null
+  ): TaskView {
     const [first] = mine
     return {
-      ...taskFor(task, mine.map(sectionOf), clock.now()),
+      ...taskFor(task, mine.map(sectionOf), clock.now(), submission),
       subject: subjectOf(first),
       role: first.role,
       canManage: teaches(mine),
@@ -114,6 +124,21 @@ export function createCourseworkModule({ studies, files, clock, store }: Coursew
     return ok(viewOf(updated.value, found.value.mine, found.value.staleSince))
   }
 
+  /** Las entregas de un alumno a esas tareas, por tarea. Un docente no entrega: no hay nada que leer. */
+  async function submissionsOf(
+    personId: PersonId,
+    role: MySection['role'],
+    tasks: StoredTask[]
+  ): Promise<Result<Map<string, StoredSubmission>, 'falla-externa'>> {
+    if (role !== 'alumno' || tasks.length === 0) return ok(new Map())
+    const found = await store.submissionsBy(
+      personId,
+      tasks.map((t) => t.id)
+    )
+    if (!found.ok) return found
+    return ok(new Map(found.value.map((s) => [s.taskId, s])))
+  }
+
   async function tasksOf(personId: PersonId, subjectId: string, sectionId?: string): ReturnType<Coursework['tasksOf']> {
     const read = await sectionsOf(studies, personId)
     if (!read.ok) return read
@@ -124,9 +149,12 @@ export function createCourseworkModule({ studies, files, clock, store }: Coursew
     const stored = await store.tasksOfSubject(subjectId)
     if (!stored.ok) return stored
     const now = clock.now()
-    const tasks = stored.value
-      .filter((t) => t.sectionIds.includes(selected.sectionId))
-      .map((t) => taskFor(t, sectionsOfTask(t, ofSubject).map(sectionOf), now))
+    const ofSection = stored.value.filter((t) => t.sectionIds.includes(selected.sectionId))
+    const submitted = await submissionsOf(personId, selected.role, ofSection)
+    if (!submitted.ok) return submitted
+    const tasks = ofSection.map((t) =>
+      taskFor(t, sectionsOfTask(t, ofSubject).map(sectionOf), now, submitted.value.get(t.id) ?? null)
+    )
     return ok({
       subject: subjectOf(selected),
       role: selected.role,
@@ -137,14 +165,92 @@ export function createCourseworkModule({ studies, files, clock, store }: Coursew
     })
   }
 
+  /** Si el alumno puede entregar ahora esos archivos a la tarea: la tarea, su entrega anterior (que se reemplaza) y
+      los archivos ya revisados. */
+  async function readyToSubmit(
+    personId: PersonId,
+    taskId: string,
+    input: NewFile[]
+  ): Promise<Result<{ task: StoredTask; previous: StoredSubmission | null; checked: NewFile[] }, SubmitError>> {
+    const found = await visibleTask(personId, taskId)
+    if (!found.ok) return found
+    if (!learns(found.value.mine)) return fail('solo-alumnos')
+    const checked = checkedFiles(input, files.capabilities.maxBytes)
+    if (!checked.ok) return checked
+    const previous = await store.submission(taskId, personId)
+    if (!previous.ok) return previous
+    if (previous.value?.gradedAt) return fail('ya-calificada')
+    return ok({ task: found.value.task, previous: previous.value, checked: checked.value })
+  }
+
+  async function submit(personId: PersonId, taskId: string, input: NewFile[]): ReturnType<Coursework['submit']> {
+    const ready = await readyToSubmit(personId, taskId, input)
+    if (!ready.ok) return ready
+    const { task, previous, checked } = ready.value
+
+    const saved = await saveAll(files, checked)
+    if (!saved.ok) return saved
+    const stored = await store.saveSubmission({
+      taskId,
+      personId,
+      submittedAt: clock.now().toISOString(),
+      files: saved.value,
+      gradedAt: null
+    })
+    if (!stored.ok) {
+      // Sin la entrega, los archivos nuevos quedarían sueltos; la anterior sigue como estaba.
+      await removeAll(files, saved.value)
+      return stored
+    }
+    if (previous) await removeAll(files, previous.files)
+    return ok(submissionFor(stored.value, task))
+  }
+
+  /** Las de esas tareas que son de alguna de las comisiones del alumno, como fechas del calendario. */
+  function datedIn(stored: StoredTask[], learning: MySection[], now: string): DatedTask[] {
+    return stored.flatMap((t) => {
+      const [first] = sectionsOfTask(t, learning)
+      return first ? [datedOf(t, first, now)] : []
+    })
+  }
+
+  /** Las tareas de las materias actuales del alumno, por fecha límite. */
+  async function dated(personId: PersonId): ReturnType<Coursework['dated']> {
+    const read = await sectionsOf(studies, personId)
+    if (!read.ok) return read
+    const learning = read.value.sections.filter((s) => s.current && s.role === 'alumno')
+    const subjectIds = [...new Set(learning.map((s) => s.subjectId))]
+    const stored = await Promise.all(subjectIds.map((id) => store.tasksOfSubject(id)))
+    const now = clock.now().toISOString()
+    const tasks: DatedTask[] = []
+    for (const found of stored) {
+      if (!found.ok) return found
+      tasks.push(...datedIn(found.value, learning, now))
+    }
+    return ok(tasks.sort((a, b) => a.dueAt.localeCompare(b.dueAt) || a.id.localeCompare(b.id)))
+  }
+
+  /** Si la persona ve ese archivo: el de una consigna, quien ve la tarea; el de una entrega, solo quien la hizo. */
+  async function mayRead(
+    personId: PersonId,
+    fileId: string,
+    sections: MySection[]
+  ): Promise<Result<null, 'archivo-desconocido' | 'sin-acceso' | 'falla-externa'>> {
+    const owner = await store.taskByFile(fileId)
+    if (!owner.ok) return owner
+    if (owner.value) return sectionsOfTask(owner.value, sections).length > 0 ? ok(null) : fail('sin-acceso')
+    const delivered = await store.submissionByFile(fileId)
+    if (!delivered.ok) return delivered
+    if (!delivered.value) return fail('archivo-desconocido')
+    return delivered.value.personId === personId ? ok(null) : fail('sin-acceso')
+  }
+
   const file: Coursework['file'] = async (personId, fileId) => {
     if (!isFileId(fileId)) return fail('archivo-desconocido')
     const read = await sectionsOf(studies, personId)
     if (!read.ok) return read
-    const owner = await store.taskByFile(fileId)
-    if (!owner.ok) return owner
-    if (!owner.value) return fail('archivo-desconocido')
-    if (sectionsOfTask(owner.value, read.value.sections).length === 0) return fail('sin-acceso')
+    const allowed = await mayRead(personId, fileId, read.value.sections)
+    if (!allowed.ok) return allowed
     const content = await files.read(fileId)
     if (!content.ok) return fail(content.error === 'no-encontrado' ? 'archivo-desconocido' : content.error)
     return content
@@ -157,8 +263,13 @@ export function createCourseworkModule({ studies, files, clock, store }: Coursew
     async task(personId, taskId) {
       const found = await visibleTask(personId, taskId)
       if (!found.ok) return found
-      return ok(viewOf(found.value.task, found.value.mine, found.value.staleSince))
+      const { task, mine, staleSince } = found.value
+      const submitted = await submissionsOf(personId, mine[0].role, [task])
+      if (!submitted.ok) return submitted
+      return ok(viewOf(task, mine, staleSince, submitted.value.get(task.id) ?? null))
     },
+    submit,
+    dated,
     file
   }
 }
