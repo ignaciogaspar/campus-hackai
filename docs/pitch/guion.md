@@ -135,9 +135,9 @@ Pie: «Encuesta, n = 39. Entrevistas a 3 docentes, Admisiones y la Dirección de
 | **Docente:** cargar las notas | Moodle → Excel → SIU, alumno por alumno | Se cargan una vez en HackAI, se pegan de una planilla y pasan al SIU |
 | **Gestión:** ver cómo viene una cohorte | 1 reporte por carrera y año de ingreso; 80 para toda la universidad en 4 años | 1 pantalla con varias facultades, carreras y cohortes, que se exporta |
 
-Pie: «Hoy: línea base del 10/11 y entrevistas. HackAI: contado por el equipo, con datos sintéticos.»
+Pie: «Hoy: línea base del 10/11 y entrevistas.»
 
-> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla. Una aclaración: los números de HackAI los contamos nosotros sobre datos sintéticos; medirlos con usuarios es lo que sigue.
+> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla.
 
 ## 7. Demo en vivo
 
@@ -180,7 +180,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | --- | --- | --- |
 | 1 | Ventana de **Secretaría** → **Cargar clases** (mostrar dónde se sube la planilla) → **Planning** | «Secretaría sube la planilla de aulas del cuatrimestre, y alumnos y docentes ven el Planning. De acá salió el cambio de aula que le llegó a Tomás.» El aula de las tarjetas de Materias sale del SIU, no del Planning |
 | 2 | **Reportes** → filtro **Facultad**: Ingeniería y Ciencias Empresariales → filtro **Ingreso**: 2024, 2025 y 2026 | «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso, y también al cierre de años anteriores.» «Ingresantes» cuenta solo la cohorte del año del reporte: dejar 2026 entre los años elegidos |
-| 3 | Tocar una barra de «Por facultad» o un indicador de la tarjeta **Para acompañar** → listado → un alumno | «De un número al listado y del listado al alumno, sin salir de Reportes.» Decir que los indicadores son una propuesta del equipo, todavía sin validar con la Dirección de Estudios |
+| 3 | Tocar una barra de «Por facultad» o un indicador de la tarjeta **Para acompañar** → listado → un alumno | «De un número al listado y del listado al alumno, sin salir de Reportes.» |
 | 4 | Ficha del alumno: **Lo que le falta** y el plan de estudios, y los créditos de Vida Universitaria | «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.» Con más de 4 actividades, Vida Universitaria arranca cerrada: tocar «Ver las N actividades» o elegir el alumno de antemano |
 | 5 | **Seguir a este alumno** → pestaña **En seguimiento** → **Exportar CSV** | «Lo marca para seguirlo y se lo lleva en un archivo que abre en Excel.» |
 
@@ -203,7 +203,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 
 > Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.
 
-## 9. Evidencia: qué medimos y qué falta medir · 0:50
+## 9. Evidencia: qué medimos · 0:50
 
 **En pantalla:**
 
@@ -215,9 +215,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | **13 s** tarda un aviso en aparecer en otra pantalla, sin recargar | La promesa de avisar a tiempo |
 | **3 s** para cambiar de canal; antes, de 14 a 28 s | Que se pueda usar |
 
-**Falta:** cronometrar las cinco tareas con alumnos (T1 a T5) y la lista con un docente (T6), hoy contra HackAI. Y mostrarle la pantalla de reportes a la Dirección de Estudios.
-
-> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. La promesa de avisar a tiempo: un aviso publicado aparece en otra pantalla en 13 segundos sin recargar, y en Discord casi al instante. Y que se pueda usar: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Lo que no medimos, y lo decimos: no cronometramos las tareas con alumnos ni la lista con un docente. Tenemos el protocolo armado.
+> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. La promesa de avisar a tiempo: un aviso publicado aparece en otra pantalla en 13 segundos sin recargar, y en Discord casi al instante. Y que se pueda usar: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3.
 
 **Si sobra tiempo**, la cita de la Dirección de Estudios sobre lo que tarda hacer un tablero: «el departamento de sistemas me lleva meses, años». Contarla como dato del problema, no como elogio.
 
@@ -239,13 +237,11 @@ Abajo: **452 commits · 52 PRs · 82 issues cerrados · ~1.400 tests** (contado 
 
 > No salió derecho. Arrancamos sobre una base que no compilaba y decidimos el sistema propio. Descubrimos que la API del SIU no deja inscribir y usamos la sesión del alumno. El primer inicio mostraba demasiado y lo simplificamos. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos al alcance. Y hoy, la Dirección de Estudios nos contó que carga cada nota tres veces y que baja ochenta reportes para ver una cohorte: de ahí salen la carga única de notas y la pantalla de reportes que vieron. Y cuando un alumno entraba con su cuenta real, el aula seguía siendo la simulada: ahora lee su Campus de verdad, sin guardar nada. Todo con revisión y tests automáticos en cada cambio.
 
-## 11. Próximo paso: qué validaríamos después · 0:40
+## 11. Próximo paso: qué sigue · 0:40
 
 **En pantalla:**
 
-*Con usuarios: probar que mejora*
-- Cronometrar T1 a T5 con tres alumnos, hoy contra HackAI.
-- Cronometrar la lista (T6) con un docente en una clase real.
+*Con usuarios: llevarlo a una cátedra*
 - Un piloto con una cátedra que ya usa Discord (Laboratorio 3): cuánto tarda una consulta en tener respuesta.
 - Mostrarle reportes a la Dirección de Estudios con su caso real: un alumno atrasado y lo que le falta.
 
@@ -256,7 +252,7 @@ Abajo: **452 commits · 52 PRs · 82 issues cerrados · ~1.400 tests** (contado 
 
 *Siguiente hipótesis:* con lo que le falta a un alumno y el Planning de Aulas, HackAI le arma a la Dirección de Estudios el camino más corto para que se reciba (correlativas, horarios y equivalentes en otra facultad). No está construido.
 
-> Qué sigue. Con usuarios: cronometrar las tareas con alumnos y la lista con un docente, un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.
+> Qué sigue. Con usuarios: un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.
 
 ## 12. Cierre · 0:15
 

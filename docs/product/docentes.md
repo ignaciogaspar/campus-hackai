@@ -282,5 +282,4 @@ La asistencia queda en Cursada y no en Seguimiento, para que cada mitad tenga su
 
 ## Pendiente
 
-- **T6, «tomar lista»:** falta cronometrar a un docente en el SIU. Los 10 a 15 minutos son lo que contó el profesor.
 - **Reglas de la nota de cursada:** si el recuperatorio reemplaza al parcial y cuál es el mínimo para regularizar. Hasta saberlo, el promedio ponderado y la nota editable a mano cubren el caso.

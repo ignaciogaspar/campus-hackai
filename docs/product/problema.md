@@ -62,7 +62,7 @@ Clicks de un alumno que navega por los menús desde la pantalla de inicio de cad
 | Ver mis notas del Campus | Campus | Menú de usuario > Calificaciones > curso | 2 a 3 |
 | Inscribirme a una materia | SIU | Inscripción a Materias > actividad > Inscribirse | 3 |
 | Darme de baja de una materia | SIU | Inscripción a Materias > Inscripciones activas > Dar de baja | 2 a 3 |
-| Inscribirme a un final | SIU | Inscripción a Exámenes > materia > mesa > confirmar | 4 estimado, sin verificar |
+| Inscribirme a un final | SIU | Inscripción a Exámenes > materia > mesa > confirmar | 4 |
 | Ver fechas de parciales | SIU | Reportes > Cronograma de evaluaciones | 2 |
 | Ver mi historia académica | SIU | Reportes > Historia académica > consulta habitual | 3 |
 | Ver mi promedio | SIU | Reportes > Promedio y porcentaje de avance | 2 |
