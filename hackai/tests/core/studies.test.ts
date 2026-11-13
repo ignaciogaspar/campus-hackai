@@ -180,6 +180,19 @@ test('sin máximo en el SIU sale solo la cuenta, y pasarse del máximo no da fal
   assert.deepEqual([pr1.count, pr1.justified, pr1.max, pr1.left, pr1.warning], [4, 1, 3, 0, 'limite'])
 })
 
+test('sin faltas no hay aviso, aunque el máximo sea 1', async () => {
+  const data = structuredClone(syntheticData)
+  data.siu.absences = data.siu.absences.filter((a) => !(a.personId === '30101' && a.sectionId === 'sec-am1-fi-a'))
+  data.siu.absenceLimits = data.siu.absenceLimits.map((l) => (l.sectionId === 'sec-am1-fi-a' ? { ...l, max: 1 } : l))
+  const { studies } = build(data)
+
+  const result = await studies.absencesOf('p-taguirre')
+
+  assert.ok(result.ok)
+  const [am1] = result.value.data.subjects
+  assert.deepEqual([am1.count, am1.max, am1.left, am1.warning, am1.absences], [0, 1, 1, null, []])
+})
+
 test('si el SIU no da las inasistencias, absencesOf devuelve lo último leído, desactualizado', async () => {
   let down = false
   const memory = createMemorySiu(syntheticData, movableClock(NOW).clock)

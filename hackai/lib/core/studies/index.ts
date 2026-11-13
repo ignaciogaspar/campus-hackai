@@ -18,7 +18,7 @@
      de inscripción de la oferta se mira con el reloj de ahora.
    - Las materias no llevan faltas: la tarjeta de la materia no las muestra.
      `absencesOf` da, por materia actual del alumno, el detalle de sus
-     inasistencias (juntando las fuentes; por ahora solo el SIU). Un docente
+     inasistencias (por ahora solo del SIU; #108 suma las de HackAI). Un docente
      recibe una lista vacía. Si el SIU no responde, devuelve lo último leído.
    - Con Moodle caído y el SIU arriba, las materias salen al día del SIU, sin
      enlaces al aula ni tareas, y con `classroomUnavailable`.
@@ -88,7 +88,7 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail, mergeAbsences } from '@/lib/core/studies/absences'
+import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail } from '@/lib/core/studies/absences'
 import {
   type Approved as ApprovedInCareer,
   buildCareer,
@@ -123,6 +123,7 @@ import { all, type ExternalFailure, fail, type NotImplemented, ok, type Result }
 
 export type {
   AbsenceRecord,
+  AbsenceSource,
   AbsenceWarning,
   MyAbsences,
   MyAbsencesDetail,
@@ -851,9 +852,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     const [mine, report] = await Promise.all([sectionsInTermsOf(who.value), siu.absences(who.value.siuId)])
     if (!mine.ok) return mine
     if (!report.ok) return fail(asUnknownPerson(report.error))
-    const siuRecords: AbsenceRecord[] = report.value.absences.map((a) => ({ ...a, source: 'siu' }))
-    // La segunda fuente (clases tomadas en HackAI) la suma A3.
-    const records = mergeAbsences(siuRecords, [])
+    // Por ahora la única fuente es el SIU; la toma de lista (#108) suma la de HackAI.
+    const records: AbsenceRecord[] = report.value.absences
+      .map((a) => ({ sectionId: a.sectionId, date: a.date, justified: a.justified, source: 'siu' as const }))
+      .sort((a, b) => a.date.localeCompare(b.date))
     return ok({
       subjects: mine.value.sections
         .filter((s) => s.current)
