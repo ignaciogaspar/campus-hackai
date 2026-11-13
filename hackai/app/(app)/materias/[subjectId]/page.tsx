@@ -469,7 +469,11 @@ export default async function SpacePage({ params, searchParams }: { params: Para
     <>
       <PageHeader
         title={view.space.name}
-        subtitle={[view.space.subjectCode, shownSections(view.viewer.sections)[0]?.termName]
+        // El período de la comisión elegida: con Verano, «Curso de Verano 2027», no el de la A.
+        subtitle={[
+          view.space.subjectCode,
+          (taught.find((s) => s.sectionId === focus.sectionId) ?? shownSections(view.viewer.sections)[0])?.termName
+        ]
           .filter(Boolean)
           .join(' · ')}
         icon={<SubjectIcon name={view.space.name} size='lg' tone='glass' className='max-sm:hidden' />}

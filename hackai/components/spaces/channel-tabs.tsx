@@ -30,9 +30,17 @@ import { LinkPending } from '@/components/ui/link-pending'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Channel } from '@/lib/core/spaces'
+import { cn } from '@/lib/utils'
 
 /** Cuántas piezas entran en el riel del celular, contando «Más». */
 const PHONE_SLOTS = 4
+
+/* Las piezas miden lo mismo mientras los nombres entran. Con letra grande, la que no entra se estira a su nombre
+   y las otras se achican, así «Consultas» no queda en «Cons…»; si no entran ni así, el riel se desliza adentro y
+   la página no se corre de costado. Cada nombre tiene un tope en `em`, para que uno largo no se lleve el resto
+   (también el de «Más», en more-channels.tsx). */
+const PHONE_TRACK = 'auto-cols-[minmax(max-content,1fr)] overflow-x-auto [scrollbar-width:none]'
+const PHONE_LABEL = 'max-w-[6.5em] truncate'
 
 type Props = {
   subjectId: string
@@ -57,14 +65,14 @@ function PhoneRail({ subjectId, comision, tabs, canManage, creating }: RailProps
 
   return (
     <nav aria-label='Canales del espacio' className='lg:hidden'>
-      <ArrowKeysList className={railTrack({ size: 'md' })}>
+      <ArrowKeysList className={cn(railTrack({ size: 'md' }), PHONE_TRACK)}>
         {shown.map(({ id, kind, href, label, unread, selected }) => (
           <li key={id} className='flex min-w-0 [&>*]:flex-1'>
             <Link href={href} aria-current={selected ? 'page' : undefined} className={railItem({ size: 'md' })}>
               <LinkPending>
                 <ChannelIcon kind={kind} />
               </LinkPending>
-              <span className='max-w-full truncate px-1'>{label}</span>
+              <span className={PHONE_LABEL}>{label}</span>
               <UnreadCount count={unread} className='absolute top-1 right-[calc(50%-28px)]' />
             </Link>
           </li>
