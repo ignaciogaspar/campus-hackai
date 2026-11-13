@@ -28,7 +28,8 @@ type RoleFilter = Role | 'todos'
 const ROLES: { value: RoleFilter; label: string }[] = [
   { value: 'todos', label: 'Todos' },
   { value: 'alumno', label: 'Alumnos' },
-  { value: 'profesor', label: 'Docentes' }
+  { value: 'profesor', label: 'Docentes' },
+  { value: 'secretaria', label: 'Secretaría' }
 ]
 
 const ALL = ''
@@ -49,6 +50,7 @@ function shortSchool(name: string): string {
 function detailOf(person: Person): string {
   const school = shortSchool(person.school.name)
   if (person.role === 'profesor') return `Docente · ${school}`
+  if (person.role === 'secretaria') return `Secretaría · ${school}`
   const program = activeProgram(person)
   return program ? `${program.name} · ${school}` : school
 }

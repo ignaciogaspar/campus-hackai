@@ -11,7 +11,7 @@ import type { Role } from '@/lib/core/people'
 import type { MySubject, OpenEnrollment, UpcomingItem } from '@/lib/core/studies'
 import { addDays, dayKey, TIME_ZONE, weekdayIndex } from '@/lib/dates'
 
-export type CalendarTone = UpcomingItem['kind'] | 'inscripcion' | 'clase'
+export type CalendarTone = UpcomingItem['kind'] | 'inscripcion' | 'clase' | 'suspendida'
 
 export type CalendarEvent = {
   id: string
@@ -45,7 +45,7 @@ export type CalendarEvent = {
 export type CalendarGroup = 'clases' | 'evaluaciones' | 'finales' | 'entregas' | 'inscripciones'
 
 export const CALENDAR_GROUPS: { group: CalendarGroup; label: string; tones: CalendarTone[] }[] = [
-  { group: 'clases', label: 'Clases', tones: ['clase'] },
+  { group: 'clases', label: 'Clases', tones: ['clase', 'suspendida'] },
   { group: 'evaluaciones', label: 'Parciales y TP', tones: ['parcial', 'recuperatorio', 'tp'] },
   { group: 'finales', label: 'Finales', tones: ['final'] },
   { group: 'entregas', label: 'Entregas', tones: ['entrega'] },

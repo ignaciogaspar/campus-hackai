@@ -3,6 +3,7 @@
 import {
   Bell,
   CalendarDays,
+  CalendarRange,
   CalendarX,
   ClipboardList,
   FileText,
@@ -10,7 +11,8 @@ import {
   House,
   LibraryBig,
   type LucideIcon,
-  NotebookPen
+  NotebookPen,
+  Upload
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -44,6 +46,7 @@ const STUDENT: Section[] = [
   { href: '/inscripciones', label: 'Inscripciones', short: 'Anotarme', icon: ClipboardList },
   { href: '/notas', label: 'Notas', icon: NotebookPen },
   { href: '/inasistencias', label: 'Inasistencias', icon: CalendarX },
+  { href: '/planning', label: 'Planning', icon: CalendarRange },
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
 ]
 
@@ -58,12 +61,20 @@ const TEACHER: Section[] = [
   { href: '/hoy', label: 'Hoy', icon: House },
   { href: '/materias', label: 'Materias', icon: LibraryBig },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
+  { href: '/planning', label: 'Planning', icon: CalendarRange },
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
+]
+
+/* Secretaría carga el Planning de Aulas: no cursa ni dicta, así que solo ve eso. */
+const SECRETARY: Section[] = [
+  { href: '/planning', label: 'Planning', icon: CalendarRange },
+  { href: '/cargar-clases', label: 'Cargar clases', icon: Upload }
 ]
 
 /* En el celular, qué va en la barra de abajo y en qué orden (Hoy del docente, al medio); el resto va en «Más». */
 const STUDENT_TABS = ['/calendario', '/notas', '/materias', '/inscripciones']
 const TEACHER_TABS = ['/materias', '/hoy', '/calendario']
+const SECRETARY_TABS = ['/planning', '/cargar-clases']
 
 /* Lo que se apaga al plegar la barra: los nombres y los títulos de grupo. Se
    van rápido y, al desplegar, vuelven cuando la barra ya casi se abrió, para
@@ -280,10 +291,11 @@ export function AppNav({
 }) {
   const pathname = usePathname()
   const { collapsed } = useSidebar()
-  const student = (role ?? person?.role) !== 'profesor'
-  const main = student ? STUDENT : TEACHER
+  const current = role ?? person?.role ?? 'alumno'
+  const student = current === 'alumno'
+  const main = current === 'secretaria' ? SECRETARY : student ? STUDENT : TEACHER
   const career = student ? CAREER : []
-  const tabHrefs = student ? STUDENT_TABS : TEACHER_TABS
+  const tabHrefs = current === 'secretaria' ? SECRETARY_TABS : student ? STUDENT_TABS : TEACHER_TABS
   const tabs = pick(main, tabHrefs)
   // En la hoja «Más», agrupado con títulos: lo de todos los días y lo de la carrera. No sigue el orden de compu.
   const more = [
@@ -298,7 +310,7 @@ export function AppNav({
         data-sidebar={collapsed ? 'plegada' : 'abierta'}
         className='group/nav fixed inset-y-0 left-0 z-10 hidden w-(--sidebar-w) flex-col overflow-hidden px-3 py-6 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:flex'
       >
-        <SidebarTop home={homeFor(student ? 'alumno' : 'profesor')} />
+        <SidebarTop home={homeFor(current)} />
         {/* Adonde lleva «Saltar al menú» (sidebar-frame.tsx): el Tab siguiente cae en la primera sección. */}
         <div
           id={MENU_ID}

@@ -35,9 +35,14 @@ create table if not exists siu_persons (
   surname text not null,              -- apellido
   names text not null,                -- nombres
   email text not null,                -- email
-  role text not null check (role in ('alumno', 'profesor')),
+  role text not null check (role in ('alumno', 'profesor', 'secretaria')),
   school_id text not null references siu_schools (id)
 );
+
+-- Secretaría académica (carga el Planning de Aulas): en una base creada antes,
+-- el check del rol solo aceptaba alumno y profesor.
+alter table siu_persons drop constraint if exists siu_persons_role_check;
+alter table siu_persons add constraint siu_persons_role_check check (role in ('alumno', 'profesor', 'secretaria'));
 
 -- Propuestas de cada alumno, con su calidad (activa o pasiva).
 create table if not exists siu_person_programs (

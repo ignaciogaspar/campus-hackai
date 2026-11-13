@@ -44,6 +44,10 @@ Persona en proceso de ingreso. En el SIU queda como una propuesta aparte («Aspi
 En el SIU, el papel con el que un usuario ve el portal (alumno, docente, gestión). Un alumno ve un selector con una sola opción.
 _Avoid_: usar «perfil» para la propuesta o para la página de datos personales.
 
+**Secretaría (Secretary)**:
+Persona de la secretaría académica de una facultad que asigna las aulas y carga el Planning. En HackAI es el rol `secretaria`: no cursa ni dicta, entra directo a `/planning`.
+_Avoid_: «admin», «bedelía» (no está confirmado que sean lo mismo).
+
 **Gestión (Staff)**:
 Personal administrativo que cierra actas y administra inscripciones (bedelía, departamento de alumnos). No existe como rol en Campus Austral. Nombre y alcance, a confirmar.
 
@@ -272,6 +276,16 @@ Persona sin login que responde una encuesta por QR con un nombre.
 
 ### HackAI
 
+**Planning (Planning)**:
+Dónde y a qué hora se dicta cada clase de todas las materias: materia, comisión, facultad, sede, edificio, módulo, aula y horario. Lo carga secretaría en HackAI: sube la planilla del cuatrimestre (que reemplaza lo cargado) y carga a mano los cambios sueltos. Toma el nombre del «Planning Aulas» del Campus Virtual, que muestra lo mismo para todas las sedes juntas.
+_Avoid_: «calendario» (ese es el de cada alumno), «horario» a secas.
+
+**Aula física (Room)**:
+El salón donde se dicta una clase («Aula A9», «Laboratorio 2»). Está en una sede (Campus: Pilar, Buenos Aires, Rosario), en un edificio (Building: Olivo, Cerrito) y, si el edificio los tiene, en un módulo (Wing: Módulo A, Módulo B). La misma «Aula 1» en dos módulos son dos aulas. En la UI se dice «aula», como en el Planning de la universidad; en el código es `room`, para no confundirla con el aula virtual de Moodle.
+
+**Cambio de último momento (Planning change)**:
+Una clase del Planning con fecha que manda ese día sobre la clase semanal de la misma materia y comisión: otra aula, otro horario o suspendida. Si no hay clase semanal que pisar, es una clase extra.
+
 **Seguimiento (Coursework)**:
 Módulo de HackAI que lleva las tareas de una materia: el docente las crea para una o más de sus comisiones y los alumnos de esas comisiones las ven. Suma las entregas, las calificaciones y el pase de las notas al SIU. No es el seguimiento de Moodle ni reemplaza al SIU: es lo propio de HackAI.
 _Avoid_: «actividades», «trabajos prácticos».
@@ -324,5 +338,6 @@ El contenido de `campus/`: una copia del repo de Nacho en una fecha, sin histori
 - **Entrega**: en Moodle es lo que sube el alumno; en Campus Austral nombra también la consigna.
 - **Inscripción y matriculación**: inscripción es del SIU (a cursada o a examen); matriculación es de Moodle. Que no estén conectadas es uno de los problemas del research.
 - **«Campus»** en boca del equipo puede ser el Campus Virtual (Moodle), Campus Austral o HackAI. Decir cuál.
+- **Clase**: la `SectionClass` de Cursada es un día del horario de una comisión del SIU (la que lleva lista); la clase del Planning (`PlanningClass`) es una fila de la planilla de secretaría, unida a la materia por su nombre y no a una comisión del SIU. Decir cuál.
 - **Actividad**: en el SIU es una materia o una extracurricular; en Moodle, un recurso del curso (tarea, foro); en Campus Austral, una dinámica de clase. Preferir el término específico.
 - **Nota**: la del acta (oficial, SIU), la calificación (Moodle) y la nota calculada al leer de Campus Austral son tres cosas distintas.

@@ -13,8 +13,9 @@ import { all, type ExternalFailure, fail, ok, type Result } from '@/lib/result'
 export type PersonId = string
 
 /** Los roles de una persona, definidos solo acá. El valor del rol docente en
-    código es 'profesor' (ver GLOSSARY.md). */
-const ROLES = ['alumno', 'profesor'] as const
+    código es 'profesor' (ver GLOSSARY.md). `secretaria` es quien carga el
+    Planning de Aulas: no cursa ni dicta. */
+const ROLES = ['alumno', 'profesor', 'secretaria'] as const
 
 export type Role = (typeof ROLES)[number]
 

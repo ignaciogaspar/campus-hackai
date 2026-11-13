@@ -5,7 +5,7 @@ Cómo se organiza el código de `hackai/`. Sale de la skill `codebase-design` ap
 ## La idea en dos reglas
 
 1. **Puertos y adaptadores en los bordes.** SIU, Moodle y los canales externos son sistemas que no controlamos: cada uno entra por un puerto, con un adaptador para la demo y otro en memoria para los tests.
-2. **Módulos profundos adentro.** El núcleo son cinco módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
+2. **Módulos profundos adentro.** El núcleo son seis módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
 
 ## Módulos del núcleo
 
@@ -191,6 +191,22 @@ Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la p
 
 Compone Cursada, Espacios y Seguimiento, y usa el reloj para el próximo parcial. No tiene almacén propio. El Calendario y el `.ics` salen de `today(persona)`, así que muestran las tareas de HackAI sin más; si Seguimiento no responde, faltan esas tareas y `unavailable` lleva `coursework`. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 
+### Planning (`planning`)
+
+En qué aula y a qué hora se dicta cada clase, de todas las materias. Lo carga secretaría (rol `secretaria`), que es quien asigna las aulas al empezar la cursada y las cambia: el SIU tiene el horario de cada comisión pero no el aula al día, y el Planning de Aulas del Campus (un MRBS) muestra todas las sedes juntas. Pantallas: `/planning` (todos: un día por vez, en una matriz con las aulas como columnas y las medias horas como filas, como el Planning de la facultad; con filtros por facultad, sede, edificio, módulo y materia, y «Solo mis materias»; arranca en el lugar con más clases de su facultad) y `/cargar-clases` (secretaría).
+
+| Operación | Qué hace |
+| --- | --- |
+| `classes(desde, hasta)` | Las clases de esos días con el cambio de cada día, por día y hora. Cada clase dice su aula y dónde está: sede, edificio y módulo (`campus`, `building`, `wing`). Si la planilla trae todo junto en «Edificio» («Pilar - Ed Olivo - Modulo A»), se separa por los guiones. Una clase semanal se repite en su día; una con fecha manda ese día sobre las semanales de la misma materia, comisión y facultad (sin importar tildes ni mayúsculas): `cambio` (otra aula u horario), `suspendida`, o `extra` si no había semanal que pisar |
+| `entries()` | Lo cargado, para la pantalla de secretaría: las semanales por día y hora, después las de fecha |
+| `preview(filas, modo)` | Qué pasa con cada fila, sin guardar: `ok` (con un aviso si es una clase extra), `repetida` o `error` con el motivo. Las columnas se reconocen por el encabezado en cualquier orden (`columns`); sin encabezado van en el orden de la planilla de ejemplo. Entiende horas y fechas como texto o como los números con que las guarda Excel. Chequea cada fila contra las anteriores y, con `agregar`, contra lo cargado (`lib/core/planning/checks.ts`): una fila igual a otra o a una ya cargada es `repetida` y se carga una vez; dos clases distintas en la misma aula, el mismo día y en horarios que se pisan son error («Aula A9 ya está ocupada los lunes de 9:00 a 13:00 por Física I (línea 4)…»); la misma comisión con dos clases que se pisan, o dos filas con fecha para su mismo día, también; y suspender una clase que no tiene clase semanal ese día. Una clase semanal con un cambio ese día deja su aula libre ese día |
+| `load(persona, filas, modo)` | Guarda la planilla solo si ninguna fila tiene error (si no, `con-errores` y no toca nada): `reemplazar` cambia todo el planning, `agregar` suma (un cambio de último momento o una clase a mano). Las repetidas se guardan una vez. Sin clases nuevas, `sin-clases`. Solo secretaría (`solo-secretaria`) |
+| `remove(persona, clase)` | Borra una clase cargada. Solo secretaría |
+
+Usa Personas para el rol y su almacén (`planning_entries`, `supabase/migrations/0013_planning.sql`). En Supabase reemplazar inserta la carga nueva y recién después borra las otras, así una falla a la mitad deja el planning anterior. En memoria arranca con el planning sintético (`syntheticData.planning`); en Supabase, vacío. En `/cargar-clases` la planilla del cuatrimestre se sube como .xlsx (`lib/xlsx-read.ts`, sin dependencias, con `node:zlib`) o .csv (`lib/delimited-text.ts`) y reemplaza lo cargado (`reemplazar`); los cambios sueltos (otra aula, una suspensión, una clase extra) se cargan a mano de a una y se suman (`agregar`).
+
+No guarda personas: solo materia, comisión, facultad, edificio y aula. El Planning de Aulas real trae nombres de docentes y responsables; no se cargan.
+
 ### Dependencias entre módulos
 
 ```text
@@ -200,6 +216,8 @@ today ──► studies ──► people
   │       └──────────────┤
   └──► coursework ──► studies
 ```
+
+Planning usa solo Personas (`planning ──► people`), para saber si quien carga es de secretaría.
 
 Hoy llama a Seguimiento (`dated`) para sumar las tareas con fecha al calendario. Seguimiento usa además el puerto de Archivos y el reloj.
 
@@ -241,7 +259,7 @@ Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales
 ```text
 hackai/
 ├── lib/
-│   ├── core/            people/, studies/, spaces/, coursework/, today/
+│   ├── core/            people/, studies/, spaces/, coursework/, today/, planning/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, siu-real/, moodle-simulado/, discord/, supabase/, memoria/, caida/, cache/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos

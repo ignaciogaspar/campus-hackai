@@ -24,7 +24,8 @@ insert into moodle_users (id, username, first_name, last_name, email) values
   ('407', 'agustina.gimenez', 'Agustina', 'Giménez', 'agustina.gimenez@alumnos.example.edu.ar'),
   ('408', 'nicolas.herrera', 'Nicolás', 'Herrera', 'nicolas.herrera@alumnos.example.edu.ar'),
   ('409', 'camila.ibarra', 'Camila', 'Ibarra', 'camila.ibarra@alumnos.example.edu.ar'),
-  ('410', 'federico.juarez', 'Federico', 'Juárez', 'federico.juarez@alumnos.example.edu.ar')
+  ('410', 'federico.juarez', 'Federico', 'Juárez', 'federico.juarez@alumnos.example.edu.ar'),
+  ('501', 'secretaria.fi', 'Secretaría', 'FI', 'secretaria.fi@example.edu.ar')
 on conflict (id) do update set username = excluded.username, first_name = excluded.first_name, last_name = excluded.last_name, email = excluded.email;
 
 insert into moodle_courses (id, short_name, full_name, siu_section_ids) values

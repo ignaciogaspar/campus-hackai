@@ -55,7 +55,8 @@ const TONES: Record<CalendarTone, { label: string; block: string; dot: string }>
   tp: { label: 'TP', block: 'bg-kind-tp-background border-kind-tp', dot: 'bg-kind-tp' },
   entrega: { label: 'Entrega', block: 'bg-kind-entrega-background border-kind-entrega', dot: 'bg-kind-entrega' },
   inscripcion: { label: 'Inscripción', block: 'bg-muted border-ink/45', dot: 'bg-ink/60' },
-  clase: { label: 'Clase', block: 'bg-accent border-blue', dot: 'bg-blue' }
+  clase: { label: 'Clase', block: 'bg-accent border-blue', dot: 'bg-blue' },
+  suspendida: { label: 'Suspendida', block: 'bg-muted border-gray-light', dot: 'bg-gray-light' }
 }
 
 function format(day: string, options: Intl.DateTimeFormatOptions): string {
@@ -82,7 +83,7 @@ const describe = (e: CalendarEvent) =>
    en las clases, su tipo escrito arriba. Se ve entero: el nombre baja de línea
    en vez de cortarse, y nada se pisa. Lo que ya pasó va en gris y lo dice. Si
    tiene destino (la tarea, el espacio de la materia, la mesa), es un enlace. */
-function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
+export function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
   const className = cn(
     'flex min-w-0 flex-1 flex-col gap-0.5 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
     fill && 'overflow-hidden',
@@ -385,7 +386,7 @@ function EmptyDays({ from, to }: { from: string; to: string }) {
 
 /* El mes chico de la derecha: el día de hoy en azul, la semana que se ve con
    fondo celeste y un puntito en los días con algo. Tocar un día lleva a su semana. */
-function MiniMonth({
+export function MiniMonth({
   month,
   week,
   today,

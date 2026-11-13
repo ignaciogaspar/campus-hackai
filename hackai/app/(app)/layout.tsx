@@ -28,6 +28,7 @@ import type { Session } from '@/lib/session-token'
 /** Debajo del nombre en el perfil: qué cursa el alumno o que es docente. La facultad ya va en la marca. */
 function profileDetail(person: Person): string {
   if (person.role === 'profesor') return 'Docente'
+  if (person.role === 'secretaria') return 'Secretaría académica'
   return activeProgram(person)?.name ?? person.school.name
 }
 

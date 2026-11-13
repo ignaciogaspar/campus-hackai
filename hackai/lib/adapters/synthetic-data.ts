@@ -52,6 +52,7 @@
    - Los enlaces a Moodle y a la Autogestión del SIU llevan a la página de lo
      simulado (app/simulado/), no a un dominio inventado. */
 import { syntheticPdf } from '@/lib/adapters/synthetic-files'
+import type { PlanningEntryInput, Weekday } from '@/lib/core/planning'
 import type {
   ClassroomAnnouncement,
   ClassroomAssignment,
@@ -123,6 +124,9 @@ export type SyntheticData = {
     /** Contenido de cada adjunto, por URL. */
     files: Record<string, string>
   }
+  /** El Planning de Aulas que arranca cargado en memoria: las clases de las comisiones del cuatrimestre y otras de
+      la facultad, con un par de cambios de la semana de la demo. */
+  planning: PlanningEntryInput[]
 }
 
 /** Fecha y hora de Buenos Aires (UTC-3) en ISO 8601 UTC. */
@@ -162,7 +166,9 @@ const rows: Row[] = [
   ['p-agimenez', '30107', '407', null, 'Giménez', 'Agustina', 'alumno', fce, [administracion]],
   ['p-nherrera', '30108', '408', null, 'Herrera', 'Nicolás', 'alumno', fce, [contador]],
   ['p-cibarra', '30109', '409', null, 'Ibarra', 'Camila', 'alumno', fce, [administracion]],
-  ['p-fjuarez', '30110', '410', null, 'Juárez', 'Federico', 'alumno', fce, [{ ...contador, status: 'pasiva' }]]
+  ['p-fjuarez', '30110', '410', null, 'Juárez', 'Federico', 'alumno', fce, [{ ...contador, status: 'pasiva' }]],
+  // Secretaría académica: carga el Planning de Aulas. No cursa ni dicta.
+  ['p-secretaria-fi', '20201', '501', null, 'FI', 'Secretaría', 'secretaria', fi, []]
 ]
 
 function slug(text: string): string {
@@ -1308,6 +1314,98 @@ const discordFiles: Record<string, string> = Object.fromEntries(
   discordChannels.flatMap((c) => c.messages.flatMap((m) => m.attachments.map((a) => [a.url, syntheticFile(a)])))
 )
 
+// Planning de Aulas: las clases de las comisiones del cuatrimestre en su aula, y otras de la facultad que nadie del
+// set cursa, para que la vista de todas las materias no quede vacía. Edificios y aulas inventados. La semana de la
+// demo trae un cambio de aula, una clase suspendida y una clase extra.
+
+type Place = { campus: string; building: string; wing: string }
+
+const OLIVO_A: Place = { campus: 'Pilar', building: 'Edificio Olivo', wing: 'Módulo A' }
+const OLIVO_B: Place = { campus: 'Pilar', building: 'Edificio Olivo', wing: 'Módulo B' }
+const CEIBO: Place = { campus: 'Pilar', building: 'Edificio Ceibo', wing: '' }
+const CERRITO: Place = { campus: 'Buenos Aires', building: 'Cerrito', wing: '' }
+
+const minutesOfDay = (time: string) => {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
+
+/** «Campus Pilar, aula 12» → el lugar y «Aula 12». En Pilar, las aulas van al Módulo A del Olivo y los laboratorios
+    al Ceibo. */
+function roomOf(location: string): Place & { room: string } {
+  const [place, rawRoom = location] = location.split(', ')
+  const room = rawRoom.charAt(0).toUpperCase() + rawRoom.slice(1)
+  if (!place.includes('Pilar')) return { ...CERRITO, room }
+  return { ...(room.startsWith('Laboratorio') ? CEIBO : OLIVO_A), room }
+}
+
+type PlanningSlot = [string, string | null, string, Place, string, Weekday, string, string]
+
+const planningEntry = ([
+  subject,
+  section,
+  school,
+  place,
+  room,
+  weekday,
+  start,
+  end
+]: PlanningSlot): PlanningEntryInput => ({
+  subject,
+  section,
+  school,
+  ...place,
+  room,
+  weekday,
+  date: null,
+  start: minutesOfDay(start),
+  end: minutesOfDay(end),
+  cancelled: false
+})
+
+const planningOfSections: PlanningEntryInput[] = sections
+  .filter((s) => s.termId === '2c-2026' || s.termId === 'act-2c-2026')
+  .flatMap((s) => {
+    const subject = subjects.find((x) => x.id === s.subjectId)!
+    const { room, ...place } = roomOf(s.location)
+    return s.schedule.map((slot) =>
+      planningEntry([subject.name, s.name, s.schoolId.toUpperCase(), place, room, slot.day, slot.start, slot.end])
+    )
+  })
+
+const otherClasses: PlanningSlot[] = [
+  ['Análisis Matemático II', 'A', 'FI', OLIVO_A, 'Aula A4', 'lunes', '09:00', '13:00'],
+  ['Física II', 'A', 'FI', OLIVO_A, 'Aula A7', 'martes', '14:00', '17:00'],
+  ['Investigación Operativa', null, 'FI', OLIVO_A, 'Aula A5', 'martes', '09:00', '12:00'],
+  ['Probabilidad y Estadística', 'B', 'FI', OLIVO_A, 'Aula A3', 'miercoles', '10:00', '13:00'],
+  ['Bases de Datos', 'A', 'FI', CEIBO, 'Laboratorio 3', 'miercoles', '14:00', '17:00'],
+  ['Estructuras de Datos', 'A', 'FI', CEIBO, 'Laboratorio 1', 'jueves', '08:00', '11:00'],
+  ['Termodinámica', 'A', 'FI', OLIVO_A, 'Aula A9', 'viernes', '09:00', '13:00'],
+  ['Ingeniería de Software', 'A', 'FI', OLIVO_B, 'Aula B1', 'lunes', '14:00', '18:00'],
+  ['Sistemas Operativos', 'A', 'FI', OLIVO_B, 'Aula B3', 'miercoles', '09:00', '12:00'],
+  ['Marketing', 'A', 'FCE', CERRITO, 'Aula 4', 'lunes', '18:00', '21:00'],
+  ['Finanzas', 'B', 'FCE', CERRITO, 'Aula 6', 'martes', '18:30', '21:30'],
+  ['Logística', 'A', 'FCE', CERRITO, 'Aula 5', 'miercoles', '18:00', '21:00'],
+  ['Contabilidad II', 'A', 'FCE', OLIVO_B, 'Aula B2', 'jueves', '14:30', '17:30'],
+  ['Negocios Digitales', null, 'FCE', OLIVO_B, 'Aula B4', 'viernes', '15:00', '18:00']
+]
+
+/** Un cambio de un día: la clase de esa materia y comisión va así ese día. */
+const onDay = (slot: PlanningSlot, date: string, cancelled = false): PlanningEntryInput => ({
+  ...planningEntry(slot),
+  weekday: null,
+  date,
+  cancelled
+})
+
+const planning: PlanningEntryInput[] = [
+  ...planningOfSections,
+  ...otherClasses.map(planningEntry),
+  onDay(['Análisis Matemático I', 'A', 'FI', OLIVO_A, 'Aula A10', 'miercoles', '08:00', '10:00'], '2026-11-11'),
+  onDay(['Termodinámica', 'A', 'FI', OLIVO_A, 'Aula A9', 'viernes', '09:00', '13:00'], '2026-11-13', true),
+  onDay(['Programación I', 'A', 'FI', CEIBO, 'Laboratorio 1', 'jueves', '18:00', '20:00'], '2026-11-12')
+]
+
 export const syntheticData: SyntheticData = {
   now: at('2026-11-10', '12:00'),
   people,
@@ -1336,6 +1434,7 @@ export const syntheticData: SyntheticData = {
     contents,
     assignments
   },
+  planning,
   discord: {
     channels: discordChannels,
     files: discordFiles

@@ -20,14 +20,18 @@ export const KIND: Record<UpcomingItem['kind'], string> = {
 }
 
 /** Lo que cambia para el docente: no rinde finales, integra la mesa, y no entrega: las entregas son de sus alumnos. */
-const TEXTS: Record<Role, { final: string; nextFinal: string; noFinal: string; nothingDue: string; none: string }> = {
-  alumno: {
-    final: KIND.final,
-    nextFinal: 'Próximo final',
-    noFinal: 'No hay finales por delante',
-    nothingDue: 'Nada por entregar',
-    none: 'No tenés parciales, finales ni entregas por delante.'
-  },
+const STUDENT = {
+  final: KIND.final,
+  nextFinal: 'Próximo final',
+  noFinal: 'No hay finales por delante',
+  nothingDue: 'Nada por entregar',
+  none: 'No tenés parciales, finales ni entregas por delante.'
+}
+
+const TEXTS: Record<Role, typeof STUDENT> = {
+  alumno: STUDENT,
+  // Secretaría no tiene Calendario en el menú: si entra por la URL, lo ve con los textos del alumno.
+  secretaria: STUDENT,
   profesor: {
     final: 'Mesa de final',
     nextFinal: 'Próxima mesa de final',
