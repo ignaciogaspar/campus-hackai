@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { gradesHref } from '@/components/coursework/format'
 import { dueTime, longDay, shortDate, timeOf } from '@/components/dates'
 import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
@@ -33,7 +34,7 @@ function Row({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }
   return (
     <p className='flex items-start gap-2 text-[0.8125rem] text-ink/80 lg:text-[0.875rem]'>
       <Icon aria-hidden='true' className='mt-0.5 size-4 flex-none text-muted-foreground' strokeWidth={1.8} />
-      <span className='min-w-0 line-clamp-2'>{children}</span>
+      <span className='min-w-0 truncate'>{children}</span>
     </p>
   )
 }
@@ -56,8 +57,9 @@ function Callout({ children }: { children: ReactNode }) {
 const SECONDARY =
   'relative z-10 -mr-2.5 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[0.8125rem] font-semibold whitespace-nowrap text-blue transition-colors hover:bg-accent focus-ring'
 
-/* La tarjeta: siempre las mismas partes y el mismo alto (la grilla iguala las
-   filas). El título es el enlace al espacio y cubre toda la tarjeta. */
+/* La tarjeta: siempre las mismas partes y el mismo alto fijo, en todas las vistas y en todas las páginas. Para que
+   entre todo, el nombre va en dos líneas como mucho y cada dato en una sola; el pie queda siempre abajo. El título
+   es el enlace al espacio y cubre toda la tarjeta. */
 function SubjectCard({
   subjectId,
   name,
@@ -78,7 +80,7 @@ function SubjectCard({
   secondary?: ReactNode
 }) {
   return (
-    <li className='group relative flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-blue/30 hover:shadow-card has-[a.stretched:focus-visible]:ring-3 has-[a.stretched:focus-visible]:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:p-5'>
+    <li className='group relative flex h-[20rem] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-4 transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-blue/30 hover:shadow-card has-[a.stretched:focus-visible]:ring-3 has-[a.stretched:focus-visible]:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:p-5'>
       <div className='flex items-start gap-3'>
         <SubjectIcon name={name} size='lg' tone='soft' />
         <div className='min-w-0 flex-1'>
@@ -113,6 +115,12 @@ function SubjectCard({
 
 const detailOf = (subject: MySubject) => `${subject.code} · Comisión ${subject.sectionName} · ${subject.termName}`
 
+/** La modalidad y el aula, sin repetir cuando el SIU pone lo mismo en los dos. */
+function placeOf(subject: MySubject): string {
+  const modality = modalityName(subject.modality)
+  return modality === subject.location ? modality : [modality, subject.location].filter(Boolean).join(' · ')
+}
+
 /* Una materia que cursa o dicta: horarios, aula, lo que no leyó y lo próximo de Moodle. */
 export function CourseCard({
   subject,
@@ -124,15 +132,15 @@ export function CourseCard({
   unread?: number
 }) {
   const next = subject.assignments.find((a) => !a.past)
-  const modality = modalityName(subject.modality)
-  const place = modality === subject.location ? modality : [modality, subject.location].filter(Boolean).join(' · ')
+  const place = placeOf(subject)
   const classroom = subject.classrooms[0]
   return (
     <SubjectCard
       subjectId={subject.subjectId}
       name={subject.name}
       detail={detailOf(subject)}
-      status={subject.role === 'profesor' ? null : (standing?.status ?? null)}
+      // «En curso» no va: la vista ya es la de las materias en curso. Si ya cambió (por ejemplo, promocionada), se ve.
+      status={subject.role === 'profesor' || standing?.status === 'en-curso' ? null : (standing?.status ?? null)}
       badge={<UnreadPill count={unread} />}
       rows={
         <>
@@ -163,8 +171,42 @@ export function CourseCard({
   )
 }
 
-/* Una materia de un período que ya terminó: cómo quedó y su nota, si la tiene. */
+/* Una comisión que el docente dictó en un período que ya terminó: las mismas partes que una en curso (horario,
+   aula y un aviso), así las tarjetas miden lo mismo en las dos vistas. La acción lleva a Calificaciones, donde
+   quedaron sus notas. */
+function TaughtArchivedCard({ subject }: { subject: MySubject }) {
+  return (
+    <SubjectCard
+      subjectId={subject.subjectId}
+      name={subject.name}
+      detail={detailOf(subject)}
+      status={null}
+      rows={
+        <>
+          <Row icon={CalendarClock}>{subject.schedule.map(scheduleLine).join(' · ') || 'Sin horario cargado'}</Row>
+          <Row icon={MapPin}>{placeOf(subject) || 'Sin aula cargada'}</Row>
+        </>
+      }
+      callout={
+        <Callout>
+          <span className='truncate font-semibold'>Cursada terminada</span>
+          <span className='text-[0.75rem] text-ink/65'>{subject.termName}</span>
+        </Callout>
+      }
+      secondary={
+        <Link href={gradesHref(subject.subjectId, { comision: subject.sectionId })} className={SECONDARY}>
+          <NotebookPen aria-hidden='true' className='size-3.5' />
+          Calificaciones
+          <span className='sr-only'> de {subject.name}</span>
+        </Link>
+      }
+    />
+  )
+}
+
+/* Una materia de un período que ya terminó: cómo quedó y su nota, si la tiene. Si la dictó, la del docente. */
 export function ArchivedCard({ subject, standing }: { subject: MySubject; standing?: SubjectStanding }) {
+  if (subject.role === 'profesor') return <TaughtArchivedCard subject={subject} />
   const final = standing?.finalGrade ?? null
   const course = standing?.courseGrade ?? null
   return (
@@ -241,7 +283,8 @@ export function PendingFinalCard({ standing, pending }: { standing: SubjectStand
       detail={[standing.code, standing.termName ?? (standing.academicYear && `Cursada ${standing.academicYear}`)]
         .filter(Boolean)
         .join(' · ')}
-      status='regular'
+      // Sin la etiqueta «Regular · falta el final»: la vista ya es la de finales pendientes y la tarjeta lo repetía.
+      status={null}
       rows={
         <>
           <Row icon={Trophy}>

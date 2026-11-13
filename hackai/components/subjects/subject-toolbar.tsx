@@ -1,8 +1,8 @@
 /* La barra de arriba de las pantallas de la materia: las pestañas y, si el
    docente dicta más de una comisión, el selector. En la compu van en la misma
-   fila y, para el docente, con la campana de Novedades a la derecha (en el
-   celular la campana queda en el encabezado). Así todas las pantallas de la
-   materia arrancan igual. */
+   fila con la campana de Novedades a la derecha, para el docente y para el
+   alumno (en el celular la campana queda en el encabezado). Así todas las
+   pantallas de la materia arrancan igual. */
 import { Suspense } from 'react'
 import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
 import { SectionPicker } from '@/components/subjects/section-picker'
@@ -26,7 +26,7 @@ export function SubjectToolbar({
 }: {
   subjectId: string
   current: string
-  /** Quién mira: el docente ve todas las pestañas, el selector y la campana. */
+  /** Quién mira: el docente ve todas las pestañas y el selector. */
   viewer: Role
   sections: { sectionId: string; name: string }[]
   selectedId: string
@@ -50,11 +50,9 @@ export function SubjectToolbar({
         />
       </div>
       <div className='hidden lg:block lg:justify-self-end'>
-        {teacher && (
-          <Suspense fallback={<NotificationsBell unread={0} tone='light' />}>
-            <SessionBell tone='light' />
-          </Suspense>
-        )}
+        <Suspense fallback={<NotificationsBell unread={0} tone='light' />}>
+          <SessionBell tone='light' />
+        </Suspense>
       </div>
     </div>
   )

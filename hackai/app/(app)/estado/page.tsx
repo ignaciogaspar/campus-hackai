@@ -139,7 +139,7 @@ export default async function EstadoPage() {
 
   return (
     <>
-      <PageHeader title='Plan de estudios' subtitle={career?.program?.name} art='academico' />
+      <PageHeader title='Plan de estudios' subtitle={career?.program?.name} art='academico' desktopBell={false} />
 
       <main className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         {!result.ok || !career ? (

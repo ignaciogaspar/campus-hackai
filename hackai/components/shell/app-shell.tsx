@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import type { NavSubject } from '@/components/shell/app-nav'
 import { type Shell, ShellProvider } from '@/components/shell/shell-context'
 import { SidebarFrame } from '@/components/shell/sidebar-frame'
 import type { Role } from '@/lib/core/people'
@@ -8,9 +7,7 @@ import type { Role } from '@/lib/core/people'
    blanco redondeado; la barra se pliega (components/shell/sidebar-frame.tsx). */
 export function AppShell({
   school,
-  subjects,
   unread = 0,
-  subjectLinks,
   newsLink,
   role,
   shell,
@@ -18,8 +15,6 @@ export function AppShell({
   children
 }: {
   school?: string
-  subjects?: NavSubject[]
-  subjectLinks?: ReactNode
   newsLink?: ReactNode
   role?: Role
   /** Lo sin leer de todas las materias, para Novedades en la barra. */
@@ -33,7 +28,7 @@ export function AppShell({
     <ShellProvider value={shell}>
       <SidebarFrame
         initialCollapsed={sidebarCollapsed}
-        nav={{ school, subjects, unread, subjectLinks, newsLink, role, person: shell.person, detail: shell.detail }}
+        nav={{ school, unread, newsLink, role, person: shell.person, detail: shell.detail }}
       >
         {children}
       </SidebarFrame>

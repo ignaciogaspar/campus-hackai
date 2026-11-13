@@ -19,6 +19,7 @@ import { activeProgram } from '@/components/session/person-text'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { railItem, railTrack } from '@/components/ui/rail'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/states'
 import type { Person, Role } from '@/lib/core/people'
 
@@ -120,37 +121,24 @@ export function PersonPicker({ people, returnTo }: { people: Person[]; returnTo?
         </label>
 
         <div className='grid grid-cols-2 gap-2 lg:contents'>
-          <label className='block min-w-0'>
-            <span className='sr-only'>Facultad</span>
-            <select
-              value={filters.school}
-              onChange={(e) => set({ school: e.target.value, program: ALL })}
-              className={FIELD}
-            >
-              <option value={ALL}>Facultad</option>
-              {schools.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {shortSchool(s.name)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className='block min-w-0'>
-            <span className='sr-only'>Carrera</span>
-            <select
-              value={filters.program}
-              onChange={(e) => set({ program: e.target.value })}
-              disabled={filters.role === 'profesor' || !programs.length}
-              className={`${FIELD} disabled:opacity-50`}
-            >
-              <option value={ALL}>Carrera</option>
-              {programs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            aria-label='Facultad'
+            value={filters.school}
+            onValueChange={(school) => set({ school, program: ALL })}
+            options={[
+              { value: ALL, label: 'Facultad' },
+              ...schools.map((s) => ({ value: s.id, label: shortSchool(s.name) }))
+            ]}
+            className='min-h-11 rounded-[14px] pl-3 text-[0.9375rem]'
+          />
+          <Select
+            aria-label='Carrera'
+            value={filters.program}
+            onValueChange={(program) => set({ program })}
+            disabled={filters.role === 'profesor' || !programs.length}
+            options={[{ value: ALL, label: 'Carrera' }, ...programs.map((p) => ({ value: p.id, label: p.name }))]}
+            className='min-h-11 rounded-[14px] pl-3 text-[0.9375rem]'
+          />
         </div>
       </div>
 

@@ -60,7 +60,7 @@ export function StatusChip({ status, className }: { status: SubjectStatus; class
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[0.75rem] leading-5 font-semibold whitespace-nowrap',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] leading-5 font-semibold whitespace-nowrap',
         STATUS[status].chip,
         className
       )}

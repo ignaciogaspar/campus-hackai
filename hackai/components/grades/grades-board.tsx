@@ -3,9 +3,9 @@
    lectivo (el más reciente primero) o por año de la carrera. Tocar una abre el
    panel con su detalle (a la derecha en compu, desde abajo en el celular). Los
    filtros, el agrupamiento y la materia abierta se guardan en la URL. */
-import { CircleCheck, SearchX, X } from 'lucide-react'
+import { ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { type ReactNode, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import {
   applyFilters,
@@ -20,6 +20,7 @@ import { gradeText, isApproved, KIND, StatusChip } from '@/components/grades/sta
 import { SubjectDetail } from '@/components/grades/subject-detail'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
 import { railItem, railTrack } from '@/components/ui/rail'
+import { Select, type SelectOption } from '@/components/ui/select'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { EmptyState } from '@/components/ui/states'
 import type { SubjectStanding } from '@/lib/core/studies'
@@ -32,29 +33,30 @@ const STATE_LABELS: Record<GradeFilters['estado'], string> = {
   'final-pendiente': 'Final pendiente'
 }
 
-const SELECT =
-  'h-10 w-full min-w-0 cursor-pointer truncate rounded-full border border-border bg-card pr-8 pl-3.5 text-[0.8125rem] font-semibold text-ink transition-colors hover:border-blue/30 focus-ring max-sm:h-10'
+/* Los filtros, como píldoras del alto del riel de estado. */
+const FILTER = 'rounded-full pl-4 text-[0.8125rem] font-medium sm:w-48'
 
 /* Un filtro: la opción «todos» lleva el nombre del filtro, así los tres entran en una fila sin etiquetas
    encima. El nombre completo queda para el lector de pantalla. */
-function Select({
+function Filter({
   label,
   value,
   onChange,
-  children
+  options
 }: {
   label: string
   value: string
   onChange: (value: string) => void
-  children: ReactNode
+  options: SelectOption[]
 }) {
   return (
-    <label className='flex min-w-0'>
-      <span className='sr-only'>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
-        {children}
-      </select>
-    </label>
+    <Select
+      aria-label={label}
+      value={value}
+      onValueChange={onChange}
+      options={options}
+      className={cn(FILTER, value !== options[0]?.value && 'border-blue/40 text-blue')}
+    />
   )
 }
 
@@ -89,6 +91,7 @@ function Summary({ subject }: { subject: SubjectStanding }) {
   )
 }
 
+/* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea. */
 function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: () => void }) {
   return (
     <li>
@@ -96,19 +99,71 @@ function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: ()
         type='button'
         onClick={onOpen}
         aria-haspopup='dialog'
-        className='flex h-full w-full cursor-pointer items-start gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
+        className='flex h-full w-full cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
       >
-        <SubjectIcon name={subject.name} tone={subject.status === 'en-curso' ? 'solid' : 'soft'} />
+        <SubjectIcon name={subject.name} size='sm' tone={subject.status === 'en-curso' ? 'solid' : 'soft'} />
         <span className='flex min-w-0 flex-1 flex-col gap-1'>
-          <span className='text-[0.9375rem] leading-snug font-semibold text-ink'>{subject.name}</span>
-          <span className='text-[0.75rem] text-muted-foreground'>
-            {subject.code} · {subject.termName ?? KIND[subject.kind]}
+          <span className='line-clamp-2 text-[0.9375rem] leading-snug font-semibold text-ink'>{subject.name}</span>
+          <span className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
+            <StatusChip status={subject.status} />
+            <span className='min-w-0 truncate text-[0.75rem] text-muted-foreground'>
+              {subject.code} · {subject.termName ?? KIND[subject.kind]}
+            </span>
           </span>
-          <StatusChip status={subject.status} className='mt-1 self-start' />
         </span>
         <Summary subject={subject} />
       </button>
     </li>
+  )
+}
+
+/* Un grupo de materias, como un año lectivo. El título pliega y despliega la lista. */
+function Group({
+  name,
+  items,
+  open,
+  onToggle,
+  onOpen
+}: {
+  name: string
+  items: SubjectStanding[]
+  open: boolean
+  onToggle: () => void
+  onOpen: (subjectId: string) => void
+}) {
+  const id = `grupo-${name.replace(/\W+/g, '-')}`
+  return (
+    <section aria-label={name} className='flex flex-col gap-3'>
+      <h2>
+        <button
+          type='button'
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={id}
+          className='group/toggle -mx-1 flex cursor-pointer items-center gap-2 rounded-lg px-1 py-0.5 text-lg font-extrabold text-ink focus-ring'
+        >
+          {name}
+          <span className='text-[0.8125rem] font-medium text-muted-foreground'>
+            {items.length} {items.length === 1 ? 'materia' : 'materias'}
+          </span>
+          <ChevronDown
+            aria-hidden='true'
+            className={cn(
+              'size-4.5 text-muted-foreground transition-transform duration-200 group-hover/toggle:text-ink motion-reduce:transition-none',
+              !open && '-rotate-90'
+            )}
+            strokeWidth={2}
+          />
+        </button>
+      </h2>
+      {open && (
+        <ul id={id} className='grid gap-2.5 lg:grid-cols-2 2xl:grid-cols-3'>
+          {items.map((s) => (
+            <SubjectCard key={s.subjectId} subject={s} onOpen={() => onOpen(s.subjectId)} />
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -117,114 +172,101 @@ const GROUPINGS: { grouping: Grouping; label: string }[] = [
   { grouping: 'carrera', label: 'Por año de la carrera' }
 ]
 
-/* Arriba, el estado en un riel; debajo, los tres filtros en una fila y, si hay alguno puesto, «Limpiar».
-   En compu, todo en una fila. */
+/* Los filtros en una sola tarjeta: el estado, el tipo y cómo se agrupan. El año no se filtra: agrupando por año
+   lectivo o por año de la carrera, cada año es una sección que se pliega. En compu el estado va en un riel; en el
+   celular, en un desplegable al lado del tipo, y debajo, a todo el ancho, cómo se agrupan. */
 function Filters({
   filters,
   set,
-  academicYears,
-  careerYears
+  grouping,
+  onGrouping
 }: {
   filters: GradeFilters
   set: (patch: Partial<GradeFilters>) => void
-  academicYears: number[]
-  careerYears: number
+  grouping: Grouping
+  onGrouping: (grouping: Grouping) => void
 }) {
-  const filtered = filtersQuery(filters) !== ''
   return (
     <div className='flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4 xl:flex-row xl:items-center xl:justify-between'>
-      {/* `min-w-max`: el fieldset no se encoge debajo de sus opciones. */}
-      <fieldset
-        className={cn(
-          railTrack({ size: 'sm' }),
-          'm-0 border-0 max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[22px] sm:min-w-max'
-        )}
-      >
-        <legend className='sr-only'>Estado</legend>
-        {STATES.map((state) => (
-          <button
-            key={state}
-            type='button'
-            aria-pressed={filters.estado === state}
-            onClick={() => set({ estado: state })}
-            className={railItem({ size: 'sm', className: 'sm:px-4' })}
-          >
-            {STATE_LABELS[state]}
-          </button>
-        ))}
-      </fieldset>
-      <div className='grid grid-cols-2 gap-2 sm:flex sm:items-center [&>*:nth-child(3)]:col-span-2'>
-        <Select label='Año lectivo' value={filters.lectivo} onChange={(lectivo) => set({ lectivo })}>
-          <option value='todos'>Año lectivo</option>
-          {academicYears.map((y) => (
-            <option key={y} value={String(y)}>
-              {y}
-            </option>
+      <div className='grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3'>
+        <div className='min-w-0 sm:hidden'>
+          <Filter
+            label='Estado de la materia'
+            value={filters.estado}
+            onChange={(estado) => set({ estado: estado as GradeFilters['estado'] })}
+            options={STATES.map((state) => ({
+              value: state,
+              label: state === 'todos' ? 'Todos los estados' : STATE_LABELS[state]
+            }))}
+          />
+        </div>
+        {/* `min-w-max`: el riel no se encoge debajo de sus opciones. */}
+        <fieldset className={cn(railTrack({ size: 'sm' }), 'm-0 hidden min-w-max border-0 sm:flex')}>
+          <legend className='sr-only'>Estado de la materia</legend>
+          {STATES.map((state) => (
+            <button
+              key={state}
+              type='button'
+              aria-pressed={filters.estado === state}
+              onClick={() => set({ estado: state })}
+              className={railItem({ size: 'sm', className: 'flex-auto px-5' })}
+            >
+              {STATE_LABELS[state]}
+            </button>
           ))}
-        </Select>
-        <Select
-          label='Tipo de materia'
-          value={filters.tipo}
-          onChange={(tipo) => set({ tipo: tipo as GradeFilters['tipo'] })}
-        >
-          <option value='todas'>Tipo</option>
-          <option value='obligatoria'>Obligatorias</option>
-          <option value='optativa'>Optativas</option>
-          <option value='vida-universitaria'>Vida universitaria</option>
-        </Select>
-        <Select label='Año de la carrera' value={filters.anio} onChange={(anio) => set({ anio })}>
-          <option value='todos'>Año de carrera</option>
-          {Array.from({ length: careerYears }, (_, i) => i + 1).map((year) => (
-            <option key={year} value={String(year)}>
-              {year}º año
-            </option>
-          ))}
-        </Select>
-        {filtered && (
-          <button
-            type='button'
-            onClick={() => set(DEFAULT_FILTERS)}
-            className='col-span-2 inline-flex h-9 cursor-pointer items-center justify-center gap-1 rounded-full px-3 text-[0.8125rem] font-semibold whitespace-nowrap text-blue hover:bg-accent focus-ring'
-          >
-            <X aria-hidden='true' className='size-4' />
-            Limpiar
-          </button>
-        )}
+        </fieldset>
+        <div className='min-w-0'>
+          <Filter
+            label='Tipo de materia'
+            value={filters.tipo}
+            onChange={(tipo) => set({ tipo: tipo as GradeFilters['tipo'] })}
+            options={[
+              { value: 'todas', label: 'Todos los tipos' },
+              { value: 'obligatoria', label: 'Obligatorias' },
+              { value: 'optativa', label: 'Optativas' },
+              { value: 'vida-universitaria', label: 'Vida universitaria' }
+            ]}
+          />
+        </div>
       </div>
+      <GroupingSwitch current={grouping} onChange={onGrouping} />
     </div>
   )
 }
 
-/* Cómo se agrupan: un riel chico arriba de la lista, a la derecha. */
+/* Cómo se agrupan: «Agrupar» y un riel chico. En el celular, a todo el ancho. */
 function GroupingSwitch({ current, onChange }: { current: Grouping; onChange: (grouping: Grouping) => void }) {
   return (
-    <fieldset className={cn(railTrack({ size: 'sm' }), 'm-0 border-0 max-sm:w-full sm:min-w-max')}>
-      <legend className='sr-only'>Agrupar las materias</legend>
-      {GROUPINGS.map(({ grouping, label }) => (
-        <button
-          key={grouping}
-          type='button'
-          aria-pressed={current === grouping}
-          onClick={() => onChange(grouping)}
-          className={railItem({ size: 'sm', className: 'min-h-8 text-[0.75rem] sm:px-3' })}
-        >
-          {label}
-        </button>
-      ))}
-    </fieldset>
+    <div className='flex items-center gap-3'>
+      <span aria-hidden='true' className='hidden text-[0.8125rem] text-muted-foreground sm:inline'>
+        Agrupar
+      </span>
+      <fieldset className={cn(railTrack({ size: 'sm' }), 'm-0 border-0 max-sm:w-full sm:min-w-max')}>
+        <legend className='sr-only'>Agrupar las materias</legend>
+        {GROUPINGS.map(({ grouping, label }) => (
+          <button
+            key={grouping}
+            type='button'
+            aria-pressed={current === grouping}
+            onClick={() => onChange(grouping)}
+            className={railItem({ size: 'sm', className: 'px-4 text-[0.8125rem] sm:flex-auto' })}
+          >
+            {label}
+          </button>
+        ))}
+      </fieldset>
+    </div>
   )
 }
 
 export function GradesBoard({
   subjects,
-  careerYears,
   initialFilters,
   initialGrouping,
   initialOpen
 }: {
   /** Las materias que cursó o está cursando. */
   subjects: SubjectStanding[]
-  careerYears: number
   initialFilters: GradeFilters
   initialGrouping: Grouping
   /** La materia que se abre al entrar, como la de «Ver notas» de una materia archivada. */
@@ -234,7 +276,16 @@ export function GradesBoard({
   const [filters, setFilters] = useState(initialFilters)
   const [grouping, setGrouping] = useState(initialGrouping)
   const [openId, setOpenId] = useState<string | null>(initialOpen ?? null)
+  // Los grupos plegados, por nombre: al cambiar de agrupamiento cambian los nombres y todo vuelve a verse.
+  const [folded, setFolded] = useState<Set<string>>(new Set())
   const set = (patch: Partial<GradeFilters>) => setFilters((f) => ({ ...f, ...patch }))
+  const fold = (name: string) =>
+    setFolded((current) => {
+      const next = new Set(current)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
 
   useEffect(() => {
     const query = new URLSearchParams(filtersQuery(filters))
@@ -244,21 +295,18 @@ export function GradesBoard({
     window.history.replaceState(null, '', `${pathname}${search ? `?${search}` : ''}`)
   }, [filters, grouping, openId, pathname])
 
-  const academicYears = [...new Set(subjects.flatMap((s) => (s.academicYear ? [s.academicYear] : [])))].sort(
-    (a, b) => b - a
-  )
   const shown = applyFilters(subjects, filters)
   const open = subjects.find((s) => s.subjectId === openId) ?? null
   const filtered = filtersQuery(filters) !== ''
 
   return (
     <div className='flex flex-col gap-6'>
-      <Filters filters={filters} set={set} academicYears={academicYears} careerYears={careerYears} />
+      <Filters filters={filters} set={set} grouping={grouping} onGrouping={setGrouping} />
 
       {shown.length === 0 ? (
         <div className='flex flex-col items-center gap-3'>
           <EmptyState icon={SearchX} title='Ninguna materia coincide'>
-            Probá con otro año o con otro estado.
+            Probá con otro estado o con otro tipo.
           </EmptyState>
           {filtered && (
             <button
@@ -272,26 +320,31 @@ export function GradesBoard({
         </div>
       ) : (
         <div className='flex flex-col gap-6'>
-          <div className='flex flex-wrap items-center justify-between gap-2'>
-            <p className='px-1 text-[0.8125rem] text-muted-foreground'>
-              {shown.length} {shown.length === 1 ? 'materia' : 'materias'}
+          <div className='flex items-center justify-between gap-2'>
+            <p className='px-1 text-[0.8125rem] text-muted-foreground tabular-nums'>
+              <b className='font-semibold text-ink'>Total</b> {shown.length}{' '}
+              {shown.length === 1 ? 'materia' : 'materias'}
             </p>
-            <GroupingSwitch current={grouping} onChange={setGrouping} />
+            {filtered && (
+              <button
+                type='button'
+                onClick={() => setFilters(DEFAULT_FILTERS)}
+                className='inline-flex h-9 cursor-pointer items-center gap-1 rounded-full px-3 text-[0.8125rem] font-semibold whitespace-nowrap text-blue hover:bg-accent focus-ring'
+              >
+                <X aria-hidden='true' className='size-4' />
+                Limpiar filtros
+              </button>
+            )}
           </div>
           {groupsOf(shown, grouping).map((group) => (
-            <section key={group.name} aria-label={group.name} className='flex flex-col gap-3'>
-              <h2 className='flex items-baseline gap-2 px-1 text-lg font-extrabold text-ink'>
-                {group.name}
-                <span className='text-[0.8125rem] font-medium text-muted-foreground'>
-                  {group.items.length} {group.items.length === 1 ? 'materia' : 'materias'}
-                </span>
-              </h2>
-              <ul className='grid gap-3 lg:grid-cols-2 2xl:grid-cols-3'>
-                {group.items.map((s) => (
-                  <SubjectCard key={s.subjectId} subject={s} onOpen={() => setOpenId(s.subjectId)} />
-                ))}
-              </ul>
-            </section>
+            <Group
+              key={group.name}
+              name={group.name}
+              items={group.items}
+              open={!folded.has(group.name)}
+              onToggle={() => fold(group.name)}
+              onOpen={setOpenId}
+            />
           ))}
         </div>
       )}

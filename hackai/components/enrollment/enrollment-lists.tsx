@@ -16,6 +16,7 @@ import {
   type Tab
 } from '@/components/enrollment/list-filters'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
+import { LinkPending } from '@/components/ui/link-pending'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { cn } from '@/lib/utils'
@@ -23,8 +24,11 @@ import { cn } from '@/lib/utils'
 function SubjectRow({ tab, kind, item, active }: { tab: Tab; kind: Kind; item: ListItem; active: boolean }) {
   return (
     <li>
-      <a
+      {/* Un Link y no un <a>: con <a> cada toque recargaba la pantalla entera. Mientras llega el detalle, la
+          lista queda donde estaba y la flecha de la fila se vuelve una ruedita. */}
+      <Link
         href={href(tab, item.subjectId, kind)}
+        prefetch={false}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors focus-ring',
@@ -43,15 +47,17 @@ function SubjectRow({ tab, kind, item, active }: { tab: Tab; kind: Kind; item: L
             {item.detail}
           </span>
         </span>
-        <ChevronRight
-          aria-hidden='true'
-          className={cn(
-            'size-4.5 flex-none transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none',
-            active ? 'text-blue' : 'text-gray-light'
-          )}
-          strokeWidth={2}
-        />
-      </a>
+        <LinkPending className='size-4.5 text-blue'>
+          <ChevronRight
+            aria-hidden='true'
+            className={cn(
+              'size-4.5 flex-none transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none',
+              active ? 'text-blue' : 'text-gray-light'
+            )}
+            strokeWidth={2}
+          />
+        </LinkPending>
+      </Link>
     </li>
   )
 }
@@ -178,6 +184,26 @@ function SubjectList({
   )
 }
 
+/* Lo que ocupa el detalle mientras no hay una materia elegida: un panel de todo el alto de la columna, con el aviso
+   en el medio. Así la columna no queda vacía con el texto flotando arriba. */
+function PickSubject({ tab }: { tab: Tab }) {
+  return (
+    <div className='grid h-full min-h-[22rem] place-items-center rounded-2xl border border-dashed border-ink/12 bg-ice/50 p-6'>
+      <div className='flex max-w-sm flex-col items-center gap-3 text-center'>
+        <span className='grid size-12 place-items-center rounded-2xl bg-card text-blue shadow-card'>
+          <MousePointerClick aria-hidden='true' className='size-6' strokeWidth={1.8} />
+        </span>
+        <strong className='text-base font-semibold text-ink'>Elegí una materia</strong>
+        <p className='text-[0.875rem] text-pretty text-muted-foreground'>
+          {tab === 'materias'
+            ? 'Tocá una materia de la lista para ver sus comisiones, horarios, cupo y docentes.'
+            : 'Tocá una materia de la lista para ver sus mesas, fechas y tribunal.'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 /* La lista a la izquierda y el detalle a la derecha; en el celular, uno por vez.
    En compu el tablero tiene el alto de la ventana y cada columna scrollea sola,
    así la pantalla no se mueve. Las columnas son `relative`: si no, los textos
@@ -264,15 +290,7 @@ export function EnrollmentLists({
                 Todas las materias
               </Link>
             )}
-            {selected && selected === detailSubject && tab === detailTab ? (
-              detail
-            ) : (
-              <EmptyState icon={MousePointerClick} title='Elegí una materia'>
-                {tab === 'materias'
-                  ? 'Tocá una materia de la lista para ver sus comisiones, horarios, cupo y docentes.'
-                  : 'Tocá una materia de la lista para ver sus mesas, fechas y tribunal.'}
-              </EmptyState>
-            )}
+            {selected && selected === detailSubject && tab === detailTab ? detail : <PickSubject tab={tab} />}
           </section>
         </div>
       )}

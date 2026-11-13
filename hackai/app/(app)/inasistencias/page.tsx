@@ -25,7 +25,7 @@ export default async function InasistenciasPage() {
 
   return (
     <>
-      <PageHeader title='Inasistencias' subtitle='Tus faltas por materia' art='academico' />
+      <PageHeader title='Inasistencias' subtitle='Tus faltas por materia' art='academico' desktopBell={false} />
       <main className='mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         {!result.ok ? (
           <ErrorNotice>{ERRORS[result.error] ?? 'Algo salió mal al traer tus inasistencias.'}</ErrorNotice>

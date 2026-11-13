@@ -61,15 +61,21 @@ export function NewsFilter({
   gradeNews: ReactNode
 }) {
   const kind = asKind(useSearchParams().get('tipo') ?? undefined)
-  return (
-    <>
-      {kind === 'todas' && gradeNews}
-      <News items={items} kind={kind} grades={grades} />
-    </>
-  )
+  return <News items={items} kind={kind} grades={grades} gradeNews={gradeNews} />
 }
 
-function News({ items, kind, grades }: { items: UnreadItem[]; kind: NewsKind | 'todas'; grades: number }) {
+/* Primero el filtro, después las notas nuevas (solo en «Todas») y al final lo sin leer de cada materia. */
+function News({
+  items,
+  kind,
+  grades,
+  gradeNews
+}: {
+  items: UnreadItem[]
+  kind: NewsKind | 'todas'
+  grades: number
+  gradeNews: ReactNode
+}) {
   if (items.length === 0 && grades === 0) {
     return (
       <EmptyState icon={CheckCheck} title='Estás al día'>
@@ -78,13 +84,14 @@ function News({ items, kind, grades }: { items: UnreadItem[]; kind: NewsKind | '
       </EmptyState>
     )
   }
-  // Con notas nuevas no está al día, aunque no haya nada sin leer en los espacios: en «Todas» van solas, arriba.
-  if (items.length === 0 && kind === 'todas') return null
+  // Con notas nuevas no está al día, aunque no haya nada sin leer en los espacios: en «Todas» van solas, sin filtro.
+  if (items.length === 0 && kind === 'todas') return gradeNews
   // Filtrando por otro tipo, las notas no salen: si no hay nada de ese tipo, el filtro y «Nada de este tipo».
   const shown = kind === 'todas' ? items : items.filter((i) => newsKindOf(i.kind) === kind)
   return (
     <>
       <KindFilter items={items} grades={grades} current={kind} />
+      {kind === 'todas' && gradeNews}
       {shown.length === 0 ? (
         <EmptyState icon={SearchX} title='Nada de este tipo'>
           No tenés novedades sin leer de este tipo. Probá con otro filtro.

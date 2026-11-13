@@ -117,12 +117,6 @@ export function WeightsForm({
 }) {
   return (
     <Card className='flex flex-col gap-3 p-4'>
-      <div className='flex flex-col gap-1'>
-        <h2 className='text-base font-extrabold'>Pesos de las columnas</h2>
-        <p className='text-[0.8125rem] text-muted-foreground'>
-          Cuenta cada columna según su peso y solo en los alumnos que tienen nota en ella. No hace falta que sumen 100.
-        </p>
-      </div>
       <ActionForm action={saveWeights} className='flex flex-col gap-3'>
         <input type='hidden' name='subjectId' value={subjectId} />
         <input type='hidden' name='sectionId' value={sectionId} />
@@ -153,9 +147,16 @@ export function WeightsForm({
             </li>
           ))}
         </ul>
-        <p id='pesos-ayuda' className={cn('text-[0.8125rem]', HELP)}>
-          De 0 a 100. Los pesos suman {gradeInputValue(weightTotal) || '0'}.
-        </p>
+        {/* El total, en la misma columna que los pesos. */}
+        <div className='flex items-center justify-between gap-3 border-t border-border pt-3'>
+          <span id='pesos-ayuda' className={cn('text-[0.8125rem]', HELP)}>
+            De 0 a 100 cada una
+          </span>
+          <span className='w-24 flex-none px-3 text-right text-[0.9375rem] font-semibold text-ink tabular-nums'>
+            <span className='sr-only'>Suman </span>
+            {gradeInputValue(weightTotal) || '0'}
+          </span>
+        </div>
         <div className='flex flex-wrap gap-2'>
           <SubmitButton className={PRIMARY}>Guardar los pesos</SubmitButton>
         </div>

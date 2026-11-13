@@ -4,8 +4,9 @@
    No llega a ningún lado: vive en esta pestaña hasta que se recarga. En el SIU
    real, las solicitudes se hacen en la Autogestión. */
 import { CircleCheck, FilePlus2 } from 'lucide-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { StatusPill, type StatusTone } from '@/components/ui/status-pill'
 
@@ -58,7 +59,7 @@ function NewRequest({ onCreate }: { onCreate: (request: PendingRequest) => void 
   return (
     <Sheet onOpenChange={(open) => !open && setCreated(null)}>
       <SheetTrigger asChild>
-        <Button size='lg' className='min-h-10 gap-1.5 font-semibold'>
+        <Button size='lg' className='min-h-10 flex-none gap-1.5 font-semibold'>
           <FilePlus2 aria-hidden='true' data-icon='inline-start' />
           Nueva solicitud
         </Button>
@@ -82,14 +83,12 @@ function NewRequest({ onCreate }: { onCreate: (request: PendingRequest) => void 
           <form onSubmit={submit} className='flex flex-col gap-4'>
             <label className='flex flex-col gap-1.5 text-[0.8125rem] font-semibold text-ink'>
               Qué necesitás
-              <select
+              <Select
                 name='type'
-                className='h-11 rounded-xl border border-border bg-card px-3 text-[0.875rem] font-normal focus-ring'
-              >
-                {TYPES.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
+                defaultValue={TYPES[0]}
+                options={TYPES.map((t) => ({ value: t, label: t }))}
+                className='h-11 pl-3 font-normal'
+              />
             </label>
             <label className='flex flex-col gap-1.5 text-[0.8125rem] font-semibold text-ink'>
               Comentario <span className='font-normal text-muted-foreground'>(opcional)</span>
@@ -110,11 +109,13 @@ function NewRequest({ onCreate }: { onCreate: (request: PendingRequest) => void 
   )
 }
 
-export function Requests() {
+/** `heading`: el título y la explicación de la sección, que van a la izquierda de «Nueva solicitud». */
+export function Requests({ heading }: { heading: ReactNode }) {
   const [requests, setRequests] = useState(SAMPLE)
   return (
     <div className='flex flex-col gap-3'>
-      <div className='flex justify-end'>
+      <div className='flex items-center justify-between gap-3'>
+        {heading}
         <NewRequest onCreate={(r) => setRequests((list) => [r, ...list])} />
       </div>
       <ul className='divide-y divide-border rounded-2xl border border-border bg-card'>

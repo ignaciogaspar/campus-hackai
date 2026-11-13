@@ -93,6 +93,20 @@ export function byAcademicYear(subjects: SubjectStanding[]): { name: string; ite
   }))
 }
 
+/** Dentro de un grupo, primero lo que todavía se está haciendo: las en curso, después las que deben el final y
+    al final las aprobadas. Entre las del mismo estado, en el orden en que vienen. */
+const STATUS_ORDER: Record<SubjectStanding['status'], number> = {
+  'en-curso': 0,
+  regular: 1,
+  pendiente: 2,
+  promocionada: 3,
+  aprobada: 3
+}
+
 export function groupsOf(subjects: SubjectStanding[], grouping: Grouping) {
-  return grouping === 'carrera' ? byGroup(subjects) : byAcademicYear(subjects)
+  const groups = grouping === 'carrera' ? byGroup(subjects) : byAcademicYear(subjects)
+  return groups.map((g) => ({
+    ...g,
+    items: g.items.toSorted((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
+  }))
 }

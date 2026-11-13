@@ -5,15 +5,13 @@ import {
   CalendarDays,
   CalendarX,
   ClipboardList,
-  Ellipsis,
   FileText,
   GraduationCap,
   House,
   LibraryBig,
   LogOut,
   type LucideIcon,
-  NotebookPen,
-  PanelLeft
+  NotebookPen
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -23,74 +21,65 @@ import { signOut } from '@/app/actions/session'
 import { Avatar } from '@/components/shell/avatar'
 import { Brand } from '@/components/shell/brand'
 import { useSidebar } from '@/components/shell/sidebar-context'
-import { SubjectIcon } from '@/components/subjects/subject-icon'
-import { LinkPending } from '@/components/ui/link-pending'
-import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { isActive, TabBar } from '@/components/shell/tab-bar'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Person, Role } from '@/lib/core/people'
 import { cn } from '@/lib/utils'
-
-export type NavSubject = { href: string; code: string; name: string; unread: number }
 
 type Section = {
   href: string
   label: string
   icon: LucideIcon
-  /** En el celular va en la barra de abajo; si no, en «Más». */
-  bottom: boolean
   /** Solo en la barra lateral de compu: en el celular ya está en el encabezado, como la campana. */
   desktopOnly?: boolean
 }
 
 /* El menú del alumno. Los nombres son los que usa el alumno, no los del SIU:
-   «Notas» y no «Académico» o «Actuación provisoria». Materias va primero y es
-   el inicio: debajo lleva, siempre a la vista, las materias que cursa. */
+   «Notas» y no «Académico» o «Actuación provisoria». Materias va primero y es el inicio. */
 const STUDENT: Section[] = [
-  { href: '/materias', label: 'Materias', icon: LibraryBig, bottom: true },
-  { href: '/calendario', label: 'Calendario', icon: CalendarDays, bottom: true },
-  { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList, bottom: true },
-  { href: '/notas', label: 'Notas', icon: NotebookPen, bottom: true },
-  { href: '/inasistencias', label: 'Inasistencias', icon: CalendarX, bottom: false },
-  { href: '/novedades', label: 'Novedades', icon: Bell, bottom: false, desktopOnly: true }
+  { href: '/materias', label: 'Materias', icon: LibraryBig },
+  { href: '/calendario', label: 'Calendario', icon: CalendarDays },
+  { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList },
+  { href: '/notas', label: 'Notas', icon: NotebookPen },
+  { href: '/inasistencias', label: 'Inasistencias', icon: CalendarX },
+  { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
 ]
 
 /* Lo que es de la carrera entera y no del día a día. */
 const CAREER: Section[] = [
-  { href: '/estado', label: 'Plan de estudios', icon: GraduationCap, bottom: false },
-  { href: '/tramites', label: 'Trámites y reportes', icon: FileText, bottom: false }
+  { href: '/estado', label: 'Plan de estudios', icon: GraduationCap },
+  { href: '/tramites', label: 'Trámites y reportes', icon: FileText }
 ]
 
 const TEACHER: Section[] = [
-  { href: '/materias', label: 'Materias', icon: LibraryBig, bottom: true },
-  { href: '/hoy', label: 'Hoy', icon: House, bottom: true },
-  { href: '/calendario', label: 'Calendario', icon: CalendarDays, bottom: true },
-  { href: '/novedades', label: 'Novedades', icon: Bell, bottom: false, desktopOnly: true }
+  { href: '/materias', label: 'Materias', icon: LibraryBig },
+  { href: '/hoy', label: 'Hoy', icon: House },
+  { href: '/calendario', label: 'Calendario', icon: CalendarDays },
+  { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
 ]
 
-const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
+/* En el celular, qué va en la barra de abajo y en qué orden; el resto va en «Más». */
+const STUDENT_TABS = ['/calendario', '/notas', '/materias', '/inscripciones']
+const TEACHER_TABS = ['/materias', '/hoy', '/calendario']
 
 /* Lo que se apaga al plegar la barra: los nombres y los títulos de grupo. Se
    van rápido y, al desplegar, vuelven cuando la barra ya casi se abrió, para
    no verse cortados. Siguen en el árbol de accesibilidad. */
 const FADES =
-  'whitespace-nowrap transition-opacity duration-200 delay-100 motion-reduce:transition-none lg:group-data-[sidebar=plegada]/nav:pointer-events-none lg:group-data-[sidebar=plegada]/nav:opacity-0 lg:group-data-[sidebar=plegada]/nav:delay-0'
+  'whitespace-nowrap transition-opacity duration-200 delay-100 motion-reduce:transition-none group-data-[sidebar=plegada]/nav:pointer-events-none group-data-[sidebar=plegada]/nav:opacity-0 group-data-[sidebar=plegada]/nav:delay-0'
 
-/* Una fila de la barra en compu: ícono de trazo y nombre en tinta, sin fondo.
-   La elegida, un recuadro blanco de lado a lado con las esquinas apenas redondeadas. El padding deja el ícono en
-   el medio de la barra plegada (sidebar-frame.tsx). */
+/* Una fila de la barra: ícono de trazo y nombre en tinta, sin fondo. La
+   elegida, un recuadro blanco de lado a lado con las esquinas apenas
+   redondeadas. El padding deja el ícono en el medio de la barra plegada
+   (sidebar-frame.tsx). */
 const ROW =
-  'lg:my-0.5 lg:flex-row lg:gap-3.5 lg:rounded-lg lg:px-4 lg:py-2.5 lg:text-[0.875rem] lg:font-medium lg:text-ink lg:hover:bg-white/55 lg:hover:text-ink'
-const ROW_SELECTED =
-  'lg:bg-white lg:font-semibold lg:text-ink lg:shadow-[0_1px_2px_rgb(16_20_44/0.04)] lg:hover:bg-white'
-const ICON = 'size-5 flex-none lg:size-[1.125rem]'
+  'relative my-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.8125rem] font-medium text-ink transition-colors duration-150 hover:bg-white/55 focus-ring'
+const ROW_SELECTED = 'bg-white font-semibold shadow-[0_1px_2px_rgb(16_20_44/0.04)] hover:bg-white'
+const ICON = 'size-[1.125rem] flex-none'
 
 /* El título de un grupo: «Menú principal», «Tus materias», «Cuenta». */
 function GroupLabel({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <p className={cn('hidden px-4 pt-6 pb-2 text-[0.8125rem] text-gray-light lg:block', FADES, className)}>
-      {children}
-    </p>
-  )
+  return <p className={cn('px-3 pt-6 pb-2 text-[0.75rem] text-gray-light', FADES, className)}>{children}</p>
 }
 
 /* «Salir», un ícono rojo al lado de quién entró. Plegada la barra no está: queda solo el avatar. */
@@ -114,11 +103,11 @@ function SignOutButton() {
    celular lo mismo está en la hoja que abre el avatar del encabezado. */
 function SidebarAccount({ person, detail }: { person: Person; detail?: string }) {
   return (
-    <div className='mt-auto hidden flex-col lg:flex'>
+    <div className='mt-auto flex flex-col'>
       {/* Una línea separa la cuenta de lo de arriba. */}
       <div aria-hidden='true' className='mx-2 mt-4 border-t border-ink/10' />
       <GroupLabel className='pt-4'>Cuenta</GroupLabel>
-      <div className='flex items-center gap-3 px-2 lg:group-data-[sidebar=plegada]/nav:justify-center lg:group-data-[sidebar=plegada]/nav:px-0'>
+      <div className='flex items-center gap-3 px-2 group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:px-0'>
         <Avatar person={person} className='size-10 ring-2 ring-white/80' />
         <span className={cn('flex min-w-0 flex-1 flex-col', FADES)}>
           <span className='truncate text-[0.875rem] leading-snug font-semibold text-ink' title={person.name}>
@@ -126,11 +115,38 @@ function SidebarAccount({ person, detail }: { person: Person; detail?: string })
           </span>
           {detail && <span className='truncate text-[0.8125rem] leading-snug text-gray-light'>{detail}</span>}
         </span>
-        <form action={signOut} className='lg:group-data-[sidebar=plegada]/nav:hidden'>
+        <form action={signOut} className='group-data-[sidebar=plegada]/nav:hidden'>
           <SignOutButton />
         </form>
       </div>
     </div>
+  )
+}
+
+/* El ícono del botón de plegar: el panel con una flecha adentro que apunta para donde va a ir la barra. Al
+   plegar o desplegar, la flecha gira con la misma curva y duración que la barra. */
+function ToggleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      aria-hidden='true'
+      viewBox='0 0 24 24'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth={1.8}
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      className='size-5'
+    >
+      <rect x='3' y='3' width='18' height='18' rx='2' />
+      <path d='M9 3v18' />
+      <path
+        d='m16 10-2 2 2 2'
+        className={cn(
+          'origin-[15px_12px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+          collapsed && 'rotate-180'
+        )}
+      />
+    </svg>
   )
 }
 
@@ -140,10 +156,10 @@ function SidebarAccount({ person, detail }: { person: Person; detail?: string })
 function SidebarTop() {
   const { collapsed, toggle } = useSidebar()
   return (
-    <div className='hidden items-center gap-2 px-2 pb-2 lg:flex lg:group-data-[sidebar=plegada]/nav:justify-center lg:group-data-[sidebar=plegada]/nav:gap-0 lg:group-data-[sidebar=plegada]/nav:px-0'>
+    <div className='flex items-center gap-2 px-2 pb-2 group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:gap-0 group-data-[sidebar=plegada]/nav:px-0'>
       <div
         className={cn(
-          'min-w-0 flex-1 overflow-hidden lg:group-data-[sidebar=plegada]/nav:w-0 lg:group-data-[sidebar=plegada]/nav:flex-none',
+          'min-w-0 flex-1 overflow-hidden group-data-[sidebar=plegada]/nav:w-0 group-data-[sidebar=plegada]/nav:flex-none',
           FADES
         )}
       >
@@ -157,21 +173,18 @@ function SidebarTop() {
         title={collapsed ? 'Desplegar (⌘B)' : 'Plegar (⌘B)'}
         className='grid size-9 flex-none cursor-pointer place-items-center rounded-lg text-ink transition-colors duration-150 hover:bg-white/55 focus-ring'
       >
-        <PanelLeft aria-hidden='true' className='size-5' strokeWidth={1.8} />
+        <ToggleIcon collapsed={collapsed} />
       </button>
     </div>
   )
 }
 
-/* El contador de no leídos de la barra: negro, como un globito. Plegada, queda
-   sobre la esquina del ícono. */
+/* El contador de no leídos de la barra: negro, como un globito. Plegada, más chico y sobre la esquina de arriba
+   del ícono, adentro de la fila: así no se corta contra el borde de la barra. */
 const SIDEBAR_COUNT =
-  'lg:bg-ink lg:text-white lg:group-data-[sidebar=plegada]/nav:absolute lg:group-data-[sidebar=plegada]/nav:top-0.5 lg:group-data-[sidebar=plegada]/nav:left-7 lg:group-data-[sidebar=plegada]/nav:ring-2 lg:group-data-[sidebar=plegada]/nav:ring-white/80'
+  'bg-ink text-white group-data-[sidebar=plegada]/nav:absolute group-data-[sidebar=plegada]/nav:top-1 group-data-[sidebar=plegada]/nav:left-[1.375rem] group-data-[sidebar=plegada]/nav:h-4 group-data-[sidebar=plegada]/nav:min-w-4 group-data-[sidebar=plegada]/nav:px-1 group-data-[sidebar=plegada]/nav:text-[0.625rem] group-data-[sidebar=plegada]/nav:ring-2 group-data-[sidebar=plegada]/nav:ring-[#eef5f7]'
 
-const LINK =
-  'flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-steel transition-colors duration-150 hover:text-foreground focus-ring'
-
-/* Una sección del menú. En el celular, las que no van abajo están solo en «Más». */
+/* Una sección del menú de la barra lateral. */
 function SectionLink({
   section,
   pathname,
@@ -184,107 +197,22 @@ function SectionLink({
   /** Lo sin leer, como en Novedades. */
   count?: number
 }) {
-  const { href, label, icon: Icon, bottom } = section
+  const { href, label, icon: Icon } = section
   const active = isActive(pathname, href)
   return (
     <Link
       href={href}
       title={collapsed ? label : undefined}
       aria-current={active ? 'page' : undefined}
-      className={cn(
-        LINK,
-        ROW,
-        'relative',
-        !bottom && 'max-lg:hidden',
-        active && cn('text-blue hover:text-blue', ROW_SELECTED)
-      )}
+      className={cn(ROW, active && ROW_SELECTED)}
     >
       <Icon aria-hidden='true' className={ICON} strokeWidth={active ? 2.1 : 1.8} />
-      <span className={cn('max-lg:max-w-full max-lg:truncate lg:min-w-0 lg:flex-1', FADES)}>{label}</span>
-      <UnreadCount count={count} className={cn('max-lg:hidden', SIDEBAR_COUNT)} />
+      <span className={cn('min-w-0 flex-1 truncate', FADES)}>{label}</span>
+      <UnreadCount count={count} className={SIDEBAR_COUNT} />
     </Link>
   )
 }
 
-/* Las materias que cursa o dicta, siempre a la vista debajo de «Materias»: una
-   rama con una línea a la izquierda, como un índice. No se pliega; si son
-   muchas, scrollea con el resto de la barra. Plegada la barra, quedan sus íconos. */
-function SubjectBranch({ subjects, pathname }: { subjects: NavSubject[]; pathname: string }) {
-  if (subjects.length === 0) return null
-  return (
-    <ul
-      aria-label='Tus materias'
-      className='hidden lg:my-1 lg:ml-[1.625rem] lg:flex lg:flex-col lg:border-l lg:border-ink/12 lg:pl-1.5 lg:group-data-[sidebar=plegada]/nav:ml-0 lg:group-data-[sidebar=plegada]/nav:border-l-0 lg:group-data-[sidebar=plegada]/nav:pl-0'
-    >
-      {subjects.map((s) => {
-        const active = isActive(pathname, s.href)
-        return (
-          <li key={s.href}>
-            <Link
-              href={s.href}
-              title={s.name}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[0.8125rem] font-medium text-ink/80 transition-colors duration-150 hover:bg-white/55 hover:text-ink focus-ring-inset lg:group-data-[sidebar=plegada]/nav:justify-center lg:group-data-[sidebar=plegada]/nav:px-0 lg:group-data-[sidebar=plegada]/nav:py-2',
-                active && cn(ROW_SELECTED, 'text-ink')
-              )}
-            >
-              <SubjectIcon
-                name={s.name}
-                size='sm'
-                tone={active ? 'solid' : 'soft'}
-                className='size-7 [&_svg]:size-3.5'
-              />
-              <span className={cn('min-w-0 flex-1 truncate', FADES)}>{s.name}</span>
-              <LinkPending className={cn('text-blue', FADES)}>
-                <UnreadCount count={s.unread} className={SIDEBAR_COUNT} />
-              </LinkPending>
-            </Link>
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-/* En el celular, el último lugar de la barra de abajo: abre una hoja con las
-   secciones que no entran (Plan de estudios, Trámites y reportes). */
-function MoreSheet({ sections, pathname }: { sections: Section[]; pathname: string }) {
-  const active = sections.some((s) => isActive(pathname, s.href))
-  return (
-    <Sheet>
-      <SheetTrigger className={cn(LINK, 'cursor-pointer lg:hidden', active && 'text-blue hover:text-blue')}>
-        <Ellipsis aria-hidden='true' className={ICON} strokeWidth={active ? 2.1 : 1.8} />
-        <span>Más</span>
-      </SheetTrigger>
-      <SheetContent title='Más secciones'>
-        <ul className='flex flex-col gap-1'>
-          {sections.map(({ href, label, icon: Icon }) => (
-            <li key={href}>
-              <SheetClose asChild>
-                <Link
-                  href={href}
-                  aria-current={isActive(pathname, href) ? 'page' : undefined}
-                  className='flex min-h-12 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-accent focus-ring aria-[current=page]:bg-accent aria-[current=page]:text-blue'
-                >
-                  <Icon aria-hidden='true' className='size-5' strokeWidth={1.8} />
-                  {label}
-                </Link>
-              </SheetClose>
-            </li>
-          ))}
-        </ul>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-/* En el celular, barra inferior con lo de todos los días y «Más» para el resto.
-   En compu, la barra lateral sobre el marco de vidrio, en grupos como un menú
-   de app: el menú principal, con Materias primero y sus materias colgando
-   debajo; Tu carrera (solo alumnos) y, al pie, la cuenta con Salir. Lo del
-   medio scrollea si no entra. Se pliega a solo íconos; su ancho sale de
-   --sidebar-w (sidebar-frame.tsx). */
 export function SidebarNews({ unread = 0 }: { unread?: number }) {
   const pathname = usePathname()
   const { collapsed } = useSidebar()
@@ -292,22 +220,22 @@ export function SidebarNews({ unread = 0 }: { unread?: number }) {
   return <SectionLink section={section} pathname={pathname} collapsed={collapsed} count={unread} />
 }
 
-export function SidebarSubjects({ subjects }: { subjects: NavSubject[] }) {
-  return <SubjectBranch subjects={subjects} pathname={usePathname()} />
-}
+const pick = (sections: Section[], hrefs: string[]) => hrefs.flatMap((href) => sections.filter((s) => s.href === href))
 
+/* En el celular, la barra de vidrio de abajo (tab-bar.tsx) con lo de todos los
+   días y «Más» para el resto. En compu, la barra lateral sobre el marco de
+   vidrio, en grupos como un menú de app: el menú principal, Tu carrera (solo
+   alumnos) y, al pie, la cuenta con Salir. Lo del medio scrollea si no entra,
+   solo para abajo. Se pliega a solo íconos; su ancho sale de --sidebar-w
+   (sidebar-frame.tsx). */
 export function AppNav({
-  subjects,
   unread = 0,
-  subjectLinks,
   newsLink,
   role,
   person,
   detail
 }: {
   school?: string
-  subjects?: NavSubject[]
-  subjectLinks?: ReactNode
   newsLink?: ReactNode
   role?: Role
   /** Lo sin leer de todas las materias, para Novedades. */
@@ -320,46 +248,46 @@ export function AppNav({
   const student = (role ?? person?.role) !== 'profesor'
   const main = student ? STUDENT : TEACHER
   const career = student ? CAREER : []
-  const more = [...main, ...career].filter((s) => !s.bottom && !s.desktopOnly)
-  const columns = main.filter((s) => s.bottom).length + (more.length > 0 ? 1 : 0)
+  const tabHrefs = student ? STUDENT_TABS : TEACHER_TABS
+  const tabs = pick(main, tabHrefs)
+  const more = [...main, ...career].filter((s) => !tabHrefs.includes(s.href) && !s.desktopOnly)
   return (
-    <nav
-      aria-label='Navegación principal'
-      data-sidebar={collapsed ? 'plegada' : 'abierta'}
-      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-      className='group/nav fixed inset-x-0 bottom-0 z-10 grid border-t border-border bg-card px-2 pt-1.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] lg:inset-y-0 lg:left-0 lg:right-auto lg:flex lg:w-(--sidebar-w) lg:flex-col lg:overflow-x-hidden lg:border-t-0 lg:bg-transparent lg:px-4 lg:pt-6 lg:pb-6 lg:transition-[width] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
-    >
-      <SidebarTop />
-      {/* En el celular, `contents`: los enlaces son celdas de la barra de abajo. */}
-      <div className='max-lg:contents lg:-mx-1 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:px-1 lg:[scrollbar-width:thin]'>
-        <GroupLabel>Menú principal</GroupLabel>
-        {main.map((section) => (
-          <div key={section.href} className='max-lg:contents'>
-            {section.href === '/novedades' && newsLink ? (
-              newsLink
+    <>
+      <TabBar tabs={tabs} more={more} />
+      <nav
+        aria-label='Navegación principal'
+        data-sidebar={collapsed ? 'plegada' : 'abierta'}
+        className='group/nav fixed inset-y-0 left-0 z-10 hidden w-(--sidebar-w) flex-col overflow-hidden px-3 py-6 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:flex'
+      >
+        <SidebarTop />
+        <div className='-mx-1 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-1 [scrollbar-width:thin]'>
+          <GroupLabel>Menú principal</GroupLabel>
+          {main.map((section) =>
+            section.href === '/novedades' && newsLink ? (
+              <div key={section.href} className='contents'>
+                {newsLink}
+              </div>
             ) : (
               <SectionLink
+                key={section.href}
                 section={section}
                 pathname={pathname}
                 collapsed={collapsed}
                 count={section.href === '/novedades' ? unread : 0}
               />
-            )}
-            {section.href === '/materias' &&
-              (subjectLinks ?? <SubjectBranch subjects={subjects ?? []} pathname={pathname} />)}
-          </div>
-        ))}
-        {career.length > 0 && (
-          <>
-            <GroupLabel>Tu carrera</GroupLabel>
-            {career.map((section) => (
-              <SectionLink key={section.href} section={section} pathname={pathname} collapsed={collapsed} />
-            ))}
-          </>
-        )}
-        {more.length > 0 && <MoreSheet sections={more} pathname={pathname} />}
-      </div>
-      {person && <SidebarAccount person={person} detail={detail} />}
-    </nav>
+            )
+          )}
+          {career.length > 0 && (
+            <>
+              <GroupLabel>Tu carrera</GroupLabel>
+              {career.map((section) => (
+                <SectionLink key={section.href} section={section} pathname={pathname} collapsed={collapsed} />
+              ))}
+            </>
+          )}
+        </div>
+        {person && <SidebarAccount person={person} detail={detail} />}
+      </nav>
+    </>
   )
 }

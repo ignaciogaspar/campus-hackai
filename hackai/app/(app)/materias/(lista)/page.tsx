@@ -84,7 +84,7 @@ export default async function MateriasPage() {
   const student = session.role === 'alumno'
   return (
     <>
-      <PageHeader title='Mis materias' art='materias'>
+      <PageHeader title='Mis materias' art='materias' desktopBell={!student}>
         {student && (
           <Link
             href='/inscripciones'

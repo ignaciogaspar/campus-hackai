@@ -12,6 +12,7 @@ import { requestCertificateAction } from '@/app/(app)/tramites/actions'
 import { shortDate } from '@/components/dates'
 import { INITIAL_REQUEST_STATE } from '@/components/procedures/request-state'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { StatusPill, type StatusTone } from '@/components/ui/status-pill'
 import type { SiuCertificateRequest } from '@/lib/ports/siu'
@@ -147,10 +148,15 @@ function RequestForm({
       )}
       <label className={LABEL}>
         Qué constancia
-        <select name='type' className={FIELD} defaultValue='alumno-regular'>
-          <option value='alumno-regular'>Constancia de alumno regular</option>
-          <option value='examen-final'>Constancia de examen final (se pide en el SIU)</option>
-        </select>
+        <Select
+          name='type'
+          defaultValue='alumno-regular'
+          options={[
+            { value: 'alumno-regular', label: 'Constancia de alumno regular' },
+            { value: 'examen-final', label: 'Constancia de examen final (se pide en el SIU)' }
+          ]}
+          className='h-11 pl-3 font-normal'
+        />
       </label>
       <label className={LABEL}>
         Presentar a
@@ -190,7 +196,7 @@ function NewRequest({ selfServiceUrl }: { selfServiceUrl: string }) {
   return (
     <Sheet onOpenChange={(open) => !open && setDraft(null)}>
       <SheetTrigger asChild>
-        <Button size='lg' className='min-h-11 gap-1.5 font-semibold'>
+        <Button size='lg' className='min-h-10 flex-none gap-1.5 font-semibold'>
           <FilePlus2 aria-hidden='true' data-icon='inline-start' />
           Nueva solicitud
         </Button>
@@ -204,14 +210,18 @@ function NewRequest({ selfServiceUrl }: { selfServiceUrl: string }) {
 
 export function SiuRequests({
   requests,
-  selfServiceUrl
+  selfServiceUrl,
+  heading
 }: {
   requests: SiuCertificateRequest[]
   selfServiceUrl: string
+  /** El título y la explicación de la sección, a la izquierda de «Nueva solicitud». */
+  heading: ReactNode
 }) {
   return (
     <div className='flex flex-col gap-3'>
-      <div className='flex justify-end'>
+      <div className='flex items-center justify-between gap-3'>
+        {heading}
         <NewRequest selfServiceUrl={selfServiceUrl} />
       </div>
       {requests.length === 0 ? (
