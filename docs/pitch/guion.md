@@ -31,6 +31,8 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 
 - La migración `0014_reports_follow_ups.sql` está aplicada. Si falta, «Seguir a este alumno» falla con «No pudimos guardarlo porque la base no responde».
 - El Planning tiene una planilla cargada. Si está vacío, el alumno ve «Secretaría todavía no cargó las aulas» y la ficha de Reportes marca «No figura en el Planning» en cada materia.
+- Esa planilla trae un cambio de aula de **Análisis Matemático I, comisión A**, entre el día de la demo y una semana después: es el aviso que le llega a Tomás en el paso 7.1-6. Tiene que caer el día de su clase semanal; si no, cuenta como clase extra y no se avisa. La planilla de ejemplo de «Cargar clases» trae los dos: la clase de los lunes y el cambio del lunes 16/11. Tocar el aviso lo marca visto en ese navegador: en el ensayo, mirarlo sin tocarlo, o ensayar en otra ventana de incógnito.
+- La migración del Moodle simulado `supabase/simulados/0004_moodle_contenidos.sql` está aplicada: el material de las materias lee sus columnas nuevas.
 - Variables: `HACKAI_STORE=supabase`, `HACKAI_CLOCK=sistema`, `HACKAI_EXTERNAL_CHANNEL=discord` con `DISCORD_BOT_TOKEN`, `HACKAI_CACHE_SEGUNDOS=0` (si no, la nota publicada puede tardar hasta 5 minutos en verse) y `HACKAI_SIU_REAL_PUBLICO=no`, para que no aparezca «Entrá con tu cuenta del SIU» en el ingreso.
 - Los canales de Discord vinculados se pierden al correr `demo:preparar`: volver a vincularlos después.
 - El enlace de Zoom no viene sembrado y `demo_reset.sql` lo borra: cargarlo en «Alumnos y clases» o no nombrar Zoom.
@@ -41,7 +43,7 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 
 - **Cuántas entrevistas y cuántos docentes** (slides 3, 9 y 10). El guion dice «3 docentes» y «6 entrevistas». Según `docs/entrevistas/`, la persona de la Dirección de Estudios es también la docente de Comunicación de los 120 alumnos, así que cuenta dos veces; y lo del profesor del 12/11 lo contó por escrito un integrante, no fue una entrevista directa. Recontar y corregir las tres slides con el mismo número.
 - **Si se habló con secretaría** (slide 4). En la entrevista de la Dirección de Estudios alguien del equipo dice «recién hablábamos con secretaría», pero no hay notas de esa charla en `docs/entrevistas/`. El guion nombra a la secretaría sin decir si se la entrevistó; si hubo charla, decirlo.
-- **Los números del repo** (slide 10): los tests están contados por texto, sin correr la suite.
+- **Los números del repo** (slide 10): contados sobre `main` el 13/11 a la noche. Si se mergea algo más antes de presentar, recontarlos.
 
 **Si la demo falla:** Persona 2 y Persona 3 pasan a las slides de respaldo (Mis materias, espacio de la materia, inscripción, lado del docente y una captura de reportes) y siguen su parte del guion sin cambiar el orden.
 
@@ -149,10 +151,11 @@ Pie: «Hoy: línea base del 10/11 y entrevistas. HackAI: contado por el equipo, 
 | 1 | Ingreso de demo → elegir a **Tomás Aguirre** | «En producción se entra con la cuenta Microsoft de la Austral; acá elegimos una persona sintética.» |
 | 2 | Cae en **Materias** (la pantalla se titula «Mis materias») | «Solo lo que cursa hoy. Las viejas están archivadas. Cada tarjeta muestra horario, aula y la próxima entrega.» |
 | 3 | En la misma pantalla, pestaña **Final pendiente** | «Lo que el SIU no responde: qué finales debo y su próxima mesa.» Tomás tiene dos, cada uno con su mesa |
-| 4 | Volver a «En curso» → entrar a **Análisis Matemático I** → pestaña **Avisos** | «Cada materia tiene su espacio, que se crea solo desde el SIU.» En la app la pestaña es «Avisos»; `#avisos` es el nombre del canal en Discord |
+| 4 | Volver a «En curso» → entrar a **Análisis Matemático I** → pestaña **Avisos** | «Cada materia tiene su espacio, que se crea solo desde el SIU, con el material en el mismo orden que el aula.» En la app la pestaña es «Avisos»; `#avisos` es el nombre del canal en Discord |
 | 5 | Persona 3 publica un aviso como Mariana Ledesma desde su dispositivo; aparece en la pantalla del alumno y en Discord | «Se publica una vez y llega por Discord, al celular, por la aplicación que ya usa.» Es el momento fuerte: dejar que se vea llegar. La pantalla consulta cada 5 a 20 segundos, así que no prometer un tiempo en voz alta y dejar la pestaña visible |
-| 6 | **Calendario** → **Agregar a mi calendario** | «Clases, parciales, finales y entregas en un solo lugar. Los parciales, los finales y las entregas van al calendario del celular.» El archivo que se baja no lleva las clases |
-| 7 | (Si sobra tiempo) **Inscripciones** → Física I de verano → **Inscribirme** | «El cupo y el horario antes de elegir, y un paso para quedar adentro.» La comisión de la mañana está sin cupo y la de la tarde tiene lugar |
+| 6 | **Campana** → «Cambió la clase de Análisis Matemático I (Comisión A)» → abre el **Planning** en esa clase | «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.» Sale de la planilla que Persona 3 muestra en 7.3 |
+| 7 | **Calendario** → **Agregar a mi calendario** | «Clases, parciales, finales y entregas en un solo lugar. Los parciales, los finales y las entregas van al calendario del celular.» El archivo que se baja no lleva las clases |
+| 8 | (Si sobra tiempo) **Inscripciones** → Física I de verano → **Inscribirme** | «El cupo y el horario antes de elegir, y un paso para quedar adentro.» La comisión de la mañana está sin cupo y la de la tarde tiene lugar |
 
 **Pase:**
 > Ese aviso lo publicó un docente. Persona 3 les muestra su lado.
@@ -175,7 +178,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 
 | Paso | Qué se hace | Qué se dice |
 | --- | --- | --- |
-| 1 | Ventana de **Secretaría** → **Cargar clases** (mostrar dónde se sube la planilla) → **Planning** | «Secretaría sube la planilla de aulas del cuatrimestre, y alumnos y docentes ven el Planning.» El aula de las tarjetas de Materias sale del SIU, no del Planning |
+| 1 | Ventana de **Secretaría** → **Cargar clases** (mostrar dónde se sube la planilla) → **Planning** | «Secretaría sube la planilla de aulas del cuatrimestre, y alumnos y docentes ven el Planning. De acá salió el cambio de aula que le llegó a Tomás.» El aula de las tarjetas de Materias sale del SIU, no del Planning |
 | 2 | **Reportes** → filtro **Facultad**: Ingeniería y Ciencias Empresariales → filtro **Ingreso**: 2024, 2025 y 2026 | «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso, y también al cierre de años anteriores.» «Ingresantes» cuenta solo la cohorte del año del reporte: dejar 2026 entre los años elegidos |
 | 3 | Tocar una barra de «Por facultad» o un indicador de la tarjeta **Para acompañar** → listado → un alumno | «De un número al listado y del listado al alumno, sin salir de Reportes.» Decir que los indicadores son una propuesta del equipo, todavía sin validar con la Dirección de Estudios |
 | 4 | Ficha del alumno: **Lo que le falta** y el plan de estudios, y los créditos de Vida Universitaria | «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.» Con más de 4 actividades, Vida Universitaria arranca cerrada: tocar «Ver las N actividades» o elegir el alumno de antemano |
@@ -196,9 +199,9 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | --- | --- | --- |
 | Discord: un bot propio, en el servidor del equipo | El SIU y el Moodle de la demo: tablas propias con la forma de sus APIs | Ingreso con la cuenta Microsoft de la Austral |
 | La aplicación: publicada, se instala en el celular | Las personas: alumnos, docentes, notas y la población de los reportes son sintéticos | API del SIU y servicios web de Moodle |
-| El SIU con la sesión del propio alumno, desde la compu: lee en vivo y, con su confirmación, inscribe y da de baja. No se guarda en la base ni en los logs | En la demo, la inscripción va contra el SIU simulado. El pase de notas y de asistencia al SIU es siempre simulado | Datos de toda la universidad para reportes (hoy en Power BI) y autorización de Gobierno de Datos |
+| El SIU y el Campus Virtual con la cuenta del propio alumno, desde la compu: leen en vivo sus materias y todo el contenido de sus aulas; el SIU, con su confirmación, inscribe y da de baja. Nada se guarda en la base ni en los logs | En la demo, la inscripción va contra el SIU simulado y el aula sale del Moodle simulado. El pase de notas y de asistencia al SIU es siempre simulado | Datos de toda la universidad para reportes (hoy en Power BI) y autorización de Gobierno de Datos |
 
-> Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada y el SIU con la sesión del propio alumno: desde la compu lee sus datos en vivo y, si él lo confirma, lo inscribe de verdad; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.
+> Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.
 
 ## 9. Evidencia: qué medimos y qué falta medir · 0:50
 
@@ -230,10 +233,11 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | 12/11 | Docentes: tomar lista lleva de 10 a 15 minutos | Docentes al alcance: tomar lista con toques, tareas y entregas propias |
 | 13/11 | Entrar a una materia tardaba hasta 17 segundos | Unos 3 segundos: Moodle y Discord se consultan después |
 | 13/11 | La Dirección de Estudios carga cada nota tres veces, baja 80 reportes y no ve qué le falta a cada alumno | Notas que se cargan una vez, y Reportes para secretaría: cruzados y con la ficha de lo que falta |
+| 13/11 | Con la cuenta real, el aula de cada materia seguía siendo la simulada, y solo traíamos archivos y enlaces: el 44 % de lo que tiene un curso | El Campus real con la cuenta del alumno: todo el contenido del aula, en vivo y sin guardarlo |
 
-Abajo: **440 commits · 49 PRs · 81 issues cerrados · ~1.070 tests** (contado el 13/11 a la tarde; recontar antes de presentar).
+Abajo: **452 commits · 52 PRs · 82 issues cerrados · ~1.400 tests** (contado sobre `main` el 13/11 a la noche, con la suite corrida: 1415 tests; recontar si entra algo más antes de presentar).
 
-> No salió derecho. Arrancamos sobre una base que no compilaba y decidimos el sistema propio. Descubrimos que la API del SIU no deja inscribir y usamos la sesión del alumno. El primer inicio mostraba demasiado y lo simplificamos. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos al alcance. Y hoy, la Dirección de Estudios nos contó que carga cada nota tres veces y que baja ochenta reportes para ver una cohorte: de ahí salen la carga única de notas y la pantalla de reportes que vieron. Todo con revisión y tests automáticos en cada cambio.
+> No salió derecho. Arrancamos sobre una base que no compilaba y decidimos el sistema propio. Descubrimos que la API del SIU no deja inscribir y usamos la sesión del alumno. El primer inicio mostraba demasiado y lo simplificamos. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos al alcance. Y hoy, la Dirección de Estudios nos contó que carga cada nota tres veces y que baja ochenta reportes para ver una cohorte: de ahí salen la carga única de notas y la pantalla de reportes que vieron. Y cuando un alumno entraba con su cuenta real, el aula seguía siendo la simulada: ahora lee su Campus de verdad, sin guardar nada. Todo con revisión y tests automáticos en cada cambio.
 
 ## 11. Próximo paso: qué validaríamos después · 0:40
 
