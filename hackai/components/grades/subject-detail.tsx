@@ -1,6 +1,7 @@
 /* El detalle de una materia en Notas, dentro del panel: el estado, las notas
-   de cursada y de final, cada parcial y TP con su nota y la comisión. Solo
-   muestra lo que da Cursada. */
+   de cursada y de final, cada parcial, TP y tarea con su nota (y, si el docente
+   la publicó en HackAI, su comentario entero) y la comisión. Solo muestra lo
+   que le llega: lo del SIU y lo publicado en HackAI ya vienen juntos. */
 import { ArrowRight, CalendarCheck2 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -9,6 +10,7 @@ import { GradeBadge } from '@/components/academic/grade-badge'
 import { APPROVAL, ASSESSMENT_KIND, gradeText, groupName, KIND, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { buttonVariants } from '@/components/ui/button'
+import { OriginBadge } from '@/components/ui/origin-badge'
 import type { SubjectAssessment, SubjectStanding } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
@@ -47,11 +49,18 @@ function AssessmentRow({ a }: { a: SubjectAssessment }) {
               Provisoria
             </span>
           )}
+          {a.source === 'hackai' && <OriginBadge origin='hackai' />}
         </p>
         <p className='text-[0.75rem] text-muted-foreground'>
           <time dateTime={a.date}>{gradeDate(a.date)}</time>
           {!a.past && ' · próximamente'}
         </p>
+        {a.comment && (
+          <p className='mt-0.5 text-[0.8125rem] whitespace-pre-line text-ink'>
+            <span className='font-semibold'>Comentario del docente: </span>
+            {a.comment}
+          </p>
+        )}
       </div>
       {a.grade !== null ? (
         <GradeBadge grade={a.grade} />

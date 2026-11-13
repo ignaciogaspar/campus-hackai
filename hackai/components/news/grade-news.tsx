@@ -1,9 +1,10 @@
 /* Las notas nuevas, arriba de Novedades: hasta dos, la más nueva primero, una
    fila por evaluación con la materia, cuándo se cargó y la nota, en el mismo
-   recuadro que en Notas; si hay más, «Ver todas». Vengan de la historia o de
-   actuación provisoria, se ven igual. Tocar una, o «Ver todas», lleva a Notas
+   recuadro que en Notas; si hay más, «Ver todas». Vengan de la historia, de
+   actuación provisoria o de lo que publicó un docente en HackAI, se ven igual.
+   Tocar una, o «Ver todas», lleva a Notas
    y las marca como vistas (app/notas/vistas/route.ts), así la campana deja de
-   contarlas. Qué nota es nueva lo decide Cursada. Los enlaces son <a> y no
+   contarlas. Qué nota es nueva lo decide Hoy. Los enlaces son <a> y no
    <Link>: precargar la ruta las marcaría como vistas sin tocarlas. */
 import { ArrowRight } from 'lucide-react'
 import { gradeDate } from '@/components/academic/format'

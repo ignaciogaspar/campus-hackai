@@ -35,6 +35,7 @@ Todo lo que viene del SIU y de Moodle sobre la vida académica del alumno.
 | `subjectsOf(persona)` | Materias del cuatrimestre actual y archivadas, cada una con el enlace a su aula de Moodle y, las actuales, sus tareas con fecha y, si es alumno, sus inasistencias: cuántas, el máximo si el SIU lo da y cuántas le quedan, con un aviso cerca del máximo |
 | `sectionsOf(persona)` | Sus comisiones, como alumno o como docente |
 | `sectionStudents(persona, comisión)` | Los alumnos inscriptos (aceptados o pendientes) a una comisión, con legajo (el id del SIU), nombre («Apellido, Nombres», por orden alfabético), mail y su `personId` de HackAI si ya tiene cuenta. Solo para un docente de esa comisión: un alumno, un docente de otra comisión o una comisión que no existe reciben `sin-acceso`. Lee del puerto del SIU (`sectionEnrollments`) y con el SIU caído devuelve lo último leído, desactualizado. Vive en `lib/core/studies/section-students.ts` |
+| `sectionAssessments(persona, comisión)` | Las evaluaciones del cronograma del SIU de una comisión (id, nombre, tipo y fecha, por fecha): las columnas de parciales de Calificaciones. Mismo acceso que `sectionStudents` (solo un docente de esa comisión; si no, `sin-acceso`). Sin cronograma en el SIU (la API real), la lista sale vacía. Con el SIU caído devuelve lo último leído, desactualizado. Vive en `lib/core/studies/section-assessments.ts` |
 | `offer(persona, objetivo)` | Comisiones o mesas de examen con cupo, horario y docentes, y si su inscripción todavía no abrió, está abierta o ya cerró (mirado con el reloj de cada llamada, aunque sea lo último que se leyó). En una mesa, si para rendir le falta regularizar la cursada |
 | `enroll(persona, objetivo)` | Inscribe y matricula. Devuelve comprobante, `requiere-autogestion` con el enlace al SIU, o `sin-cupo`, `fuera-de-periodo`, `ya-inscripto`, `solo-alumnos`, `sin-cuenta-del-aula`, `a-medias`, `falla-externa` |
 | `drop(persona, objetivo)` | Baja en el SIU y desmatriculación en Moodle. A un docente le devuelve `solo-alumnos` |
@@ -119,7 +120,7 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 ### Seguimiento (`coursework`)
 
-Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el docente crea y edita tareas, y el alumno las ve y las entrega.
+Las tareas de una materia, sus entregas y sus calificaciones. Hoy el docente crea y edita tareas, el alumno las ve y las entrega, y el docente califica (nota y comentario) y publica las notas por columna. Los pesos, la nota de cursada y el pase al SIU son de tickets siguientes.
 
 | Operación | Qué hace |
 | --- | --- |
@@ -129,17 +130,25 @@ Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el 
 | `task(persona, tarea)` | Una tarea con lo que la persona puede hacer con ella (`canManage`) y sus comisiones, solo las que la persona tiene |
 | `submit(persona, tarea, archivos)` | El alumno entrega uno o más archivos (hasta 10, 10 MB en total) a una tarea de su comisión, o reemplaza su entrega anterior si el docente todavía no la calificó. Guarda cuándo entregó. Después de la fecha límite la acepta y queda atrasada, con cuántos minutos |
 | `dated(persona)` | Las tareas de las materias actuales donde la persona cursa, por fecha límite: lo que Hoy suma al calendario. A un docente le da una lista vacía |
+| `gradebook(persona, materia, comisión?)` | Calificaciones de una comisión que dicta el docente (la pedida si es suya, o la primera): las columnas por fecha (una por tarea con nota de la comisión y una por evaluación del SIU, con cuántas notas tiene cada una, cuántas sin publicar y desde cuándo está publicada) y una fila por alumno con su nota en cada columna. A un alumno le da `solo-docentes` |
+| `grade(persona, nota)` | Carga la nota (de 1 a 10, hasta dos decimales) o el ausente, y el comentario, de un alumno en una columna; si ya había, la reemplaza. En una columna ya publicada la nota sale publicada en el momento. Calificar la entrega de una tarea cierra su reemplazo |
+| `publish(persona, comisión, columna)` | Publica las notas cargadas de una columna: desde ahí las ven los alumnos y les llega a la campana. Publicar de nuevo no repite nada; una columna sin notas es `sin-notas` |
+| `publishedFor(persona)` | Las notas publicadas del alumno (nota y comentario entero), la más nueva primero. Nunca trae una de una columna sin publicar |
+| `newGrades(persona, visto)` | Las publicadas con número en los últimos 7 días y después de la última vez que el alumno vio sus notas: lo que Hoy suma a la campana y a Novedades |
 | `file(persona, archivo)` | Los bytes de un archivo de Seguimiento: la consigna de una tarea, si la persona la ve, o un archivo de una entrega, solo si es de quien la hizo (el docente los abre desde la pantalla de entregas, que es de un ticket siguiente) |
 
 **Reglas que hace cumplir:**
 
 - **Quién gestiona:** los docentes de las comisiones de la tarea. Una tarea es de una o más comisiones de la misma materia, y quien la crea tiene que dictar todas.
 - **Quién la ve:** los docentes y los alumnos de esas comisiones; un alumno de la A no ve una tarea que es solo de la B. La pertenencia se deduce de `sectionsOf` de Cursada en cada llamada y no se guarda: nunca se confía en una comisión que llega del navegador.
-- **Una tarea sin nota** queda marcada así: no tendrá columna en Calificaciones.
+- **Una tarea sin nota** queda marcada así: no tiene columna en Calificaciones (`columna-desconocida` si se intenta calificar).
+- **Columnas:** una columna es de una comisión: la misma tarea en dos comisiones tiene dos columnas y se publican de a una. Las de parciales salen de `sectionAssessments` de Cursada; Seguimiento no importa el puerto del SIU. Una columna no tiene tabla propia: existe mientras tenga notas, y está publicada cuando sus notas tienen fecha de publicación.
+- **Quién califica:** un docente de la comisión, a un alumno de la comisión que ya tiene cuenta de HackAI, en una columna de esa comisión; todo se recalcula en cada llamada con Cursada y nada del navegador se da por cierto.
+- **Quién ve una nota:** el alumno, solo cuando su columna está publicada. Publicar sella las notas cargadas; una nota cargada o cambiada después en una columna ya publicada sale publicada en ese momento.
 - **Quién entrega:** solo un alumno de una comisión de la tarea. Para quien no la ve, la tarea no existe (`tarea-desconocida`), así que un alumno de la A no entrega una tarea que es solo de la B; un docente recibe `solo-alumnos`. Cada alumno tiene una sola entrega por tarea: entregar de nuevo la reemplaza (y borra sus archivos) hasta que la califican (`ya-calificada`).
 - **Atrasada:** una entrega después de la fecha límite se acepta, nunca se bloquea. El atraso no se guarda: se calcula al leer con la fecha de la entrega y la fecha límite vigente (si el docente la corre, se recalcula). Menos de un minuto cuenta como uno.
 - **Sin archivos sueltos:** si falla guardar la entrega, se borran los archivos recién subidos y la entrega anterior sigue como estaba.
-- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
+- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `columna-desconocida`, `alumno-desconocido`, `nota-invalida`, `comentario-invalido`, `sin-notas`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
 
 Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la persona), el puerto de Archivos y el reloj. Cursada no lo llama.
 
@@ -149,6 +158,9 @@ Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la p
 | --- | --- |
 | `today(persona)` | Todo lo de la pantalla del alumno en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y las entregas con fecha: las de Moodle y las tareas de HackAI de su comisión (`tarea-hackai:<id>`, origen `hackai`, sin repetir las de Moodle). Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
 | `teaching(persona)` | El Hoy del docente en una llamada: sus comisiones actuales, cada una con sus no leídos (los de la materia y los directos van en la primera comisión de cada materia, para no contarlos dos veces); las consultas sin resolver que le tocan (`openQuestions` de Espacios); los parciales de sus comisiones y las mesas que integra que no pasaron, por fecha; todo lo que no leyó, y `staleSince` y `unavailable` como en `today` |
+
+| `grades(persona)` | La carrera del alumno (`career` de Cursada) con lo publicado en HackAI puesto donde corresponde: una evaluación del SIU calificada y publicada en HackAI se ve con la nota y el comentario entero de HackAI; una tarea con nota publicada es una fila más; lo del SIU que no pasó por HackAI queda como estaba. Si Seguimiento no responde, salen las notas del SIU y `hackaiUnavailable` lo avisa |
+| `newGrades(persona, visto)` | Las notas nuevas de la campana y de Novedades: las del SIU y las publicadas en HackAI, lo más nuevo primero. Una nota del SIU que ya se publicó en HackAI (misma materia y misma evaluación) se cuenta una sola vez. Con el SIU caído no se cuentan las del SIU |
 
 Compone Cursada, Espacios y Seguimiento, y usa el reloj para el próximo parcial. No tiene almacén propio. El Calendario y el `.ics` salen de `today(persona)`, así que muestran las tareas de HackAI sin más; si Seguimiento no responde, faltan esas tareas y `unavailable` lleva `coursework`. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 

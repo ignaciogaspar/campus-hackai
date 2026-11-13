@@ -4,8 +4,9 @@
    tipo de materia, año de la carrera y estado, y se agrupan por año lectivo o
    por año de la carrera. El promedio va en el encabezado. Reemplaza a
    Académico: las constancias pasaron a Trámites y reportes, y el avance, al
-   Plan de estudios. Sin reglas de negocio: el estado y las notas los decide
-   Cursada. */
+   Plan de estudios. Sin reglas de negocio: el estado y las notas del SIU los
+   decide Cursada, y Hoy las junta con lo que los docentes publicaron en HackAI
+   (nota y comentario entero). */
 import { BookOpenCheck, ChartPie } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -14,7 +15,7 @@ import { GradesBoard } from '@/components/grades/grades-board'
 import { gradeText } from '@/components/grades/status'
 import { PageHeader } from '@/components/shell/page-header'
 import { StaleBanner } from '@/components/ui/stale-banner'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError } from '@/lib/core/studies'
@@ -32,7 +33,7 @@ export default async function NotasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const session = await requireSession('alumno')
-  const [result, params] = await Promise.all([system().studies.career(session.personId), searchParams])
+  const [result, params] = await Promise.all([system().today.grades(session.personId), searchParams])
   const career = result.ok ? result.value.data : null
   const taken = career?.subjects.filter((s) => s.status !== 'pendiente') ?? []
 
@@ -56,6 +57,12 @@ export default async function NotasPage({
         ) : (
           <>
             {result.value.stale && <StaleBanner since={result.value.readAt} now={system().now()} />}
+            {result.value.hackaiUnavailable && (
+              <StaleNotice>
+                No pudimos traer las notas que publicaron tus docentes en HackAI. Probá de nuevo en un rato: las del SIU
+                se ven igual.
+              </StaleNotice>
+            )}
             {taken.length === 0 ? (
               <EmptyState icon={BookOpenCheck} title='Todavía no cursaste materias'>
                 Cuando te inscribas a una materia, aparece acá con sus parciales y sus notas.

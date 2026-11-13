@@ -3,8 +3,8 @@ import { subjectTabHref, tabsFor } from '@/components/subjects/subject-nav'
 import { railItem, railTrack } from '@/components/ui/rail'
 import { cn } from '@/lib/utils'
 
-/* Barra de pestañas de la materia: el espacio, los alumnos (solo el docente), las tareas y, a medida que se
-   suman, las calificaciones. Cada una es una ruta
+/* Barra de pestañas de la materia: el espacio, los alumnos y las calificaciones (solo el docente) y las
+   tareas. Cada una es una ruta
    debajo de la materia y todas conservan la comisión elegida (`?comision=`).
    Son enlaces, sin JavaScript. */
 export function SubjectTabs({

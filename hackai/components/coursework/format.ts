@@ -23,6 +23,39 @@ export const newTaskHref = (subjectId: string, comision?: string) =>
 export const taskHref = (subjectId: string, taskId: string, comision?: string) =>
   href(`${subjectPath(subjectId)}/tareas/${encodeURIComponent(taskId)}`, comision)
 
+/** Qué se mira en Calificaciones: la comisión, la columna y, si se está calificando, el alumno. `listo` marca que se
+    terminó de calificar la lista. */
+export type GradesView = { comision?: string; columna?: string; alumno?: string; listo?: boolean }
+
+/** Calificaciones de la materia, con lo que se mira en `?comision=`, `?columna=` y `?alumno=`. */
+export function gradesHref(subjectId: string, view: GradesView = {}): string {
+  const params = new URLSearchParams()
+  if (view.comision) params.set('comision', view.comision)
+  if (view.columna) params.set('columna', view.columna)
+  if (view.alumno) params.set('alumno', view.alumno)
+  if (view.listo) params.set('listo', 'si')
+  const query = params.toString()
+  return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
+}
+
+/** La nota que escribió la persona: acepta coma o punto decimal. `null` si no escribió nada; `NaN` si lo escrito no
+    es un número. */
+export function gradeFromInput(value: string): number | null {
+  const text = value.trim().replace(',', '.')
+  if (text === '') return null
+  return /^\d+(\.\d+)?$/.test(text) ? Number(text) : Number.NaN
+}
+
+/** La nota como se escribe en un campo y se lee en pantalla: con coma decimal, sin ceros de más («8,5»). */
+export const gradeInputValue = (value: number | null) => (value === null ? '' : String(value).replace('.', ','))
+
+/** A quién se califica después: el que sigue de `current` en la lista, o `null` si es el último (o no está). Solo
+    cuentan los que se pueden calificar. */
+export function nextStudent(ids: string[], current: string): string | null {
+  const index = ids.indexOf(current)
+  return index >= 0 ? (ids[index + 1] ?? null) : null
+}
+
 /** «Comisión A». */
 export const sectionLabel = (name: string) => `Comisión ${name}`
 
