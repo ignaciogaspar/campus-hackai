@@ -101,15 +101,16 @@ export function createSupabasePlanningStore({
 
     async replace(entries) {
       const batch = randomUUID()
-      if (!(await insert(entries, batch))) {
-        // Lo que se llegó a insertar de esta carga no queda a medias.
+      // Si algo falla, lo que se llegó a insertar de esta carga se borra: no quedan dos planillas mezcladas.
+      const undo = async () => {
         await run('deshacer carga', (s) => client.from('planning_entries').delete().eq('batch', batch).abortSignal(s))
         return fail('falla-externa')
       }
+      if (!(await insert(entries, batch))) return undo()
       const removed = await run('borrar cargas anteriores', (s) =>
         client.from('planning_entries').delete().neq('batch', batch).abortSignal(s)
       )
-      return removed.ok ? ok(entries.length) : fail('falla-externa')
+      return removed.ok ? ok(entries.length) : undo()
     },
 
     async add(entries) {

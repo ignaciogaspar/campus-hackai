@@ -6,6 +6,7 @@
    planning de la base de prueba: es la operación que se prueba. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@supabase/supabase-js'
 import { createMemoryPlanningStore } from '@/lib/adapters/memoria/planning-store'
 import { createSupabasePlanningStore } from '@/lib/adapters/supabase/planning-store'
@@ -84,3 +85,41 @@ planningStoreContract(
     }),
   url && key ? false : 'sin base de prueba: definí HACKAI_TEST_SUPABASE_URL y HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY'
 )
+
+/* Un cliente de Supabase de mentira para `replace`: anota cada pedido a `planning_entries` y falla el borrado de las
+   cargas anteriores (`delete().neq('batch', …)`), para probar que la carga nueva se deshace. */
+function failingDeleteClient() {
+  const calls: string[] = []
+  const builder = (op: string) => {
+    const chain = {
+      eq: (column: string, value: string) => {
+        calls.push(`${op} ${column}=${value}`)
+        return chain
+      },
+      neq: (column: string) => {
+        calls.push(`${op} ${column}<>`)
+        return { abortSignal: () => Promise.resolve({ data: null, error: { message: 'caída', code: '57P01' } }) }
+      },
+      abortSignal: () => Promise.resolve({ data: null, error: null })
+    }
+    return chain
+  }
+  const client = {
+    from: () => ({
+      insert: (rows: { batch: string }[]) => {
+        calls.push(`insert batch=${rows[0].batch}`)
+        return builder('insert')
+      },
+      delete: () => builder('delete')
+    })
+  }
+  return { client: client as unknown as SupabaseClient, calls }
+}
+
+test('almacén de Supabase: si falla el borrado de lo anterior, la carga nueva se deshace y no quedan dos mezcladas', async () => {
+  const { client, calls } = failingDeleteClient()
+  const store = createSupabasePlanningStore({ client, log: () => {} })
+  assert.deepEqual(await store.replace([entry('Física I')]), { ok: false, error: 'falla-externa' })
+  const batch = calls[0].replace('insert batch=', '')
+  assert.deepEqual(calls, [`insert batch=${batch}`, 'delete batch<>', `delete batch=${batch}`])
+})
