@@ -36,7 +36,8 @@ export function SheetContent({
   side?: keyof typeof SIDES
   /** `false` en una hoja que ya trae su propio botón para cerrar. */
   closeButton?: boolean
-  /** Para devolver el foco a algo que no es un SheetTrigger, como la tarjeta que abrió la hoja. */
+  /** Al cerrarse, a dónde va el foco: por defecto vuelve al botón que la abrió; `preventDefault` lo deja a cargo
+      de quien la usa, como la tarjeta de Notas que abrió la hoja. */
   onCloseAutoFocus?: ComponentProps<typeof Dialog.Content>['onCloseAutoFocus']
   children: ReactNode
 }) {

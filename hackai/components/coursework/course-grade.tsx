@@ -7,7 +7,7 @@
 import { GraduationCap, Scale } from 'lucide-react'
 import Link from 'next/link'
 import { publishCourse, saveCourseGrade, saveWeights } from '@/app/actions/coursework'
-import { GHOST, GRADE_BOX, PRIMARY } from '@/components/coursework/fields'
+import { GHOST, GRADE_BOX, PRIMARY, SECONDARY } from '@/components/coursework/fields'
 import { COURSE_COLUMN, evaluationHref, gradeInputValue, gradesHref } from '@/components/coursework/format'
 import { PassSummary } from '@/components/coursework/gradebook'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -53,6 +53,7 @@ export function CourseSummary({
   students: number
 }) {
   const everythingPublished = course.graded > 0 && course.unpublished === 0
+  const weightsHref = evaluationHref(subjectId, sectionId, { columna: COURSE_COLUMN, pesos: true })
   return (
     <Card className='flex flex-col gap-3 p-4'>
       <div className='flex flex-col gap-2'>
@@ -73,12 +74,24 @@ export function CourseSummary({
             : 'Sin promoción: va a final'}
           <span className='text-muted-foreground'>· Pesos: {gradeInputValue(course.weightTotal)}</span>
           <Link
-            href={evaluationHref(subjectId, sectionId)}
+            href={weightsHref}
             className='inline-flex min-h-11 items-center font-semibold text-blue underline-offset-2 hover:underline focus-ring'
           >
             Cambiar
           </Link>
         </p>
+        {course.weightTotal === 0 && (
+          <div className='flex flex-col items-start gap-2 rounded-xl bg-warning-background px-3 py-3 text-[0.8125rem] text-warning-foreground'>
+            <p>
+              <span className='font-semibold'>Poné cuánto pesa cada columna.</span> Sin pesos, la nota de cursada no se
+              calcula y queda «—».
+            </p>
+            <Link href={weightsHref} className={SECONDARY}>
+              <Scale aria-hidden='true' className='size-4' strokeWidth={2} />
+              Poner los pesos
+            </Link>
+          </div>
+        )}
         <p className='text-[0.8125rem] text-ink'>
           {course.graded} de {students} con nota de cursada
           {course.unpublished > 0 && course.graded > 0 ? ` · ${course.unpublished} sin publicar` : ''}
@@ -95,6 +108,14 @@ export function CourseSummary({
         {course.unpublished > 0 && (
           <p className='text-[0.8125rem] text-muted-foreground'>
             Al publicar, cada alumno ve su nota y su condición, y la nota pasa al SIU
+          </p>
+        )}
+        {course.graded === 0 && (
+          <p className='text-[0.8125rem] text-muted-foreground'>
+            Todavía no se puede publicar: ningún alumno tiene nota de cursada.{' '}
+            {course.weightTotal === 0
+              ? 'Poné los pesos o escribí la nota a mano tocando a un alumno.'
+              : 'Cargá notas en las columnas con peso o escribí la nota a mano tocando a un alumno.'}
           </p>
         )}
       </ActionForm>
@@ -139,7 +160,7 @@ export function WeightsForm({
                   autoComplete='off'
                   enterKeyHint='done'
                   defaultValue={gradeInputValue(c.weight)}
-                  placeholder='0'
+                  placeholder='Ej.: 40'
                   aria-describedby='pesos-ayuda'
                   className='min-h-11 w-full bg-transparent px-3 text-right text-[0.9375rem] outline-none'
                 />
@@ -256,13 +277,22 @@ function CourseResult({ course }: { course: CourseGradeCell }) {
   )
 }
 
+/** Por qué un alumno no tiene nota calculada: no tiene notas, o las tiene en columnas que no pesan. */
+function withoutCalculation(hasGrades: boolean, weightTotal: number): string {
+  if (!hasGrades) return 'Todavía no hay nada para calcular: este alumno no tiene notas en ninguna columna.'
+  return weightTotal === 0
+    ? 'Tiene notas, pero ninguna columna tiene peso todavía: poné los pesos o escribí la nota a mano.'
+    : 'Tiene notas, pero no en las columnas que tienen peso: escribí la nota a mano si hace falta.'
+}
+
 /** La nota de cursada de un alumno: la que se calculó, la que vale y los botones para pisarla o volver al cálculo. */
 export function CourseGradeEditor({
   subjectId,
   sectionId,
   student,
   nextId,
-  position
+  position,
+  weightTotal
 }: {
   subjectId: string
   sectionId: string
@@ -271,6 +301,8 @@ export function CourseGradeEditor({
   nextId: string | null
   /** «2 de 30». */
   position: { index: number; total: number }
+  /** La suma de los pesos de la comisión: con 0, ninguna columna cuenta todavía. */
+  weightTotal: number
 }) {
   const { course } = student
   const closeHref = gradesHref(subjectId, { comision: sectionId, columna: COURSE_COLUMN })
@@ -285,7 +317,7 @@ export function CourseGradeEditor({
       <p className='text-[0.8125rem] text-muted-foreground'>Legajo {student.legajo}</p>
       <p className='mt-2 rounded-xl bg-ice/70 px-3 py-2 text-[0.8125rem] text-ink'>
         {course.calculated === null
-          ? 'Todavía no hay nada para calcular: este alumno no tiene notas en columnas con peso.'
+          ? withoutCalculation(Object.keys(student.cells).length > 0, weightTotal)
           : `Calculada con los pesos: ${gradeInputValue(course.calculated)}.`}
         {course.published !== null && ' Ya está publicada: el alumno ve cualquier cambio al toque.'}
       </p>
@@ -304,7 +336,7 @@ export function CourseGradeEditor({
               enterKeyHint='next'
               defaultValue={gradeInputValue(course.value)}
               aria-describedby='cursada-ayuda'
-              placeholder='8,5'
+              placeholder='Ej.: 8,5'
               className='min-h-11 w-full bg-transparent px-3 text-[0.9375rem] font-normal outline-none'
             />
           </span>

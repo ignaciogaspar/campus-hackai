@@ -2,23 +2,17 @@
    complemento, las entregas de Moodle. La usan el Hoy del docente, para sus
    parciales y mesas, e Inscripciones, para el turno y el lugar de un final.
    (El Hoy del alumno las muestra en su calendario: components/today/calendar.tsx.)
-   Cada fecha lleva al espacio de su materia, y cada final dice su turno y, si
-   el SIU lo da, dónde se rinde. Solo muestra lo que da Hoy. */
-import { dayParts, longDay, timeOf } from '@/components/dates'
-import { dateHref } from '@/components/today/agenda'
+   Cada fecha lleva a donde dice `dateHref` (al docente, a esa semana del
+   Calendario), y cada final dice su turno y, si el SIU lo da, dónde se rinde.
+   En el celular, el origen es solo un punto, para que el nombre de la materia
+   y el turno entren. Solo muestra lo que da Hoy. */
+import { dayParts, longDay } from '@/components/dates'
+import { dateHref, whatAndWhen } from '@/components/today/agenda'
 import { ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import type { Role } from '@/lib/core/people'
 import type { UpcomingItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
-
-const KIND: Record<UpcomingItem['kind'], string> = {
-  parcial: 'Parcial',
-  recuperatorio: 'Recuperatorio',
-  tp: 'Trabajo práctico',
-  final: 'Final',
-  entrega: 'Entrega'
-}
 
 /** El fondo del bloque de la fecha, según de dónde viene. */
 const DATE_BLOCK: Record<UpcomingItem['source'], string> = {
@@ -50,13 +44,6 @@ export function examDetail(item: UpcomingItem): string {
   return [item.examPeriod, item.location].filter(Boolean).join(' · ')
 }
 
-/** Qué es y a qué hora, con el lugar si el SIU lo da: «Final · 09:00 · Campus Pilar, aula 12». */
-function whatAndWhen(item: UpcomingItem): string {
-  const time = timeOf(item.date)
-  if (item.kind === 'entrega') return `Entrega · vence ${time}`
-  return [KIND[item.kind], time, item.location].filter(Boolean).join(' · ')
-}
-
 /** Una fecha: día, qué es, de qué materia, a qué hora, dónde y de dónde viene. Lleva a donde dice
     `dateHref`. Las pasadas, atenuadas y con «ya pasó». */
 export function UpcomingRow({ item, viewer = 'alumno' }: { item: UpcomingItem; viewer?: Role }) {
@@ -78,7 +65,7 @@ export function UpcomingRow({ item, viewer = 'alumno' }: { item: UpcomingItem; v
           {whatAndWhen(item)}
         </span>
       }
-      end={<OriginBadge origin={item.source} />}
+      end={<OriginBadge origin={item.source} dotOnMobile />}
     />
   )
 }

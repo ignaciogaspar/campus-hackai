@@ -1,8 +1,11 @@
-/* Alumnos de la materia, para el docente: los de la comisión elegida, con su
-   legajo y su mail. La comisión va en `?comision=` (con varias comisiones de la
-   materia, un selector arriba; si falta o no es suya, la primera). Es una
-   pestaña más de la materia, junto al espacio. Sin reglas de negocio: quién ve
-   a los alumnos de una comisión lo decide Cursada.
+/* Alumnos y clases de la materia, para el docente: primero la clase de hoy
+   (para tomar lista) o cuándo es la próxima, después el historial de clases,
+   los alumnos de la comisión elegida con su legajo y su mail y, al final, el
+   enlace de Zoom, que se carga una vez por cuatrimestre. La comisión va en
+   `?comision=` (con varias comisiones de la materia, un selector arriba; si
+   falta o no es suya, la primera). Es una pestaña más de la materia, junto al
+   espacio. Sin reglas de negocio: quién ve a los alumnos de una comisión y
+   cuándo es su próxima clase lo decide Cursada.
 
    En el celular es una columna de filas; en compu, la misma lista con más aire. */
 import { Users } from 'lucide-react'
@@ -142,27 +145,44 @@ function HistoryBlock({
 
 type Classes = Awaited<ReturnType<Studies['classesOf']>>
 
-/** Las clases de la comisión, o por qué no están. */
+type Next = Awaited<ReturnType<Studies['nextClass']>>
+
+/** La clase de hoy (o cuándo es la próxima) y el historial, o por qué no están. Sin clase hoy ni historial, los dos
+    vacíos van en una sola franja. */
 function ClassesBlock({
   classes,
+  history,
+  next,
   subjectId,
   section,
   total
 }: {
   classes: Classes
+  history: History
+  next: Next
   subjectId: string
   section: { sectionId: string; name: string }
   total: number
 }) {
-  if (!classes.ok) return <ErrorNotice>{ERRORS[classes.error]}</ErrorNotice>
+  const noHistory = history.ok && history.value.length === 0
+  const noClassToday = classes.ok && !classes.value.some((c) => c.today)
   return (
-    <ClassList
-      classes={classes.value}
-      subjectId={subjectId}
-      sectionId={section.sectionId}
-      sectionName={section.name}
-      total={total}
-    />
+    <>
+      {classes.ok ? (
+        <ClassList
+          classes={classes.value}
+          subjectId={subjectId}
+          sectionId={section.sectionId}
+          sectionName={section.name}
+          total={total}
+          next={next.ok ? next.value : undefined}
+          noHistory={noHistory}
+        />
+      ) : (
+        <ErrorNotice>{ERRORS[classes.error]}</ErrorNotice>
+      )}
+      {!(noHistory && noClassToday) && <HistoryBlock history={history} subjectId={subjectId} section={section} />}
+    </>
   )
 }
 
@@ -196,11 +216,12 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
   if (!mine.ok || !section)
     return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} back={back} />
 
-  const [students, classes, history, subjects] = await Promise.all([
+  const [students, classes, history, subjects, next] = await Promise.all([
     system().studies.sectionStudents(session.personId, section.sectionId),
     system().studies.classesOf(session.personId, section.sectionId),
     system().studies.classHistory(session.personId, section.sectionId),
-    system().studies.subjectsOf(session.personId)
+    system().studies.subjectsOf(session.personId),
+    system().studies.nextClass(session.personId, section.sectionId)
   ])
 
   const staleRead = mine.value.stale ? mine.value : students.ok && students.value.stale ? students.value : null
@@ -233,15 +254,14 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
         />
         {staleRead && <StaleBanner since={staleRead.readAt} now={system().now()} />}
 
-        <ZoomBlock subjects={subjects} sectionId={section.sectionId} sectionName={section.name} />
-
         <ClassesBlock
           classes={classes}
+          history={history}
+          next={next}
           subjectId={subjectId}
           section={section}
           total={students.ok ? students.value.data.length : 0}
         />
-        <HistoryBlock history={history} subjectId={subjectId} section={section} />
         <StudentsBlock
           students={students}
           sectionName={section.name}
@@ -251,6 +271,7 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
             return n > 1 ? `${href}${href.includes('?') ? '&' : '?'}pagina=${n}` : href
           }}
         />
+        <ZoomBlock subjects={subjects} sectionId={section.sectionId} sectionName={section.name} />
       </main>
     </>
   )

@@ -11,7 +11,7 @@ import type { SignInError } from '@/app/actions/session'
 import { PersonPicker } from '@/components/session/person-picker'
 import { signInQr } from '@/components/session/sign-in-qr'
 import { PageHeader } from '@/components/shell/page-header'
-import { DoneNotice, EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, SuccessNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
@@ -79,11 +79,11 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
 
         {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
         {error === undefined && salida !== undefined && (
-          <DoneNotice>
+          <SuccessNotice>
             <p>
               <b>Cerraste sesión.</b> Para volver a entrar, elegí con quién.
             </p>
-          </DoneNotice>
+          </SuccessNotice>
         )}
 
         {system().siuLive?.canConnect && !mobile && (

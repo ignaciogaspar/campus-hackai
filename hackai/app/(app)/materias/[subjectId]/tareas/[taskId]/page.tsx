@@ -12,6 +12,7 @@ import { SubmissionsPanel } from '@/components/coursework/submissions-panel'
 import { TaskError } from '@/components/coursework/task-error'
 import { EditTaskForm } from '@/components/coursework/task-form'
 import { TaskHeader } from '@/components/coursework/task-header'
+import { TaskStatus } from '@/components/coursework/task-status'
 import { BackLink } from '@/components/spaces/back-link'
 import { messageTime } from '@/components/spaces/format'
 import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return { title: `${opened?.ok ? opened.value.name : 'Tarea'} · Campus HackAI` }
 }
 
-function TaskDetail({ task }: { task: TaskView }) {
+function TaskDetail({ task, now }: { task: TaskView; now: string }) {
   return (
     <article aria-labelledby='tarea-nombre' className='flex flex-col gap-4 rounded-[22px] bg-card p-4 shadow-card'>
       <div className='flex flex-col gap-2'>
@@ -43,8 +44,8 @@ function TaskDetail({ task }: { task: TaskView }) {
         </h2>
         <div className='flex flex-wrap items-center gap-2 text-[0.8125rem] text-muted-foreground'>
           <OriginBadge origin='hackai' />
-          <time dateTime={task.dueAt}>{dueLabel(task)}</time>
-          {task.past ? <StatusPill tone='neutral'>Venció</StatusPill> : <StatusPill tone='info'>Vigente</StatusPill>}
+          <time dateTime={task.dueAt}>{dueLabel(task, now)}</time>
+          <TaskStatus task={task} role={task.role} now={now} />
           <StatusPill tone='neutral'>{task.graded ? 'Lleva nota' : 'Sin nota'}</StatusPill>
         </div>
         {task.canManage && (
@@ -106,12 +107,14 @@ function TaskBody({
   task,
   personId,
   comision,
-  requestedPage
+  requestedPage,
+  now
 }: {
   task: TaskView
   personId: string
   comision: string | undefined
   requestedPage?: string
+  now: string
 }) {
   return (
     <div className='grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6'>
@@ -129,14 +132,14 @@ function TaskBody({
             )}
           </div>
           <aside className='flex flex-col gap-4 max-lg:-order-1 lg:sticky lg:top-6'>
-            <TaskDetail task={task} />
-            <EditTaskForm task={task} />
+            <TaskDetail task={task} now={now} />
+            <EditTaskForm task={task} now={now} />
           </aside>
         </>
       ) : (
         <>
           <div className='min-w-0'>
-            <TaskDetail task={task} />
+            <TaskDetail task={task} now={now} />
           </div>
           <aside className='flex flex-col gap-4 lg:sticky lg:top-6'>
             <SubmissionPanel task={task} />
@@ -197,12 +200,17 @@ export default async function TaskPage({ params, searchParams }: { params: Param
             desactualizado.
           </StaleNotice>
         )}
-        <BackLink href={back}>Volver a las tareas</BackLink>
+        {/* En el celular ya está la flecha del encabezado: dos «Volver» seguidos empujan la entrega debajo de la
+            barra de abajo. */}
+        <BackLink href={back} className='max-lg:hidden'>
+          Volver a las tareas
+        </BackLink>
         <TaskBody
           task={task}
           personId={session.personId}
           comision={comision}
           requestedPage={typeof raw.pagina === 'string' ? raw.pagina : undefined}
+          now={system().now()}
         />
       </main>
     </>

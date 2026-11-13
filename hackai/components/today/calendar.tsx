@@ -7,7 +7,7 @@
    saltar de semana. Las entregas (de Moodle y de HackAI) y los cierres de inscripción no
    ocupan una hora: van en la fila de todo el día. Con `filters`, arriba de la
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
-   y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
+   (no para el docente, que no se inscribe) y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
 import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import { Fragment, type ReactNode, useState } from 'react'
@@ -444,12 +444,14 @@ function WeekToolbar({
 /* Los filtros de Calendario: qué tipo de cosas y de qué materia. Cada tipo es
    un botón que se prende y se apaga. */
 function Filters({
+  groups,
   hidden,
   onToggle,
   subjects,
   subject,
   onSubject
 }: {
+  groups: typeof GROUPS
   hidden: Set<Group>
   onToggle: (group: Group) => void
   subjects: { code: string; name: string }[]
@@ -459,7 +461,7 @@ function Filters({
   return (
     <div className='flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5'>
       <span className='sr-only'>Mostrar</span>
-      {GROUPS.map(({ group, label, tones }) => {
+      {groups.map(({ group, label, tones }) => {
         const on = !hidden.has(group)
         return (
           <button
@@ -518,6 +520,7 @@ export function TodayCalendar({
   now,
   initialDay,
   filters = false,
+  viewer = 'alumno',
   top,
   below,
   aside
@@ -530,6 +533,8 @@ export function TodayCalendar({
   initialDay?: string
   /** Muestra los filtros por tipo y por materia. */
   filters?: boolean
+  /** Quién mira: el docente no se inscribe, así que no tiene el filtro de inscripciones. */
+  viewer?: 'alumno' | 'profesor'
   top?: ReactNode
   /** Debajo de la semana, en su misma columna. */
   below?: ReactNode
@@ -573,6 +578,7 @@ export function TodayCalendar({
           <WeekToolbar week={week} onDay={goTo} onToday={() => goTo(today)} legend={!filters} />
           {filters && (
             <Filters
+              groups={viewer === 'profesor' ? GROUPS.filter((g) => g.group !== 'inscripciones') : GROUPS}
               hidden={hidden}
               onToggle={toggle}
               subjects={subjectsIn(events, classes)}
