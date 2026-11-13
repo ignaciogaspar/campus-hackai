@@ -31,7 +31,7 @@ import { realPersonId, withRealPeople, withRealPerson, withRealSubject } from '@
 import { createRealSiuRegistry, siuIdOf } from '@/lib/adapters/siu-real/registry'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import { compose, REAL_PERSON } from '@/lib/composition'
-import { openSiuSession, personKey, sealSiuSession } from '@/lib/siu-session'
+import { openSiuSession, personKey, sealSiuSession, siuSessionFromInput, siuSessionOf } from '@/lib/siu-session'
 
 const BASE = 'https://siu.example.edu.ar/portal'
 const TOMAS_SIU = syntheticData.people.find((p) => p.id === 'p-taguirre')!.siuId
@@ -881,8 +881,12 @@ test('varias cuentas reales a la vez: cada una con sus ids, y una persona sin su
   assert.ok(b.value[0].sectionId.startsWith('real-bbbbbbbbbbbb-'))
   assert.notEqual(a.value[0].sectionId, b.value[0].sectionId, 'la misma comisión, un id por cuenta')
   assert.ok((await registry.section(a.value[0].sectionId)).ok)
-  const terms = await registry.terms()
-  assert.ok(terms.ok && terms.value.some((t) => t.id.startsWith('real-bbbbbbbbbbbb-')))
+  const forA = await registry.terms(siuIdOf('aaaaaaaaaaaa'))
+  assert.ok(forA.ok)
+  assert.ok(forA.value.some((t) => t.id.startsWith('real-aaaaaaaaaaaa-')))
+  assert.ok(!forA.value.some((t) => t.id.startsWith('real-bbbbbbbbbbbb-')), 'una cuenta no ve los períodos de otra')
+  const forDemo = await registry.terms(TOMAS_SIU)
+  assert.ok(forDemo.ok && !forDemo.value.some((t) => t.id.startsWith('real-')), 'ni las personas de la demo')
   assert.deepEqual(await registry.person(siuIdOf('cccccccccccc')), { ok: false, error: 'no-encontrado' })
   assert.ok((await registry.person(TOMAS_SIU)).ok, 'las personas de la demo siguen')
 })
@@ -955,3 +959,26 @@ test('las faltas de la persona real salen del SIU, y las clases de la comisión,
   assert.ok(section.ok)
   assert.equal(section.value.classCount, 30, 'miércoles y viernes, 15 de cada uno')
 })
+
+test('la sesión de HackAI de una cuenta real solo vale con la sesión del SIU de esa persona', () => {
+  process.env.SESSION_SECRET ??= 'clave-de-prueba'
+  const mine = sealSiuSession({ key: 'aaaaaaaaaaaa', session: 'sesion-a' })
+  const other = sealSiuSession({ key: 'bbbbbbbbbbbb', session: 'sesion-b' })
+  assert.equal(siuSessionOf('p-taguirre', undefined), 'demo', 'las personas de la demo no necesitan nada más')
+  assert.deepEqual(siuSessionOf('p-siu-aaaaaaaaaaaa', mine), { key: 'aaaaaaaaaaaa', session: 'sesion-a' })
+  assert.equal(siuSessionOf('p-siu-aaaaaaaaaaaa', undefined), null, 'sin la cookie del SIU, no hay sesión')
+  assert.equal(siuSessionOf('p-siu-aaaaaaaaaaaa', other), null, 'con la de otra persona, tampoco')
+})
+
+test('la sesión pegada en el ingreso se acepta sola o con el nombre de la cookie, y nada más', () => {
+  assert.equal(siuSessionFromInput('  abc123def456ghi  '), 'abc123def456ghi')
+  assert.equal(siuSessionFromInput('siu_sess__portal_ua_UA=abc123def456ghi; Path=/portal'), 'abc123def456ghi')
+  assert.equal(siuSessionFromInput('<script>'), null)
+  assert.equal(siuSessionFromInput(''), null)
+  assert.equal(siuSessionFromInput(null), null)
+})
+
+// La acción de /entrar-con-siu (app/actions/siu-connect.ts) y la descarga del PDF oficial
+// (app/(app)/tramites/[documento]/route.ts) leen cookies y encabezados del pedido de Next.js, que no corre en
+// node:test. Lo que deciden está probado acá: la sesión pegada (siuSessionFromInput), el reconocimiento de la
+// persona (personKey, signIn del registro), la sesión de cada pedido (siuSessionOf) y el PDF (officialDocument).

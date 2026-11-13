@@ -149,8 +149,6 @@ export type System = {
   now(): string
   /** El interruptor de caídas de la demo, o `null` si `HACKAI_CAIDAS` no lo pide. */
   outages: OutageSwitch | null
-  /** La cuenta real del SIU, o `null` sin `HACKAI_SIU_REAL=si`: quién es y la huella de lo que muestra el SIU,
-      para que su pantalla se redibuje sola cuando cambia (app/api/siu/version). */
   /** Las cuentas reales del SIU, o `null` sin `HACKAI_SIU_REAL` ni `HACKAI_SIU_REAL_PUBLICO`. `version` es la
       huella de lo que muestra el SIU de una persona real (o `null` si no es real), para que su pantalla se
       redibuje sola (app/api/siu/version). `connect` arma la cuenta de quien entra con su sesión del SIU. */
@@ -158,7 +156,7 @@ export type System = {
     /** Si la persona es de una cuenta real. No consulta nada. */
     isReal(personId: PersonId): boolean
     version(personId: PersonId): Promise<Result<string, ExternalFailure> | null>
-    /** Si quien entra puede usar su cuenta real (`HACKAI_SIU_REAL_PUBLICO=si`). */
+    /** Si quien entra puede usar su cuenta real (prendido salvo `HACKAI_SIU_REAL_PUBLICO=no`). */
     canConnect: boolean
     /** Si con la cuenta real se inscribe y se piden constancias de verdad (`HACKAI_SIU_ESCRITURAS`). */
     writes: boolean

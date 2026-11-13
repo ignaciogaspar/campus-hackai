@@ -540,10 +540,13 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
 
     person: (id) => (isMine(id) ? fromSnapshot((s) => s.person) : fallback.person(id)),
 
-    async terms() {
-      const [mine, others] = await Promise.all([snapshot(), fallback.terms()])
-      if (!others.ok) return others
-      return ok([...others.value, ...(mine.ok ? structuredClone(mine.value.terms) : [])])
+    // Los períodos de esta cuenta solo para su persona (o si no se dice para quién).
+    async terms(personId) {
+      const others = await fallback.terms(personId)
+      if (!others.ok || (personId !== undefined && !isMine(personId))) return others
+      const mine = await snapshot()
+      const own = mine.ok ? mine.value.terms.filter((t) => others.value.every((o) => o.id !== t.id)) : []
+      return ok([...others.value, ...structuredClone(own)])
     },
 
     subject: (id) => (isReal(id) ? byId((s) => s.subjects.find((x) => x.id === id)) : fallback.subject(id)),

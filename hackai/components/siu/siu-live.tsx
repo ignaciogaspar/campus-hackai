@@ -135,10 +135,10 @@ export function SiuLive() {
     >
       <BellRing aria-hidden className='size-5 shrink-0 text-primary' />
       <p className='flex-1 text-sm'>¿Te avisamos en el momento cuando suban una nota?</p>
-      <Button size='sm' onClick={allow}>
+      <Button size='sm' onClick={allow} className='min-h-11'>
         Avisarme
       </Button>
-      <Button size='icon-sm' variant='ghost' onClick={dismiss} aria-label='Ahora no'>
+      <Button size='icon-sm' variant='ghost' onClick={dismiss} aria-label='Ahora no' className='size-11'>
         <X />
       </Button>
     </div>

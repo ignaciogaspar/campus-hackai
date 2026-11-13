@@ -275,7 +275,9 @@ export type SiuPort = {
   capabilities: SiuCapabilities
 
   person(personId: string): Promise<Result<SiuPerson, SiuReadError>>
-  terms(): Promise<Result<SiuTerm[], ExternalFailure>>
+  /** Los períodos lectivos. `personId`: para quién se piden; un SIU con cuentas propias de cada alumno suma los
+      de esa cuenta, y nunca los de otra. */
+  terms(personId?: string): Promise<Result<SiuTerm[], ExternalFailure>>
   subject(subjectId: string): Promise<Result<SiuSubject, SiuReadError>>
   /** Devuelve las materias encontradas, sin repetir ids. */
   subjects(ids: string[]): Promise<Result<SiuSubject[], ExternalFailure>>

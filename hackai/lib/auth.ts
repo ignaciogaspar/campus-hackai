@@ -15,7 +15,7 @@ import {
   type Session,
   verifySessionToken
 } from '@/lib/session-token'
-import { openSiuSession, SIU_SESSION_COOKIE } from '@/lib/siu-session'
+import { SIU_SESSION_COOKIE, siuSessionOf } from '@/lib/siu-session'
 
 export { homeFor }
 
@@ -25,11 +25,10 @@ export const getSession = cache(async (): Promise<Session | null> => {
   if (!session) return null
   // Quien entró con su cuenta real del SIU trae su sesión del SIU cifrada en otra cookie: con ella se arma su
   // cuenta en este proceso. Sin esa cookie, o si es de otra persona, no hay sesión.
-  const key = session.personId.match(/^p-siu-([a-f0-9]{12})$/)?.[1]
-  if (!key) return session
-  const siu = openSiuSession(jar.get(SIU_SESSION_COOKIE)?.value)
+  const siu = siuSessionOf(session.personId, jar.get(SIU_SESSION_COOKIE)?.value)
+  if (siu === 'demo') return session
   const live = system().siuLive
-  if (!siu || siu.key !== key || !live?.canConnect) return null
+  if (!siu || !live?.canConnect) return null
   live.connect(siu.key, siu.session)
   return session
 })

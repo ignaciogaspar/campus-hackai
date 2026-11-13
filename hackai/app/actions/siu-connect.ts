@@ -10,24 +10,14 @@ import { homeFor, setServerCookie, startSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
 import { hasSessionSecret } from '@/lib/session-token'
-import { SIU_SESSION_COOKIE, SIU_SESSION_MAX_AGE, sealSiuSession } from '@/lib/siu-session'
-
-/** El valor de la cookie: se acepta solo o con su nombre adelante («siu_sess__portal_ua_UA=…»). */
-function sessionFrom(raw: FormDataEntryValue | null): string | null {
-  const value = String(raw ?? '')
-    .trim()
-    .replace(/^siu_sess__portal_ua_UA\s*=\s*/, '')
-    .replace(/;.*$/, '')
-    .trim()
-  return /^[A-Za-z0-9,-]{10,128}$/.test(value) ? value : null
-}
+import { SIU_SESSION_COOKIE, SIU_SESSION_MAX_AGE, sealSiuSession, siuSessionFromInput } from '@/lib/siu-session'
 
 export async function connectSiuAction(_previous: ConnectState, form: FormData): Promise<ConnectState> {
   if (isMobileUserAgent((await headers()).get('user-agent')))
     return { kind: 'error', message: 'Las cuentas reales del SIU se usan desde una compu.' }
   if (form.get('consent') !== 'si')
     return { kind: 'error', message: 'Para entrar con tu cuenta tenés que aceptar cómo usamos tu sesión del SIU.' }
-  const session = sessionFrom(form.get('session'))
+  const session = siuSessionFromInput(form.get('session'))
   if (!session) return { kind: 'error', message: 'Eso no parece una sesión del SIU. Copiá solo el valor de la cookie.' }
   const live = system().siuLive
   if (!live?.canConnect || !hasSessionSecret())

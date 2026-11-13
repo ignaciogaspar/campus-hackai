@@ -789,7 +789,10 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   async function sectionsInTermsOf(who: SiuPersonRef): Promise<Result<MySectionsInTerms, ReadError>> {
     const sections = await siuSectionsOf(who)
     if (!sections.ok) return sections
-    const [terms, subjects] = await Promise.all([siu.terms(), subjectsById(sections.value.map((s) => s.subjectId))])
+    const [terms, subjects] = await Promise.all([
+      siu.terms(who.siuId),
+      subjectsById(sections.value.map((s) => s.subjectId))
+    ])
     if (!terms.ok) return terms
     if (!subjects.ok) return subjects
 
@@ -1173,7 +1176,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
   async function sectionOffer(person: SiuPersonRef, subject: SiuSubject): Promise<Result<OfferItem[], ReadError>> {
     const at = clock.now().toISOString()
     const [terms, sections, enrolledSections] = await Promise.all([
-      siu.terms(),
+      siu.terms(person.siuId),
       siu.sections({ subjectId: subject.id, schoolId: person.schoolId }),
       sectionsInCourse(person.siuId)
     ])
@@ -1284,7 +1287,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
 
   /** La comisión, si existe y es de su facultad y de su carrera, con la ventana de su período lectivo. */
   async function sectionInfo(sectionId: string, who: SiuPersonRef): Promise<Result<TargetInfo, TargetError>> {
-    const [section, terms] = await Promise.all([siu.section(sectionId), siu.terms()])
+    const [section, terms] = await Promise.all([siu.section(sectionId), siu.terms(who.siuId)])
     if (!section.ok) return fail(section.error === 'no-encontrado' ? 'objetivo-desconocido' : section.error)
     if (!terms.ok) return terms
     const term = terms.value.find((t) => t.id === section.value.termId)
@@ -1645,7 +1648,7 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     progress: SubjectProgress,
     at: string
   ): Promise<Result<Opening[], ExternalFailure>> {
-    const terms = await siu.terms()
+    const terms = await siu.terms(who.siuId)
     if (!terms.ok) return terms
     const open = terms.value.filter((t) => isOpenAt(at, t.enrollmentStart, t.enrollmentEnd, t.enrollmentOpen))
     const found = all(await Promise.all(open.map((t) => siu.sections({ schoolId: who.schoolId, termId: t.id }))))

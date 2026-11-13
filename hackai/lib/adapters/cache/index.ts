@@ -81,7 +81,8 @@ export function withSiuCache(
   return {
     capabilities: siu.capabilities,
     person: read('person', staticTtlMs, siu.person),
-    terms: read('terms', staticTtlMs, siu.terms),
+    // Los períodos del SIU de abajo son los mismos para todos: se comparten aunque se pidan para una persona.
+    terms: read('terms', staticTtlMs, () => siu.terms()),
     subject,
     subjects,
     section: read('section', staticTtlMs, siu.section),

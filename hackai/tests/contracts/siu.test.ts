@@ -9,6 +9,8 @@ import { createClient } from '@supabase/supabase-js'
 import { createOutageSwitch, withSiuOutage } from '@/lib/adapters/caida'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
+import { createRealSiu } from '@/lib/adapters/siu-real'
+import { createRealSiuRegistry } from '@/lib/adapters/siu-real/registry'
 import { createSimulatedSiu } from '@/lib/adapters/siu-simulado'
 import { syntheticData } from '@/lib/adapters/synthetic-data'
 import type { SiuPort } from '@/lib/ports/siu'
@@ -373,6 +375,23 @@ siuContract('SIU en memoria', () => createMemorySiu(syntheticData, clock()))
 // Con el interruptor de caídas levantado, el SIU que envuelve se porta igual.
 siuContract('SIU con caídas de la demo', () =>
   withSiuOutage(createMemorySiu(syntheticData, clock()), createOutageSwitch())
+)
+
+// El SIU real y las cuentas reales del SIU (ADR 0009): con las personas de la demo, todo pasa al SIU de abajo y se
+// porta igual. Lo que leen de una cuenta real se prueba en tests/adapters/siu-real.test.ts, contra un SIU de prueba.
+const sinSiu = (async () => new Response('', { status: 200 })) as typeof fetch
+const REAL = { baseUrl: 'https://siu.example.edu.ar/portal', fetch: sinSiu, warn: () => {} }
+siuContract('SIU real, con las personas de la demo', () =>
+  createRealSiu({
+    ...REAL,
+    session: 'sesion-de-prueba',
+    personId: 'real-alumno',
+    fallback: createMemorySiu(syntheticData, clock()),
+    clock: clock()
+  })
+)
+siuContract('Cuentas reales del SIU, con las personas de la demo', () =>
+  createRealSiuRegistry({ ...REAL, fallback: createMemorySiu(syntheticData, clock()), clock: clock() })
 )
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL

@@ -47,3 +47,23 @@ export function openSiuSession(sealed: string | undefined): SiuSession | null {
     return null
   }
 }
+
+/** La sesión del SIU pegada en el ingreso: el valor de la cookie, solo o con su nombre adelante
+    («siu_sess__portal_ua_UA=…»). `null` si no parece una sesión del SIU. */
+export function siuSessionFromInput(raw: unknown): string | null {
+  const value = String(raw ?? '')
+    .trim()
+    .replace(/^siu_sess__portal_ua_UA\s*=\s*/, '')
+    .replace(/;.*$/, '')
+    .trim()
+  return /^[A-Za-z0-9,-]{10,128}$/.test(value) ? value : null
+}
+
+/** La cuenta del SIU de una sesión de HackAI: `demo` si la persona no es de una cuenta real; su sesión del SIU si
+    la cookie es suya; `null` si falta, no abre o es de otra persona (entonces no hay sesión). */
+export function siuSessionOf(personId: string, sealed: string | undefined): 'demo' | SiuSession | null {
+  const key = personId.match(/^p-siu-([a-f0-9]{12})$/)?.[1]
+  if (!key) return 'demo'
+  const siu = openSiuSession(sealed)
+  return siu && siu.key === key ? siu : null
+}

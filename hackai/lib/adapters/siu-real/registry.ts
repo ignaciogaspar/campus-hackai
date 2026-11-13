@@ -74,13 +74,9 @@ export function createRealSiuRegistry(options: RegistryOptions): RealSiuRegistry
 
     person: (id) => routeTo(id)?.person(id) ?? missing(),
 
-    async terms() {
-      const others = await fallback.terms()
-      if (!others.ok) return others
-      // Los períodos de las cuentas ya leídas: quien pide los períodos ya leyó su cuenta al entrar.
-      const mine = [...accounts.values()].flatMap(({ siu }) => siu.peek()?.terms ?? [])
-      return { ok: true, value: [...others.value, ...structuredClone(mine)] }
-    },
+    // Los de la cuenta de quien pregunta (que suma los del SIU de la demo), o solo los del SIU de la demo. Nunca
+    // los de otra cuenta.
+    terms: (personId) => (personId ? byPerson(personId) : null)?.terms(personId) ?? fallback.terms(personId),
 
     subject: (id) => (byId(id) ?? fallback).subject(id),
 

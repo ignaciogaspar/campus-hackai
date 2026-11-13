@@ -17,6 +17,11 @@ export async function requestCertificateAction(_previous: RequestState, form: Fo
   const presentTo = String(form.get('presentTo') ?? '').trim()
   const notes = String(form.get('notes') ?? '').trim()
   if (!type) return { kind: 'error', message: 'Elegí qué constancia necesitás.' }
+  // La de examen final se pide en la Autogestión: no se manda nada.
+  if (type === 'examen-final') return { kind: 'autogestion' }
+  // Pedirla es una solicitud real que no se deshace desde HackAI: solo con el paso de confirmación.
+  if (form.get('confirmed') !== 'si')
+    return { kind: 'error', message: 'Revisá lo que vas a pedir y confirmalo antes de mandarlo al SIU.' }
   if (!presentTo) return { kind: 'error', message: 'Contanos a quién se la vas a presentar.' }
   if (!Number.isInteger(copies) || copies < 1) return { kind: 'error', message: 'Elegí cuántas copias necesitás.' }
 
