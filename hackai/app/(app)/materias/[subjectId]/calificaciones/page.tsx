@@ -194,6 +194,7 @@ function CourseView({
         editing.personId
       )}
       position={{ index: gradable.indexOf(editing) + 1, total: gradable.length }}
+      weightTotal={book.course.weightTotal}
     />
   ) : (
     <CourseSummary

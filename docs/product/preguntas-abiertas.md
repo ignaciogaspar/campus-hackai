@@ -284,6 +284,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 35. ¿Hace falta una ficha por alumno en Calificaciones?
+
+- **Por qué importa:** el recorrido de UX (#125, U-63) mostró que, con los pesos en 0, la nota de cursada de un alumno sale «—» aunque tenga notas, y para ver qué tiene en cada columna hay que recorrer la tira columna por columna.
+- **Hipótesis (13/11/2026):** es una idea, no un pedido: una ficha del alumno con su nota en cada columna, el peso de cada una y cómo se llega a su nota de cursada. Para la demo alcanza con que la nota de cursada explique qué falta.
+- **Opciones:** no hacerla; una ficha que se abre desde la fila de Nota de cursada; una vista de tabla con todas las columnas en la compu.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.
