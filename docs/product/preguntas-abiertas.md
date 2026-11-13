@@ -339,6 +339,19 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 42. ¿Cómo cuenta Reportes el avance, el riesgo y la Vida Universitaria, y de dónde sale el padrón en producción?
+
+- **Por qué importa:** la Dirección de Estudios pidió ver activos, ingresantes, graduados y bajas con filtros libres, la ficha del alumno con lo que le falta y sus créditos (entrevista de Gestión Académica, `docs/entrevistas/Gestión Académica Y Docente`). HackAI lo arma en Reportes (`/reportes`) sobre un padrón sintético, con definiciones nuestras que nadie de la universidad confirmó.
+- **Hipótesis (13/11/2026):**
+  - *Avance:* obligatorias aprobadas más optativas hasta las que pide el plan, sobre el total; los créditos de Vida Universitaria van aparte. El SIU muestra un «porcentaje de avance» que puede calcularse distinto.
+  - *Activo, graduado y baja al cierre de un año:* por la fecha de egreso o de baja; un ingresante de ese año cuenta desde el 1 de marzo. Una baja es no reinscribirse o pedirla.
+  - *Indicadores de riesgo:* atrasado (avance más de 25 puntos por debajo de lo esperable para los años que lleva, o pasó la duración del plan por más de un año), muchos aplazos (3 o más finales desaprobados), sin inscripciones en el año, inhabilitación administrativa vigente y pocos créditos de Vida Universitaria (menos de la mitad de lo esperable). «Al día con VU» es tener los créditos proporcionales a los años que lleva.
+  - *Equivalentes en otra facultad:* una materia con el mismo nombre en el Planning de otra facultad se muestra como opción para cursarla; las correlativas no están en el padrón y no se miran.
+  - *Padrón en producción:* un adaptador del puerto del padrón académico que lea los reportes del SIU (créditos por alumno, plan de estudios, ficha) por su API una vez por día y guarde la foto; necesita permisos de Gobierno de Datos, que hoy autoriza cada tablero de Power BI.
+- **Opciones:** validar las definiciones con la Dirección de Estudios y un director de estudios; ajustar los umbrales; sumar correlativas al puerto para sugerir el camino más corto.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

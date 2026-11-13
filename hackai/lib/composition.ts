@@ -28,8 +28,13 @@
    suyo. `supabase` usa las tablas propias de HackAI (supabase/migrations/) y
    necesita las mismas dos variables. Lo usan Personas, para los vínculos con
    cada sistema, Cursada, para las listas que toma el docente, Espacios, para
-   espacios, canales, mensajes, material y lo leído, y Seguimiento, para las
-   tareas.
+   espacios, canales, mensajes, material y lo leído, Seguimiento, para las
+   tareas, Planning, para las clases que carga secretaría, y Reportes, para los
+   alumnos en seguimiento.
+
+   El padrón académico de los reportes (lib/ports/academic-records.ts) es
+   siempre el sintético en memoria: el adaptador de los reportes del SIU real
+   queda diseñado (hackai/docs/ARQUITECTURA.md).
 
    Archivos con `supabase` guarda en el bucket privado de Supabase Storage
    (supabase/migrations/0003_files.sql), con las mismas dos variables.
@@ -65,6 +70,7 @@ import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache }
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
 import { createDiscordExternalChannel } from '@/lib/adapters/discord/external-channel'
 import { createDiscordOAuth, type DiscordOAuth } from '@/lib/adapters/discord/oauth'
+import { createMemoryAcademicRecords } from '@/lib/adapters/memoria/academic-records'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
 import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
@@ -73,6 +79,7 @@ import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemoryPlanningStore } from '@/lib/adapters/memoria/planning-store'
+import { createMemoryReportsStore } from '@/lib/adapters/memoria/reports-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
@@ -93,12 +100,14 @@ import { createSupabaseCourseworkStore } from '@/lib/adapters/supabase/coursewor
 import { createSupabaseFiles } from '@/lib/adapters/supabase/files'
 import { createSupabasePeopleStore } from '@/lib/adapters/supabase/people-store'
 import { createSupabasePlanningStore } from '@/lib/adapters/supabase/planning-store'
+import { createSupabaseReportsStore } from '@/lib/adapters/supabase/reports-store'
 import { createSupabaseSpacesStore } from '@/lib/adapters/supabase/spaces-store'
 import { createSupabaseStudiesStore } from '@/lib/adapters/supabase/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { type Coursework, createCoursework } from '@/lib/core/coursework'
 import { createPeople, type People, type PeopleStore, type PersonId } from '@/lib/core/people'
 import { createPlanning, type Planning } from '@/lib/core/planning'
+import { createReports, type Reports } from '@/lib/core/reports'
 import { createSpaces, type Spaces } from '@/lib/core/spaces'
 import { createStudies, type Studies } from '@/lib/core/studies'
 import { createToday, type Today } from '@/lib/core/today'
@@ -185,6 +194,7 @@ export type System = {
   coursework: Coursework
   today: Today
   planning: Planning
+  reports: Reports
 }
 
 function choose<A extends AdapterName>(env: Env, name: A): AdapterChoice[A] {
@@ -311,6 +321,13 @@ const courseworkStoreOf = (store: AdapterChoice['store'], supabase: () => Supaba
 const planningStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient, data: SyntheticData) =>
   store === 'supabase' ? createSupabasePlanningStore({ client: supabase() }) : createMemoryPlanningStore(data.planning)
 
+/** El padrón sintético es el mismo para todas las llamadas a `compose`: se genera una sola vez por proceso. */
+const academicRecords = createMemoryAcademicRecords()
+
+/** El almacén de Reportes (los alumnos en seguimiento): en Supabase o en memoria. */
+const reportsStoreOf = (store: AdapterChoice['store'], supabase: () => SupabaseClient) =>
+  store === 'supabase' ? createSupabaseReportsStore({ client: supabase() }) : createMemoryReportsStore()
+
 /** Arma todos los módulos con los adaptadores que piden las variables de
     entorno. Cada llamada tiene su propia copia de los datos en memoria. */
 export function compose(
@@ -414,6 +431,13 @@ export function compose(
   })
   const today = createToday({ studies, spaces, coursework, clock })
   const planning = createPlanning({ people, store: planningStoreOf(adapters.store, supabase, data) })
+  const reports = createReports({
+    people,
+    planning,
+    records: academicRecords,
+    store: reportsStoreOf(adapters.store, supabase),
+    clock
+  })
 
   const now = () => clock.now().toISOString()
   return {
@@ -429,7 +453,8 @@ export function compose(
     spaces,
     coursework,
     today,
-    planning
+    planning,
+    reports
   }
 }
 

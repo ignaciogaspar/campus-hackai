@@ -60,6 +60,9 @@ export function Select({
   'aria-label'?: string
   'aria-describedby'?: string
 }) {
+  // Radix escribe el texto de la opción elegida recién cuando se montan las opciones: en el HTML del servidor el
+  // botón llegaba vacío hasta hidratar. Con `value` se sabe cuál es, así que el texto va desde el principio.
+  const chosen = value === undefined ? undefined : options.find((o) => optionValue(o.value) === toRadix(value, options))
   return (
     <Radix.Root
       value={toRadix(value, options)}
@@ -79,7 +82,7 @@ export function Select({
         )}
       >
         <span className='min-w-0 flex-1 truncate'>
-          <Radix.Value placeholder={placeholder} />
+          <Radix.Value placeholder={placeholder}>{chosen?.label}</Radix.Value>
         </span>
         <Radix.Icon asChild>
           <ChevronDown

@@ -5,7 +5,7 @@ Cómo se organiza el código de `hackai/`. Sale de la skill `codebase-design` ap
 ## La idea en dos reglas
 
 1. **Puertos y adaptadores en los bordes.** SIU, Moodle y los canales externos son sistemas que no controlamos: cada uno entra por un puerto, con un adaptador para la demo y otro en memoria para los tests.
-2. **Módulos profundos adentro.** El núcleo son seis módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
+2. **Módulos profundos adentro.** El núcleo son siete módulos con interfaces chicas que esconden mucho. Entre ellos se llaman directamente por su interfaz, sin puertos intermedios.
 
 ## Módulos del núcleo
 
@@ -207,6 +207,29 @@ Usa Personas para el rol y su almacén (`planning_entries`, `supabase/migrations
 
 No guarda personas: solo materia, comisión, facultad, edificio y aula. El Planning de Aulas real trae nombres de docentes y responsables; no se cargan.
 
+### Reportes (`reports`)
+
+La visualización de datos de alumnos que pidió la Dirección de Estudios (entrevista de Gestión Académica, `docs/entrevistas/Gestión Académica Y Docente`): en el SIU cada reporte sale por carrera y por año de ingreso, de a uno, y los reportes no se vinculan entre sí. Acá se cruzan todos los alumnos de grado con filtros libres y al cierre de cualquier año, y cada número lleva al listado y cada alumno a una ficha con todo junto. Solo secretaría (rol `secretaria`; cualquier otro recibe `solo-secretaria`). Pantallas: `/reportes` (tablero), `/reportes/alumnos` (listado), `/reportes/seguimiento` y `/reportes/alumnos/<legajo>` (ficha); los CSV salen de `/reportes/exportar` y `/reportes/alumnos/<legajo>/exportar`. Los filtros viven en la URL (`components/reports/params.ts`).
+
+| Operación | Qué hace |
+| --- | --- |
+| `options(persona, filtros)` | Lo que se puede elegir en los filtros (facultades, carreras, sedes, años del reporte desde 2016 y la primera cohorte) y los filtros pedidos, normalizados: el año entre el primero y el actual, solo valores que existen, los rangos en orden |
+| `dashboard(persona, filtros)` | El tablero al corte del año del reporte (el 31 de diciembre, o hoy en el año actual): activos al corte, ingresantes, graduados y bajas del año; avance promedio, créditos promedio y porcentaje de activos al día con Vida Universitaria; por facultad, carrera, sede y cohorte; la evolución año por año; los activos por tramo de avance y por créditos, y cuántos tienen cada indicador de riesgo. Los filtros de estado, riesgo y seguimiento no cuentan acá |
+| `students(persona, filtros, consulta)` | El listado: por estado en el año del reporte (activos al corte, ingresantes, graduados o bajas del año; sin estado, activos), por indicador, buscado por nombre, legajo, mail o carrera sin tildes, ordenado y paginado (`all` para exportar). Con `followed`, solo los en seguimiento, en cualquier estado. Los totales coinciden con los del tablero |
+| `student(persona, legajo, año?)` | La ficha al corte: datos y propuestas (carrera y curso de ingreso), la foto del alumno (estado, avance, lo que le falta, promedios con y sin aplazos, créditos, indicadores), el plan por año con el estado de cada materia, lo que le falta (obligatorias sin aprobar y optativas si le faltan), la historia, las inscripciones y parciales del año, las sanciones y Vida Universitaria con sus actividades. Lo que le falta va cruzado con el Planning (`schedule`, o `null` si Planning no responde). `alumno-desconocido` si no existe o no había ingresado ese año |
+| `follow(persona, legajo, nota)` | Lo marca en seguimiento con una nota de hasta 280 caracteres, o le cambia la nota (`nota-invalida`, `alumno-desconocido`) |
+| `unfollow(persona, legajo)` | Lo saca del seguimiento |
+
+**Reglas que hace cumplir:**
+
+- **Una foto por alumno al corte** (`lib/core/reports/standing.ts`): todo se calcula al leer, con lo que pasó hasta el corte, así un reporte de 2021 lo muestra como estaba al cierre de 2021. El tablero, el listado y la ficha usan la misma foto, y por eso sus números coinciden.
+- **Avance:** obligatorias aprobadas más optativas hasta las que pide el plan, sobre el total. Los créditos de Vida Universitaria van aparte. Hipótesis, pregunta 42 de `docs/product/preguntas-abiertas.md`, como los umbrales de los indicadores.
+- **Indicadores de riesgo** (solo de activos): `atrasado`, `aplazos` (3 o más), `sin-inscripciones` en el año, `inhabilitado` (inhabilitación administrativa vigente) y `vida-universitaria` (menos de la mitad de los créditos esperables).
+- **Cruce con el Planning** (`lib/core/reports/schedule.ts`): cada materia que le falta con sus clases semanales del Planning, por nombre sin tildes, primero las de su facultad y las de otra marcadas (`otherSchool`), y las que se superponen en su facultad (`clashes`). Las correlativas no están en el padrón.
+- **Seguimiento:** uno por legajo, compartido por todo secretaría; guarda quién lo marcó y cuándo.
+
+Usa Personas para el rol, Planning (`entries`) para los horarios, el puerto del padrón académico, el reloj y su almacén (`reports_follow_ups`, `supabase/migrations/0014_reports_follow_ups.sql`, con adaptador en memoria y de Supabase y la batería `tests/contracts/reports-store.test.ts`). No escribe en el SIU.
+
 ### Dependencias entre módulos
 
 ```text
@@ -218,6 +241,8 @@ today ──► studies ──► people
 ```
 
 Planning usa solo Personas (`planning ──► people`), para saber si quien carga es de secretaría.
+
+Reportes usa Personas y Planning (`reports ──► people`, `reports ──► planning`): el rol de quien mira y los horarios de lo que le falta a cada alumno. Nadie llama a Reportes.
 
 Hoy llama a Seguimiento (`dated`) para sumar las tareas con fecha al calendario. Seguimiento usa además el puerto de Archivos y el reloj.
 
@@ -236,6 +261,7 @@ Hay un puerto solo donde hay dos adaptadores de verdad (producción y test). Un 
 | **Aula virtual** | Cursos de una persona, matricular y desmatricular, avisos del foro, contenidos, tareas con fecha, enlace al aula de un curso | Moodle simulado sobre tablas `moodle_*`, en memoria |
 | **Canal externo** | Leer mensajes nuevos de un canal desde un cursor (autor, texto, adjuntos, hilo), publicar, abrir un hilo, responder en él, bajar un adjunto. En el servidor de la cátedra: listar sus canales, saber si una cuenta es miembro, preparar la categoría y el rol de docentes de una materia y crear un canal con quién escribe | Discord, en memoria. Slack queda diseñado |
 | **Archivos** | Guardar un archivo y obtener su URL; leerlo por id; borrarlo | Supabase Storage (bucket privado), en memoria |
+| **Padrón académico** (`ports/academic-records.ts`) | Todos los alumnos de grado a la vez, para los reportes: el catálogo (facultades, sedes, propuestas con su plan, actividades de Vida Universitaria) y el legajo de cada alumno con su historia, inscripciones en curso, parciales del año, créditos y sanciones | Padrón sintético en memoria (`adapters/memoria/academic-records.ts`, generado con semilla en `adapters/synthetic-population.ts`: unos 7.900 alumnos de cinco facultades, doce propuestas y tres sedes, cohortes 2012 a 2026), en la demo y los tests. En producción, los reportes del SIU por su API: queda diseñado |
 | **Reloj** | La fecha y hora actuales | Sistema, fijo |
 
 **Conectar con Discord** (`adapters/discord/oauth.ts`): la autorización OAuth2 de Discord no es un puerto, porque solo tiene un adaptador. `composition` la arma si el canal externo es Discord y están `DISCORD_CLIENT_ID` y `DISCORD_CLIENT_SECRET`, y las rutas `app/discord/conectar` y `app/discord/vuelta` la usan a través de `system()`. La vuelta solo vale con el `state` firmado y de un solo uso de `lib/oauth-state.ts`, y lo que conecta lo decide Espacios con `connect`.
@@ -259,8 +285,8 @@ Los adaptadores simulados del SIU y de Moodle copian la forma de las APIs reales
 ```text
 hackai/
 ├── lib/
-│   ├── core/            people/, studies/, spaces/, coursework/, today/, planning/
-│   ├── ports/           identity, siu, classroom, external-channel, files, clock
+│   ├── core/            people/, studies/, spaces/, coursework/, today/, planning/, reports/
+│   ├── ports/           identity, siu, classroom, external-channel, files, clock, academic-records
 │   ├── adapters/        identity-demo/, siu-simulado/, siu-real/, moodle-simulado/, discord/, supabase/, memoria/, caida/, cache/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
 │   ├── request-memo    comparte lecturas exitosas dentro de un render
@@ -295,6 +321,7 @@ La demo y producción usan el mismo núcleo. Lo que cambia es qué adaptador eli
 | SIU | Simulado sobre `siu_*` | API REST v2 de Guaraní, con un usuario propio para HackAI. Inscribir y el cronograma no existen: el adaptador lo declara, `enroll` devuelve `requiere-autogestion` y Hoy muestra solo finales y fechas de Moodle | Usuario de API y permisos por recurso (TI de la Austral y del SIU) |
 | Aula virtual | Simulado sobre `moodle_*` | Web Services REST de Moodle con un token y un servicio con las funciones de la [research](../../docs/research/2026-11-10-moodle-web-services.md). Si la interfaz SIU → Moodle está activa, HackAI no matricula | Servicio, rol y token en el Moodle de la Austral (administración del Campus) |
 | Canal externo | Discord, en un servidor del equipo | El mismo adaptador, instalado en el servidor de cada cátedra. Slack entra con su adaptador: recibe los eventos por HTTP y los entrega por el mismo «leer desde un cursor», así el núcleo no cambia | Que cada cátedra instale el bot y vincule sus canales |
+| Padrón académico | Padrón sintético en memoria | Un adaptador que lee los reportes del SIU (créditos por alumno, plan de estudios, ficha) por su API una vez por día y guarda la foto | Permisos de la API del SIU y autorización de Gobierno de Datos de la Austral (pregunta 42) |
 | Base y archivos | Supabase del equipo | Supabase o Postgres de producción, con las mismas migraciones | Proyecto de producción y su backup |
 
 **Reglas para que el paso sea un cambio de configuración:**
