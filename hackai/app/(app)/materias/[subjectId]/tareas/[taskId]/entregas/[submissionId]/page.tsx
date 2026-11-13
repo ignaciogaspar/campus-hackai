@@ -67,7 +67,10 @@ export default async function SubmissionPage({ params }: { params: Params }) {
             desactualizado.
           </StaleNotice>
         )}
-        <BackLink href={back}>Volver a la tarea</BackLink>
+        {/* En el celular ya está la flecha del encabezado. */}
+        <BackLink href={back} className='max-lg:hidden'>
+          Volver a la tarea
+        </BackLink>
         <div className='mx-auto flex w-full max-w-3xl flex-col gap-4'>
           <SubmissionDetailCard detail={detail} />
         </div>

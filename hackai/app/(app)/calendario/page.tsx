@@ -6,7 +6,11 @@
    cada comisión, así que al inscribirse a una materia aparecen solas.
 
    `?semana=AAAA-MM-DD` abre en la semana de ese día: lo usa el mensaje de
-   inscripción para mostrar la cursada nueva. */
+   inscripción para mostrar la cursada nueva.
+
+   El docente ve sus clases, los parciales de sus comisiones y las mesas de
+   final que integra, con textos para él: sin el filtro de inscripciones y con
+   el final como «Mesa de final». */
 import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
@@ -19,6 +23,7 @@ import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import type { Role } from '@/lib/core/people'
 import type { UpcomingItem } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
@@ -32,24 +37,41 @@ const KIND: Record<UpcomingItem['kind'], string> = {
   entrega: 'Entrega'
 }
 
+/** Lo que cambia para el docente: no rinde finales, integra la mesa, y las entregas son las que él carga. */
+const TEXTS: Record<Role, { subtitle: string; none: string; final: string; below: string }> = {
+  alumno: {
+    subtitle: 'Tus clases, parciales, finales y entregas en un solo lugar.',
+    none: 'No tenés parciales, finales ni entregas por delante.',
+    final: KIND.final,
+    below: 'Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.'
+  },
+  profesor: {
+    subtitle: 'Tus clases, parciales, mesas de final y entregas en un solo lugar.',
+    none: 'No tenés parciales, mesas ni entregas por delante.',
+    final: 'Mesa de final',
+    below: 'Las entregas vienen de Moodle y de HackAI: aparecen las tareas que cargaste con fecha.'
+  }
+}
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /* Las próximas fechas, en lista: lo mismo que el calendario, para leerlo de un vistazo. */
-function NextDates({ items }: { items: UpcomingItem[] }) {
+function NextDates({ items, role }: { items: UpcomingItem[]; role: Role }) {
   const next = items.filter((i) => !i.past).slice(0, 6)
+  const text = TEXTS[role]
   return (
     <section aria-labelledby='proximas' className='rounded-2xl border border-border bg-card p-4'>
       <h2 id='proximas' className='pb-2 text-[0.9375rem] font-semibold text-ink'>
         Próximas fechas
       </h2>
       {next.length === 0 ? (
-        <p className='text-[0.8125rem] text-muted-foreground'>No tenés parciales, finales ni entregas por delante.</p>
+        <p className='text-[0.8125rem] text-muted-foreground'>{text.none}</p>
       ) : (
         <ul className='flex flex-col divide-y divide-border'>
           {next.map((i) => (
             <li key={i.id} className='flex flex-col gap-0.5 py-2'>
               <span className='text-[0.8125rem] font-semibold text-ink'>
-                {KIND[i.kind]} · {i.subjectName}
+                {i.kind === 'final' ? text.final : KIND[i.kind]} · {i.subjectName}
               </span>
               <span className='text-[0.75rem] text-muted-foreground'>
                 {i.name} · <time dateTime={i.date}>{dueTime(i.date)}</time>
@@ -69,7 +91,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       <PageHeader
         desktopBell={session.role === 'profesor'}
         title='Calendario'
-        subtitle='Tus clases, parciales, finales y entregas en un solo lugar.'
+        subtitle={TEXTS[session.role].subtitle}
         art='hoy'
         hideBackOnDesktop
       />
@@ -81,7 +103,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
             </div>
           }
         >
-          <CalendarContent personId={session.personId} searchParams={searchParams} />
+          <CalendarContent personId={session.personId} role={session.role} searchParams={searchParams} />
         </Suspense>
       </main>
     </>
@@ -90,9 +112,11 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
 
 async function CalendarContent({
   personId,
+  role,
   searchParams
 }: {
   personId: string
+  role: Role
   searchParams: Promise<{ semana?: string }>
 }) {
   const [{ semana }, result] = await Promise.all([searchParams, system().today.today(personId)])
@@ -121,17 +145,15 @@ async function CalendarContent({
           result.value.upcoming,
           result.value.openEnrollments,
           result.value.next?.id ?? null,
-          result.value.now
+          result.value.now,
+          role
         )}
         classes={classSlotsOf(result.value.subjects.current)}
         now={result.value.now}
         initialDay={initialDay}
         filters
-        below={
-          <p className='text-[0.8125rem] text-muted-foreground'>
-            Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.
-          </p>
-        }
+        viewer={role}
+        below={<p className='text-[0.8125rem] text-muted-foreground'>{TEXTS[role].below}</p>}
         aside={
           <div className='flex flex-col gap-3'>
             {/* Entre el mes y las próximas fechas, a la vista sin bajar hasta el final de la semana. */}
@@ -143,7 +165,7 @@ async function CalendarContent({
               <CalendarPlus aria-hidden='true' data-icon='inline-start' />
               Agregar a mi calendario
             </a>
-            <NextDates items={result.value.upcoming} />
+            <NextDates items={result.value.upcoming} role={role} />
           </div>
         }
       />

@@ -3,7 +3,8 @@
    archivadas) usan la misma tarjeta, del mismo tamaño y con las mismas
    partes: cabecera con ícono, nombre y estado; dos datos; un aviso opcional;
    y abajo, una acción secundaria. Toda la tarjeta lleva al espacio de la
-   materia (el título es el enlace y se estira sobre la tarjeta); la acción
+   materia (el título es el enlace y se estira sobre la tarjeta) y, en la de
+   una comisión que dicta el docente, a esa comisión (`?comision=`); la acción
    secundaria queda por encima y lleva a otro lado. Solo muestra lo que le da
    Cursada: qué es actual, qué está regular y qué está aprobado lo decide
    Cursada. */
@@ -21,7 +22,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { termLabel } from '@/components/academic/format'
 import { gradesHref } from '@/components/coursework/format'
-import { dueTime, longDay, shortDate, timeOf } from '@/components/dates'
+import { closesAt, dueTime, longDay, shortDate, timeOf } from '@/components/dates'
 import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
 import { notesHref } from '@/components/grades/format'
@@ -66,6 +67,7 @@ const SECONDARY =
    comisión, en el título, para el docente que dicta dos de la misma materia. */
 function SubjectCard({
   subjectId,
+  comision,
   name,
   section,
   detail,
@@ -76,6 +78,8 @@ function SubjectCard({
   secondary
 }: {
   subjectId: string
+  /** La comisión que abre el espacio: la del docente, para que la Comisión Verano no abra la A. */
+  comision?: string
   name: string
   section?: string
   detail: string
@@ -92,7 +96,7 @@ function SubjectCard({
         <div className='min-w-0 flex-1'>
           <h3 className='line-clamp-2 text-[0.9375rem] leading-snug font-bold text-ink lg:text-base'>
             <Link
-              href={spaceHref(subjectId)}
+              href={spaceHref(subjectId, { comision })}
               className='stretched text-ink outline-none transition-colors group-hover:text-blue after:absolute after:inset-0 after:rounded-2xl after:content-[""]'
             >
               <LinkPending overlay>
@@ -155,6 +159,7 @@ export function CourseCard({
   return (
     <SubjectCard
       subjectId={subject.subjectId}
+      comision={subject.role === 'profesor' ? subject.sectionId : undefined}
       name={subject.name}
       section={sectionOf(subject)}
       detail={detailOf(subject)}
@@ -172,7 +177,16 @@ export function CourseCard({
           <Callout>
             <span className='line-clamp-2 font-semibold'>{next.name}</span>
             <span className='text-[0.75rem] text-ink/65'>
-              Vence <time dateTime={next.dueDate}>{dueTime(next.dueDate)}</time> · Moodle
+              {/* Al docente no le vence: es la fecha en que cierra la entrega de sus alumnos. */}
+              {subject.role === 'profesor' ? (
+                <>
+                  Cierra el <time dateTime={next.dueDate}>{closesAt(next.dueDate)}</time> · en Moodle
+                </>
+              ) : (
+                <>
+                  Vence <time dateTime={next.dueDate}>{dueTime(next.dueDate)}</time> · Moodle
+                </>
+              )}
             </span>
           </Callout>
         )

@@ -187,6 +187,54 @@ test('rechaza una nota que no es de 1 a 10, la falta de nota y un comentario lar
   })
 })
 
+test('quitar una nota sin publicar la saca de la fila y de la columna', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  value(await coursework.grade('p-mledesma', gradeOf({ studentId: 'p-lbenitez', value: 6 })))
+
+  value(await coursework.removeGrade('p-mledesma', { sectionId: A, columnId: PARCIAL_1, studentId: 'p-taguirre' }))
+
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.students[0].cells[PARCIAL_1], undefined)
+  assert.equal(book.students[1].cells[PARCIAL_1]?.value, 6)
+  assert.equal(book.columns[0].graded, 1)
+})
+
+test('quitar la nota de un alumno que no tiene no cambia nada', async () => {
+  const { coursework } = build()
+
+  value(await coursework.removeGrade('p-mledesma', { sectionId: A, columnId: PARCIAL_1, studentId: 'p-taguirre' }))
+
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.columns[0].graded, 0)
+})
+
+test('una nota que ya ven los alumnos no se quita', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  value(await coursework.publish('p-mledesma', A, PARCIAL_1))
+
+  const removed = await coursework.removeGrade('p-mledesma', {
+    sectionId: A,
+    columnId: PARCIAL_1,
+    studentId: 'p-taguirre'
+  })
+
+  assert.deepEqual(removed, { ok: false, error: 'nota-publicada' })
+  assert.equal(value(await coursework.publishedFor('p-taguirre'))[0].value, 8)
+})
+
+test('solo quita una nota un docente de la comisión', async () => {
+  const { coursework } = build()
+  value(await coursework.grade('p-mledesma', gradeOf()))
+  const target = { sectionId: A, columnId: PARCIAL_1, studentId: 'p-taguirre' }
+
+  assert.deepEqual(await coursework.removeGrade('p-taguirre', target), { ok: false, error: 'solo-docentes' })
+  assert.deepEqual(await coursework.removeGrade('p-gferreyra', target), { ok: false, error: 'sin-acceso' })
+  const book = value(await coursework.gradebook('p-mledesma', 'am1'))
+  assert.equal(book.students[0].cells[PARCIAL_1]?.value, 8)
+})
+
 test('solo califica un docente de la comisión, a un alumno de la comisión y en una columna de la comisión', async () => {
   const { coursework } = build()
   const ofB = value(await coursework.createTask('p-gferreyra', taskOf({ sectionIds: [B] })))
@@ -335,6 +383,59 @@ test('una nota cargada o cambiada en una columna ya publicada se ve al toque', a
   assert.equal(mine[0].comment, 'Corregida')
   assert.equal(mine[0].publishedAt, '2026-11-10T15:30:00.000Z')
   assert.equal(value(await coursework.publishedFor('p-lbenitez')).length, 1)
+})
+
+// --- La nota en la tarea ----------------------------------------------------
+
+test('el alumno ve la nota y la devolución en su entrega recién cuando se publican', async () => {
+  const { coursework } = build()
+  const task = value(await coursework.createTask('p-mledesma', taskOf()))
+  value(await coursework.submit('p-taguirre', task.id, [upload('tp.txt')]))
+  const column = `tarea:${task.id}`
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: column })))
+
+  // Calificada pero sin publicar: la entrega está cerrada y el alumno todavía no ve la nota.
+  const corrected = value(await coursework.task('p-taguirre', task.id)).submission
+  assert.equal(corrected?.graded, true)
+  assert.equal(corrected?.grade, null)
+
+  value(await coursework.publish('p-mledesma', A, column))
+
+  const published = { value: 8, absent: false, comment: 'Muy bien el punto 2.', published: true }
+  assert.deepEqual(value(await coursework.task('p-taguirre', task.id)).submission?.grade, published)
+  const listed = value(await coursework.tasksOf('p-taguirre', 'am1')).tasks.find((t) => t.id === task.id)
+  assert.deepEqual(listed?.submission?.grade, published)
+  // A otro alumno no le llega la nota de Tomás.
+  value(await coursework.submit('p-lbenitez', task.id, [upload('tp-lucia.txt')]))
+  assert.equal(value(await coursework.task('p-lbenitez', task.id)).submission?.grade, null)
+})
+
+test('el docente ve la nota cargada en cada fila de entregas, también sin publicar y sin entrega', async () => {
+  const { coursework } = build()
+  const task = value(await coursework.createTask('p-mledesma', taskOf()))
+  const column = `tarea:${task.id}`
+  value(await coursework.submit('p-taguirre', task.id, [upload('tp.txt')]))
+  value(await coursework.submit('p-lbenitez', task.id, [upload('tp-lucia.txt')]))
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: column })))
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: column, studentId: 'p-jescobar', value: 2 })))
+
+  const { rows } = value(await coursework.submissions('p-mledesma', task.id, A))
+
+  assert.deepEqual(
+    rows.map((r) => [r.student.personId, r.state, r.grade?.value ?? null, r.grade?.published ?? null]),
+    [
+      ['p-taguirre', 'entregada', 8, false],
+      ['p-lbenitez', 'entregada', null, null],
+      ['p-jescobar', 'sin-entrega', 2, false]
+    ]
+  )
+  const detail = value(await coursework.submission('p-mledesma', rows[0].submission?.id ?? ''))
+  assert.deepEqual(detail.submission.grade, {
+    value: 8,
+    absent: false,
+    comment: 'Muy bien el punto 2.',
+    published: false
+  })
 })
 
 // --- La campana -------------------------------------------------------------

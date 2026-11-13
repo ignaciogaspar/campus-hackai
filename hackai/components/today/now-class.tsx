@@ -1,13 +1,15 @@
 /* «Tu clase de ahora» en el Hoy del docente: la clase que está en curso o, si
    no hay, la próxima, con su materia, comisión, horario, aula y modalidad. Si
    es de hoy, lleva Tomar lista (a la lista de la clase) y, si es virtual o
-   híbrida, «Entrar a Zoom» arriba de todo, o el aviso de que falta cargar el
-   enlace con el camino para cargarlo. Solo muestra lo que arma Hoy: cuál es la
+   híbrida, «Entrar a Zoom» arriba de todo. Si no es de hoy, dice qué día se
+   va a poder tomar lista y lleva a Alumnos y clases de la comisión. Si es
+   virtual o híbrida y falta el enlace, lo avisa desde antes, con el camino para
+   cargarlo; si ya está, lo confirma. Solo muestra lo que arma Hoy: cuál es la
    clase y si lleva enlace lo deciden Hoy y Cursada.
 
    En el celular es una columna de botones de ancho completo, con el alto
-   mínimo de un toque. */
-import { CalendarClock, ClipboardCheck, MapPin } from 'lucide-react'
+   mínimo de un toque. En compu la tarjeta no pasa de un ancho de lectura. */
+import { CalendarClock, ClipboardCheck, MapPin, Users, Video } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, timeOf } from '@/components/dates'
@@ -44,9 +46,10 @@ export function NowClassCard({ nowClass: c, now }: { nowClass: NowClass; now: st
     ? `${timeOf(c.classAt)} a ${timeOf(c.endAt)}`
     : `${longDay(c.classAt)}, ${timeOf(c.classAt)} a ${timeOf(c.endAt)}`
   const title = c.state === 'ahora' ? 'Tu clase de ahora' : 'Tu próxima clase'
+  const studentsHref = subjectTabHref(c.subjectId, ALUMNOS_TAB, c.sectionId)
 
   return (
-    <section aria-labelledby='clase-de-ahora' className='flex min-w-0 flex-col gap-3'>
+    <section aria-labelledby='clase-de-ahora' className='flex w-full min-w-0 flex-col gap-3 lg:max-w-xl'>
       <h2 id='clase-de-ahora' className='text-lg font-extrabold'>
         {title}
       </h2>
@@ -66,25 +69,34 @@ export function NowClassCard({ nowClass: c, now }: { nowClass: NowClass; now: st
         <div className='flex flex-col gap-1.5'>
           <Detail icon={CalendarClock}>{when}</Detail>
           <Detail icon={MapPin}>{place || 'Aula a confirmar'}</Detail>
+          {!isToday && virtual && c.zoomUrl && <Detail icon={Video}>Enlace de Zoom cargado</Detail>}
+          {!isToday && (
+            <Detail icon={ClipboardCheck}>Vas a poder tomar lista el {longDay(c.classAt).toLowerCase()}</Detail>
+          )}
         </div>
-        {isToday && virtual && !c.zoomUrl && (
+        {virtual && !c.zoomUrl && (
           <p className='rounded-xl bg-muted px-3 py-2 text-[0.8125rem] text-ink'>
             Todavía no cargaste el enlace de Zoom de esta comisión.{' '}
             <Link
-              href={subjectTabHref(c.subjectId, ALUMNOS_TAB, c.sectionId)}
+              href={studentsHref}
               className='inline-flex min-h-11 items-center font-semibold text-blue underline-offset-2 hover:underline focus-ring'
             >
               Cargalo en Alumnos y clases
             </Link>
           </p>
         )}
-        {isToday && (
+        {isToday ? (
           <Link
             href={attendanceHref(c.subjectId, c.sectionId, c.classAt)}
             className={action(c.zoomUrl ? 'outline' : 'default')}
           >
             <ClipboardCheck aria-hidden='true' />
             Tomar lista
+          </Link>
+        ) : (
+          <Link href={studentsHref} className={action('outline')}>
+            <Users aria-hidden='true' />
+            Ver alumnos y clases
           </Link>
         )}
       </Card>

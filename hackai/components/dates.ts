@@ -1,7 +1,7 @@
 /* Fechas para mostrar, siempre en la hora de Buenos Aires. Solo presentación:
    qué fecha es cada cosa lo deciden los módulos del núcleo, y las cuentas de
    días (qué día es, cuántos faltan) están en lib/dates.ts. */
-import { TIME_ZONE } from '@/lib/dates'
+import { dayKey, TIME_ZONE } from '@/lib/dates'
 
 function format(iso: string, options: Intl.DateTimeFormatOptions): string {
   return new Date(iso).toLocaleString('es-AR', { timeZone: TIME_ZONE, ...options })
@@ -36,16 +36,24 @@ export function readTime(iso: string): string {
   return format(iso, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
-/** «vie, 13 nov, 23:59»: una fecha límite, en 24 horas, como se escribe la hora acá. */
-export function dueTime(iso: string): string {
+/** «vie, 13 nov, 23:59»: una fecha límite, en 24 horas, como se escribe la hora acá. Con `now`, si es de otro año
+    lleva el año: «jue, 1 ene 2026, 01:00». */
+export function dueTime(iso: string, now?: string): string {
+  const otherYear = now !== undefined && dayKey(iso).slice(0, 4) !== dayKey(now).slice(0, 4)
   return format(iso, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    ...(otherYear ? { year: 'numeric' } : {}),
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23'
   })
+}
+
+/** «13/11 a las 23:59»: cuándo cierra una entrega, corto, para una tarjeta. */
+export function closesAt(iso: string): string {
+  return `${format(iso, { day: 'numeric', month: 'numeric' })} a las ${timeOf(iso)}`
 }
 
 /** «Lunes 16 de noviembre». */

@@ -153,7 +153,12 @@ export function Composer({ subjectId, channelId, replyTo, placeholder, announcem
             onKeyDown={onKeyDown}
             placeholder={placeholder}
             aria-describedby={announcementFor ? `${id}-help` : undefined}
-            className='max-h-40 min-h-10 w-full resize-none bg-transparent py-2 text-[0.9375rem] leading-6 outline-none placeholder:text-muted-foreground'
+            className={cn(
+              'max-h-40 min-h-10 w-full resize-none bg-transparent py-2 text-[0.9375rem] leading-6 outline-none placeholder:text-muted-foreground',
+              // En el celular, «Aviso para la Comisión Verano» no entra en una línea al lado de «Publicar»: el campo
+              // arranca con dos, así se lee entero a quién le llega.
+              announcementFor && 'max-lg:min-h-16'
+            )}
           />
         </div>
 

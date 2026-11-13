@@ -95,6 +95,9 @@
   @media (min-width: 1440px) { html { font-size: 112.5%; } }
   a { color: var(--azul); text-underline-offset: 0.2em; }
   html { scrollbar-width: none; }
+  /* En el celular, lo que recibe el foco o se lleva a la vista (con Tab, con scrollIntoView) se frena antes de
+     la barra de vidrio de abajo: si no, un botón como «Entregar» queda tapado por la barra (WCAG 2.4.11). */
+  @media (max-width: 1023px) { html { scroll-padding-bottom: calc(var(--tabbar-space) + 1rem); } }
   html::-webkit-scrollbar { display: none; }
   /* Lo que dibuja el navegador también va con la paleta: la selección y el cursor de texto. */
   ::selection { background: color-mix(in oklch, var(--blue-light) 24%, white); color: var(--tinta); }

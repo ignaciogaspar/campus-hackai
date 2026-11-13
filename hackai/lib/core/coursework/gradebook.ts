@@ -12,7 +12,7 @@ import type {
   CourseworkDeps,
   GradebookStudent,
   GradeScale,
-  NewGrade,
+  GradeTarget,
   PasteError,
   PastePreview,
   PublishedGrade,
@@ -205,7 +205,7 @@ export function createGradebook(deps: CourseworkDeps) {
       que ya tiene la comisión, para saber si la columna está publicada. */
   async function gradeTarget(
     personId: PersonId,
-    input: NewGrade
+    input: GradeTarget
   ): Promise<
     Result<
       { column: ColumnDef; published: boolean },
@@ -236,6 +236,20 @@ export function createGradebook(deps: CourseworkDeps) {
 
     const saved = await save(personId, column, published, input.sectionId, input.studentId, checked.value)
     return saved.ok ? ok(cellOf(saved.value)) : saved
+  }
+
+  const removeGrade: Coursework['removeGrade'] = async (personId, input) => {
+    const target = await gradeTarget(personId, input)
+    if (!target.ok) return target
+    const { column } = target.value
+    const grades = await store.gradesOfSection(input.sectionId)
+    if (!grades.ok) return grades
+    const current = grades.value.find((g) => inColumn(g, column) && g.personId === input.studentId)
+    if (!current || !isGraded(current)) return ok(undefined)
+    if (current.publishedAt !== null) return fail('nota-publicada')
+    const blank = { value: null, absent: false, comment: '' }
+    const saved = await save(personId, column, false, input.sectionId, input.studentId, blank)
+    return saved.ok ? ok(undefined) : saved
   }
 
   /** Guarda la nota de un alumno en una columna. En una columna ya publicada, la nota que se carga o se cambia sale
@@ -544,6 +558,7 @@ export function createGradebook(deps: CourseworkDeps) {
     ...createEvaluation(deps, { teachingSection, columnsOf }),
     gradebook,
     grade,
+    removeGrade,
     previewPaste,
     applyPaste,
     publish,
