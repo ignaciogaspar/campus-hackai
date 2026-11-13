@@ -14,7 +14,7 @@ import { EditTaskForm } from '@/components/coursework/task-form'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { BackLink } from '@/components/spaces/back-link'
 import { messageTime } from '@/components/spaces/format'
-import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -180,8 +180,9 @@ export default async function TaskPage({ params, searchParams }: { params: Param
         role={task.role}
         sections={task.canManage && task.sections.length > 1 ? [] : shown}
         backHref={back}
+        toolbarBell={task.role === 'profesor'}
       />
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+      <main className={SUBJECT_MAIN}>
         <SubjectToolbar
           subjectId={subjectId}
           current='tareas'

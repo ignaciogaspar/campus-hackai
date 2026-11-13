@@ -455,6 +455,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         art={subjectTheme(view.space.name).art}
         backHref='/materias'
         hideBackOnDesktop
+        desktopBell={view.viewer.role !== 'profesor'}
       >
         <SectionChips view={view} />
       </PageHeader>

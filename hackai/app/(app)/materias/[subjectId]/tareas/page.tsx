@@ -16,7 +16,7 @@ import { TaskError } from '@/components/coursework/task-error'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { TaskList } from '@/components/coursework/task-list'
 import { messageTime } from '@/components/spaces/format'
-import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { Pagination } from '@/components/ui/pagination'
 import { StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
@@ -68,8 +68,9 @@ export default async function TasksPage({ params, searchParams }: { params: Para
         role={list.role}
         sections={selected && !(teacher && several) ? [selected] : []}
         backHref='/materias'
+        toolbarBell={teacher}
       />
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+      <main className={SUBJECT_MAIN}>
         <SubjectToolbar
           subjectId={subjectId}
           current='tareas'

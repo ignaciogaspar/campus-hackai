@@ -31,7 +31,7 @@ import { ColumnPicker, ColumnSummary, NoColumns } from '@/components/coursework/
 import { TaskError } from '@/components/coursework/task-error'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { messageTime } from '@/components/spaces/format'
-import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -82,8 +82,9 @@ export default async function GradebookPage({ params, searchParams }: { params: 
         role={session.role}
         sections={selectedSection && !several ? [selectedSection] : []}
         backHref='/materias'
+        toolbarBell
       />
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+      <main className={SUBJECT_MAIN}>
         <SubjectToolbar
           subjectId={subjectId}
           current='calificaciones'

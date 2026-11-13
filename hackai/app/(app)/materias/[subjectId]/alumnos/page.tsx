@@ -12,7 +12,7 @@ import { pageOf } from '@/components/coursework/format'
 import { PageHeader } from '@/components/shell/page-header'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
-import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { Card } from '@/components/ui/card'
 import { Pagination } from '@/components/ui/pagination'
 import { StaleBanner } from '@/components/ui/stale-banner'
@@ -132,13 +132,14 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
         art={subjectTheme(section.subjectName).art}
         backHref='/materias'
         hideBackOnDesktop
+        desktopBell={false}
       >
         <span className='rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15 ring-inset'>
           {several ? 'Docente' : `Docente · Comisión ${section.name}`}
         </span>
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+      <main className={SUBJECT_MAIN}>
         <SubjectToolbar
           subjectId={subjectId}
           current='alumnos'

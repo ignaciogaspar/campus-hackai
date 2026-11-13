@@ -11,13 +11,16 @@ export function TaskHeader({
   subject,
   role,
   sections,
-  backHref
+  backHref,
+  toolbarBell = false
 }: {
   subject: TaskSubject
   role: Role
   /** Las comisiones que se muestran como chips: las de la tarea o la elegida. */
   sections: TaskSection[]
   backHref: string
+  /** Si la pantalla lleva la campana en la barra de la materia (el docente, en compu). */
+  toolbarBell?: boolean
 }) {
   return (
     <PageHeader
@@ -27,6 +30,7 @@ export function TaskHeader({
       art={subjectTheme(subject.subjectName).art}
       backHref={backHref}
       hideBackOnDesktop
+      desktopBell={!toolbarBell}
     >
       {sections.map((s) => (
         <span
