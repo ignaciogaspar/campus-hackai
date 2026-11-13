@@ -68,7 +68,7 @@ export default async function SubmissionPage({ params }: { params: Params }) {
           </StaleNotice>
         )}
         <BackLink href={back}>Volver a la tarea</BackLink>
-        <div className='flex w-full max-w-3xl flex-col gap-4'>
+        <div className='mx-auto flex w-full max-w-3xl flex-col gap-4'>
           <SubmissionDetailCard detail={detail} />
         </div>
       </main>

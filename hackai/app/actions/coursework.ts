@@ -11,6 +11,7 @@ import {
   COURSE_COLUMN,
   dueAtFromInput,
   durationLabel,
+  evaluationHref,
   gradeFromInput,
   gradesHref,
   taskHref,
@@ -283,6 +284,7 @@ export async function saveWeights(_prev: SpaceActionState, form: FormData): Prom
   const result = await system().coursework.setWeights(session.personId, sectionId, weights)
   if (!result.ok) return failed(COURSE_ERRORS[result.error])
   revalidatePath(gradesHref(subjectId))
+  revalidatePath(evaluationHref(subjectId))
   return { status: 'ok', message: 'Guardamos los pesos. La nota de cursada ya se recalculó.', at: Date.now() }
 }
 
@@ -393,4 +395,132 @@ export async function savePastedGrades(_prev: SpaceActionState, form: FormData):
   if (!result.ok) return failed(PASTE_ERRORS[result.error])
   revalidatePath(gradesHref(subjectId))
   redirect(gradesHref(subjectId, { comision: sectionId, columna: columnId, pegadas: result.value.saved }))
+}
+
+/** Guarda de una vez las notas que el docente escribió en la planilla de una columna. Solo toca las filas que cambió:
+    un número de 1 a 10 o «A» de ausente, y conserva el comentario de cada alumno. Una nota que se borra no se guarda. */
+export async function saveGradeSheet(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const columnId = text(form, 'columnId')
+  const rows = sheetRows(form)
+  if (!subjectId || !sectionId || !columnId || !rows) return failed(UNEXPECTED)
+  const changed = rows.filter((r) => r.value.trim().toUpperCase() !== r.before.trim().toUpperCase() && r.value.trim())
+  const wrong = changed.find((r) => !isSheetGrade(r.value))
+  if (wrong) return failed(`La nota de ${wrong.name} no sirve: va de 1 a 10, con coma o punto, o «A» si faltó.`)
+  if (changed.length === 0) return { status: 'ok', message: 'No había cambios para guardar.', at: Date.now() }
+
+  for (const row of changed) {
+    const absent = row.value.trim().toUpperCase() === 'A'
+    const result = await system().coursework.grade(session.personId, {
+      sectionId,
+      columnId,
+      studentId: row.studentId,
+      value: absent ? null : gradeFromInput(row.value),
+      absent,
+      comment: row.comment
+    })
+    if (!result.ok) return failed(`${row.name}: ${GRADE_ERRORS[result.error]}`)
+  }
+  revalidatePath(gradesHref(subjectId))
+  const saved = changed.length === 1 ? 'Guardamos 1 nota.' : `Guardamos ${changed.length} notas.`
+  return { status: 'ok', message: saved, at: Date.now() }
+}
+
+type SheetRow = { studentId: string; name: string; value: string; before: string; comment: string }
+
+/** Las filas de la planilla, en orden. `null` si llegaron desparejas. */
+function sheetRows(form: FormData): SheetRow[] | null {
+  const field = (key: string) => form.getAll(key).map((v) => (typeof v === 'string' ? v : ''))
+  const [ids, names, values, before, comments] = ['alumno', 'nombre', 'nota', 'antes', 'comentario'].map(field)
+  if ([names, values, before, comments].some((list) => list.length !== ids.length)) return null
+  return ids.map((studentId, i) => ({
+    studentId,
+    name: names[i],
+    value: values[i],
+    before: before[i],
+    comment: comments[i]
+  }))
+}
+
+const isSheetGrade = (value: string) => {
+  if (value.trim().toUpperCase() === 'A') return true
+  const grade = gradeFromInput(value)
+  return grade !== null && grade >= 1 && grade <= 10
+}
+
+type ExamActionError = ErrorOf<ReturnType<Coursework['saveExam']>> | ErrorOf<ReturnType<Coursework['setPromotion']>>
+
+const EXAM_ERRORS: Record<ExamActionError, string> = {
+  'persona-desconocida': ERRORS['persona-desconocida'],
+  'sin-acceso': 'No dictás esa comisión.',
+  'solo-docentes': 'Solo los docentes de la comisión configuran la evaluación.',
+  'columna-desconocida': 'Esa instancia ya no existe en esta comisión. Recargá la página.',
+  'nombre-invalido': 'Ponele un nombre a la instancia, de hasta 120 caracteres.',
+  'fecha-invalida': 'Elegí la fecha y la hora del examen.',
+  'tipo-invalido': 'Elegí si es parcial, recuperatorio o integrador.',
+  'examen-con-notas': 'Esa instancia ya tiene notas cargadas: no se puede borrar.',
+  'nota-invalida': 'La nota mínima para promocionar va de 4 a 10.',
+  'falla-externa': ERRORS['falla-externa']
+}
+
+const EXAM_KINDS = new Set(['parcial', 'recuperatorio', 'integrador'])
+
+/** Suma una instancia de examen o corrige el nombre, el tipo y la fecha de una que ya existe. */
+export async function saveExam(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const kind = text(form, 'kind') ?? ''
+  if (!subjectId || !sectionId) return failed(UNEXPECTED)
+  if (!EXAM_KINDS.has(kind)) return failed(EXAM_ERRORS['tipo-invalido'])
+  const date = dueAtFromInput(text(form, 'date') ?? '')
+  if (!date) return failed(EXAM_ERRORS['fecha-invalida'])
+  const columnId = text(form, 'columnId') || undefined
+
+  const result = await system().coursework.saveExam(session.personId, {
+    sectionId,
+    columnId,
+    kind: kind as 'parcial' | 'recuperatorio' | 'integrador',
+    name: text(form, 'name') ?? '',
+    date
+  })
+  if (!result.ok) return failed(EXAM_ERRORS[result.error])
+  revalidatePath(evaluationHref(subjectId))
+  revalidatePath(gradesHref(subjectId))
+  return { status: 'ok', message: columnId ? 'Guardamos los cambios.' : 'Sumamos la instancia.', at: Date.now() }
+}
+
+/** Borra una instancia de examen propia que todavía no tiene notas. */
+export async function deleteExam(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  const columnId = text(form, 'columnId')
+  if (!subjectId || !sectionId || !columnId) return failed(UNEXPECTED)
+  const result = await system().coursework.deleteExam(session.personId, sectionId, columnId)
+  if (!result.ok) return failed(EXAM_ERRORS[result.error])
+  revalidatePath(evaluationHref(subjectId))
+  revalidatePath(gradesHref(subjectId))
+  return { status: 'ok', message: 'Borramos la instancia.', at: Date.now() }
+}
+
+/** Marca si la materia se promociona en la comisión y con qué nota mínima. */
+export async function savePromotion(_prev: SpaceActionState, form: FormData): Promise<SpaceActionState> {
+  const session = await requireSession()
+  const subjectId = text(form, 'subjectId')
+  const sectionId = text(form, 'sectionId')
+  if (!subjectId || !sectionId) return failed(UNEXPECTED)
+  const promotable = text(form, 'promotable') === 'si'
+  const minimum = gradeFromInput(text(form, 'minimum') ?? '') ?? 7
+  const result = await system().coursework.setPromotion(session.personId, sectionId, { promotable, minimum })
+  if (!result.ok) return failed(EXAM_ERRORS[result.error])
+  revalidatePath(evaluationHref(subjectId))
+  revalidatePath(gradesHref(subjectId))
+  return {
+    status: 'ok',
+    message: promotable ? 'Listo: la materia se promociona en esta comisión.' : 'Listo: la materia va a final.',
+    at: Date.now()
+  }
 }

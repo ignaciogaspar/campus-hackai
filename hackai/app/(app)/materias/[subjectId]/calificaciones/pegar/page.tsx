@@ -65,7 +65,7 @@ export default async function PasteGradesPage({
             desactualizado.
           </StaleNotice>
         )}
-        <div className='flex w-full max-w-3xl flex-col gap-4'>
+        <div className='mx-auto flex w-full max-w-3xl flex-col gap-4'>
           <PasteGrades
             key={`${book.sectionId}:${column.id}`}
             subjectId={subjectId}

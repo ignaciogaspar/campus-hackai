@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { railItem, railTrack } from '@/components/ui/rail'
+import { RailScroller } from '@/components/ui/rail-scroller'
 import { cn } from '@/lib/utils'
 
 /* Selector de comisión: con dos o más comisiones de la materia, el docente
@@ -16,22 +17,24 @@ export function SectionPicker({
 }) {
   if (sections.length < 2) return null
   return (
-    <nav aria-label='Comisión' className='flex flex-col gap-1.5 lg:max-w-xl'>
-      <span aria-hidden='true' className='px-1 text-xs font-semibold text-muted-foreground'>
+    <nav aria-label='Comisión' className='flex min-w-0 flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-3'>
+      <span aria-hidden='true' className='px-1 text-xs font-semibold text-muted-foreground lg:px-0'>
         Comisión
       </span>
-      <div className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto')}>
+      <RailScroller
+        className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto [scrollbar-width:none] lg:w-auto')}
+      >
         {sections.map((s) => (
           <Link
             key={s.sectionId}
             href={hrefFor(s.sectionId)}
             aria-current={s.sectionId === selectedId ? 'page' : undefined}
-            className={cn(railItem({ size: 'sm' }), 'min-h-11 max-sm:px-2')}
+            className={cn(railItem({ size: 'sm' }), 'min-h-11 max-sm:px-2 lg:flex-none lg:px-4')}
           >
             <span className='truncate'>{s.name}</span>
           </Link>
         ))}
-      </div>
+      </RailScroller>
     </nav>
   )
 }

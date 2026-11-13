@@ -1,57 +1,30 @@
-/* Calificaciones de una comisión, pensadas primero para el celular: una
-   columna a la vez. Arriba se elige la columna (una por tarea con nota y una
-   por parcial del SIU, y al final la nota de cursada), después se ve su estado y
-   se publica, y debajo hay una fila por alumno con su nota. Tocar un alumno abre
-   su nota y comentario.
-   Sin tablas anchas: la misma lista sirve en la compu. */
-import { ClipboardList, ClipboardPaste, FileSpreadsheet, NotebookPen } from 'lucide-react'
+/* Las piezas de Calificaciones de una comisión: el selector de columna (una por
+   tarea con nota, una por instancia de examen y al final la nota de cursada) y
+   el estado de la columna elegida, con publicar y cómo va el pase al SIU. La
+   planilla para cargar las notas está en ./grade-sheet.tsx. */
+import { ClipboardList, ClipboardPaste } from 'lucide-react'
 import Link from 'next/link'
 import { publishColumn, retryGradePass } from '@/app/actions/coursework'
-import { GradeBadge } from '@/components/academic/grade-badge'
-import {
-  COURSE_COLUMN,
-  dueTime,
-  gradeInputValue,
-  gradesExcelHref,
-  gradesHref,
-  pasteGradesHref
-} from '@/components/coursework/format'
+import { COURSE_COLUMN, dueTime, gradeInputValue, gradesHref, pasteGradesHref } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { railItem, railTrack } from '@/components/ui/rail'
+import { RailScroller } from '@/components/ui/rail-scroller'
 import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { GradebookStudent, GradeCell, GradeColumn, PassCounts, PassStatus } from '@/lib/core/coursework'
+import type { GradeColumn, PassCounts, PassStatus } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
-/** Baja el Excel de la materia: una hoja por comisión del docente, con sus alumnos y notas. Es un enlace común con
-    `download`, así anda igual en el celular. */
-export function ExcelDownload({ subjectId, several }: { subjectId: string; several: boolean }) {
-  return (
-    <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4'>
-      <a
-        href={gradesExcelHref(subjectId)}
-        download
-        className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11 w-full flex-none rounded-[10px] sm:w-auto')}
-      >
-        <FileSpreadsheet aria-hidden='true' data-icon='inline-start' />
-        Descargar Excel de la materia
-      </a>
-      <p className='text-[0.8125rem] text-muted-foreground'>
-        {several ? 'Una hoja por cada una de tus comisiones' : 'Una hoja con tu comisión'}, con los alumnos y todas sus
-        notas.
-      </p>
-    </div>
-  )
-}
-
-export function NoColumns() {
+export function NoColumns({ evaluationHref }: { evaluationHref: string }) {
   return (
     <EmptyState icon={ClipboardList} title='Todavía no hay columnas'>
-      Cuando crees una tarea con nota, o el SIU tenga parciales para esta comisión, aparecen acá para cargar las notas.
+      Creá una tarea con nota o{' '}
+      <Link href={evaluationHref} className='font-semibold text-blue underline-offset-2 hover:underline focus-ring'>
+        sumá una instancia de examen
+      </Link>
+      , o esperá a que el SIU cargue los parciales de la comisión.
     </EmptyState>
   )
 }
@@ -69,11 +42,13 @@ export function ColumnPicker({
   selectedId: string
 }) {
   return (
-    <nav aria-label='Columna' className='flex flex-col gap-1.5'>
+    <nav aria-label='Columna' className='flex min-w-0 flex-col gap-1.5'>
       <span aria-hidden='true' className='px-1 text-xs font-semibold text-muted-foreground'>
         Columna
       </span>
-      <div className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto lg:max-w-3xl')}>
+      <RailScroller
+        className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto [scrollbar-width:none] lg:max-w-3xl')}
+      >
         {columns.map((c) => (
           <Link
             key={c.id}
@@ -91,7 +66,7 @@ export function ColumnPicker({
         >
           <span className='truncate'>Nota de cursada</span>
         </Link>
-      </div>
+      </RailScroller>
     </nav>
   )
 }
@@ -124,7 +99,7 @@ export function ColumnSummary({
           </StatusPill>
         </div>
         <p className='flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground'>
-          <OriginBadge origin={column.kind === 'tarea' ? 'hackai' : 'siu'} />
+          <OriginBadge origin={column.kind === 'evaluacion' ? 'siu' : 'hackai'} />
           <time dateTime={column.date}>{dueTime(column.date)}</time>
           <span>· {column.weight === null ? 'Sin peso' : `Peso ${gradeInputValue(column.weight)}`}</span>
         </p>
@@ -152,9 +127,11 @@ export function ColumnSummary({
             Pegar notas de una planilla
           </Link>
         </div>
-        <p className='text-[0.8125rem] text-muted-foreground'>
-          Al publicar, cada alumno ve su nota y tu comentario, y le llega el aviso a la campana.
-        </p>
+        {column.publishedAt === null && column.graded > 0 && (
+          <p className='text-[0.8125rem] text-muted-foreground'>
+            Al publicar, cada alumno ve su nota y tu comentario, y le llega el aviso.
+          </p>
+        )}
       </ActionForm>
       {column.pass && <PassSummary subjectId={subjectId} sectionId={sectionId} pass={column.pass} />}
     </Card>
@@ -220,65 +197,5 @@ export function PassSummary({
         </p>
       )}
     </ActionForm>
-  )
-}
-
-function Result({ cell }: { cell: GradeCell | undefined }) {
-  if (cell?.value != null) return <GradeBadge grade={cell.value} />
-  return <StatusPill tone='neutral'>{cell?.absent ? 'Ausente' : 'Sin nota'}</StatusPill>
-}
-
-/** Una fila por alumno con su nota. Quien todavía no entró a HackAI no se puede calificar. */
-export function StudentList({
-  subjectId,
-  sectionId,
-  columnId,
-  students,
-  selectedId
-}: {
-  subjectId: string
-  sectionId: string
-  columnId: string
-  students: GradebookStudent[]
-  selectedId?: string
-}) {
-  if (students.length === 0) {
-    return (
-      <EmptyState icon={NotebookPen} title='Todavía no hay alumnos'>
-        Cuando haya alumnos inscriptos a esta comisión, aparecen acá para cargarles la nota.
-      </EmptyState>
-    )
-  }
-  return (
-    <Card>
-      <List aria-label='Alumnos'>
-        {students.map((s) => {
-          const cell = s.cells[columnId]
-          const meta = (
-            <>
-              <span>Legajo {s.legajo}</span>
-              {s.personId === null && <span>· Todavía no entró a HackAI</span>}
-              {cell && <span>· {cell.published ? 'Publicada' : 'Sin publicar'}</span>}
-              {cell?.pass && <PassPill status={cell.pass} />}
-            </>
-          )
-          return (
-            <ListItem
-              key={s.legajo}
-              href={
-                s.personId
-                  ? gradesHref(subjectId, { comision: sectionId, columna: columnId, alumno: s.personId })
-                  : undefined
-              }
-              className={s.personId && s.personId === selectedId ? 'bg-accent/60' : undefined}
-              title={s.name}
-              description={cell?.comment || undefined}
-              meta={meta}
-              end={<Result cell={cell} />}
-            />
-          )
-        })}
-      </List>
-    </Card>
   )
 }

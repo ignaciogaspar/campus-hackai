@@ -235,6 +235,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 29. ¿Desde qué nota se promociona, y quién decide si una comisión promociona?
+
+- **Por qué importa:** HackAI marca la condición de cada alumno con la nota de cursada (promociona, regular o desaprobada) y pasa la promoción al SIU. Si el mínimo o quién lo decide no son los de la Austral, la condición que ve el alumno está mal.
+- **Hipótesis (12/11/2026):** sin configurar, una comisión promociona si el SIU la da como `instance = 'promocion'`, desde 7. El docente lo puede cambiar por comisión (de 4 a 10). Regulariza desde 4. Las instancias de examen que suma el docente quedan en HackAI y no pasan al SIU; corregirle la fecha a un parcial del SIU tampoco cambia el cronograma del SIU.
+- **Opciones:** el mínimo lo fija la cátedra (como está); un mínimo único de la facultad; que lo decida solo el SIU.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

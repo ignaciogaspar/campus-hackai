@@ -56,3 +56,24 @@ export function sectionsToCreateIn(
 
 /** Si es alumno de alguna de esas comisiones. */
 export const learns = (sections: MySection[]) => sections.some((s) => s.role === 'alumno')
+
+/** Cualquier error de una lectura de Cursada que no sea de acceso es una falla externa. */
+export const readFailure = (error: string) =>
+  error === 'persona-desconocida' || error === 'sin-acceso' ? (error as AccessError) : ('falla-externa' as const)
+
+/** La hora de la lectura más vieja entre las desactualizadas, o `null` si ninguna lo está. */
+export const oldest = (reads: (string | null)[]) => reads.filter((at): at is string => at !== null).sort()[0] ?? null
+
+/** Las comisiones que dicta de la materia y la que se mira: la pedida si es suya, o la primera. A quien solo
+    cursa la materia, `solo-docentes`; a quien no es de ella, `sin-acceso`. */
+export function chooseTeaching(
+  sections: MySection[],
+  subjectId: string,
+  requested?: string
+): Result<{ shown: MySection[]; selected: MySection }, 'sin-acceso' | 'solo-docentes'> {
+  const ofSubject = sections.filter((s) => s.subjectId === subjectId)
+  const teaching = ofSubject.filter((s) => s.role === 'profesor')
+  if (teaching.length === 0) return fail(learns(ofSubject) ? 'solo-docentes' : 'sin-acceso')
+  const shown = shownSections(teaching)
+  return ok({ shown, selected: shown.find((s) => s.sectionId === requested) ?? shown[0] })
+}

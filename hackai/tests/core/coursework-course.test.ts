@@ -126,7 +126,8 @@ test('la nota de cursada es el promedio ponderado y reparte el peso entre las co
     value: null,
     edited: false,
     published: null,
-    pass: null
+    pass: null,
+    condition: null
   })
 })
 
@@ -170,6 +171,7 @@ test('el resumen cuenta cuántos alumnos tienen nota de cursada y la suma de los
 
   assert.deepEqual(course, {
     weightTotal: 100,
+    promotion: { promotable: false, minimum: 7 },
     graded: 2,
     unpublished: 2,
     pass: { passed: 0, pending: 0, refused: 0 }
@@ -223,6 +225,7 @@ test('publicar la nota de cursada la pasa al SIU con su estado y el alumno la ve
   const book = value(await coursework.gradebook('p-mledesma', 'am1'))
   assert.deepEqual(book.course, {
     weightTotal: 100,
+    promotion: { promotable: false, minimum: 7 },
     graded: 2,
     unpublished: 0,
     pass: { passed: 2, pending: 0, refused: 0 }

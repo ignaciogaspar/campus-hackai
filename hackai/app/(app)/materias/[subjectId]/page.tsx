@@ -55,10 +55,10 @@ import {
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
-import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
+import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -411,18 +411,15 @@ function CenterPane(props: Parameters<typeof CenterContent>[0]) {
 function TeacherNav({ subjectId, view, requested }: { subjectId: string; view: SpaceView; requested?: string }) {
   const taught = view.viewer.sections.filter((s) => s.current)
   const section = chooseSection(taught, requested)
-  const comision = taught.length > 1 ? section?.sectionId : undefined
   return (
-    <>
-      <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} />
-      {section && (
-        <SectionPicker
-          sections={taught}
-          selectedId={section.sectionId}
-          hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
-        />
-      )}
-    </>
+    <SubjectToolbar
+      subjectId={subjectId}
+      current='espacio'
+      viewer='profesor'
+      sections={taught}
+      selectedId={section?.sectionId ?? ''}
+      hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+    />
   )
 }
 

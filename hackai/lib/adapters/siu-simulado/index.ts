@@ -698,7 +698,7 @@ export function createSimulatedSiu({
       return saved.ok ? ok({ date: at }) : fail('falla-externa')
     },
 
-    async writeCourseGrade(personId, sectionId, value) {
+    async writeCourseGrade(personId, sectionId, value, promoted = false) {
       if (!validGrade(value)) return fail('nota-invalida')
       const exists = await person(personId)
       if (!exists.ok) return exists
@@ -719,7 +719,7 @@ export function createSimulatedSiu({
               type: 'cursada',
               date: at,
               grade: value,
-              result: courseResult(value),
+              result: courseResult(value, promoted),
               grade_record: `HK-${sectionId}`,
               section_id: null,
               assessment_id: null,

@@ -3,6 +3,7 @@
    archivo; al editarla solo se cambian el nombre, la consigna y la fecha
    límite: las comisiones y si lleva nota quedan como estaban. La fecha se
    escribe en la hora de Buenos Aires (components/coursework/format.ts). */
+import { ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { createTask, updateTask } from '@/app/actions/coursework'
 import { inputValueOf, sectionLabel } from '@/components/coursework/format'
@@ -151,22 +152,29 @@ export function NewTaskForm({
 
 export function EditTaskForm({ task }: { task: Task }) {
   return (
-    <section aria-labelledby='tarea-editar' className='rounded-[22px] bg-card p-4 shadow-card'>
-      <h2 id='tarea-editar' className='text-lg font-extrabold'>
+    <details className='group rounded-[22px] bg-card shadow-card'>
+      <summary className='flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-[22px] px-4 text-base font-extrabold transition-colors hover:bg-ink/[0.03] focus-ring-inset [&::-webkit-details-marker]:hidden'>
         Editar la tarea
-      </h2>
-      <p className='mt-1 text-[0.8125rem] text-muted-foreground'>
-        Podés cambiar el nombre, la consigna y la fecha límite. Las comisiones y si lleva nota quedan como están.
-      </p>
-      <ActionForm action={updateTask} className='mt-3 flex flex-col gap-4'>
-        <input type='hidden' name='taskId' value={task.id} />
-        <Fields task={task} />
-        <div className='flex flex-wrap gap-2'>
-          <SubmitButton className={cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')}>
-            Guardar cambios
-          </SubmitButton>
-        </div>
-      </ActionForm>
-    </section>
+        <ChevronDown
+          aria-hidden='true'
+          className='size-5 flex-none text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none'
+          strokeWidth={2}
+        />
+      </summary>
+      <div className='border-t border-border px-4 pt-3 pb-4'>
+        <p className='text-[0.8125rem] text-muted-foreground'>
+          Podés cambiar el nombre, la consigna y la fecha límite. Las comisiones y si lleva nota quedan como están.
+        </p>
+        <ActionForm action={updateTask} className='mt-3 flex flex-col gap-4'>
+          <input type='hidden' name='taskId' value={task.id} />
+          <Fields task={task} />
+          <div className='flex flex-wrap gap-2'>
+            <SubmitButton className={cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')}>
+              Guardar cambios
+            </SubmitButton>
+          </div>
+        </ActionForm>
+      </div>
+    </details>
   )
 }

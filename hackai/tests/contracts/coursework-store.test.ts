@@ -206,6 +206,47 @@ function courseworkStoreContract(name: string, make: () => CourseworkStore, skip
     assert.deepEqual(value(await store.submissionsBy(ids.person(2), [task.id])), [graded])
   })
 
+  it('guarda instancias de examen propias y una sola corrección por evaluación del SIU, y borra las propias', async (store, ids) => {
+    const section = ids.subject(7)
+    const own = value(
+      await store.saveExam({
+        sectionId: section,
+        siuAssessmentId: null,
+        kind: 'integrador',
+        name: 'Integrador',
+        date: '2026-12-01T13:00:00.000Z'
+      })
+    )
+    const fix = { sectionId: section, siuAssessmentId: 'ev-5', kind: 'parcial' as const, name: 'Segundo parcial' }
+    value(await store.saveExam({ ...fix, date: '2026-11-20T13:00:00.000Z' }))
+    const moved = value(await store.saveExam({ ...fix, date: '2026-11-27T13:00:00.000Z' }))
+    const renamed = value(await store.saveExam({ ...own, name: 'Integrador final' }))
+
+    assert.equal(renamed.id, own.id)
+    const saved = value(await store.examsOfSection(section))
+    assert.deepEqual(
+      saved.map((e) => [e.siuAssessmentId, e.name, e.date]).sort(),
+      [
+        ['ev-5', 'Segundo parcial', moved.date],
+        [null, 'Integrador final', '2026-12-01T13:00:00.000Z']
+      ].sort()
+    )
+    value(await store.deleteExam(own.id))
+    assert.deepEqual(
+      value(await store.examsOfSection(section)).map((e) => e.siuAssessmentId),
+      ['ev-5']
+    )
+    assert.deepEqual(value(await store.examsOfSection(ids.subject(8))), [])
+  })
+
+  it('la promoción de una comisión arranca sin configurar y se reemplaza al guardarla', async (store, ids) => {
+    const section = ids.subject(9)
+    assert.equal(value(await store.promotionOf(section)), null)
+    value(await store.savePromotion(section, { promotable: true, minimum: 7 }))
+    value(await store.savePromotion(section, { promotable: true, minimum: 8 }))
+    assert.deepEqual(value(await store.promotionOf(section)), { promotable: true, minimum: 8 })
+  })
+
   it('las entregas de una persona salen solo para las tareas pedidas, y no se mezclan con las de otra', async (store, ids) => {
     const one = value(await store.createTask(taskOf(ids, { name: 'Una' })))
     const two = value(await store.createTask(taskOf(ids, { name: 'Dos' })))
@@ -529,6 +570,16 @@ const TABLES = {
   coursework_weights: {
     columns: ['section_id', 'kind', 'ref_id', 'weight'],
     unique: [['section_id', 'kind', 'ref_id']]
+  },
+  coursework_exams: {
+    columns: ['id', 'section_id', 'assessment_id', 'kind', 'name', 'date'],
+    uuid: ['id'],
+    generated: { id: 'uuid' },
+    unique: [['id']]
+  },
+  coursework_promotions: {
+    columns: ['section_id', 'promotable', 'minimum'],
+    unique: [['section_id']]
   }
 } satisfies Parameters<typeof createFakePostgrest>[0]['tables']
 

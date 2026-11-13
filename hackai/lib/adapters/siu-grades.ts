@@ -7,4 +7,7 @@ export const validGrade = (grade: number) => Number.isFinite(grade) && grade >= 
 
 /** Con qué resultado queda la cursada: regular desde 4. Es un supuesto, no una regla de la Austral
     (docs/product/preguntas-abiertas.md). */
-export const courseResult = (grade: number): SiuHistoryResult => (grade >= 4 ? 'regular' : 'desaprobado')
+export const courseResult = (grade: number, promoted = false): SiuHistoryResult => {
+  if (promoted) return 'promocionado'
+  return grade >= 4 ? 'regular' : 'desaprobado'
+}

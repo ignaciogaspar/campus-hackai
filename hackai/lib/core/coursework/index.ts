@@ -156,9 +156,73 @@ export type DatedTask = {
   past: boolean
 }
 
-/** Qué se califica: una tarea, una evaluación del SIU o la nota de cursada (una por alumno y comisión). La de
-    cursada no es una columna de Calificaciones: se calcula de las columnas. */
-export type ColumnKind = 'tarea' | 'evaluacion' | 'cursada'
+/** Qué se califica: una tarea, una evaluación del SIU, una instancia de examen que el docente sumó en HackAI (no
+    existe en el SIU) o la nota de cursada (una por alumno y comisión). La de cursada no es una columna de
+    Calificaciones: se calcula de las columnas. */
+export type ColumnKind = 'tarea' | 'evaluacion' | 'examen' | 'cursada'
+
+/** De qué tipo es una instancia de examen que suma el docente. */
+export type ExamKind = 'parcial' | 'recuperatorio' | 'integrador'
+
+/** Una instancia de examen guardada en HackAI: una propia del docente (`siuAssessmentId` en `null`) o el nombre y la
+    fecha que el docente le corrigió a una evaluación del SIU. */
+export type StoredExam = {
+  id: string
+  sectionId: string
+  siuAssessmentId: string | null
+  kind: ExamKind
+  name: string
+  /** ISO. */
+  date: string
+}
+
+/** Si la materia se promociona en la comisión y con qué nota de cursada como mínimo. */
+export type Promotion = { promotable: boolean; minimum: number }
+
+/** Cómo queda la cursada con la nota que vale: promociona (si la comisión es promocionable y llega al mínimo),
+    regular desde 4 o desaprobada. */
+export type CourseCondition = 'promociona' | 'regular' | 'desaprobado'
+
+/** Una instancia de examen de la comisión, como la ve el docente en «Evaluación»: las del SIU (con lo que les
+    corrigió) y las propias. */
+export type ExamInstance = {
+  /** El id de su columna en Calificaciones. */
+  columnId: string
+  source: 'siu' | 'hackai'
+  kind: ExamKind | 'tp'
+  name: string
+  date: string
+  /** Si es del SIU y el docente le cambió el nombre o la fecha. */
+  edited: boolean
+  /** Cuántos alumnos tienen nota o ausente en ella. */
+  graded: number
+  /** Una propia sin notas se puede borrar; una del SIU, nunca. */
+  canDelete: boolean
+}
+
+/** Cómo se evalúa una comisión: sus instancias de examen, los pesos de las columnas y la promoción. */
+export type EvaluationSetup = {
+  subject: TaskSubject
+  sections: TaskSection[]
+  sectionId: string
+  exams: ExamInstance[]
+  /** Las columnas de Calificaciones, con su peso. */
+  columns: GradeColumn[]
+  weightTotal: number
+  promotion: Promotion
+  staleSince: string | null
+}
+
+/** Lo que manda el docente para sumar una instancia (`columnId` ausente) o corregir una existente. */
+export type ExamInput = { sectionId: string; columnId?: string; kind: ExamKind; name: string; date: string }
+
+export type ExamError =
+  | 'solo-docentes'
+  | 'columna-desconocida'
+  | 'nombre-invalido'
+  | 'fecha-invalida'
+  | 'tipo-invalido'
+  | 'examen-con-notas'
 
 /** Cuántas notas de una columna pasaron al SIU, esperan pasar o el SIU no permite pasar. */
 export type PassCounts = { passed: number; pending: number; refused: number }
@@ -171,8 +235,8 @@ export type GradeColumn = {
   name: string
   /** ISO: la fecha límite de la tarea o la fecha de la evaluación. */
   date: string
-  /** Si es una evaluación, de qué tipo; si es una tarea, `null`. */
-  assessmentKind: 'parcial' | 'recuperatorio' | 'tp' | null
+  /** Si es una evaluación o una instancia de examen, de qué tipo; si es una tarea, `null`. */
+  assessmentKind: 'parcial' | 'recuperatorio' | 'integrador' | 'tp' | null
   /** ISO: desde cuándo la ven los alumnos; `null` si todavía es un borrador. */
   publishedAt: string | null
   /** Cuántos alumnos tienen nota o ausente. */
@@ -218,12 +282,15 @@ export type CourseGradeCell = {
   published: number | null
   /** Cómo va su pase al SIU; `null` si no se publicó. */
   pass: PassStatus | null
+  /** Cómo queda la cursada con la nota que vale; `null` sin nota. */
+  condition: CourseCondition | null
 }
 
 /** La nota de cursada de la comisión: cuántos tienen, cuántos falta publicar y cómo va el pase al SIU. */
 export type CourseGradeSummary = {
   /** La suma de los pesos de las columnas. */
   weightTotal: number
+  promotion: Promotion
   /** Cuántos alumnos tienen nota de cursada (calculada o pisada). */
   graded: number
   /** De esos, a cuántos todavía no se les publicó la nota que vale ahora. */
@@ -498,6 +565,23 @@ export type Coursework = {
     personId: PersonId,
     sectionId: string
   ): Promise<Result<{ published: number }, AccessError | 'solo-docentes' | 'sin-notas'>>
+  /** Cómo se evalúa una comisión que dicta el docente: instancias de examen, pesos y promoción. */
+  evaluation(
+    personId: PersonId,
+    subjectId: string,
+    sectionId?: string
+  ): Promise<Result<EvaluationSetup, AccessError | 'solo-docentes'>>
+  /** Suma una instancia de examen propia o corrige el nombre, el tipo y la fecha de una existente (también de una
+      del SIU: el cambio queda en HackAI y sus notas se siguen pasando al SIU). */
+  saveExam(personId: PersonId, input: ExamInput): Promise<Result<ExamInstance, AccessError | ExamError>>
+  /** Borra una instancia propia sin notas. Una del SIU, o una con notas, no se borra. */
+  deleteExam(personId: PersonId, sectionId: string, columnId: string): Promise<Result<void, AccessError | ExamError>>
+  /** Si la comisión promociona y con qué nota mínima (de 4 a 10). */
+  setPromotion(
+    personId: PersonId,
+    sectionId: string,
+    promotion: Promotion
+  ): Promise<Result<void, AccessError | 'solo-docentes' | 'nota-invalida'>>
   /** Las notas publicadas del alumno, la más nueva primero. Nunca trae una de una columna sin publicar. */
   publishedFor(personId: PersonId): Promise<Result<PublishedGrade[], AccessError>>
   /** Las publicadas con número en los últimos 7 días y después de `seenAt` (cuando el alumno vio sus notas por última
@@ -590,6 +674,14 @@ export type CourseworkStore = {
   saveWeight(column: ColumnKey, weight: number | null): Promise<Result<void, CourseworkStoreError>>
   /** Los pesos que tienen las columnas de la comisión. */
   weightsOfSection(sectionId: string): Promise<Result<StoredWeight[], CourseworkStoreError>>
+  /** Las instancias de examen de la comisión guardadas en HackAI: las propias y las correcciones a las del SIU. */
+  examsOfSection(sectionId: string): Promise<Result<StoredExam[], CourseworkStoreError>>
+  /** Crea la instancia (sin `id`) o reemplaza la que tiene ese id. Para una del SIU hay una sola por evaluación. */
+  saveExam(exam: Omit<StoredExam, 'id'> & { id?: string }): Promise<Result<StoredExam, CourseworkStoreError>>
+  deleteExam(examId: string): Promise<Result<void, CourseworkStoreError>>
+  /** La promoción de la comisión, o `null` si el docente nunca la configuró. */
+  promotionOf(sectionId: string): Promise<Result<Promotion | null, CourseworkStoreError>>
+  savePromotion(sectionId: string, promotion: Promotion): Promise<Result<void, CourseworkStoreError>>
   /** Todas las notas de la comisión, en el orden en que se cargaron por primera vez. */
   gradesOfSection(sectionId: string): Promise<Result<StoredGrade[], CourseworkStoreError>>
   /** Publica en `at` las notas de la columna que tienen nota o ausente y todavía no estaban publicadas, con ese pase

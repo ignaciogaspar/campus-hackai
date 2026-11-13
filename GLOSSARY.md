@@ -107,7 +107,11 @@ Resultado de una cursada aprobada que habilita a rendir el examen final. Se pier
 _Avoid_: confundirla con «alumno regular», que es la condición general que acredita la constancia.
 
 **Promoción (Promotion)**:
-Aprobación de la materia durante la cursada, sin examen final. Al inscribirse, la comisión indica si la instancia es promoción o regularidad.
+Aprobación de la materia durante la cursada, sin examen final. Al inscribirse, la comisión indica si la instancia es promoción o regularidad. En HackAI el docente la confirma o la cambia por comisión, con la nota de cursada mínima para promocionar; quien llega pasa al SIU como `promocionado`.
+
+**Instancia de examen (Exam instance)**:
+Un parcial, recuperatorio o integrador de una comisión, que es una columna de Calificaciones. Las del cronograma del SIU vienen de ahí, y el docente les puede corregir el nombre, el tipo y la fecha en HackAI. Las que suma el docente existen solo en HackAI: sus notas no pasan al SIU.
+_Avoid_: «evaluación» para las propias (evaluación es la del cronograma del SIU).
 
 **Final pendiente (Pending final)**:
 Situación de un alumno que tiene la regularidad de una materia y todavía no aprobó su examen final. El SIU no la muestra como tal: hay que buscar materias con Regularidad y sin Examen en la historia académica.

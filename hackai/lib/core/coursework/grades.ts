@@ -9,6 +9,7 @@ import type {
   PassCounts,
   PassStatus,
   PublishedGrade,
+  StoredExam,
   StoredGrade,
   StoredTask
 } from '@/lib/core/coursework'
@@ -30,7 +31,7 @@ export const columnId = (kind: ColumnKind, refId: string) => `${kind}:${refId}`
 export function parseColumnId(id: string): { kind: ColumnKind; refId: string } | null {
   const [kind, ...rest] = id.split(':')
   const refId = rest.join(':')
-  return (kind === 'tarea' || kind === 'evaluacion') && refId !== '' ? { kind, refId } : null
+  return (kind === 'tarea' || kind === 'evaluacion' || kind === 'examen') && refId !== '' ? { kind, refId } : null
 }
 
 /** Lo que se guarda de una nota, ya limpio, o por qué no sirve: de 1 a 10 con dos decimales, o ausente (sin número). */
@@ -74,13 +75,40 @@ export const assessmentColumn = (a: SectionAssessment): ColumnDef => ({
   assessmentKind: a.kind
 })
 
-/** Las columnas de la comisión por fecha: una por tarea con nota y una por evaluación del SIU. */
-export function columnDefs(tasks: StoredTask[], sectionId: string, assessments: SectionAssessment[]): ColumnDef[] {
+export const examColumn = (exam: StoredExam): ColumnDef => ({
+  kind: 'examen',
+  refId: exam.id,
+  name: exam.name,
+  date: exam.date,
+  assessmentKind: exam.kind
+})
+
+/** La evaluación del SIU con el nombre, el tipo y la fecha que le corrigió el docente, si se los corrigió. */
+function fixedAssessment(a: SectionAssessment, fixes: Map<string, StoredExam>): ColumnDef {
+  const fix = fixes.get(a.id)
+  const column = assessmentColumn(a)
+  return fix ? { ...column, name: fix.name, date: fix.date, assessmentKind: fix.kind } : column
+}
+
+/** Las columnas de la comisión por fecha: una por tarea con nota, una por evaluación del SIU (con lo que le corrigió
+    el docente) y una por instancia de examen que el docente sumó en HackAI. */
+export function columnDefs(
+  tasks: StoredTask[],
+  sectionId: string,
+  assessments: SectionAssessment[],
+  exams: StoredExam[] = []
+): ColumnDef[] {
+  const fixes = new Map(exams.flatMap((e) => (e.siuAssessmentId ? [[e.siuAssessmentId, e] as const] : [])))
   return [
     ...tasks.filter((t) => t.graded && t.sectionIds.includes(sectionId)).map(taskColumn),
-    ...assessments.map(assessmentColumn)
+    ...assessments.map((a) => fixedAssessment(a, fixes)),
+    ...exams.filter((e) => e.siuAssessmentId === null).map(examColumn)
   ].sort((a, b) => a.date.localeCompare(b.date) || a.refId.localeCompare(b.refId))
 }
+
+/** Si las notas de esa columna se pasan al SIU: las de una evaluación del SIU y la nota de cursada. Una tarea o una
+    instancia que sumó el docente no existen en el SIU. */
+export const passesToSiu = (kind: ColumnKind) => kind === 'evaluacion' || kind === 'cursada'
 
 /** Si dos notas son de la misma columna. */
 export const inColumn = (g: StoredGrade, column: { kind: ColumnKind; refId: string }) =>

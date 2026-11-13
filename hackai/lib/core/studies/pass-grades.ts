@@ -12,7 +12,8 @@ import { fail, ok, type Result } from '@/lib/result'
     cursada no hay ausente). */
 export type GradeToPass = {
   studentId: PersonId
-  target: { kind: 'evaluacion'; assessmentId: string } | { kind: 'cursada' }
+  /** En cursada, `promoted` si con esa nota el alumno promociona la materia. */
+  target: { kind: 'evaluacion'; assessmentId: string } | { kind: 'cursada'; promoted?: boolean }
   value: number | null
 }
 
@@ -30,7 +31,7 @@ export function createPassGrades({ people, siu }: { people: People; siu: SiuPort
         ? await siu.writeAssessmentGrade(siuId, sectionId, target.assessmentId, value)
         : value === null
           ? fail('nota-invalida' as const)
-          : await siu.writeCourseGrade(siuId, sectionId, value)
+          : await siu.writeCourseGrade(siuId, sectionId, value, target.promoted === true)
     if (written.ok) return 'pasado'
     return written.error === 'falla-externa' ? 'pendiente' : 'no-permitido'
   }

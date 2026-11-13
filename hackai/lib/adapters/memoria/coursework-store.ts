@@ -1,7 +1,15 @@
 /* Almacén de Seguimiento en memoria. Arranca vacío: las tareas las crean los
    docentes y las entregas, los alumnos. Se porta como el de Supabase y pasa la misma batería de contrato
    (tests/contracts/coursework-store.test.ts). */
-import type { CourseworkStore, StoredGrade, StoredSubmission, StoredTask, StoredWeight } from '@/lib/core/coursework'
+import type {
+  CourseworkStore,
+  Promotion,
+  StoredExam,
+  StoredGrade,
+  StoredSubmission,
+  StoredTask,
+  StoredWeight
+} from '@/lib/core/coursework'
 import { fail, ok } from '@/lib/result'
 
 export function createMemoryCourseworkStore(): CourseworkStore {
@@ -9,6 +17,9 @@ export function createMemoryCourseworkStore(): CourseworkStore {
   const submissions: StoredSubmission[] = []
   const grades: StoredGrade[] = []
   const weights: StoredWeight[] = []
+  const exams: StoredExam[] = []
+  const promotions = new Map<string, Promotion>()
+  let examCounter = 0
   let gradeCounter = 0
   let counter = 0
   let submissionCounter = 0
@@ -107,6 +118,44 @@ export function createMemoryCourseworkStore(): CourseworkStore {
 
     async weightsOfSection(sectionId) {
       return ok(copy(weights.filter((w) => w.sectionId === sectionId)))
+    },
+
+    async examsOfSection(sectionId) {
+      return ok(copy(exams.filter((e) => e.sectionId === sectionId)))
+    },
+
+    async saveExam({ id, ...exam }) {
+      // Una corrección por evaluación del SIU: la segunda reemplaza a la primera.
+      const index = exams.findIndex(
+        (e) =>
+          (id !== undefined && e.id === id) ||
+          (exam.siuAssessmentId !== null &&
+            e.sectionId === exam.sectionId &&
+            e.siuAssessmentId === exam.siuAssessmentId)
+      )
+      if (index >= 0) {
+        exams[index] = { ...copy(exam), id: exams[index].id }
+        return ok(copy(exams[index]))
+      }
+      examCounter += 1
+      const created: StoredExam = { ...copy(exam), id: id ?? `examen-${examCounter}` }
+      exams.push(created)
+      return ok(copy(created))
+    },
+
+    async deleteExam(examId) {
+      const index = exams.findIndex((e) => e.id === examId)
+      if (index >= 0) exams.splice(index, 1)
+      return ok(undefined)
+    },
+
+    async promotionOf(sectionId) {
+      return ok(copy(promotions.get(sectionId) ?? null))
+    },
+
+    async savePromotion(sectionId, promotion) {
+      promotions.set(sectionId, copy(promotion))
+      return ok(undefined)
     },
 
     async gradesOfSection(sectionId) {

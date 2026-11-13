@@ -38,7 +38,7 @@ export default async function NewTaskPage({ params, searchParams }: { params: Pa
           comision={list.sections.length > 1 ? list.sectionId : undefined}
           role={list.role}
         />
-        <div className='w-full max-w-3xl'>
+        <div className='mx-auto w-full max-w-3xl'>
           <NewTaskForm subjectId={subjectId} sections={list.sections} selectedId={list.sectionId} cancelHref={back} />
         </div>
       </main>

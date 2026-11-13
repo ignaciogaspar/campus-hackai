@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const ITEM =
-  'grid size-9 place-items-center rounded-lg text-[0.8125rem] font-semibold tabular-nums transition-colors focus-ring'
+  'grid size-11 place-items-center rounded-lg sm:size-9 text-[0.8125rem] font-semibold tabular-nums transition-colors focus-ring'
 
 /* Paginado con enlaces: cada página es una URL, así se puede compartir y el
    botón de atrás vuelve a la anterior. Con una sola página no se muestra. */

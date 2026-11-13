@@ -204,7 +204,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return ok({ date: at })
     },
 
-    async writeCourseGrade(personId, sectionId, grade) {
+    async writeCourseGrade(personId, sectionId, grade, promoted = false) {
       if (!capabilities.canWriteGrades) return fail('no-soportado')
       if (!validGrade(grade)) return fail('nota-invalida')
       const section = db.sections.find((s) => s.id === sectionId)
@@ -217,7 +217,7 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
         type: 'cursada' as const,
         date: at,
         grade,
-        result: courseResult(grade),
+        result: courseResult(grade, promoted),
         gradeRecord: `HK-${sectionId}`,
         sectionId: null,
         assessmentId: null,

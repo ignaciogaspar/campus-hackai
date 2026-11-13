@@ -10,18 +10,17 @@ import { Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cache } from 'react'
-import { newTaskHref, tasksHref } from '@/components/coursework/format'
+import { PRIMARY } from '@/components/coursework/fields'
+import { newTaskHref, pageOf, tasksHref } from '@/components/coursework/format'
 import { TaskError } from '@/components/coursework/task-error'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { TaskList } from '@/components/coursework/task-list'
 import { messageTime } from '@/components/spaces/format'
-import { SectionPicker } from '@/components/subjects/section-picker'
-import { SubjectTabs } from '@/components/subjects/subject-tabs'
-import { buttonVariants } from '@/components/ui/button'
+import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { Pagination } from '@/components/ui/pagination'
 import { StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import { cn } from '@/lib/utils'
 
 type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -51,23 +50,33 @@ export async function generateMetadata({
 export default async function TasksPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const session = await requireSession()
   const { subjectId } = await params
-  const comision = comisionOf(await searchParams)
+  const raw = await searchParams
+  const comision = comisionOf(raw)
 
   const result = await read(session.personId, subjectId, comision)
   if (!result.ok) return <TaskError error={result.error} retryHref={tasksHref(subjectId, comision)} />
   const list = result.value
   const selected = list.sections.find((s) => s.sectionId === list.sectionId)
   const several = list.sections.length > 1
+  const page = pageOf(list.tasks, typeof raw.pagina === 'string' ? raw.pagina : undefined)
+  const teacher = list.role === 'profesor'
 
   return (
     <>
-      <TaskHeader subject={list.subject} role={list.role} sections={selected ? [selected] : []} backHref='/materias' />
-      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <SubjectTabs
+      <TaskHeader
+        subject={list.subject}
+        role={list.role}
+        sections={selected && !(teacher && several) ? [selected] : []}
+        backHref='/materias'
+      />
+      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+        <SubjectToolbar
           subjectId={subjectId}
           current='tareas'
-          comision={several ? list.sectionId : undefined}
-          role={list.role}
+          viewer={list.role}
+          sections={list.sections}
+          selectedId={list.sectionId}
+          hrefFor={(sectionId) => tasksHref(subjectId, sectionId)}
         />
         {list.staleSince && (
           <StaleNotice>
@@ -75,28 +84,32 @@ export default async function TasksPage({ params, searchParams }: { params: Para
             desactualizado.
           </StaleNotice>
         )}
-        {list.role === 'profesor' && (
-          <SectionPicker
-            sections={list.sections}
-            selectedId={list.sectionId}
-            hrefFor={(sectionId) => tasksHref(subjectId, sectionId)}
-          />
-        )}
         <div className='flex flex-wrap items-center justify-between gap-3'>
-          <h2 className='text-lg font-extrabold'>Tareas</h2>
-          {list.role === 'profesor' && (
-            <Link
-              href={newTaskHref(subjectId, list.sectionId)}
-              className={cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')}
-            >
+          <h2 className='text-lg font-extrabold'>
+            Tareas
+            {list.tasks.length > 0 && (
+              <span className='ml-2 text-[0.875rem] font-semibold text-muted-foreground tabular-nums'>
+                {list.tasks.length}
+              </span>
+            )}
+          </h2>
+          {teacher && (
+            <Link href={newTaskHref(subjectId, list.sectionId)} className={PRIMARY}>
               <Plus aria-hidden='true' className='size-5' strokeWidth={2} />
               Nueva tarea
             </Link>
           )}
         </div>
-        <div className='w-full max-w-3xl'>
-          <TaskList tasks={list.tasks} role={list.role} comision={list.sectionId} />
-        </div>
+        <TaskList tasks={page.items} role={list.role} comision={list.sectionId} />
+        <Pagination
+          page={page.page}
+          pages={page.pages}
+          hrefFor={(n) => {
+            const href = tasksHref(subjectId, several ? list.sectionId : undefined)
+            return n > 1 ? `${href}${href.includes('?') ? '&' : '?'}pagina=${n}` : href
+          }}
+          label='Páginas de tareas'
+        />
       </main>
     </>
   )

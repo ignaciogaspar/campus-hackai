@@ -277,11 +277,12 @@ export type SiuPort = {
     grade: number | null
   ): Promise<Result<SiuGradeReceipt, SiuWriteGradeError>>
   /** Carga la nota de cursada de un alumno en una comisión. Es idempotente por alumno y comisión. Se lee de vuelta
-      con `history`, como un renglón `cursada`. */
+      con `history`, como un renglón `cursada`; con `promoted`, con resultado `promocionado`. */
   writeCourseGrade(
     personId: string,
     sectionId: string,
-    grade: number
+    grade: number,
+    promoted?: boolean
   ): Promise<Result<SiuGradeReceipt, SiuWriteGradeError>>
   // --- fin B: notas ---
 

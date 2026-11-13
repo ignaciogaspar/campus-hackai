@@ -4,7 +4,9 @@
    `studies.passGrades`. Si el SIU falla, la nota queda `pendiente` y se
    reintenta; reintentar vuelve a escribir la misma nota por alumno y evaluación,
    así que no duplica. */
-import type { CourseworkDeps, PassRetry, PassStatus, StoredGrade } from '@/lib/core/coursework'
+import type { CourseworkDeps, PassRetry, PassStatus, Promotion, StoredGrade } from '@/lib/core/coursework'
+import { sectionsOf } from '@/lib/core/coursework/access'
+import { conditionOf, promotionOr } from '@/lib/core/coursework/course-grade'
 import type { PersonId } from '@/lib/core/people'
 import { fail, ok, type Result } from '@/lib/result'
 
@@ -19,6 +21,17 @@ const inPublicationOrder = (grades: StoredGrade[]) =>
     .map(({ g }) => g)
 
 export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 'store'>) {
+  /** La promoción de la comisión, para pasar la nota de cursada como promocionada. Si no se puede leer, no promociona:
+      la nota pasa igual, como regular o desaprobada. */
+  async function promotionFor(by: PersonId, sectionId: string, grades: StoredGrade[]): Promise<Promotion | null> {
+    if (!grades.some((g) => g.kind === 'cursada')) return null
+    const stored = await store.promotionOf(sectionId)
+    if (!stored.ok) return null
+    if (stored.value) return stored.value
+    const read = await sectionsOf(studies, by)
+    return promotionOr(null, read.ok ? read.value.sections.find((s) => s.sectionId === sectionId) : undefined)
+  }
+
   /** Pasa las notas de una comisión en nombre de un docente y guarda el estado de cada una. Devuelve el estado en
       que quedó cada id. Si Cursada no puede (el SIU cae, o el docente ya no dicta la comisión), todas siguen
       `pendiente` y no se guarda nada. */
@@ -39,12 +52,16 @@ export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 
   ): Promise<Result<{ states: Map<string, PassStatus>; siuDown: boolean }, 'falla-externa'>> {
     const states = new Map<string, PassStatus>(grades.map((g) => [g.id, 'pendiente']))
     if (grades.length === 0) return ok({ states, siuDown: false })
+    const promotion = await promotionFor(by, sectionId, grades)
     const passed = await studies.passGrades(
       by,
       sectionId,
       grades.map((g) => ({
         studentId: g.personId,
-        target: g.kind === 'cursada' ? { kind: 'cursada' } : { kind: 'evaluacion', assessmentId: g.refId },
+        target:
+          g.kind === 'cursada'
+            ? { kind: 'cursada', promoted: promotion !== null && conditionOf(g.value, promotion) === 'promociona' }
+            : { kind: 'evaluacion', assessmentId: g.refId },
         value: g.value
       }))
     )

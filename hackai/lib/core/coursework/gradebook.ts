@@ -18,16 +18,18 @@ import type {
   PublishedGrade,
   StoredGrade
 } from '@/lib/core/coursework'
-import { learns, sectionOf, sectionsOf, shownSections, subjectOf } from '@/lib/core/coursework/access'
+import { chooseTeaching, oldest, readFailure, sectionOf, sectionsOf, subjectOf } from '@/lib/core/coursework/access'
 import {
   COURSE_GRADE_NAME,
   courseCellOf,
   courseSummary,
   isWeight,
   needsPublishing,
+  promotionOr,
   weightOf,
   weightsById
 } from '@/lib/core/coursework/course-grade'
+import { createEvaluation } from '@/lib/core/coursework/evaluation'
 import {
   byPublication,
   type ColumnDef,
@@ -41,34 +43,14 @@ import {
   MAX_GRADE,
   MIN_GRADE,
   newOnes,
-  parseColumnId
+  parseColumnId,
+  passesToSiu
 } from '@/lib/core/coursework/grades'
 import { createPass, isPending } from '@/lib/core/coursework/pass'
 import { MAX_PASTE_CHARS, previewOf } from '@/lib/core/coursework/paste'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
 import { fail, ok, type Result } from '@/lib/result'
-
-/** Cualquier error de una lectura de Cursada que no sea de acceso es una falla externa. */
-const readFailure = (error: string) =>
-  error === 'persona-desconocida' || error === 'sin-acceso' ? (error as AccessError) : ('falla-externa' as const)
-
-/** La hora de la lectura más vieja entre las desactualizadas, o `null` si ninguna lo está. */
-const oldest = (reads: (string | null)[]) => reads.filter((at): at is string => at !== null).sort()[0] ?? null
-
-/** Las comisiones que dicta de la materia y la que se mira: la pedida si es suya, o la primera. A quien solo
-    cursa la materia, `solo-docentes`; a quien no es de ella, `sin-acceso`. */
-function chooseTeaching(
-  sections: MySection[],
-  subjectId: string,
-  requested?: string
-): Result<{ shown: MySection[]; selected: MySection }, 'sin-acceso' | 'solo-docentes'> {
-  const ofSubject = sections.filter((s) => s.subjectId === subjectId)
-  const teaching = ofSubject.filter((s) => s.role === 'profesor')
-  if (teaching.length === 0) return fail(learns(ofSubject) ? 'solo-docentes' : 'sin-acceso')
-  const shown = shownSections(teaching)
-  return ok({ shown, selected: shown.find((s) => s.sectionId === requested) ?? shown[0] })
-}
 
 type Teaching = { section: MySection; staleSince: string | null }
 
@@ -117,14 +99,19 @@ export function createGradebook(deps: CourseworkDeps) {
     personId: PersonId,
     section: MySection
   ): Promise<Result<{ defs: ColumnDef[]; staleSince: string | null }, AccessError>> {
-    const [tasks, assessments] = await Promise.all([
+    const [tasks, assessments, exams] = await Promise.all([
       store.tasksOfSubject(section.subjectId),
-      studies.sectionAssessments(personId, section.sectionId)
+      studies.sectionAssessments(personId, section.sectionId),
+      store.examsOfSection(section.sectionId)
     ])
     if (!tasks.ok) return tasks
+    if (!exams.ok) return exams
     if (!assessments.ok) return fail(readFailure(assessments.error))
     const { data, stale, readAt } = assessments.value
-    return ok({ defs: columnDefs(tasks.value, section.sectionId, data), staleSince: stale ? readAt : null })
+    return ok({
+      defs: columnDefs(tasks.value, section.sectionId, data, exams.value),
+      staleSince: stale ? readAt : null
+    })
   }
 
   /** La columna de la comisión que pide el docente, o `columna-desconocida`: tarea sin nota, de otra comisión o que no
@@ -142,6 +129,32 @@ export function createGradebook(deps: CourseworkDeps) {
     return found ? ok(found) : fail('columna-desconocida')
   }
 
+  /** Todo lo que hace falta para calificar una comisión que dicta el docente: columnas, alumnos, notas, pesos y
+      promoción. Lo comparten Calificaciones y la nota de cursada. */
+  async function sectionGrades(personId: PersonId, section: MySection) {
+    const [columns, students, grades, stored, promoted] = await Promise.all([
+      columnsOf(personId, section),
+      studies.sectionStudents(personId, section.sectionId),
+      store.gradesOfSection(section.sectionId),
+      store.weightsOfSection(section.sectionId),
+      store.promotionOf(section.sectionId)
+    ])
+    if (!columns.ok) return columns
+    if (!students.ok) return fail(readFailure(students.error))
+    if (!grades.ok) return grades
+    if (!stored.ok) return stored
+    if (!promoted.ok) return promoted
+    return ok({
+      defs: columns.value.defs,
+      columnsStale: columns.value.staleSince,
+      students: students.value,
+      grades: grades.value,
+      weights: weightsById(stored.value),
+      validIds: new Set(columns.value.defs.map((d) => columnId(d.kind, d.refId))),
+      promotion: promotionOr(promoted.value, section)
+    })
+  }
+
   async function gradebook(
     personId: PersonId,
     subjectId: string,
@@ -153,37 +166,32 @@ export function createGradebook(deps: CourseworkDeps) {
     if (!chosen.ok) return chosen
     const { shown, selected } = chosen.value
 
-    const [columns, students, grades, stored] = await Promise.all([
-      columnsOf(personId, selected),
-      studies.sectionStudents(personId, selected.sectionId),
-      store.gradesOfSection(selected.sectionId),
-      store.weightsOfSection(selected.sectionId)
-    ])
-    if (!columns.ok) return columns
-    if (!students.ok) return fail(readFailure(students.error))
-    if (!grades.ok) return grades
-    if (!stored.ok) return stored
-
-    const studentsStale = students.value.stale ? students.value.readAt : null
-    const weights = weightsById(stored.value)
-    const validIds = new Set(columns.value.defs.map((d) => columnId(d.kind, d.refId)))
-    const rows = students.value.data.map((s): GradebookStudent => {
-      const mine = s.personId ? grades.value.filter((g) => g.personId === s.personId) : []
-      return { ...s, cells: cellsOf(s.personId, grades.value), course: courseCellOf(mine, weights, validIds) }
+    const graded = await sectionGrades(personId, selected)
+    if (!graded.ok) return graded
+    const { defs, columnsStale, students, grades, weights, validIds, promotion } = graded.value
+    const studentsStale = students.stale ? students.readAt : null
+    const rows = students.data.map((s): GradebookStudent => {
+      const mine = s.personId ? grades.filter((g) => g.personId === s.personId) : []
+      return {
+        ...s,
+        cells: cellsOf(s.personId, grades),
+        course: courseCellOf(mine, weights, validIds, promotion)
+      }
     })
     return ok({
       subject: subjectOf(selected),
       sections: shown.map(sectionOf),
       sectionId: selected.sectionId,
-      columns: columns.value.defs.map((d) => columnWith(d, grades.value, weightOf(weights, d.kind, d.refId))),
+      columns: defs.map((d) => columnWith(d, grades, weightOf(weights, d.kind, d.refId))),
       students: rows,
       course: courseSummary(
         rows.map((r) => r.course),
         weights,
-        validIds
+        validIds,
+        promotion
       ),
-      pendingPass: grades.value.filter(isPending).length,
-      staleSince: oldest([read.value.staleSince, columns.value.staleSince, studentsStale])
+      pendingPass: grades.filter(isPending).length,
+      staleSince: oldest([read.value.staleSince, columnsStale, studentsStale])
     })
   }
 
@@ -243,7 +251,7 @@ export function createGradebook(deps: CourseworkDeps) {
     edited = false
   ): Promise<Result<StoredGrade, 'falla-externa'>> {
     const now = clock.now().toISOString()
-    const passes = published && column.kind !== 'tarea'
+    const passes = published && passesToSiu(column.kind)
     const saved = await store.saveGrade({
       sectionId,
       kind: column.kind,
@@ -371,35 +379,27 @@ export function createGradebook(deps: CourseworkDeps) {
   async function courseOf(personId: PersonId, sectionId: string) {
     const teaching = await teachingSection(personId, sectionId)
     if (!teaching.ok) return teaching
-    const [columns, students, grades, stored] = await Promise.all([
-      columnsOf(personId, teaching.value.section),
-      studies.sectionStudents(personId, sectionId),
-      store.gradesOfSection(sectionId),
-      store.weightsOfSection(sectionId)
-    ])
-    if (!columns.ok) return columns
-    if (!students.ok) return fail(readFailure(students.error))
-    if (!grades.ok) return grades
-    if (!stored.ok) return stored
-    const validIds = new Set(columns.value.defs.map((d) => columnId(d.kind, d.refId)))
-    const weights = weightsById(stored.value)
+    const graded = await sectionGrades(personId, teaching.value.section)
+    if (!graded.ok) return graded
+    const { defs, students, grades, weights, validIds, promotion } = graded.value
     /** La nota de cursada de cada alumno con cuenta de HackAI. */
-    const cells = students.value.data.flatMap((s) =>
+    const cells = students.data.flatMap((s) =>
       s.personId
         ? [
             {
               studentId: s.personId,
-              stored: grades.value.find((g) => g.kind === 'cursada' && g.personId === s.personId),
+              stored: grades.find((g) => g.kind === 'cursada' && g.personId === s.personId),
               cell: courseCellOf(
-                grades.value.filter((g) => g.personId === s.personId),
+                grades.filter((g) => g.personId === s.personId),
                 weights,
-                validIds
+                validIds,
+                promotion
               )
             }
           ]
         : []
     )
-    return ok({ defs: columns.value.defs, cells })
+    return ok({ defs, cells })
   }
 
   const setWeights: Coursework['setWeights'] = async (personId, sectionId, weights) => {
@@ -541,6 +541,7 @@ export function createGradebook(deps: CourseworkDeps) {
   }
 
   return {
+    ...createEvaluation(deps, { teachingSection, columnsOf }),
     gradebook,
     grade,
     previewPaste,

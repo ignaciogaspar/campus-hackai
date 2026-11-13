@@ -5,9 +5,10 @@
    derecha de cada nombre. Sin reglas de negocio: el estado lo decide
    Seguimiento. */
 import { Users } from 'lucide-react'
-import { countsLabel, rowStatus, submissionHref } from '@/components/coursework/format'
+import { countsLabel, pageOf, rowStatus, submissionHref } from '@/components/coursework/format'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
+import { Pagination } from '@/components/ui/pagination'
 import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
 import type { SubmissionRow, TaskSubmissions } from '@/lib/core/coursework'
@@ -33,13 +34,19 @@ function StudentRow({ row, hrefFor }: { row: SubmissionRow; hrefFor: (submission
 export function SubmissionsPanel({
   result,
   subjectId,
-  comision
+  comision,
+  requestedPage,
+  pageHref
 }: {
   result: TaskSubmissions
   subjectId: string
   comision: string
+  /** `?pagina=`, sin validar. */
+  requestedPage?: string
+  pageHref: (page: number) => string
 }) {
   const { rows, counts, task } = result
+  const page = pageOf(rows, requestedPage)
   return (
     <section aria-labelledby='entregas' className='flex flex-col gap-2'>
       <div className='flex flex-col gap-0.5 px-1'>
@@ -53,17 +60,20 @@ export function SubmissionsPanel({
           Cuando se inscriban a la comisión, vas a ver acá quién entregó.
         </EmptyState>
       ) : (
-        <Card>
-          <List aria-label='Alumnos de la comisión'>
-            {rows.map((row) => (
-              <StudentRow
-                key={row.student.legajo}
-                row={row}
-                hrefFor={(submissionId) => submissionHref(subjectId, task.id, submissionId, comision)}
-              />
-            ))}
-          </List>
-        </Card>
+        <>
+          <Card>
+            <List aria-label='Alumnos de la comisión'>
+              {page.items.map((row) => (
+                <StudentRow
+                  key={row.student.legajo}
+                  row={row}
+                  hrefFor={(submissionId) => submissionHref(subjectId, task.id, submissionId, comision)}
+                />
+              ))}
+            </List>
+          </Card>
+          <Pagination page={page.page} pages={page.pages} hrefFor={pageHref} label='Páginas de alumnos' />
+        </>
       )}
     </section>
   )

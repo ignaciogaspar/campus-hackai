@@ -8,13 +8,13 @@
 import { Users } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { pageOf } from '@/components/coursework/format'
 import { PageHeader } from '@/components/shell/page-header'
-import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
-import { SubjectTabs } from '@/components/subjects/subject-tabs'
+import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { Card } from '@/components/ui/card'
-import { List, ListItem } from '@/components/ui/list'
+import { Pagination } from '@/components/ui/pagination'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -37,18 +37,16 @@ const ALUMNOS_TAB = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS
 
 function StudentRow({ student }: { student: SectionStudent }) {
   return (
-    <ListItem
-      title={student.name}
-      description={`Legajo ${student.legajo}`}
-      meta={
-        <a
-          href={`mailto:${student.email}`}
-          className='inline-flex min-h-11 items-center break-all text-blue underline-offset-2 hover:underline focus-ring'
-        >
-          {student.email}
-        </a>
-      }
-    />
+    <li className='grid grid-cols-[minmax(0,1fr)] gap-x-4 gap-y-0.5 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,16rem)] sm:items-center'>
+      <span className='truncate text-[0.9375rem] font-semibold text-ink'>{student.name}</span>
+      <span className='text-[0.8125rem] text-muted-foreground tabular-nums'>Legajo {student.legajo}</span>
+      <a
+        href={`mailto:${student.email}`}
+        className='inline-flex min-h-11 items-center truncate text-[0.8125rem] text-blue underline-offset-2 hover:underline focus-ring sm:justify-self-end'
+      >
+        {student.email}
+      </a>
+    </li>
   )
 }
 
@@ -71,9 +69,20 @@ function NoSection({ message }: { message: string }) {
 type Students = Awaited<ReturnType<Studies['sectionStudents']>>
 
 /** La lista de alumnos de la comisión, o por qué no está. */
-function StudentsBlock({ students, sectionName }: { students: Students; sectionName: string }) {
+function StudentsBlock({
+  students,
+  sectionName,
+  requestedPage,
+  pageHref
+}: {
+  students: Students
+  sectionName: string
+  requestedPage?: string
+  pageHref: (page: number) => string
+}) {
   if (!students.ok) return <ErrorNotice>{ERRORS[students.error]}</ErrorNotice>
   const list = students.value.data
+  const page = pageOf(list, requestedPage)
   if (list.length === 0) {
     return (
       <EmptyState icon={Users} title='Todavía no hay alumnos inscriptos'>
@@ -82,17 +91,18 @@ function StudentsBlock({ students, sectionName }: { students: Students; sectionN
     )
   }
   return (
-    <section aria-label={`Alumnos de la comisión ${sectionName}`} className='flex max-w-3xl flex-col gap-2'>
+    <section aria-label={`Alumnos de la comisión ${sectionName}`} className='flex flex-col gap-2'>
       <h2 className='px-1 text-sm font-bold text-muted-foreground'>
         {list.length === 1 ? '1 alumno' : `${list.length} alumnos`}
       </h2>
       <Card>
-        <List>
-          {list.map((s) => (
+        <ul className='divide-y divide-border'>
+          {page.items.map((s) => (
             <StudentRow key={s.legajo} student={s} />
           ))}
-        </List>
+        </ul>
       </Card>
+      <Pagination page={page.page} pages={page.pages} hrefFor={pageHref} label='Páginas de alumnos' />
     </section>
   )
 }
@@ -124,20 +134,30 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
         hideBackOnDesktop
       >
         <span className='rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15 ring-inset'>
-          {`Docente · Comisión ${section.name}`}
+          {several ? 'Docente' : `Docente · Comisión ${section.name}`}
         </span>
       </PageHeader>
 
-      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <SubjectTabs subjectId={subjectId} current='alumnos' comision={several ? section.sectionId : undefined} />
-        <SectionPicker
+      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+        <SubjectToolbar
+          subjectId={subjectId}
+          current='alumnos'
+          viewer='profesor'
           sections={taught}
           selectedId={section.sectionId}
           hrefFor={(sectionId) => subjectTabHref(subjectId, ALUMNOS_TAB, sectionId)}
         />
         {staleRead && <StaleBanner since={staleRead.readAt} now={system().now()} />}
 
-        <StudentsBlock students={students} sectionName={section.name} />
+        <StudentsBlock
+          students={students}
+          sectionName={section.name}
+          requestedPage={typeof raw.pagina === 'string' ? raw.pagina : undefined}
+          pageHref={(n) => {
+            const href = subjectTabHref(subjectId, ALUMNOS_TAB, several ? section.sectionId : undefined)
+            return n > 1 ? `${href}${href.includes('?') ? '&' : '?'}pagina=${n}` : href
+          }}
+        />
       </main>
     </>
   )

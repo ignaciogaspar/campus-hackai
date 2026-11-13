@@ -22,6 +22,8 @@ import type {
   ColumnKind,
   CourseworkStore,
   PassStatus,
+  Promotion,
+  StoredExam,
   StoredGrade,
   StoredSubmission,
   StoredTask,
@@ -347,6 +349,7 @@ export function createSupabaseCourseworkStore({
     saveGrade: saveGradeOf(run, client),
 
     saveWeight: saveWeightOf(run, client),
+    ...examsOf(run, client),
 
     async weightsOfSection(sectionId) {
       const rows = await run<WeightRow[]>('pesos de la comisión', (s) =>
@@ -544,5 +547,111 @@ function saveWeightOf(run: Runner, client: SupabaseClient): CourseworkStore['sav
     if (created.error !== 'duplicado') return fail('falla-externa')
     const raced = await update(column, weight)
     return raced.ok ? ok(undefined) : fail('falla-externa')
+  }
+}
+
+type ExamRow = {
+  id: string
+  section_id: string
+  assessment_id: string | null
+  kind: StoredExam['kind']
+  name: string
+  date: string
+}
+type PromotionRow = { section_id: string; promotable: boolean; minimum: number | string }
+
+const EXAM_COLUMNS = 'id, section_id, assessment_id, kind, name, date'
+
+const toExam = (row: ExamRow): StoredExam => ({
+  id: row.id,
+  sectionId: row.section_id,
+  siuAssessmentId: row.assessment_id,
+  kind: row.kind,
+  name: row.name,
+  date: new Date(row.date).toISOString()
+})
+
+/** Instancias de examen y promoción de una comisión: tablas propias de HackAI (migración 0010). */
+function examsOf(
+  run: Runner,
+  client: SupabaseClient
+): Pick<CourseworkStore, 'examsOfSection' | 'saveExam' | 'deleteExam' | 'promotionOf' | 'savePromotion'> {
+  const exams = () => client.from('coursework_exams')
+  /** El id de la fila que hay que reemplazar: la pedida o la corrección que ya tiene esa evaluación del SIU. */
+  async function existingId(exam: Omit<StoredExam, 'id'> & { id?: string }) {
+    if (exam.id) return ok(isUuid(exam.id) ? exam.id : null)
+    if (exam.siuAssessmentId === null) return ok(null)
+    const siuId = exam.siuAssessmentId
+    const row = await run<{ id: string }>('corrección de evaluación', (s) =>
+      exams().select('id').eq('section_id', exam.sectionId).eq('assessment_id', siuId).abortSignal(s).maybeSingle()
+    )
+    return row.ok ? ok(row.value?.id ?? null) : fail('falla-externa' as const)
+  }
+  return {
+    async examsOfSection(sectionId) {
+      const rows = await run<ExamRow[]>('instancias de la comisión', (s) =>
+        exams().select(EXAM_COLUMNS).eq('section_id', sectionId).order('date').abortSignal(s)
+      )
+      return rows.ok ? ok((rows.value ?? []).map(toExam)) : fail('falla-externa')
+    },
+
+    async saveExam(exam) {
+      const found = await existingId(exam)
+      if (!found.ok) return found
+      const fields = {
+        section_id: exam.sectionId,
+        assessment_id: exam.siuAssessmentId,
+        kind: exam.kind,
+        name: exam.name,
+        date: exam.date
+      }
+      const id = found.value
+      const row = await run<ExamRow>('guardar instancia', (s) =>
+        (id ? exams().update(fields).eq('id', id) : exams().insert(fields)).select(EXAM_COLUMNS).abortSignal(s).single()
+      )
+      return row.ok && row.value ? ok(toExam(row.value)) : fail('falla-externa')
+    },
+
+    async deleteExam(examId) {
+      if (!isUuid(examId)) return ok(undefined)
+      const done = await run('borrar instancia', (s) => exams().delete().eq('id', examId).abortSignal(s))
+      return done.ok ? ok(undefined) : fail('falla-externa')
+    },
+
+    async promotionOf(sectionId) {
+      const row = await run<PromotionRow>('promoción de la comisión', (s) =>
+        client
+          .from('coursework_promotions')
+          .select('section_id, promotable, minimum')
+          .eq('section_id', sectionId)
+          .abortSignal(s)
+          .maybeSingle()
+      )
+      if (!row.ok) return fail('falla-externa')
+      return ok(row.value ? { promotable: row.value.promotable, minimum: Number(row.value.minimum) } : null)
+    },
+
+    async savePromotion(sectionId, promotion: Promotion) {
+      const fields = { promotable: promotion.promotable, minimum: promotion.minimum }
+      const promotions = () => client.from('coursework_promotions')
+      const update = () =>
+        run<{ section_id: string }[]>('cambiar promoción', (s) =>
+          promotions().update(fields).eq('section_id', sectionId).select('section_id').abortSignal(s)
+        )
+      const changed = await update()
+      if (!changed.ok) return fail('falla-externa')
+      if ((changed.value ?? []).length > 0) return ok(undefined)
+      const created = await run('crear promoción', (s) =>
+        promotions()
+          .insert({ section_id: sectionId, ...fields })
+          .select('section_id')
+          .abortSignal(s)
+          .single()
+      )
+      if (created.ok) return ok(undefined)
+      if (created.error !== 'duplicado') return fail('falla-externa')
+      const raced = await update()
+      return raced.ok ? ok(undefined) : fail('falla-externa')
+    }
   }
 }

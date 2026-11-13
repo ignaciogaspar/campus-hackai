@@ -1,7 +1,7 @@
 -- Vaciado de la demo: borra lo que dejan los ensayos en las tablas propias de
 -- Espacios (supabase/migrations/0002_spaces.sql): los espacios, sus canales,
 -- los mensajes, el material y hasta dónde leyó cada persona; y en las de
--- Seguimiento (0006 a 0009): las tareas, sus entregas y sus calificaciones, con
+-- Seguimiento (0006 a 0010): las tareas, sus entregas y sus calificaciones, con
 -- el estado de su pase al SIU. Las notas que HackAI pasó al SIU simulado las
 -- borra después siu_seed.sql, que deja solo las del set sintético. Los espacios
 -- y sus canales por defecto se vuelven a crear la primera vez que alguien abre
@@ -21,7 +21,7 @@
 begin;
 
 truncate table space_reads, space_messages, space_material, space_channels, spaces restart identity cascade;
-truncate table coursework_weights, coursework_grades, coursework_submissions, coursework_tasks restart identity cascade;
+truncate table coursework_promotions, coursework_exams, coursework_weights, coursework_grades, coursework_submissions, coursework_tasks restart identity cascade;
 
 commit;
 

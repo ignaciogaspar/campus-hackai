@@ -335,7 +335,8 @@ test('sectionsOf devuelve las comisiones del alumno con sus docentes como person
     termName: 'Grado 2do Cuatrimestre 2026',
     current: true,
     role: 'alumno',
-    teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }]
+    teachers: [{ personId: 'p-mledesma', name: 'Mariana Ledesma' }],
+    promotable: false
   })
 })
 

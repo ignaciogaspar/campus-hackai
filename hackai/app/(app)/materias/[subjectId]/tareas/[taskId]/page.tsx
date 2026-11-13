@@ -14,7 +14,7 @@ import { EditTaskForm } from '@/components/coursework/task-form'
 import { TaskHeader } from '@/components/coursework/task-header'
 import { BackLink } from '@/components/spaces/back-link'
 import { messageTime } from '@/components/spaces/format'
-import { SubjectTabs } from '@/components/subjects/subject-tabs'
+import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -68,12 +68,14 @@ async function SubmissionsBlock({
   personId,
   taskId,
   subjectId,
-  comision
+  comision,
+  requestedPage
 }: {
   personId: string
   taskId: string
   subjectId: string
   comision: string
+  requestedPage?: string
 }) {
   const result = await system().coursework.submissions(personId, taskId, comision)
   if (!result.ok) {
@@ -85,7 +87,64 @@ async function SubmissionsBlock({
       </ErrorNotice>
     )
   }
-  return <SubmissionsPanel result={result.value} subjectId={subjectId} comision={comision} />
+  return (
+    <SubmissionsPanel
+      result={result.value}
+      subjectId={subjectId}
+      comision={comision}
+      requestedPage={requestedPage}
+      pageHref={(n) => {
+        const href = taskHref(subjectId, taskId, comision)
+        return n > 1 ? `${href}${href.includes('?') ? '&' : '?'}pagina=${n}` : href
+      }}
+    />
+  )
+}
+
+/** El docente ve primero quién entregó, con la tarea al costado; el alumno, la tarea con su entrega al costado. */
+function TaskBody({
+  task,
+  personId,
+  comision,
+  requestedPage
+}: {
+  task: TaskView
+  personId: string
+  comision: string | undefined
+  requestedPage?: string
+}) {
+  return (
+    <div className='grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6'>
+      {task.canManage ? (
+        <>
+          <div className='flex min-w-0 flex-col gap-4'>
+            {comision && (
+              <SubmissionsBlock
+                personId={personId}
+                taskId={task.id}
+                subjectId={task.subjectId}
+                comision={comision}
+                requestedPage={requestedPage}
+              />
+            )}
+          </div>
+          <aside className='flex flex-col gap-4 max-lg:-order-1 lg:sticky lg:top-6'>
+            <TaskDetail task={task} />
+            <EditTaskForm task={task} />
+          </aside>
+        </>
+      ) : (
+        <>
+          <div className='min-w-0'>
+            <TaskDetail task={task} />
+          </div>
+          <aside className='flex flex-col gap-4 lg:sticky lg:top-6'>
+            <SubmissionPanel task={task} />
+          </aside>
+        </>
+      )}
+    </div>
+  )
 }
 
 export default async function TaskPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
@@ -116,13 +175,20 @@ export default async function TaskPage({ params, searchParams }: { params: Param
   const shown = task.sections.filter((s) => s.sectionId === comision)
   return (
     <>
-      <TaskHeader subject={task.subject} role={task.role} sections={shown} backHref={back} />
-      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
-        <SubjectTabs
+      <TaskHeader
+        subject={task.subject}
+        role={task.role}
+        sections={task.canManage && task.sections.length > 1 ? [] : shown}
+        backHref={back}
+      />
+      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+        <SubjectToolbar
           subjectId={subjectId}
           current='tareas'
-          comision={task.sections.length > 1 ? comision : undefined}
-          role={task.role}
+          viewer={task.role}
+          sections={task.canManage ? task.sections : []}
+          selectedId={comision ?? ''}
+          hrefFor={(sectionId) => taskHref(subjectId, taskId, sectionId)}
         />
         {task.staleSince && (
           <StaleNotice>
@@ -131,14 +197,12 @@ export default async function TaskPage({ params, searchParams }: { params: Param
           </StaleNotice>
         )}
         <BackLink href={back}>Volver a las tareas</BackLink>
-        <div className='flex w-full max-w-3xl flex-col gap-4'>
-          <TaskDetail task={task} />
-          {!task.canManage && <SubmissionPanel task={task} />}
-          {task.canManage && comision && (
-            <SubmissionsBlock personId={session.personId} taskId={taskId} subjectId={subjectId} comision={comision} />
-          )}
-          {task.canManage && <EditTaskForm task={task} />}
-        </div>
+        <TaskBody
+          task={task}
+          personId={session.personId}
+          comision={comision}
+          requestedPage={typeof raw.pagina === 'string' ? raw.pagina : undefined}
+        />
       </main>
     </>
   )

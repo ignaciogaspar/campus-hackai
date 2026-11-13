@@ -35,6 +35,8 @@ export type GradesView = {
   listo?: boolean
   /** Cuántas notas se acaban de guardar pegándolas desde una planilla. */
   pegadas?: number
+  /** La página de la lista de alumnos, desde 1. */
+  pagina?: number
 }
 
 /** Calificaciones de la materia, con lo que se mira en `?comision=`, `?columna=` y `?alumno=`. */
@@ -45,8 +47,30 @@ export function gradesHref(subjectId: string, view: GradesView = {}): string {
   if (view.alumno) params.set('alumno', view.alumno)
   if (view.listo) params.set('listo', 'si')
   if (view.pegadas) params.set('pegadas', String(view.pegadas))
+  if (view.pagina && view.pagina > 1) params.set('pagina', String(view.pagina))
   const query = params.toString()
   return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
+}
+
+/** Cómo se evalúa la comisión: instancias de examen, pesos y promoción. */
+export const evaluationHref = (subjectId: string, comision?: string) =>
+  href(`${subjectPath(subjectId)}/calificaciones/evaluacion`, comision)
+
+/** Cuántos alumnos entran en una página de las listas del docente. */
+export const PAGE_SIZE = 25
+
+/** La página pedida en `?pagina=`, dentro de las que hay, y los elementos de esa página. */
+export function pageOf<T>(items: T[], requested: string | undefined): { page: number; pages: number; items: T[] } {
+  const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+  const asked = Number.parseInt(requested ?? '1', 10)
+  const page = Number.isFinite(asked) ? Math.min(Math.max(asked, 1), pages) : 1
+  return { page, pages, items: items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) }
+}
+
+/** La nota que se escribe en la planilla de una columna: un número de 1 a 10, «A» de ausente, o nada. */
+export function sheetValue(cell: { value: number | null; absent: boolean } | undefined): string {
+  if (!cell) return ''
+  return cell.absent ? 'A' : gradeInputValue(cell.value)
 }
 
 /** El Excel de la materia: se baja un .xlsx con una hoja por comisión del docente. */

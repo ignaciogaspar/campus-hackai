@@ -4,20 +4,27 @@
    Tocar un alumno abre su nota para pisarla o volver al cálculo. Sin tablas
    anchas: la misma lista sirve en la compu. El cálculo y quién puede qué lo
    decide Seguimiento. */
-import { Scale } from 'lucide-react'
+import { GraduationCap, Scale } from 'lucide-react'
 import Link from 'next/link'
 import { publishCourse, saveCourseGrade, saveWeights } from '@/app/actions/coursework'
 import { GradeBadge } from '@/components/academic/grade-badge'
-import { COURSE_COLUMN, gradeInputValue, gradesHref } from '@/components/coursework/format'
+import { COURSE_COLUMN, evaluationHref, gradeInputValue, gradesHref } from '@/components/coursework/format'
 import { PassPill, PassSummary } from '@/components/coursework/gradebook'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
+import { Pagination } from '@/components/ui/pagination'
 import { EmptyState } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { CourseGradeCell, CourseGradeSummary, GradebookStudent, GradeColumn } from '@/lib/core/coursework'
+import type {
+  CourseCondition,
+  CourseGradeCell,
+  CourseGradeSummary,
+  GradebookStudent,
+  GradeColumn
+} from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
 const LABEL = 'flex flex-col gap-1 text-[0.8125rem] font-semibold'
@@ -59,6 +66,19 @@ export function CourseSummary({
           <OriginBadge origin='siu' />
           <span>Promedio ponderado de las columnas</span>
         </p>
+        <p className='flex flex-wrap items-center gap-1.5 text-[0.8125rem] text-ink'>
+          <GraduationCap aria-hidden='true' className='size-4 text-blue' strokeWidth={2} />
+          {course.promotion.promotable
+            ? `Promociona desde ${gradeInputValue(course.promotion.minimum)}`
+            : 'Sin promoción: va a final'}
+          <span className='text-muted-foreground'>· Pesos: {gradeInputValue(course.weightTotal)}</span>
+          <Link
+            href={evaluationHref(subjectId, sectionId)}
+            className='inline-flex min-h-11 items-center font-semibold text-blue underline-offset-2 hover:underline focus-ring'
+          >
+            Cambiar
+          </Link>
+        </p>
         <p className='text-[0.8125rem] text-ink'>
           {course.graded} de {students} con nota de cursada
           {course.unpublished > 0 && course.graded > 0 ? ` · ${course.unpublished} sin publicar` : ''}
@@ -75,9 +95,11 @@ export function CourseSummary({
             {everythingPublished ? 'Todo publicado' : publishLabel(course)}
           </SubmitButton>
         </div>
-        <p className='text-[0.8125rem] text-muted-foreground'>
-          Al publicar, cada alumno ve su nota de cursada, le llega el aviso a la campana y la nota pasa al SIU.
-        </p>
+        {course.unpublished > 0 && (
+          <p className='text-[0.8125rem] text-muted-foreground'>
+            Al publicar, cada alumno ve su nota y su condición, y la nota pasa al SIU.
+          </p>
+        )}
       </ActionForm>
       <PassSummary subjectId={subjectId} sectionId={sectionId} pass={course.pass} />
     </Card>
@@ -116,7 +138,7 @@ export function WeightsForm({
               <label htmlFor={`peso-${c.id}`} className='flex min-w-0 flex-1 flex-col gap-0.5 text-[0.9375rem]'>
                 <span className='truncate font-semibold'>{c.name}</span>
                 <span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                  <OriginBadge origin={c.kind === 'tarea' ? 'hackai' : 'siu'} />
+                  <OriginBadge origin={c.kind === 'evaluacion' ? 'siu' : 'hackai'} />
                   {c.graded} con nota
                 </span>
               </label>
@@ -151,15 +173,23 @@ export function WeightsForm({
 }
 
 /** Una fila por alumno con su nota de cursada y cómo salió: calculada, editada, publicada, pasada al SIU. */
+const CONDITION: Record<CourseCondition, { tone: 'success' | 'info' | 'warning'; label: string }> = {
+  promociona: { tone: 'success', label: 'Promociona' },
+  regular: { tone: 'info', label: 'Regular' },
+  desaprobado: { tone: 'warning', label: 'Desaprobada' }
+}
+
 export function CourseStudentList({
   subjectId,
   sectionId,
   students,
+  page,
   selectedId
 }: {
   subjectId: string
   sectionId: string
   students: GradebookStudent[]
+  page: { page: number; pages: number; items: GradebookStudent[] }
   selectedId?: string
 }) {
   if (students.length === 0) {
@@ -170,38 +200,49 @@ export function CourseStudentList({
     )
   }
   return (
-    <Card>
-      <List aria-label='Alumnos'>
-        {students.map((s) => {
-          const { course } = s
-          const meta = (
-            <>
-              <span>Legajo {s.legajo}</span>
-              {s.personId === null && <span>· Todavía no entró a HackAI</span>}
-              {course.edited && <StatusPill tone='info'>Editada</StatusPill>}
-              {course.value !== null && (
-                <span>· {course.published === course.value ? 'Publicada' : 'Sin publicar'}</span>
-              )}
-              {course.pass && <PassPill status={course.pass} />}
-            </>
-          )
-          return (
-            <ListItem
-              key={s.legajo}
-              href={
-                s.personId
-                  ? gradesHref(subjectId, { comision: sectionId, columna: COURSE_COLUMN, alumno: s.personId })
-                  : undefined
-              }
-              className={s.personId && s.personId === selectedId ? 'bg-accent/60' : undefined}
-              title={s.name}
-              meta={meta}
-              end={<CourseResult course={course} />}
-            />
-          )
-        })}
-      </List>
-    </Card>
+    <div className='flex flex-col gap-3'>
+      <Card>
+        <List aria-label='Alumnos'>
+          {page.items.map((s) => {
+            const { course } = s
+            const meta = (
+              <>
+                <span>Legajo {s.legajo}</span>
+                {s.personId === null && <span>· Todavía no entró a HackAI</span>}
+                {course.condition && (
+                  <StatusPill tone={CONDITION[course.condition].tone}>{CONDITION[course.condition].label}</StatusPill>
+                )}
+                {course.edited && <StatusPill tone='neutral'>Editada</StatusPill>}
+                {course.value !== null && (
+                  <span>· {course.published === course.value ? 'Publicada' : 'Sin publicar'}</span>
+                )}
+                {course.pass && <PassPill status={course.pass} />}
+              </>
+            )
+            return (
+              <ListItem
+                key={s.legajo}
+                href={
+                  s.personId
+                    ? gradesHref(subjectId, { comision: sectionId, columna: COURSE_COLUMN, alumno: s.personId })
+                    : undefined
+                }
+                className={s.personId && s.personId === selectedId ? 'bg-accent/60' : undefined}
+                title={s.name}
+                meta={meta}
+                end={<CourseResult course={course} />}
+              />
+            )
+          })}
+        </List>
+      </Card>
+      <Pagination
+        page={page.page}
+        pages={page.pages}
+        hrefFor={(n) => gradesHref(subjectId, { comision: sectionId, columna: COURSE_COLUMN, pagina: n })}
+        label='Páginas de alumnos'
+      />
+    </div>
   )
 }
 

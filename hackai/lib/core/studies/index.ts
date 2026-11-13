@@ -222,6 +222,8 @@ export type MySection = {
   current: boolean
   role: Role
   teachers: Teacher[]
+  /** Si el SIU la da como comisión de promoción (`instance`): sin final, con la nota de cursada. */
+  promotable: boolean
 }
 
 /** La ventana de inscripción de una comisión o una mesa según el reloj: todavía no abrió, está abierta o ya cerró. */
@@ -1077,7 +1079,8 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
         termName: term.name,
         current,
         role: mine.value.role,
-        teachers: teachers.value[i]
+        teachers: teachers.value[i],
+        promotable: section.instance === 'promocion'
       }))
     )
   }
