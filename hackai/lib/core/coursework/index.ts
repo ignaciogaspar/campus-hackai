@@ -404,7 +404,10 @@ export type PasteOutcome =
   | 'invalida'
   /** El alumno es de la comisión y la línea no trae nota: no se toca lo que ya tenía. */
   | 'sin-nota'
+  /** La línea se pudo partir en alumno y nota, pero nadie de la comisión tiene ese legajo, mail o nombre. */
   | 'no-reconocido'
+  /** La línea no se pudo partir en alumno y nota (no tiene tabulación) y entera tampoco es nadie de la comisión. */
+  | 'formato'
   /** El nombre coincide con más de un alumno de la comisión. */
   | 'ambiguo'
   /** Es de la comisión pero todavía no entró a HackAI: no se le puede cargar nota. */
@@ -427,6 +430,8 @@ export type PasteRow = {
   legajo: string | null
   /** La nota ya de 1 a 10; `null` si es un ausente o no se leyó. */
   value: number | null
+  /** En un `repetido`, la línea anterior del mismo alumno y si su nota no servía (entonces no se guarda ninguna). */
+  repeats: { line: number; invalid: boolean } | null
 }
 
 export type PasteCounts = {
