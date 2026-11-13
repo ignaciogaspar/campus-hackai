@@ -56,7 +56,7 @@ export default async function NovedadesPage({
         back={backFor(session.role, desde)}
         hideBackOnDesktop
         unread={read.ok ? total : undefined}
-        desktopBell={session.role === 'profesor'}
+        desktopBell={false}
       />
 
       <main className='flex w-full flex-col px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>

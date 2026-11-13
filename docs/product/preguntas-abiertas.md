@@ -276,6 +276,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 40. ¿Novedades va en la barra lateral o como pastilla en el encabezado, igual para los dos roles?
+
+- **Por qué importa:** en compu, el alumno llega a Novedades solo desde la barra lateral; el docente la tiene en la barra lateral y además como pastilla «Novedades» en el encabezado de Hoy y Calendario, y junto a las pestañas de la materia. Dos entradas a lo mismo y un criterio distinto por rol (recorrido de UX, #127, U-43).
+- **Hipótesis (13/11/2026):** queda como está para la demo. En Novedades misma y en el error de una materia ya no va la pastilla, y en el celular la campana se ve elegida en Novedades. Los contadores de la barra lateral pueden quedar desfasados de la campana hasta recargar: es una limitación conocida del layout, que Next.js no vuelve a ejecutar al navegar.
+- **Opciones:** como está; solo la barra lateral para los dos roles; la pastilla en el encabezado para los dos y sacarla de la barra lateral.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

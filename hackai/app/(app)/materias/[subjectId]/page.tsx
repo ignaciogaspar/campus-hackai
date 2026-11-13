@@ -160,7 +160,7 @@ function RetryLink({ href }: { href: string }) {
 function SpaceError({ error, retryHref, back }: { error: AccessError; retryHref: string; back: Back }) {
   return (
     <>
-      <PageHeader title='Espacio de la materia' back={back} hideBackOnDesktop art='general' />
+      <PageHeader title='Espacio de la materia' back={back} hideBackOnDesktop art='general' desktopBell={false} />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{OPEN_ERRORS[error]}</p>

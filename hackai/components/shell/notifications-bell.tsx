@@ -9,8 +9,10 @@ import { cn } from '@/lib/utils'
 
 /* Campana del encabezado: lleva a Novedades (y «Volver» trae de vuelta a la
    pantalla de la que salió), con lo que hay sin leer de todas las materias.
-   Con algo sin leer se pinta blanca, para que se vea sobre el navy; en compu
-   dice «Novedades» y el número va adentro. Con `tone='light'`
+   Con algo sin leer se pinta blanca, para que se vea sobre el navy; sin nada,
+   va en un azul opaco, para que la ilustración del encabezado no se vea a
+   través y parezca un aviso. En Novedades se ve elegida: blanca y con la
+   campana llena. En compu dice «Novedades» y el número va adentro. Con `tone='light'`
    va sobre el fondo claro, como en la barra de la materia del docente. */
 export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; tone?: 'navy' | 'light' }) {
   const pending = unread > 0
@@ -19,15 +21,22 @@ export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; t
     <NewsLink
       label={pending ? `Novedades, ${unread} sin leer` : 'Novedades'}
       className={cn(
-        'relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
+        'group/bell relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
         light
           ? 'h-11 bg-card text-ink ring-border hover:bg-ice'
           : pending
             ? 'bg-white text-navy ring-white hover:bg-white/90'
-            : 'bg-white/10 text-white ring-white/20 hover:bg-white/20'
+            : 'bg-blue-deep text-white ring-white/25 hover:bg-blue',
+        !light && 'aria-[current=page]:bg-white aria-[current=page]:text-navy aria-[current=page]:ring-white'
       )}
     >
-      <Bell aria-hidden='true' className={cn('size-5', pending && 'motion-safe:animate-[wiggle_1.2s_ease-in-out_1]')} />
+      <Bell
+        aria-hidden='true'
+        className={cn(
+          'size-5 group-aria-[current=page]/bell:fill-current',
+          pending && 'motion-safe:animate-[wiggle_1.2s_ease-in-out_1]'
+        )}
+      />
       <span aria-hidden='true' className='hidden lg:inline'>
         Novedades
       </span>
