@@ -215,7 +215,10 @@ function ChannelArea({
   // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
   const updates = <ChannelUpdates channelId={channel.id} version={version} />
   // Lo que no se había leído sigue marcado aunque UnreadRefresh vuelva a leer la página ya leída.
-  const unread = threads.flatMap((t) => [t.message, ...t.replies]).flatMap((m) => (m.unread ? [m.id] : []))
+  const unread = [
+    ...threads.flatMap((t) => [t.message, ...t.replies]),
+    ...(opened.value.material?.sections.flatMap((s) => s.items) ?? [])
+  ].flatMap((m) => (m.unread ? [m.id] : []))
   if (query.hilo && channel.kind !== 'directo') {
     const backLabel = channelLabel(channel, hasSeveralSections(view.channels))
     return (

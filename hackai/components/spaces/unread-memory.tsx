@@ -4,8 +4,9 @@
    mira. Abrir el canal lo marca leído y UnreadRefresh vuelve a pedir la página
    para bajar los contadores de la barra: esa segunda lectura ya trae todo
    leído, y sin esto el punto y el separador «Nuevos» se iban apenas aparecían.
-   La página pasa los ids sin leer de cada lectura; acá se juntan mientras no
-   cambie lo que se mira (`scope`). Lo que llega mientras tanto se suma.
+   La página pasa los ids sin leer de cada lectura (mensajes o archivos del
+   material); acá se juntan mientras no cambie lo que se mira (`scope`). Lo
+   que llega mientras tanto se suma.
 
    ThreadItem marca con `data-new` el renglón que tiene algo sin leer, y el
    separador «Nuevos» se ve solo antes del primero (globals.css). LatestMark
@@ -35,6 +36,12 @@ export function UnreadDot({ id, unread }: { id: string; unread: boolean }) {
       <span className='sr-only'>Sin leer</span>
     </span>
   )
+}
+
+/** «Nuevo» de un archivo del material que no se había visto. */
+export function NewChip({ id, unread }: { id: string; unread: boolean }) {
+  if (!useWasUnread(id, unread)) return null
+  return <span className='rounded-md bg-blue px-1.5 py-0.5 text-[0.6875rem] font-semibold text-white'>Nuevo</span>
 }
 
 /** Un renglón de una lista de mensajes. Si el mensaje `id` estaba sin leer, lleva `data-new` y, si es el primero

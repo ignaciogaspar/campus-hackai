@@ -3,7 +3,7 @@
    solo formato. Las horas van en la hora de Buenos Aires, con día y hora y sin
    «hoy» ni «hace un rato»: un mensaje se lee igual aunque la pantalla quede
    abierta un rato. */
-import type { Channel, ChannelKind, Thread } from '@/lib/core/spaces'
+import type { Channel, ChannelKind, MaterialView, Thread } from '@/lib/core/spaces'
 
 const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
@@ -24,6 +24,13 @@ export function messageTime(iso: string): string {
 /** «9/11», para el material. */
 export function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, day: 'numeric', month: 'numeric' })
+}
+
+/** Las secciones del material que se ven abiertas al entrar: la del archivo más nuevo y toda la que tiene algo
+    sin ver, en el orden en que se muestran. Así lo nuevo se ve sin desplegar nada. */
+export function openMaterialSections(material: MaterialView): string[] {
+  const newest = material.recent[0]?.id
+  return material.sections.filter((s) => s.items.some((item) => item.unread || item.id === newest)).map((s) => s.title)
 }
 
 /** «52 KB», «1,2 MB». */
