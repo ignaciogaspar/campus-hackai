@@ -420,12 +420,12 @@ test('un archivo del Campus se pide con el token y nunca a otro sitio', async ()
     error: 'no-encontrado'
   })
   // Una ruta que con `..` sale de pluginfile.php no lleva el token a otra pantalla del Campus.
-  for (const escape of [
+  for (const outside of [
     '/webservice/pluginfile.php/../../login/index.php',
     '/webservice/pluginfile.php/%2e%2e/x',
     '/user/profile.php'
   ])
-    assert.deepEqual(await moodle.download(`${BASE}${escape}`), { ok: false, error: 'no-encontrado' }, escape)
+    assert.deepEqual(await moodle.download(`${BASE}${outside}`), { ok: false, error: 'no-encontrado' }, outside)
   assert.deepEqual(calls, ['archivo con token'], 'ningún pedido más')
 })
 
