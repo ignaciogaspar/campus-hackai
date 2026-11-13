@@ -9,6 +9,7 @@
    inscripción para mostrar la cursada nueva. */
 import { CalendarDays, CalendarPlus } from 'lucide-react'
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { dueTime } from '@/components/dates'
 import { PageHeader } from '@/components/shell/page-header'
 import { TodayCalendar } from '@/components/today/calendar'
@@ -63,9 +64,6 @@ function NextDates({ items }: { items: UpcomingItem[] }) {
 
 export default async function CalendarioPage({ searchParams }: { searchParams: Promise<{ semana?: string }> }) {
   const session = await requireSession()
-  const [{ semana }, result] = await Promise.all([searchParams, system().today.today(session.personId)])
-  const initialDay = semana && DAY.test(semana) ? semana : undefined
-
   return (
     <>
       <PageHeader
@@ -75,52 +73,73 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
         hideBackOnDesktop
       />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
-        {!result.ok ? (
-          <EmptyState icon={CalendarDays} title='No encontramos tus datos'>
-            No encontramos tus datos en el SIU. Salí y volvé a entrar.
-          </EmptyState>
-        ) : (
-          <>
-            {result.value.staleSince && <StaleBanner since={result.value.staleSince} now={result.value.now} />}
-            {result.value.unavailable.includes('upcoming') && (
-              <ErrorNotice>
-                No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.
-              </ErrorNotice>
-            )}
-            {result.value.unavailable.includes('assignments') && (
-              <StaleNotice>Faltan las entregas de Moodle porque el Campus Virtual no responde.</StaleNotice>
-            )}
-            <TodayCalendar
-              events={eventsOf(
-                result.value.upcoming,
-                result.value.openEnrollments,
-                result.value.next?.id ?? null,
-                result.value.now
-              )}
-              classes={classSlotsOf(result.value.subjects.current)}
-              now={result.value.now}
-              initialDay={initialDay}
-              filters
-              below={
-                <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
-                  <p className='min-w-0 flex-1 basis-64 text-[0.8125rem] text-muted-foreground'>
-                    Las entregas vienen de Moodle: solo aparecen las que el docente cargó con fecha.
-                  </p>
-                  <a
-                    href='/calendario/exportar'
-                    download
-                    className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 flex-none')}
-                  >
-                    <CalendarPlus aria-hidden='true' data-icon='inline-start' />
-                    Agregar a mi calendario
-                  </a>
-                </div>
-              }
-              aside={<NextDates items={result.value.upcoming} />}
-            />
-          </>
-        )}
+        <Suspense
+          fallback={
+            <div role='status' className='min-h-[32rem] text-sm text-muted-foreground'>
+              Cargando calendario…
+            </div>
+          }
+        >
+          <CalendarContent personId={session.personId} searchParams={searchParams} />
+        </Suspense>
       </main>
+    </>
+  )
+}
+
+async function CalendarContent({
+  personId,
+  searchParams
+}: {
+  personId: string
+  searchParams: Promise<{ semana?: string }>
+}) {
+  const [{ semana }, result] = await Promise.all([searchParams, system().today.today(personId)])
+  const initialDay = semana && DAY.test(semana) ? semana : undefined
+
+  return !result.ok ? (
+    <EmptyState icon={CalendarDays} title='No encontramos tus datos'>
+      No encontramos tus datos en el SIU. Salí y volvé a entrar.
+    </EmptyState>
+  ) : (
+    <>
+      {result.value.staleSince && <StaleBanner since={result.value.staleSince} now={result.value.now} />}
+      {result.value.unavailable.includes('upcoming') && (
+        <ErrorNotice>
+          No pudimos traer tus parciales y finales porque el SIU no responde. Probá de nuevo en un rato.
+        </ErrorNotice>
+      )}
+      {result.value.unavailable.includes('assignments') && (
+        <StaleNotice>Faltan las entregas de Moodle porque el Campus Virtual no responde.</StaleNotice>
+      )}
+      <TodayCalendar
+        events={eventsOf(
+          result.value.upcoming,
+          result.value.openEnrollments,
+          result.value.next?.id ?? null,
+          result.value.now
+        )}
+        classes={classSlotsOf(result.value.subjects.current)}
+        now={result.value.now}
+        initialDay={initialDay}
+        filters
+        below={
+          <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
+            <p className='min-w-0 flex-1 basis-64 text-[0.8125rem] text-muted-foreground'>
+              Las entregas vienen de Moodle: solo aparecen las que el docente cargó con fecha.
+            </p>
+            <a
+              href='/calendario/exportar'
+              download
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 flex-none')}
+            >
+              <CalendarPlus aria-hidden='true' data-icon='inline-start' />
+              Agregar a mi calendario
+            </a>
+          </div>
+        }
+        aside={<NextDates items={result.value.upcoming} />}
+      />
     </>
   )
 }

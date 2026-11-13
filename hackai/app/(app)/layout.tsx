@@ -13,7 +13,7 @@ import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
 import { newsTotal, unreadBySubject } from '@/components/news/format'
 import { activeProgram } from '@/components/session/person-text'
-import type { NavSubject } from '@/components/shell/app-nav'
+import { type NavSubject, SidebarNews, SidebarSubjects } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { NavigationProgress } from '@/components/shell/navigation-progress'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
@@ -24,6 +24,7 @@ import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Person } from '@/lib/core/people'
 import { newGradesFor } from '@/lib/new-grades'
+import type { Session } from '@/lib/session-token'
 
 /** Debajo del nombre en el perfil: qué cursa el alumno o que es docente. La facultad ya va en la marca. */
 function profileDetail(person: Person): string {
@@ -33,32 +34,24 @@ function profileDetail(person: Person): string {
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await requireSession()
-  const [person, subjects, unread, grades, jar] = await Promise.all([
-    system().people.get(session.personId),
-    system().studies.subjectsOf(session.personId),
-    system().spaces.unreadFor(session.personId),
-    newGradesFor(session),
-    cookies()
-  ])
+  const [person, jar] = await Promise.all([system().people.get(session.personId), cookies()])
   if (!person.ok && person.error === 'persona-desconocida') redirect('/salir')
-
-  // Espacios da los no leídos por canal: la barra muestra la suma de cada materia.
-  const bySubject = unreadBySubject(unread.ok ? unread.value : [])
-
-  const nav = new Map<string, NavSubject>()
-  if (subjects.ok) {
-    for (const s of subjects.value.data.current) {
-      const count = bySubject.get(s.subjectId) ?? 0
-      nav.set(s.subjectId, { href: spaceHref(s.subjectId), code: s.code, name: s.name, unread: count })
-    }
-  }
 
   const found = person.ok ? person.value : null
   return (
     <AppShell
       school={found?.school.name}
-      subjects={[...nav.values()]}
-      unread={newsTotal(unread.ok ? unread.value : [], grades.length)}
+      role={session.role}
+      subjectLinks={
+        <Suspense fallback={<div aria-hidden='true' className='hidden lg:block lg:h-20' />}>
+          <NavSubjects personId={session.personId} />
+        </Suspense>
+      }
+      newsLink={
+        <Suspense fallback={<SidebarNews />}>
+          <NavNews session={session} />
+        </Suspense>
+      }
       shell={{ person: found, detail: found ? profileDetail(found) : undefined }}
       sidebarCollapsed={jar.get(SIDEBAR_COOKIE)?.value === 'plegada'}
     >
@@ -72,4 +65,28 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </Suspense>
     </AppShell>
   )
+}
+
+async function NavSubjects({ personId }: { personId: string }) {
+  const [subjects, unread] = await Promise.all([
+    system().studies.subjectsOf(personId),
+    system().spaces.unreadFor(personId)
+  ])
+  // Espacios da los no leídos por canal: la barra muestra la suma de cada materia.
+  const bySubject = unreadBySubject(unread.ok ? unread.value : [])
+
+  const nav = new Map<string, NavSubject>()
+  if (subjects.ok) {
+    for (const s of subjects.value.data.current) {
+      const count = bySubject.get(s.subjectId) ?? 0
+      nav.set(s.subjectId, { href: spaceHref(s.subjectId), code: s.code, name: s.name, unread: count })
+    }
+  }
+
+  return <SidebarSubjects subjects={[...nav.values()]} />
+}
+
+async function NavNews({ session }: { session: Session }) {
+  const [unread, grades] = await Promise.all([system().spaces.unreadFor(session.personId), newGradesFor(session)])
+  return <SidebarNews unread={newsTotal(unread.ok ? unread.value : [], grades.length)} />
 }

@@ -284,21 +284,14 @@ function DropControls({ target, label, pending: dropping, action, onSubmit }: Fo
     )
   }
   return (
-    <form
-      action={action}
-      onSubmit={() => {
-        onSubmit()
-        closeConfirmation()
-      }}
-      className='flex flex-col gap-2 rounded-lg border border-border p-3'
-    >
+    <form action={action} onSubmit={onSubmit} className='flex flex-col gap-2 rounded-lg border border-border p-3'>
       <TargetInputs target={target} />
       <p className='text-sm'>
         ¿Te das de baja de {label}? {TARGET_TEXT[target.kind].dropWarning}
       </p>
       <div className='flex flex-wrap gap-2'>
-        <Button type='submit' variant='destructive' size='lg' className='min-h-11'>
-          Sí, darme de baja
+        <Button type='submit' variant='destructive' size='lg' disabled={dropping} className='min-h-11'>
+          {dropping ? 'Dándote de baja…' : 'Sí, darme de baja'}
         </Button>
         <Button
           ref={cancelButton}

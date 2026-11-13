@@ -83,6 +83,21 @@ export function createRealSiuRegistry(options: RegistryOptions): RealSiuRegistry
     },
 
     subject: (id) => (byId(id) ?? fallback).subject(id),
+
+    async subjects(ids) {
+      // Cada id a su cuenta; los que no son de ninguna, al SIU de la demo.
+      const groups = new Map<SiuPort, string[]>()
+      for (const id of ids) {
+        const owner = byId(id) ?? fallback
+        groups.set(owner, [...(groups.get(owner) ?? []), id])
+      }
+      const found = await Promise.all([...groups].map(([owner, list]) => owner.subjects(list)))
+      const failed = found.find((r) => !r.ok)
+      if (failed && !failed.ok) return failed
+      return { ok: true, value: found.flatMap((r) => (r.ok ? r.value : [])) }
+    },
+
+    sectionEnrollments: (id) => (byId(id) ?? fallback).sectionEnrollments(id),
     section: (id) => (byId(id) ?? fallback).section(id),
     sections: (filter) => (byId(filter.schoolId) ?? byId(filter.subjectId) ?? fallback).sections(filter),
     teacherSections: (id) => fallback.teacherSections(id),

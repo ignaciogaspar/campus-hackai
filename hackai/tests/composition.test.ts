@@ -253,3 +253,56 @@ test('Conectar con Discord se arma solo con el canal externo de Discord y la apl
     'https://hackai.test/discord/vuelta'
   )
 })
+
+test('comparte novedades durante el render y las actualiza después de leer o publicar', async () => {
+  let scope = new Map<string, Promise<unknown>>()
+  const { spaces } = compose({}, syntheticData, () => scope)
+  const student = 'p-taguirre'
+  const teacher = 'p-mledesma'
+  const opened = await spaces.open(student, 'am1')
+  assert.ok(opened.ok)
+  const avisos = opened.value.channels.find((channel) => channel.kind === 'avisos')!
+  const consultas = opened.value.channels.find((channel) => channel.kind === 'consultas')!
+
+  const first = spaces.unreadFor(student)
+  assert.equal(spaces.unreadFor(student), first)
+  assert.ok((await first).ok)
+  scope = new Map()
+  assert.notEqual(spaces.unreadFor(student), first)
+
+  const posted = await spaces.post(teacher, avisos.id, { text: 'Aviso de prueba' })
+  assert.ok(posted.ok)
+  const beforeRead = await spaces.unreadFor(student)
+  assert.ok(beforeRead.ok && beforeRead.value.some((item) => item.channelId === avisos.id))
+  assert.ok((await spaces.channel(student, avisos.id)).ok)
+  const afterRead = await spaces.unreadFor(student)
+  assert.ok(afterRead.ok && !afterRead.value.some((item) => item.channelId === avisos.id))
+
+  const beforePost = await spaces.unreadFor(teacher)
+  assert.ok(beforePost.ok && !beforePost.value.some((item) => item.channelId === consultas.id))
+  assert.ok((await spaces.post(student, consultas.id, { text: '¿Entra el primer tema?' })).ok)
+  const afterPost = await spaces.unreadFor(teacher)
+  assert.ok(afterPost.ok && afterPost.value.some((item) => item.channelId === consultas.id))
+})
+
+test('actualiza las materias y las inscripciones abiertas del render tras un alta y una baja', async () => {
+  const scope = new Map<string, Promise<unknown>>()
+  const { studies } = compose({}, syntheticData, () => scope)
+  const person = 'p-taguirre'
+  const target = { kind: 'comision', sectionId: 'sec-fi1-fi-vt' } as const
+
+  async function read() {
+    const [subjects, openings] = await Promise.all([studies.subjectsOf(person), studies.openEnrollments(person)])
+    assert.ok(subjects.ok && openings.ok)
+    return {
+      enrolled: subjects.value.data.current.some((subject) => subject.sectionId === target.sectionId),
+      open: openings.value.data.some((opening) => opening.subjectId === 'fi1')
+    }
+  }
+
+  assert.deepEqual(await read(), { enrolled: false, open: true })
+  assert.ok((await studies.enroll(person, target)).ok)
+  assert.deepEqual(await read(), { enrolled: true, open: false })
+  assert.ok((await studies.drop(person, target)).ok)
+  assert.deepEqual(await read(), { enrolled: false, open: true })
+})

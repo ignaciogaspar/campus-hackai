@@ -532,6 +532,27 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
 
     subject: (id) => (isReal(id) ? byId((s) => s.subjects.find((x) => x.id === id)) : fallback.subject(id)),
 
+    async subjects(ids) {
+      const real = ids.filter(isReal)
+      const [mine, others] = await Promise.all([
+        real.length > 0 ? fromSnapshot((s) => s.subjects.filter((x) => real.includes(x.id))) : ok([]),
+        fallback.subjects(ids.filter((id) => !isReal(id)))
+      ])
+      if (!mine.ok) return mine
+      if (!others.ok) return others
+      return ok([...others.value, ...mine.value])
+    },
+
+    // De una comisión real solo se sabe la inscripción del propio alumno: el SIU no muestra a los compañeros.
+    sectionEnrollments: (id) =>
+      isReal(id)
+        ? fromSnapshot((s) =>
+            s.courseEnrollments.filter(
+              (e) => e.sectionId === id && (e.status === 'aceptada' || e.status === 'pendiente')
+            )
+          )
+        : fallback.sectionEnrollments(id),
+
     section: (id) => (isReal(id) ? byId((s) => s.sections.find((x) => x.id === id)) : fallback.section(id)),
 
     async sections(filter) {

@@ -1,10 +1,9 @@
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { type ReactNode, Suspense } from 'react'
-import { Brand } from '@/components/shell/brand'
 import { InstallButton } from '@/components/shell/install-button'
 import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
-import { HeaderSessionActions } from '@/components/shell/shell-context'
+import { HeaderBrand, HeaderSessionActions } from '@/components/shell/shell-context'
 import type { SubjectArt } from '@/components/subjects/subject-icon'
 import { cn } from '@/lib/utils'
 
@@ -82,7 +81,7 @@ export function PageHeader({
               <ChevronLeft aria-hidden='true' className='size-5' />
             </Link>
           ) : (
-            <Brand school={school} />
+            <HeaderBrand school={school} />
           )}
         </div>
         <div className='col-start-2 row-start-1 flex items-center gap-1 lg:row-span-3'>

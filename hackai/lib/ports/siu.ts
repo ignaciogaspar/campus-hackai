@@ -272,6 +272,8 @@ export type SiuPort = {
   person(personId: string): Promise<Result<SiuPerson, SiuReadError>>
   terms(): Promise<Result<SiuTerm[], ExternalFailure>>
   subject(subjectId: string): Promise<Result<SiuSubject, SiuReadError>>
+  /** Devuelve las materias encontradas, sin repetir ids. */
+  subjects(ids: string[]): Promise<Result<SiuSubject[], ExternalFailure>>
   section(sectionId: string): Promise<Result<SiuSection, SiuReadError>>
   /** Oferta de comisiones, con la cantidad de inscriptos aceptados. */
   sections(filter: SiuSectionFilter): Promise<Result<(SiuSection & { enrolled: number })[], ExternalFailure>>
@@ -282,6 +284,10 @@ export type SiuPort = {
     personId: string,
     options?: { historic?: boolean }
   ): Promise<Result<SiuCourseEnrollment[], SiuReadError>>
+  // --- B: seguimiento ---
+  /** Inscripciones aceptadas o pendientes a una comisión, de cualquier alumno (el SIU real: `/inscripciones?comision=`). */
+  sectionEnrollments(sectionId: string): Promise<Result<SiuCourseEnrollment[], SiuReadError>>
+  // --- fin B: seguimiento ---
   examBoards(filter: SiuExamBoardFilter): Promise<Result<(SiuExamBoard & { enrolled: number })[], ExternalFailure>>
   examEnrollments(
     personId: string,

@@ -79,6 +79,11 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return subject ? ok(copy(subject)) : fail('no-encontrado')
     },
 
+    async subjects(ids) {
+      const requested = new Set(ids)
+      return ok(copy(db.subjects.filter((subject) => requested.has(subject.id))))
+    },
+
     async section(sectionId) {
       const section = db.sections.find((s) => s.id === sectionId)
       return section ? ok(copy(section)) : fail('no-encontrado')
@@ -109,6 +114,13 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       )
       return ok(copy(found))
     },
+
+    // --- B: seguimiento ---
+    async sectionEnrollments(sectionId) {
+      if (!db.sections.some((s) => s.id === sectionId)) return fail('no-encontrado')
+      return ok(copy(db.courseEnrollments.filter((e) => e.sectionId === sectionId && ACTIVE.includes(e.status))))
+    },
+    // --- fin B: seguimiento ---
 
     async examBoards(filter) {
       const found = db.examBoards.filter(
