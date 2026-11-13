@@ -125,6 +125,10 @@ function Preview({ state }: { state: Extract<PlanningPreviewState, { status: 'pr
             No se puede guardar todavía: {plural(errors, 'fila tiene', 'filas tienen')} problemas. Cada una dice qué le
             pasa; corregilas en la planilla y volvé a ver la vista previa.
           </p>
+        ) : ok === 0 ? (
+          <p role='status' className='rounded-xl bg-muted px-3 py-2 text-[0.8125rem] font-semibold text-ink'>
+            No hay nada nuevo para guardar: todas las clases de la planilla ya estaban cargadas.
+          </p>
         ) : (
           <p className='text-[0.8125rem] text-muted-foreground'>
             Todavía no se guardó nada.
@@ -206,7 +210,8 @@ export function PlanningUpload() {
             </span>
             <span id='planning-ayuda' className={HELP}>
               Una fila por clase. Con «Día» se repite cada semana; con «Fecha» es de ese día solo, como un cambio de
-              aula. Para suspender la clase de un día, poné la fecha y escribí «suspendida» en «Estado». Si elegiste un
+              aula. Para suspender la clase de un día, poné la fecha y escribí «suspendida» en «Estado». Si la escribís
+              acá a mano, separá las columnas con punto y coma (;), o usá «Cargar una clase» más abajo. Si elegiste un
               archivo, se usa el archivo.
             </span>
           </label>
