@@ -75,3 +75,29 @@ export function whenLabel(e: Pick<PlanningEntryInput, 'weekday' | 'date'>): stri
   if (e.weekday) return `${WEEKDAYS[e.weekday]}, cada semana`
   return e.date ? e.date.split('-').reverse().join('/') : ''
 }
+
+/** Un aula como columna de la grilla del día: su edificio y su nombre. */
+export type RoomColumn = { key: string; building: string; room: string }
+
+/** La clave de un aula: el mismo nombre en dos edificios son dos aulas. */
+export const roomKeyOf = (c: Pick<PlanningClass, 'building' | 'room'>) => `${c.building}\u0000${c.room}`
+
+/** Las aulas de esas clases, sin repetir y ordenadas por edificio y por nombre («Aula 2» antes que «Aula 10»). */
+export function roomColumns(classes: PlanningClass[]): RoomColumn[] {
+  const found = new Map<string, RoomColumn>()
+  for (const c of classes) found.set(roomKeyOf(c), { key: roomKeyOf(c), building: c.building, room: c.room })
+  return [...found.values()].sort(
+    (a, b) => a.building.localeCompare(b.building, 'es') || a.room.localeCompare(b.room, 'es', { numeric: true })
+  )
+}
+
+/** La media hora: cada fila de la grilla del día. */
+export const HALF_HOUR = 30
+
+/** Desde y hasta qué minuto va la grilla del día: al menos de 8 a 20, estirada a la media hora si algo empieza antes
+    o termina después. */
+export function dayRange(classes: PlanningClass[]): { from: number; to: number } {
+  const from = Math.min(8 * 60, ...classes.map((c) => c.start))
+  const to = Math.max(20 * 60, ...classes.map((c) => c.end))
+  return { from: Math.floor(from / HALF_HOUR) * HALF_HOUR, to: Math.ceil(to / HALF_HOUR) * HALF_HOUR }
+}

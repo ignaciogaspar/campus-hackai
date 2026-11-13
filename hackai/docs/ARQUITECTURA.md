@@ -192,7 +192,7 @@ Compone Cursada, Espacios y Seguimiento, y usa el reloj para el próximo parcial
 
 ### Planning (`planning`)
 
-En qué aula y a qué hora se dicta cada clase, de todas las materias. Lo carga secretaría (rol `secretaria`), que es quien asigna las aulas al empezar la cursada y las cambia: el SIU tiene el horario de cada comisión pero no el aula al día, y el Planning de Aulas del Campus (un MRBS) muestra todas las sedes juntas. Pantallas: `/planning` (todos, con filtros por facultad, edificio, aula y materia, y «Solo mis materias») y `/cargar-clases` (secretaría).
+En qué aula y a qué hora se dicta cada clase, de todas las materias. Lo carga secretaría (rol `secretaria`), que es quien asigna las aulas al empezar la cursada y las cambia: el SIU tiene el horario de cada comisión pero no el aula al día, y el Planning de Aulas del Campus (un MRBS) muestra todas las sedes juntas. Pantallas: `/planning` (todos: un día por vez, en una matriz con las aulas como columnas y las medias horas como filas, como el Planning de la facultad; con filtros por facultad, edificio y materia, y «Solo mis materias») y `/cargar-clases` (secretaría).
 
 | Operación | Qué hace |
 | --- | --- |

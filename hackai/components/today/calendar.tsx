@@ -83,7 +83,7 @@ const describe = (e: CalendarEvent) =>
 
 /* Un evento: pastel, con el borde de arriba del color de lo que es. Se ve
    entero: el nombre baja de línea en vez de cortarse, y nada se pisa. */
-function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
+export function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
   return (
     <span
       title={describe(e)}
@@ -218,17 +218,7 @@ function DayColumn({
 /* La semana, en franjas de dos horas que miden siempre lo mismo. Cada evento
    cae a la altura de su hora: una clase de 15 a 17 arranca a mitad de la franja
    de 14 a 16 y termina a mitad de la de 16 a 18. */
-export function Week({
-  days,
-  events,
-  today,
-  now
-}: {
-  days: string[]
-  events: CalendarEvent[]
-  today: string
-  now: string
-}) {
+function Week({ days, events, today, now }: { days: string[]; events: CalendarEvent[]; today: string; now: string }) {
   const inWeek = events.filter((e) => days.includes(e.day))
   const allDay = inWeek.filter((e) => e.minutes === null)
   const clusters = clustersOf(inWeek)
@@ -297,7 +287,7 @@ export function Week({
 /* En el celular, la semana como agenda: cada día con lo que tiene, uno debajo
    del otro y a todo el ancho, en vez de una grilla de siete columnas que no
    entra. Los días sin nada se dicen en una línea. */
-export function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent[]; today: string }) {
+function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent[]; today: string }) {
   const byTime = (a: CalendarEvent, b: CalendarEvent) => (a.minutes ?? -1) - (b.minutes ?? -1)
   return (
     <ol className='flex flex-col divide-y divide-border'>
@@ -409,7 +399,7 @@ export function MiniMonth({
   )
 }
 
-export function WeekToolbar({
+function WeekToolbar({
   week,
   onDay,
   onToday,

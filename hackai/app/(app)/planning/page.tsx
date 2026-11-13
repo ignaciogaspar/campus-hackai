@@ -1,4 +1,4 @@
-/* Planning: las clases de todas las materias con su aula, semana por semana,
+/* Planning: las clases de todas las materias con su aula, día por día y aula por aula,
    con filtros. Lo carga secretaría (/cargar-clases). Sin reglas de negocio:
    qué clase hay cada día y qué cambió lo decide Planning; las materias de quien
    mira salen de Cursada, para «Solo mis materias». */
