@@ -1,28 +1,31 @@
 /* Las tareas de una comisión, una fila por tarea: nombre, comienzo de la
    consigna, cuándo vence y si lleva nota. Cada fila lleva a la tarea. Es la
    misma lista para el docente y para el alumno; el docente además ve para qué
-   comisiones es cada una, y el alumno si ya entregó y si fue tarde. */
+   comisiones es cada una, y el alumno cómo está su entrega. En el celular el
+   estado baja a la línea de abajo, para que no le quite lugar al nombre. */
 import { ClipboardList } from 'lucide-react'
-import { dueLabel, sectionsLabel, submissionStatus, taskHref } from '@/components/coursework/format'
+import { dueLabel, sectionsLabel, taskHref } from '@/components/coursework/format'
+import { TaskStatus } from '@/components/coursework/task-status'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
-import { StatusPill } from '@/components/ui/status-pill'
 import type { Task } from '@/lib/core/coursework'
 import type { Role } from '@/lib/core/people'
 
-/** El estado que ve quien mira: el alumno que ya entregó, su entrega (y si fue tarde); si no, si venció. */
-function TaskStatus({ task }: { task: Task }) {
-  if (task.submission) {
-    return (
-      <StatusPill tone={task.submission.late ? 'warning' : 'success'}>{submissionStatus(task.submission)}</StatusPill>
-    )
-  }
-  return task.past ? <StatusPill tone='neutral'>Venció</StatusPill> : <StatusPill tone='info'>Vigente</StatusPill>
-}
-
-function TaskRow({ task, role, comision, fresh }: { task: Task; role: Role; comision: string; fresh: boolean }) {
+function TaskRow({
+  task,
+  role,
+  comision,
+  fresh,
+  now
+}: {
+  task: Task
+  role: Role
+  comision: string
+  fresh: boolean
+  now: string
+}) {
   const sharedWith = role === 'profesor' && task.sections.length > 1
   return (
     <ListItem
@@ -37,14 +40,15 @@ function TaskRow({ task, role, comision, fresh }: { task: Task; role: Role; comi
       description={task.instructions || undefined}
       meta={
         <>
+          <TaskStatus task={task} role={role} now={now} className='sm:hidden' />
           <OriginBadge origin='hackai' />
-          <time dateTime={task.dueAt}>{dueLabel(task)}</time>
+          <time dateTime={task.dueAt}>{dueLabel(task, now)}</time>
           {!task.graded && <span>· Sin nota</span>}
           {fresh && <span className='font-semibold text-success'>· Recién publicada</span>}
           {sharedWith && <span>· {sectionsLabel(task.sections.map((s) => s.name))}</span>}
         </>
       }
-      end={<TaskStatus task={task} />}
+      end={<TaskStatus task={task} role={role} now={now} className='max-sm:hidden' />}
     />
   )
 }
@@ -53,11 +57,14 @@ export function TaskList({
   tasks,
   role,
   comision,
-  createdId
+  createdId,
+  now
 }: {
   tasks: Task[]
   role: Role
   comision: string
+  /** ISO: la hora del reloj de la app, para decir cuánto falta. */
+  now: string
   /** La tarea que se acaba de crear, que se distingue de las demás. */
   createdId?: string
 }) {
@@ -74,7 +81,7 @@ export function TaskList({
     <Card>
       <List aria-label='Tareas'>
         {tasks.map((task) => (
-          <TaskRow key={task.id} task={task} role={role} comision={comision} fresh={task.id === createdId} />
+          <TaskRow key={task.id} task={task} role={role} comision={comision} fresh={task.id === createdId} now={now} />
         ))}
       </List>
     </Card>

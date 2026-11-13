@@ -80,6 +80,7 @@ export default async function TasksPage({ params, searchParams }: { params: Para
   // La que se acaba de crear (createTask lleva acá con `?creada=`), si es de esta comisión.
   const created = teacher && typeof raw.creada === 'string' ? list.tasks.find((t) => t.id === raw.creada) : undefined
   const mine = subjectOf(subjects.ok ? subjects.value.data : null, subjectId, list.sectionId)
+  const now = system().now()
 
   return (
     <>
@@ -127,9 +128,9 @@ export default async function TasksPage({ params, searchParams }: { params: Para
           subjectName={list.subject.subjectName}
           classroom={mine?.classrooms[0] ?? null}
           assignments={mine?.assignments ?? []}
-          now={system().now()}
+          now={now}
         />
-        <TaskList tasks={page.items} role={list.role} comision={list.sectionId} createdId={created?.id} />
+        <TaskList tasks={page.items} role={list.role} comision={list.sectionId} createdId={created?.id} now={now} />
         <Pagination
           page={page.page}
           pages={page.pages}

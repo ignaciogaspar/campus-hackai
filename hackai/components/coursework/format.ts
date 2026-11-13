@@ -2,6 +2,8 @@
    las fechas límite y los textos de cada tarea. Sin reglas de negocio: solo
    formato. Las fechas van en la hora de Buenos Aires. */
 import { dueTime } from '@/components/dates'
+import type { StatusTone } from '@/components/ui/status-pill'
+import type { Role } from '@/lib/core/people'
 import { daysBetween, TIME_ZONE } from '@/lib/dates'
 
 const SUBJECTS_PATH = '/materias'
@@ -157,6 +159,31 @@ export function relativeDue(dueAt: string, now: string): string {
   const days = daysBetween(now, dueAt)
   if (days <= 0) return 'vence hoy'
   return days === 1 ? 'vence mañana' : `vence en ${days} días`
+}
+
+type TaskForStatus = {
+  dueAt: string
+  past: boolean
+  submission: { late: { minutes: number } | null; grade: { value: number | null; absent: boolean } | null } | null
+}
+
+/** El estado de una tarea para quien mira. Al docente, si sigue vigente o venció. Al alumno, cómo está su entrega:
+    «Sin entregar · vence en 3 días», «Atrasada, podés entregarla igual», «Entregada», «Entregada con atraso» o,
+    con la nota publicada, la nota. */
+export function taskStatus(task: TaskForStatus, role: Role, now: string): { label: string; tone: StatusTone } {
+  if (role === 'profesor') return task.past ? { label: 'Venció', tone: 'neutral' } : { label: 'Vigente', tone: 'info' }
+  const { submission } = task
+  if (submission?.grade) {
+    const { value, absent } = submission.grade
+    return { label: absent ? 'Ausente' : `Nota ${gradeInputValue(value)}`, tone: 'success' }
+  }
+  if (submission) {
+    return submission.late
+      ? { label: 'Entregada con atraso', tone: 'warning' }
+      : { label: 'Entregada', tone: 'success' }
+  }
+  if (task.past) return { label: 'Atrasada, podés entregarla igual', tone: 'warning' }
+  return { label: `Sin entregar · ${relativeDue(task.dueAt, now)}`, tone: 'info' }
 }
 
 /** El valor de un `<input type='datetime-local'>` para una fecha, en la hora de Buenos Aires: `2026-11-13T23:59`. */

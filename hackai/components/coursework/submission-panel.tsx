@@ -91,7 +91,8 @@ function GradeNote({ task }: { task: Task }) {
 
 function SubmitForm({ task, replacing }: { task: Task; replacing: boolean }) {
   return (
-    <ActionForm action={submitTask} resetOnSuccess className='flex flex-col gap-3'>
+    // El resultado va arriba, junto a lo entregado: debajo del archivo y del botón queda fuera de la pantalla.
+    <ActionForm action={submitTask} resetOnSuccess feedbackFirst className='flex flex-col gap-3'>
       <input type='hidden' name='taskId' value={task.id} />
       <label className='flex flex-col gap-1 text-[0.8125rem] font-semibold'>
         {replacing ? 'Archivos nuevos' : 'Tus archivos'}
@@ -109,8 +110,9 @@ function SubmitForm({ task, replacing }: { task: Task; replacing: boolean }) {
         </span>
       </label>
       <SubmitButton
+        // Con la entrega hecha, reemplazarla es lo secundario.
         className={cn(
-          buttonVariants(),
+          buttonVariants({ variant: replacing ? 'outline' : 'default' }),
           'min-h-11 w-full scroll-mb-4 rounded-[10px] px-4 text-[0.9375rem] font-bold sm:w-fit'
         )}
       >

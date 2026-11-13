@@ -70,6 +70,7 @@ export function ActionForm({
   action,
   resetOnSuccess = false,
   clearOnEdit = false,
+  feedbackFirst = false,
   className,
   children,
   onInput,
@@ -81,6 +82,8 @@ export function ActionForm({
   /** Esconde el resultado anterior apenas se vuelve a escribir: si no, un «Guardamos 3 notas» viejo parece de lo
       que se acaba de cambiar. */
   clearOnEdit?: boolean
+  /** El resultado va arriba de los campos y no abajo: en un formulario largo, abajo queda fuera de la pantalla. */
+  feedbackFirst?: boolean
   children: ReactNode
 }) {
   const { state, dispatch, pending, submit, error } = useSpaceAction(action)
@@ -88,6 +91,9 @@ export function ActionForm({
   // El resultado sobre el que se volvió a escribir. Uno nuevo vuelve a mostrarse.
   const [editedOn, setEditedOn] = useState<SpaceActionState | null>(null)
   const hidden = clearOnEdit && editedOn === state
+  const feedback = (
+    <FormFeedback error={hidden ? null : error} success={!hidden && state.status === 'ok' ? state.message : null} />
+  )
 
   useEffect(() => {
     if (state.status === 'ok' && resetOnSuccess) form.current?.reset()
@@ -105,8 +111,9 @@ export function ActionForm({
       className={className}
       {...props}
     >
+      {feedbackFirst && feedback}
       <Pending.Provider value={pending}>{children}</Pending.Provider>
-      <FormFeedback error={hidden ? null : error} success={!hidden && state.status === 'ok' ? state.message : null} />
+      {!feedbackFirst && feedback}
     </form>
   )
 }

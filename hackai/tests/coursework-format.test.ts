@@ -23,6 +23,7 @@ import {
   submissionStatus,
   taskGradeLabel,
   taskHref,
+  taskStatus,
   tasksHref
 } from '@/components/coursework/format'
 import { subjectTabHref, tabsFor } from '@/components/subjects/subject-nav'
@@ -198,4 +199,31 @@ test('la nota que el docente cargó en una tarea dice si el alumno ya la ve', ()
   assert.equal(taskGradeLabel({ ...grade, published: false }), 'Nota 8,5 · sin publicar')
   assert.equal(taskGradeLabel({ ...grade, value: null, absent: true }), 'Ausente')
   assert.equal(taskGradeLabel({ ...grade, value: null, absent: true, published: false }), 'Ausente · sin publicar')
+})
+
+test('el estado de una tarea: al docente, si sigue vigente; al alumno, cómo está su entrega', () => {
+  // Martes 10/11/2026 a las 12:00 en Buenos Aires.
+  const now = '2026-11-10T15:00:00.000Z'
+  const due = '2026-11-13T23:59:00-03:00'
+  const open = { dueAt: due, past: false, submission: null }
+  const closed = { dueAt: '2026-11-09T23:59:00-03:00', past: true, submission: null }
+  const delivered = { late: null, grade: null }
+
+  assert.deepEqual(taskStatus(open, 'profesor', now), { label: 'Vigente', tone: 'info' })
+  assert.deepEqual(taskStatus(closed, 'profesor', now), { label: 'Venció', tone: 'neutral' })
+  assert.deepEqual(taskStatus(open, 'alumno', now), { label: 'Sin entregar · vence en 3 días', tone: 'info' })
+  assert.deepEqual(taskStatus(closed, 'alumno', now), { label: 'Atrasada, podés entregarla igual', tone: 'warning' })
+  assert.deepEqual(taskStatus({ ...open, submission: delivered }, 'alumno', now), {
+    label: 'Entregada',
+    tone: 'success'
+  })
+  assert.deepEqual(taskStatus({ ...closed, submission: { ...delivered, late: { minutes: 451_000 } } }, 'alumno', now), {
+    label: 'Entregada con atraso',
+    tone: 'warning'
+  })
+  const grade = { value: 8, absent: false, comment: '', published: true }
+  assert.deepEqual(taskStatus({ ...closed, submission: { ...delivered, grade } }, 'alumno', now), {
+    label: 'Nota 8',
+    tone: 'success'
+  })
 })
