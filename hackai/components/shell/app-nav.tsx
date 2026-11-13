@@ -23,6 +23,7 @@ import { isActive, TabBar } from '@/components/shell/tab-bar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Person, Role } from '@/lib/core/people'
+import { homeFor } from '@/lib/home'
 import { cn } from '@/lib/utils'
 
 type Section = {
@@ -52,14 +53,15 @@ const CAREER: Section[] = [
   { href: '/tramites', label: 'Trámites y reportes', icon: FileText }
 ]
 
+/* El del docente: Hoy primero, porque es su inicio. */
 const TEACHER: Section[] = [
-  { href: '/materias', label: 'Materias', icon: LibraryBig },
   { href: '/hoy', label: 'Hoy', icon: House },
+  { href: '/materias', label: 'Materias', icon: LibraryBig },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
   { href: '/novedades', label: 'Novedades', icon: Bell, desktopOnly: true }
 ]
 
-/* En el celular, qué va en la barra de abajo y en qué orden; el resto va en «Más». */
+/* En el celular, qué va en la barra de abajo y en qué orden (Hoy del docente, al medio); el resto va en «Más». */
 const STUDENT_TABS = ['/calendario', '/notas', '/materias', '/inscripciones']
 const TEACHER_TABS = ['/materias', '/hoy', '/calendario']
 
@@ -172,10 +174,10 @@ function ToggleIcon({ collapsed }: { collapsed: boolean }) {
   )
 }
 
-/* Arriba de la barra: la marca y el botón para plegarla. Plegada queda solo el botón.
+/* Arriba de la barra: la marca, que lleva al inicio del rol, y el botón para plegarla. Plegada queda solo el botón.
    Es solo de compu (en el celular no hay barra lateral que plegar): por eso el
    botón mide 36 px y no los 44 de un área táctil, para entrar en la barra plegada. */
-function SidebarTop() {
+function SidebarTop({ home }: { home: string }) {
   const { collapsed, toggle } = useSidebar()
   return (
     <div className='flex items-center gap-2 px-2 pb-2 group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:gap-0 group-data-[sidebar=plegada]/nav:px-0'>
@@ -185,7 +187,15 @@ function SidebarTop() {
           FADES
         )}
       >
-        <Brand tone='light' />
+        <Link
+          href={home}
+          aria-label='Universidad Austral: ir al inicio'
+          title='Ir al inicio'
+          className='flex w-fit rounded-lg focus-ring group-data-[sidebar=plegada]/nav:pointer-events-none'
+          tabIndex={collapsed ? -1 : undefined}
+        >
+          <Brand tone='light' />
+        </Link>
       </div>
       <button
         type='button'
@@ -281,7 +291,7 @@ export function AppNav({
         data-sidebar={collapsed ? 'plegada' : 'abierta'}
         className='group/nav fixed inset-y-0 left-0 z-10 hidden w-(--sidebar-w) flex-col overflow-hidden px-3 py-6 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:flex'
       >
-        <SidebarTop />
+        <SidebarTop home={homeFor(student ? 'alumno' : 'profesor')} />
         <div className='-mx-1 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-1 [scrollbar-width:thin]'>
           <GroupLabel>Menú principal</GroupLabel>
           {main.map((section) =>
