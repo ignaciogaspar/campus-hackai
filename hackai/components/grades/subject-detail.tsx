@@ -5,7 +5,7 @@
 import { ArrowRight, CalendarCheck2 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { approvalDate, gradeDate } from '@/components/academic/format'
+import { approvalDate, gradeDate, termLabel } from '@/components/academic/format'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import {
   APPROVAL,
@@ -104,7 +104,7 @@ function Section({ subject }: { subject: SubjectStanding }) {
     <>
       {subject.sectionName ? `Comisión ${subject.sectionName}` : '—'}
       {subject.termName && (
-        <span className='block text-[0.75rem] font-normal text-muted-foreground'>{subject.termName}</span>
+        <span className='block text-[0.75rem] font-normal text-muted-foreground'>{termLabel(subject.termName)}</span>
       )}
     </>
   )
@@ -119,7 +119,9 @@ function InProgress({ subject }: { subject: SubjectStanding }) {
       </p>
       {(subject.sectionName || subject.termName) && (
         <p className='text-[0.75rem] text-muted-foreground'>
-          {[subject.sectionName && `Comisión ${subject.sectionName}`, subject.termName].filter(Boolean).join(' · ')}
+          {[subject.sectionName && `Comisión ${subject.sectionName}`, subject.termName && termLabel(subject.termName)]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
       )}
     </div>
