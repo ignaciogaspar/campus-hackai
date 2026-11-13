@@ -30,15 +30,15 @@ function withTwoSectionsForOneTeacher(): SyntheticData {
 }
 
 /** Seguimiento con Personas y Cursada reales sobre los puertos en memoria, y el reloj fijo que se adelanta a mano. */
-function build(data: SyntheticData = syntheticData) {
+function build(data: SyntheticData = syntheticData, wrapFiles: (files: FilesPort) => FilesPort = (f) => f) {
   const { clock, advance } = movableClock(data.now)
   const { port: siu, state: siuState } = fallible(createMemorySiu(data, clock))
   const people = createPeople({ identity: createMemoryIdentity(data), siu, store: createMemoryPeopleStore(data) })
   const studies = createStudies({ people, siu, classroom: createMemoryClassroom(data), clock })
-  const files = createMemoryFiles()
+  const files = wrapFiles(createMemoryFiles())
   const store = createMemoryCourseworkStore()
   const coursework = createCoursework({ studies, files, clock, store })
-  return { coursework, files, store, siuState, advance }
+  return { coursework, studies, files, store, siuState, advance }
 }
 
 const taskOf = (fields: Partial<NewTask> = {}): NewTask => ({
@@ -363,4 +363,234 @@ test('con el SIU caído se usa la última lectura de comisiones y se avisa desde
   assert.ok(detail.value.staleSince)
   // Sin ninguna lectura previa, no hay con qué decidir.
   assert.deepEqual(await coursework.tasksOf('p-lbenitez', 'am1'), { ok: false, error: 'falla-externa' })
+})
+
+// --- Entregas ---------------------------------------------------------------
+
+const upload = (name: string, text = `contenido de ${name}`) => ({
+  name,
+  contentType: 'text/plain',
+  bytes: new TextEncoder().encode(text)
+})
+
+/** El id del archivo en su URL: `/archivos/<id>/<nombre>`. */
+const fileIdOf = (file: { url: string }) => file.url.split('/')[2]
+
+/** Una tarea de A que vence el viernes 13/11 a las 23:59, y quien la entrega. */
+async function withTaskInA(fields: Partial<NewTask> = {}, wrapFiles?: (files: FilesPort) => FilesPort) {
+  const built = build(syntheticData, wrapFiles)
+  const task = value(await built.coursework.createTask('p-mledesma', taskOf(fields)))
+  return { ...built, task }
+}
+
+test('un alumno entrega uno o más archivos y ve cuándo entregó, sin atraso si llegó a tiempo', async () => {
+  const { coursework, task } = await withTaskInA()
+
+  const submission = value(await coursework.submit('p-taguirre', task.id, [upload('tp3.txt'), upload('anexo.txt')]))
+
+  assert.equal(submission.taskId, task.id)
+  assert.equal(submission.submittedAt, '2026-11-10T15:00:00.000Z')
+  assert.deepEqual(
+    submission.files.map((f) => f.name),
+    ['tp3.txt', 'anexo.txt']
+  )
+  assert.match(submission.files[0].url, /^\/archivos\/[0-9a-f-]{36}\/tp3\.txt$/)
+  assert.equal(submission.late, null)
+  assert.equal(submission.graded, false)
+  const detail = value(await coursework.task('p-taguirre', task.id))
+  assert.deepEqual(detail.submission, submission)
+  const list = value(await coursework.tasksOf('p-taguirre', 'am1'))
+  assert.deepEqual(list.tasks[0].submission, submission)
+})
+
+test('una entrega después de la fecha límite se acepta y queda atrasada, con cuántos minutos', async () => {
+  const { coursework, task, advance } = await withTaskInA()
+  // Hasta el viernes 23:59 hay 3 días y 11 horas y 59 minutos; 150 minutos más.
+  advance(3 * 24 * 60 + 11 * 60 + 59 + 150)
+
+  const submission = value(await coursework.submit('p-taguirre', task.id, [upload('tarde.txt')]))
+
+  assert.deepEqual(submission.late, { minutes: 150 })
+  assert.equal(value(await coursework.task('p-taguirre', task.id)).past, true)
+})
+
+test('un atraso de segundos cuenta como un minuto, y entregar justo en la hora límite no es tarde', async () => {
+  const { coursework, task, advance } = await withTaskInA({ dueAt: '2026-11-10T15:00:30.000Z' })
+  advance(0.5)
+
+  const onTime = value(await coursework.submit('p-taguirre', task.id, [upload('a.txt')]))
+  advance(0.5)
+  const justLate = value(await coursework.submit('p-taguirre', task.id, [upload('b.txt')]))
+
+  assert.equal(onTime.late, null)
+  assert.deepEqual(justLate.late, { minutes: 1 })
+})
+
+test('si el docente corre la fecha límite, el atraso de una entrega se recalcula', async () => {
+  const { coursework, task, advance } = await withTaskInA()
+  advance(3 * 24 * 60 + 11 * 60 + 59 + 60)
+  const late = value(await coursework.submit('p-taguirre', task.id, [upload('tarde.txt')]))
+  assert.deepEqual(late.late, { minutes: 60 })
+
+  value(
+    await coursework.updateTask('p-mledesma', task.id, {
+      name: task.name,
+      instructions: task.instructions,
+      dueAt: '2026-11-20T23:59:00-03:00'
+    })
+  )
+
+  assert.equal(value(await coursework.task('p-taguirre', task.id)).submission?.late, null)
+})
+
+test('un alumno de la comisión A no entrega una tarea que es solo de la B', async () => {
+  const { coursework, files } = build()
+  const onlyB = value(await coursework.createTask('p-gferreyra', taskOf({ sectionIds: [B] })))
+
+  const denied = await coursework.submit('p-taguirre', onlyB.id, [upload('intruso.txt')])
+  const allowed = await coursework.submit('p-mcabrera', onlyB.id, [upload('mia.txt')])
+
+  assert.deepEqual(denied, { ok: false, error: 'tarea-desconocida' })
+  assert.ok(allowed.ok)
+  assert.ok((await files.read(fileIdOf(allowed.value.files[0]))).ok)
+  assert.deepEqual(await coursework.submit('p-taguirre', 'tarea-inventada', [upload('x.txt')]), {
+    ok: false,
+    error: 'tarea-desconocida'
+  })
+})
+
+test('un docente no entrega tareas, ni siquiera las de su comisión', async () => {
+  const { coursework, task } = await withTaskInA()
+
+  assert.deepEqual(await coursework.submit('p-mledesma', task.id, [upload('x.txt')]), {
+    ok: false,
+    error: 'solo-alumnos'
+  })
+})
+
+test('entregar de nuevo reemplaza la entrega anterior y borra sus archivos, hasta que el docente la califica', async () => {
+  const { coursework, files, store, task, advance } = await withTaskInA()
+  const first = value(await coursework.submit('p-taguirre', task.id, [upload('v1.txt')]))
+  advance(60)
+
+  const second = value(await coursework.submit('p-taguirre', task.id, [upload('v2.txt'), upload('v2-anexo.txt')]))
+
+  assert.equal(second.id, first.id)
+  assert.equal(second.submittedAt, '2026-11-10T16:00:00.000Z')
+  assert.deepEqual(
+    second.files.map((f) => f.name),
+    ['v2.txt', 'v2-anexo.txt']
+  )
+  assert.equal(value(await coursework.task('p-taguirre', task.id)).submission?.files.length, 2)
+  assert.deepEqual(await files.read(fileIdOf(first.files[0])), { ok: false, error: 'no-encontrado' })
+
+  // El docente califica: la entrega queda cerrada.
+  const stored = value(await store.submission(task.id, 'p-taguirre'))
+  assert.ok(stored)
+  value(await store.saveSubmission({ ...stored, gradedAt: '2026-11-11T12:00:00.000Z' }))
+
+  assert.deepEqual(await coursework.submit('p-taguirre', task.id, [upload('v3.txt')]), {
+    ok: false,
+    error: 'ya-calificada'
+  })
+  const closed = value(await coursework.task('p-taguirre', task.id))
+  assert.equal(closed.submission?.graded, true)
+  assert.equal(closed.submission?.files.length, 2)
+})
+
+test('cada alumno tiene su entrega: lo que entrega uno no lo ve otro', async () => {
+  const { coursework, task } = await withTaskInA()
+  value(await coursework.submit('p-taguirre', task.id, [upload('mia.txt')]))
+
+  assert.equal(value(await coursework.task('p-lbenitez', task.id)).submission, null)
+  assert.equal(value(await coursework.tasksOf('p-lbenitez', 'am1')).tasks[0].submission, null)
+  // El docente tampoco tiene «su» entrega.
+  assert.equal(value(await coursework.task('p-mledesma', task.id)).submission, null)
+})
+
+test('una entrega necesita al menos un archivo, ninguno vacío, hasta diez y no pasar el máximo en total', async () => {
+  const { coursework, files, task } = await withTaskInA()
+  const max = files.capabilities.maxBytes
+  const big = (name: string, bytes: number) => ({ name, contentType: 'application/pdf', bytes: new Uint8Array(bytes) })
+
+  assert.deepEqual(await coursework.submit('p-taguirre', task.id, []), { ok: false, error: 'sin-archivos' })
+  assert.deepEqual(await coursework.submit('p-taguirre', task.id, [upload('a.txt'), upload('vacio.txt', '')]), {
+    ok: false,
+    error: 'archivo-vacio'
+  })
+  const eleven = Array.from({ length: 11 }, (_, i) => upload(`f${i}.txt`))
+  assert.deepEqual(await coursework.submit('p-taguirre', task.id, eleven), { ok: false, error: 'demasiados-archivos' })
+  // Cada uno entra, pero juntos pasan el máximo: el pedido entero se corta.
+  const tooMuch = [big('a.pdf', max - 10), big('b.pdf', 20)]
+  assert.deepEqual(await coursework.submit('p-taguirre', task.id, tooMuch), { ok: false, error: 'demasiado-grande' })
+  assert.equal(value(await coursework.task('p-taguirre', task.id)).submission, null)
+})
+
+test('si no se puede guardar la entrega, no quedan archivos sueltos y la entrega anterior sigue', async () => {
+  const saved: string[] = []
+  const deleted: string[] = []
+  const { coursework, studies, store, files, task } = await withTaskInA({}, (real) => ({
+    ...real,
+    async save(file) {
+      const result = await real.save(file)
+      if (result.ok) saved.push(result.value.id)
+      return result
+    },
+    async delete(id) {
+      deleted.push(id)
+      return real.delete(id)
+    }
+  }))
+  const first = value(await coursework.submit('p-taguirre', task.id, [upload('v1.txt')]))
+  saved.length = 0
+  const { clock } = movableClock(syntheticData.now)
+  const broken = createCoursework({
+    studies,
+    files,
+    clock,
+    store: { ...store, saveSubmission: async () => fail('falla-externa') }
+  })
+
+  const result = await broken.submit('p-taguirre', task.id, [upload('v2.txt'), upload('v2b.txt')])
+
+  assert.deepEqual(result, { ok: false, error: 'falla-externa' })
+  assert.equal(saved.length, 2)
+  assert.deepEqual(deleted, saved)
+  assert.deepEqual(value(await coursework.task('p-taguirre', task.id)).submission, first)
+})
+
+test('los archivos de una entrega los baja solo quien la hizo', async () => {
+  const { coursework, task } = await withTaskInA()
+  const submission = value(await coursework.submit('p-taguirre', task.id, [upload('mia.txt', 'mi tarea')]))
+  const fileId = fileIdOf(submission.files[0])
+
+  const own = value(await coursework.file('p-taguirre', fileId))
+  assert.equal(new TextDecoder().decode(own.bytes), 'mi tarea')
+  // Otro alumno de la comisión, el docente y un alumno de otra comisión no.
+  for (const person of ['p-lbenitez', 'p-mledesma', 'p-mcabrera']) {
+    assert.deepEqual(await coursework.file(person, fileId), { ok: false, error: 'sin-acceso' })
+  }
+})
+
+test('las tareas con fecha del alumno son las de las materias actuales donde cursa, por fecha límite', async () => {
+  const { coursework } = build()
+  const late = value(
+    await coursework.createTask('p-mledesma', taskOf({ name: 'Última', dueAt: '2026-11-27T23:59:00-03:00' }))
+  )
+  const soon = value(
+    await coursework.createTask('p-mledesma', taskOf({ name: 'Primera', dueAt: '2026-11-12T23:59:00-03:00' }))
+  )
+  value(await coursework.createTask('p-gferreyra', taskOf({ name: 'Solo de la B', sectionIds: [B] })))
+
+  const dated = value(await coursework.dated('p-taguirre'))
+
+  assert.deepEqual(
+    dated.map((t) => [t.id, t.name, t.subjectCode, t.past]),
+    [
+      [soon.id, 'Primera', 'AM1', false],
+      [late.id, 'Última', 'AM1', false]
+    ]
+  )
+  assert.deepEqual(value(await coursework.dated('p-mledesma')), [])
+  assert.deepEqual(await coursework.dated('p-nadie'), { ok: false, error: 'persona-desconocida' })
 })

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createMemoryClassroom } from '@/lib/adapters/memoria/classroom'
+import { createMemoryCourseworkStore } from '@/lib/adapters/memoria/coursework-store'
 import { createMemoryExternalChannel } from '@/lib/adapters/memoria/external-channel'
 import { createMemoryFiles } from '@/lib/adapters/memoria/files'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
@@ -8,16 +9,18 @@ import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
 import { createMemorySpacesStore } from '@/lib/adapters/memoria/spaces-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
+import { createCoursework } from '@/lib/core/coursework'
 import { createPeople } from '@/lib/core/people'
 import { createSpaces } from '@/lib/core/spaces'
 import { createStudies } from '@/lib/core/studies'
 import { createToday } from '@/lib/core/today'
+import { fail } from '@/lib/result'
 import { fallible, movableClock } from '@/tests/core/helpers'
 
 const NOW = syntheticData.now
 
 /** Hoy con Personas, Cursada y Espacios reales sobre los puertos en memoria. El SIU y Moodle se pueden «caer». */
-function build(data: SyntheticData = syntheticData) {
+function build(data: SyntheticData = syntheticData, courseworkStore = createMemoryCourseworkStore()) {
   const { clock, advance } = movableClock(data.now)
   const { port: siu, state: siuState } = fallible(createMemorySiu(data, clock))
   const { port: classroom, state: classroomState } = fallible(createMemoryClassroom(data))
@@ -33,8 +36,14 @@ function build(data: SyntheticData = syntheticData) {
     store: createMemorySpacesStore(),
     timer: () => 0
   })
-  const today = createToday({ studies, spaces, clock })
-  return { today, studies, spaces, siuState, classroomState, advance }
+  const coursework = createCoursework({
+    studies,
+    files: createMemoryFiles(),
+    clock,
+    store: courseworkStore
+  })
+  const today = createToday({ studies, spaces, coursework, clock })
+  return { today, studies, spaces, coursework, siuState, classroomState, advance }
 }
 
 test('arma la pantalla del alumno en una sola llamada: materias, próximos por fecha e inscripciones abiertas', async () => {
@@ -194,8 +203,8 @@ test('si varias lecturas están desactualizadas, la hora es la de la más vieja'
   assert.equal(result.value.staleSince, NOW)
   assert.equal(result.value.subjects.current.length, 2)
   assert.equal(result.value.upcoming.length, 9)
-  // Las novedades necesitan las comisiones, que el SIU no dio antes de caerse.
-  assert.deepEqual(result.value.unavailable, ['openEnrollments', 'unread'])
+  // Las novedades y las tareas de HackAI necesitan las comisiones, que el SIU no dio antes de caerse.
+  assert.deepEqual(result.value.unavailable, ['openEnrollments', 'unread', 'coursework'])
 })
 
 test('con Moodle caído faltan las entregas y los enlaces al aula, pero las materias, los parciales, finales e inscripciones se ven igual', async () => {
@@ -290,7 +299,7 @@ test('con el SIU caído y nada leído antes, Hoy responde igual, con todo marcad
   const result = await today.today('p-taguirre')
 
   assert.ok(result.ok)
-  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming', 'openEnrollments', 'unread'])
+  assert.deepEqual(result.value.unavailable, ['subjects', 'upcoming', 'openEnrollments', 'unread', 'coursework'])
   assert.deepEqual(result.value.unread, [])
 })
 
@@ -442,4 +451,86 @@ test('con el SIU caído, el Hoy del docente muestra lo último que leyó; sin na
   assert.deepEqual(empty.value.sections, [])
   assert.deepEqual(empty.value.unavailable, ['sections', 'dates', 'questions', 'unread'])
   assert.deepEqual(await today.teaching('p-nadie'), { ok: false, error: 'persona-desconocida' })
+})
+
+test('las tareas con fecha de HackAI de su comisión suman a los próximos como entregas, con su propio id', async () => {
+  const { today, coursework } = build()
+  const task = await coursework.createTask('p-mledesma', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-a'],
+    name: 'Práctica 3: integrales',
+    instructions: '',
+    dueAt: '2026-11-13T23:59:00-03:00',
+    graded: true
+  })
+  assert.ok(task.ok)
+  const onlyB = await coursework.createTask('p-gferreyra', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-b'],
+    name: 'Solo de la B',
+    instructions: '',
+    dueAt: '2026-11-14T23:59:00-03:00',
+    graded: false
+  })
+  assert.ok(onlyB.ok)
+
+  const result = await today.today('p-taguirre')
+
+  assert.ok(result.ok)
+  const own = result.value.upcoming.filter((i) => i.source === 'hackai')
+  assert.deepEqual(own, [
+    {
+      id: `tarea-hackai:${task.value.id}`,
+      kind: 'entrega',
+      source: 'hackai',
+      subjectId: 'am1',
+      subjectCode: 'AM1',
+      subjectName: 'Análisis Matemático I',
+      name: 'Práctica 3: integrales',
+      date: '2026-11-14T02:59:00.000Z',
+      past: false,
+      examPeriod: null,
+      location: null,
+      hasSection: true
+    }
+  ])
+  // Las de Moodle siguen con su id y no se repiten.
+  const moodle = result.value.upcoming.filter((i) => i.source === 'moodle')
+  assert.ok(moodle.length > 0)
+  assert.ok(moodle.every((i) => i.id.startsWith('tarea:')))
+  const ids = result.value.upcoming.map((i) => i.id)
+  assert.equal(new Set(ids).size, ids.length)
+  // Una tarea que ya venció queda en la lista como pasada.
+  assert.deepEqual(result.value.unavailable, [])
+})
+
+test('el docente no ve tareas de HackAI entre sus próximos del alumno', async () => {
+  const { today, coursework } = build()
+  await coursework.createTask('p-mledesma', {
+    subjectId: 'am1',
+    sectionIds: ['sec-am1-fi-a'],
+    name: 'Práctica 3',
+    instructions: '',
+    dueAt: '2026-11-13T23:59:00-03:00',
+    graded: true
+  })
+
+  const result = await today.today('p-mledesma')
+
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.upcoming.filter((i) => i.source === 'hackai'),
+    []
+  )
+})
+
+test('si Seguimiento no responde, el Hoy sale sin las tareas de HackAI y lo avisa', async () => {
+  const store = { ...createMemoryCourseworkStore(), tasksOfSubject: async () => fail('falla-externa' as const) }
+  const { today } = build(syntheticData, store)
+
+  const result = await today.today('p-taguirre')
+
+  assert.ok(result.ok)
+  assert.deepEqual(result.value.unavailable, ['coursework'])
+  assert.ok(result.value.upcoming.length > 0)
 })

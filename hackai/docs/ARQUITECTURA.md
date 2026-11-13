@@ -119,7 +119,7 @@ Usa Cursada, Personas y los puertos del canal externo, del aula virtual, de Arch
 
 ### Seguimiento (`coursework`)
 
-Las tareas de una materia, y a futuro sus entregas y calificaciones. Hoy tiene la primera rebanada: el docente crea y edita tareas y el alumno las ve.
+Las tareas de una materia y sus entregas, y a futuro sus calificaciones. Hoy el docente crea y edita tareas, y el alumno las ve y las entrega.
 
 | Operación | Qué hace |
 | --- | --- |
@@ -127,14 +127,19 @@ Las tareas de una materia, y a futuro sus entregas y calificaciones. Hoy tiene l
 | `updateTask(persona, tarea, cambios)` | Cambia el nombre, la consigna y la fecha límite. Las comisiones y si lleva nota no se cambian |
 | `tasksOf(persona, materia, comisión?)` | Las tareas de una comisión, por fecha límite. Al docente le devuelve las comisiones vigentes que dicta de la materia y las de la elegida (la primera si falta o no es suya); al alumno, las de su comisión. Una comisión que la persona no tiene nunca trae tareas |
 | `task(persona, tarea)` | Una tarea con lo que la persona puede hacer con ella (`canManage`) y sus comisiones, solo las que la persona tiene |
-| `file(persona, archivo)` | Los bytes del archivo de la consigna de una tarea, si la persona la ve |
+| `submit(persona, tarea, archivos)` | El alumno entrega uno o más archivos (hasta 10, 10 MB en total) a una tarea de su comisión, o reemplaza su entrega anterior si el docente todavía no la calificó. Guarda cuándo entregó. Después de la fecha límite la acepta y queda atrasada, con cuántos minutos |
+| `dated(persona)` | Las tareas de las materias actuales donde la persona cursa, por fecha límite: lo que Hoy suma al calendario. A un docente le da una lista vacía |
+| `file(persona, archivo)` | Los bytes de un archivo de Seguimiento: la consigna de una tarea, si la persona la ve, o un archivo de una entrega, solo si es de quien la hizo (el docente los abre desde la pantalla de entregas, que es de un ticket siguiente) |
 
 **Reglas que hace cumplir:**
 
 - **Quién gestiona:** los docentes de las comisiones de la tarea. Una tarea es de una o más comisiones de la misma materia, y quien la crea tiene que dictar todas.
 - **Quién la ve:** los docentes y los alumnos de esas comisiones; un alumno de la A no ve una tarea que es solo de la B. La pertenencia se deduce de `sectionsOf` de Cursada en cada llamada y no se guarda: nunca se confía en una comisión que llega del navegador.
 - **Una tarea sin nota** queda marcada así: no tendrá columna en Calificaciones.
-- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `tarea-desconocida`, `nombre-invalido`, `fecha-invalida`, `demasiado-grande`, `falla-externa`).
+- **Quién entrega:** solo un alumno de una comisión de la tarea. Para quien no la ve, la tarea no existe (`tarea-desconocida`), así que un alumno de la A no entrega una tarea que es solo de la B; un docente recibe `solo-alumnos`. Cada alumno tiene una sola entrega por tarea: entregar de nuevo la reemplaza (y borra sus archivos) hasta que la califican (`ya-calificada`).
+- **Atrasada:** una entrega después de la fecha límite se acepta, nunca se bloquea. El atraso no se guarda: se calcula al leer con la fecha de la entrega y la fecha límite vigente (si el docente la corre, se recalcula). Menos de un minuto cuenta como uno.
+- **Sin archivos sueltos:** si falla guardar la entrega, se borran los archivos recién subidos y la entrega anterior sigue como estaba.
+- Errores esperables como valores (`sin-acceso`, `solo-docentes`, `solo-alumnos`, `tarea-desconocida`, `nombre-invalido`, `fecha-invalida`, `sin-archivos`, `demasiados-archivos`, `archivo-vacio`, `demasiado-grande`, `ya-calificada`, `falla-externa`).
 
 Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la persona), el puerto de Archivos y el reloj. Cursada no lo llama.
 
@@ -142,10 +147,10 @@ Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la p
 
 | Operación | Qué hace |
 | --- | --- |
-| `today(persona)` | Todo lo de la pantalla del alumno en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y entregas con fecha de Moodle. Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
+| `today(persona)` | Todo lo de la pantalla del alumno en una llamada: materias actuales y archivadas, próximos parciales y finales, novedades sin leer, inscripciones abiertas y las entregas con fecha: las de Moodle y las tareas de HackAI de su comisión (`tarea-hackai:<id>`, origen `hackai`, sin repetir las de Moodle). Además, el próximo parcial o final con los días que faltan, la hora en que se armó, desde cuándo hay algo desactualizado (`staleSince`) y qué partes no se pudieron leer (`unavailable`) |
 | `teaching(persona)` | El Hoy del docente en una llamada: sus comisiones actuales, cada una con sus no leídos (los de la materia y los directos van en la primera comisión de cada materia, para no contarlos dos veces); las consultas sin resolver que le tocan (`openQuestions` de Espacios); los parciales de sus comisiones y las mesas que integra que no pasaron, por fecha; todo lo que no leyó, y `staleSince` y `unavailable` como en `today` |
 
-Compone Cursada y Espacios, y usa el reloj para el próximo parcial. No tiene almacén propio. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
+Compone Cursada, Espacios y Seguimiento, y usa el reloj para el próximo parcial. No tiene almacén propio. El Calendario y el `.ics` salen de `today(persona)`, así que muestran las tareas de HackAI sin más; si Seguimiento no responde, faltan esas tareas y `unavailable` lleva `coursework`. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 
 ### Dependencias entre módulos
 
@@ -157,7 +162,7 @@ today ──► studies ──► people
   └──► coursework ──► studies
 ```
 
-Hoy todavía no llama a Seguimiento: las tareas con fecha en Hoy y el Calendario son de un ticket siguiente. Seguimiento usa además el puerto de Archivos y el reloj.
+Hoy llama a Seguimiento (`dated`) para sumar las tareas con fecha al calendario. Seguimiento usa además el puerto de Archivos y el reloj.
 
 Cursada usa Personas solo para traducir ids: una persona a sus ids del SIU y de Moodle (`accountIn`), y un docente del SIU a su persona de HackAI (`byExternalAccount`), porque los puertos hablan en ids de cada sistema. El rol y la facultad los lee del SIU con ese id.
 

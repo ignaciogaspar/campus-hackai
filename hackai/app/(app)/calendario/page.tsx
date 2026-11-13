@@ -1,5 +1,5 @@
 /* Calendario: la semana con las clases de cada materia como bloques, los
-   parciales, los finales, las entregas de Moodle y los cierres de
+   parciales, los finales, las entregas (de Moodle y las tareas de HackAI) y los cierres de
    inscripción, con filtros para ver solo una cosa o una materia. Sale de Hoy
    en una sola llamada, como la pantalla de inicio: qué es cada fecha, qué ya
    pasó y cuál es la próxima lo decide Hoy. Las clases salen del horario de
@@ -90,6 +90,11 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
             {result.value.unavailable.includes('assignments') && (
               <StaleNotice>Faltan las entregas de Moodle porque el Campus Virtual no responde.</StaleNotice>
             )}
+            {result.value.unavailable.includes('coursework') && (
+              <StaleNotice>
+                Faltan las tareas de HackAI porque no pudimos leerlas. Probá de nuevo en un rato.
+              </StaleNotice>
+            )}
             <TodayCalendar
               events={eventsOf(
                 result.value.upcoming,
@@ -104,7 +109,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
               below={
                 <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
                   <p className='min-w-0 flex-1 basis-64 text-[0.8125rem] text-muted-foreground'>
-                    Las entregas vienen de Moodle: solo aparecen las que el docente cargó con fecha.
+                    Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.
                   </p>
                   <a
                     href='/calendario/exportar'
