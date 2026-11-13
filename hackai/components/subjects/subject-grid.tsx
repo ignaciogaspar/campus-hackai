@@ -20,10 +20,12 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { termLabel } from '@/components/academic/format'
 import { gradesHref } from '@/components/coursework/format'
 import { closesAt, dueTime, longDay, shortDate, timeOf } from '@/components/dates'
 import { modalityName, scheduleLine } from '@/components/enrollment/format'
 import { offerHref } from '@/components/enrollment/offer-href'
+import { notesHref } from '@/components/grades/format'
 import { gradeText, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
@@ -36,7 +38,7 @@ function Row({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }
   return (
     <p className='flex items-start gap-2 text-[0.8125rem] text-ink/80 lg:text-[0.875rem]'>
       <Icon aria-hidden='true' className='mt-0.5 size-4 flex-none text-muted-foreground' strokeWidth={1.8} />
-      <span className='min-w-0 truncate'>{children}</span>
+      <span className='line-clamp-2 min-w-0'>{children}</span>
     </p>
   )
 }
@@ -59,13 +61,15 @@ function Callout({ children }: { children: ReactNode }) {
 const SECONDARY =
   'relative z-10 -mr-2.5 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[0.8125rem] font-semibold whitespace-nowrap text-blue transition-colors hover:bg-accent focus-ring'
 
-/* La tarjeta: siempre las mismas partes y el mismo alto fijo, en todas las vistas y en todas las páginas. Para que
-   entre todo, el nombre va en dos líneas como mucho y cada dato en una sola; el pie queda siempre abajo. El título
-   es el enlace al espacio y cubre toda la tarjeta. */
+/* La tarjeta: siempre las mismas partes, en todas las vistas y en todas las páginas. Mide lo que ocupa su
+   contenido, sin huecos: en compu la grilla empareja el alto de cada fila. El nombre y cada dato van en dos líneas
+   como mucho; el pie queda siempre abajo. El título es el enlace al espacio y cubre toda la tarjeta. `section`: la
+   comisión, en el título, para el docente que dicta dos de la misma materia. */
 function SubjectCard({
   subjectId,
   comision,
   name,
+  section,
   detail,
   status,
   badge,
@@ -77,6 +81,7 @@ function SubjectCard({
   /** La comisión que abre el espacio: la del docente, para que la Comisión Verano no abra la A. */
   comision?: string
   name: string
+  section?: string
   detail: string
   status: SubjectStatus | null
   badge?: ReactNode
@@ -85,7 +90,7 @@ function SubjectCard({
   secondary?: ReactNode
 }) {
   return (
-    <li className='group relative flex h-[20rem] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-4 transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-blue/30 hover:shadow-card has-[a.stretched:focus-visible]:ring-3 has-[a.stretched:focus-visible]:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:p-5'>
+    <li className='group relative flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-4 transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-blue/30 hover:shadow-card has-[a.stretched:focus-visible]:ring-3 has-[a.stretched:focus-visible]:ring-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0 lg:p-5'>
       <div className='flex items-start gap-3'>
         <SubjectIcon name={name} size='lg' tone='soft' />
         <div className='min-w-0 flex-1'>
@@ -94,14 +99,17 @@ function SubjectCard({
               href={spaceHref(subjectId, { comision })}
               className='stretched text-ink outline-none transition-colors group-hover:text-blue after:absolute after:inset-0 after:rounded-2xl after:content-[""]'
             >
-              <LinkPending overlay>{name}</LinkPending>
+              <LinkPending overlay>
+                {name}
+                {section && <span className='font-semibold text-muted-foreground'> · Comisión {section}</span>}
+              </LinkPending>
             </Link>
           </h3>
-          <p className='mt-0.5 truncate text-[0.75rem] text-muted-foreground'>{detail}</p>
+          <p className='mt-0.5 line-clamp-2 text-[0.75rem] text-muted-foreground'>{detail}</p>
         </div>
         {badge}
       </div>
-      {status && <StatusChip status={status} className='-mt-1' />}
+      {status && <StatusChip status={status} className='-mt-1 self-start' />}
       <div className='flex flex-col gap-1.5'>{rows}</div>
       {callout}
       <div className='mt-auto flex items-center justify-between gap-2 border-t border-border pt-3'>
@@ -118,7 +126,14 @@ function SubjectCard({
   )
 }
 
-const detailOf = (subject: MySubject) => `${subject.code} · Comisión ${subject.sectionName} · ${subject.termName}`
+/** El código y el período; la comisión, solo para el alumno: al docente le va en el título. */
+const detailOf = (subject: MySubject) =>
+  subject.role === 'profesor'
+    ? `${subject.code} · ${termLabel(subject.termName)}`
+    : `${subject.code} · Comisión ${subject.sectionName} · ${termLabel(subject.termName)}`
+
+/** La comisión en el título, solo para el docente. */
+const sectionOf = (subject: MySubject) => (subject.role === 'profesor' ? subject.sectionName : undefined)
 
 /** La modalidad y el aula, sin repetir cuando el SIU pone lo mismo en los dos. */
 function placeOf(subject: MySubject): string {
@@ -146,6 +161,7 @@ export function CourseCard({
       subjectId={subject.subjectId}
       comision={subject.role === 'profesor' ? subject.sectionId : undefined}
       name={subject.name}
+      section={sectionOf(subject)}
       detail={detailOf(subject)}
       // «En curso» no va: la vista ya es la de las materias en curso. Si ya cambió (por ejemplo, promocionada), se ve.
       status={subject.role === 'profesor' || standing?.status === 'en-curso' ? null : (standing?.status ?? null)}
@@ -159,7 +175,7 @@ export function CourseCard({
       callout={
         next && (
           <Callout>
-            <span className='truncate font-semibold'>{next.name}</span>
+            <span className='line-clamp-2 font-semibold'>{next.name}</span>
             <span className='text-[0.75rem] text-ink/65'>
               {/* Al docente no le vence: es la fecha en que cierra la entrega de sus alumnos. */}
               {subject.role === 'profesor' ? (
@@ -201,6 +217,7 @@ function TaughtArchivedCard({ subject }: { subject: MySubject }) {
     <SubjectCard
       subjectId={subject.subjectId}
       name={subject.name}
+      section={sectionOf(subject)}
       detail={detailOf(subject)}
       status={null}
       rows={
@@ -211,8 +228,8 @@ function TaughtArchivedCard({ subject }: { subject: MySubject }) {
       }
       callout={
         <Callout>
-          <span className='truncate font-semibold'>Cursada terminada</span>
-          <span className='text-[0.75rem] text-ink/65'>{subject.termName}</span>
+          <span className='font-semibold'>Cursada terminada</span>
+          <span className='text-[0.75rem] text-ink/65'>{termLabel(subject.termName)}</span>
         </Callout>
       }
       secondary={
@@ -235,6 +252,7 @@ export function ArchivedCard({ subject, standing }: { subject: MySubject; standi
     <SubjectCard
       subjectId={subject.subjectId}
       name={subject.name}
+      section={sectionOf(subject)}
       detail={detailOf(subject)}
       status={standing?.status ?? null}
       rows={
@@ -252,11 +270,11 @@ export function ArchivedCard({ subject, standing }: { subject: MySubject; standi
               'Sin nota cargada'
             )}
           </Row>
-          <Row icon={CalendarClock}>Cursada en {subject.termName}</Row>
+          <Row icon={CalendarClock}>Cursada en {termLabel(subject.termName)}</Row>
         </>
       }
       secondary={
-        <Link href={`/notas?materia=${encodeURIComponent(subject.subjectId)}`} className={SECONDARY}>
+        <Link href={notesHref(subject.subjectId)} className={SECONDARY}>
           <NotebookPen aria-hidden='true' className='size-3.5' />
           Ver notas
         </Link>
@@ -282,10 +300,10 @@ function NextBoardBox({ next }: { next: NextBoard }) {
   const status = boardStatus(next)
   return (
     <Callout>
-      <span className='truncate'>
+      <span className='line-clamp-2'>
         Próxima mesa: <b className='font-semibold'>{next.examPeriod}</b>
       </span>
-      <span className='truncate text-[0.75rem] text-ink/70'>
+      <span className='line-clamp-2 text-[0.75rem] text-ink/70'>
         <time dateTime={next.date}>{longDay(next.date)}</time> · {timeOf(next.date)} · {next.location}
       </span>
       <span className={cn('text-[0.75rem] font-bold', status.warn ? 'text-blue' : 'text-ink/70')}>{status.text}</span>
@@ -302,7 +320,10 @@ export function PendingFinalCard({ standing, pending }: { standing: SubjectStand
     <SubjectCard
       subjectId={standing.subjectId}
       name={standing.name}
-      detail={[standing.code, standing.termName ?? (standing.academicYear && `Cursada ${standing.academicYear}`)]
+      detail={[
+        standing.code,
+        standing.termName ? termLabel(standing.termName) : standing.academicYear && `Cursada ${standing.academicYear}`
+      ]
         .filter(Boolean)
         .join(' · ')}
       // Sin la etiqueta «Regular · falta el final»: la vista ya es la de finales pendientes y la tarjeta lo repetía.
@@ -336,7 +357,11 @@ export function PendingFinalCard({ standing, pending }: { standing: SubjectStand
   )
 }
 
-/* Todas las filas del mismo alto: las tarjetas de una vista quedan parejas. */
+/* Tantas columnas de 20rem como entren, sin dejar columnas vacías: dos tarjetas ocupan todo el ancho. Desde que hay
+   dos columnas, todas las filas tienen el mismo alto y las tarjetas quedan parejas; en el celular, cada una mide lo
+   suyo. */
 export function SubjectGrid({ children }: { children: ReactNode }) {
-  return <ul className='grid auto-rows-fr grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3'>{children}</ul>
+  return (
+    <ul className='grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-4 sm:auto-rows-fr'>{children}</ul>
+  )
 }

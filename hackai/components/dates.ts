@@ -14,6 +14,18 @@ export function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, day: 'numeric', month: 'short' })
 }
 
+/** «4 nov 2026»: una fecha con su año, sin los «de» que agrega el formato de acá. */
+export function fullDate(iso: string): string {
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: TIME_ZONE,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).formatToParts(new Date(iso))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ''
+  return `${part('day')} ${part('month').replace('.', '')} ${part('year')}`
+}
+
 /** «23 nov» de un día `AAAA-MM-DD`: se toma al mediodía de Buenos Aires para que no se corra de día. */
 export function shortDay(day: string): string {
   return shortDate(`${day}T12:00:00-03:00`)
