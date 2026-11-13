@@ -39,6 +39,11 @@ export function dueTime(iso: string, now?: string): string {
   })
 }
 
+/** «13/11 a las 23:59»: cuándo cierra una entrega, corto, para una tarjeta. */
+export function closesAt(iso: string): string {
+  return `${format(iso, { day: 'numeric', month: 'numeric' })} a las ${timeOf(iso)}`
+}
+
 /** «Lunes 16 de noviembre». */
 export function longDay(iso: string): string {
   const parts = new Intl.DateTimeFormat('es-AR', {

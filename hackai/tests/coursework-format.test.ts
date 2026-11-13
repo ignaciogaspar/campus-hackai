@@ -15,6 +15,7 @@ import {
   notesLabel,
   pastedText,
   pasteGradesHref,
+  relativeDue,
   rowStatus,
   sectionsLabel,
   submissionHref,
@@ -173,4 +174,13 @@ test('el texto pegado es el mismo venga con saltos de Windows, de Mac viejo o de
   assert.equal(pastedText('30101\t8,5\r\n30102\t7\r\n30103\tA'), '30101\t8,5\n30102\t7\n30103\tA')
   assert.equal(pastedText('30101\t8\r30102\t7'), '30101\t8\n30102\t7')
   assert.equal(pastedText('30101\t8\n30102\t7'), '30101\t8\n30102\t7')
+})
+
+test('cuánto falta para una fecha límite se dice en días de Buenos Aires', () => {
+  // Martes 10/11/2026 a las 23:00 en Buenos Aires.
+  const now = '2026-11-11T02:00:00.000Z'
+  assert.equal(relativeDue('2026-11-10T23:59:00-03:00', now), 'vence hoy')
+  assert.equal(relativeDue('2026-11-11T00:30:00-03:00', now), 'vence mañana')
+  assert.equal(relativeDue('2026-11-13T23:59:00-03:00', now), 'vence en 3 días')
+  assert.equal(relativeDue('2026-11-10T22:00:00-03:00', now), 'venció')
 })

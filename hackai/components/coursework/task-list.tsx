@@ -63,10 +63,10 @@ export function TaskList({
 }) {
   if (tasks.length === 0) {
     return (
-      <EmptyState icon={ClipboardList} title='Todavía no hay tareas'>
+      <EmptyState icon={ClipboardList} title='Todavía no hay tareas de HackAI'>
         {role === 'profesor'
           ? 'Cuando crees una tarea para esta comisión, aparece acá y la ven sus alumnos.'
-          : 'Cuando tu docente cree una tarea para tu comisión, aparece acá con su fecha límite.'}
+          : 'Cuando tu docente cree una tarea en HackAI para tu comisión, aparece acá con su fecha límite.'}
       </EmptyState>
     )
   }

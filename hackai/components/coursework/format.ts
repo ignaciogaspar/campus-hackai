@@ -2,7 +2,7 @@
    las fechas límite y los textos de cada tarea. Sin reglas de negocio: solo
    formato. Las fechas van en la hora de Buenos Aires. */
 import { dueTime } from '@/components/dates'
-import { TIME_ZONE } from '@/lib/dates'
+import { daysBetween, TIME_ZONE } from '@/lib/dates'
 
 const SUBJECTS_PATH = '/materias'
 
@@ -139,6 +139,15 @@ export function sectionsLabel(names: string[]): string {
 /** «Vence vie, 13 nov, 23:59» o «Venció vie, 13 nov, 23:59»; si no es del año de `now`, con el año. */
 export function dueLabel(task: { dueAt: string; past: boolean }, now: string = new Date().toISOString()): string {
   return `${task.past ? 'Venció' : 'Vence'} ${dueTime(task.dueAt, now)}`
+}
+
+/** Cuánto falta para una fecha límite, en días de Buenos Aires: «vence hoy», «vence mañana», «vence en 3 días»; si
+    ya pasó, «venció». */
+export function relativeDue(dueAt: string, now: string): string {
+  if (new Date(dueAt).getTime() < new Date(now).getTime()) return 'venció'
+  const days = daysBetween(now, dueAt)
+  if (days <= 0) return 'vence hoy'
+  return days === 1 ? 'vence mañana' : `vence en ${days} días`
 }
 
 /** El valor de un `<input type='datetime-local'>` para una fecha, en la hora de Buenos Aires: `2026-11-13T23:59`. */
