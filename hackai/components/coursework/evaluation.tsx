@@ -49,7 +49,7 @@ function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string 
               required
               maxLength={120}
               defaultValue={exam?.name}
-              placeholder='Segundo parcial'
+              placeholder='Ej.: Parcial integrador'
               className={INPUT}
             />
           </span>

@@ -7,7 +7,7 @@ import { ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { createTask, updateTask } from '@/app/actions/coursework'
 import { DateTimeFields } from '@/components/coursework/date-time-fields'
-import { sectionLabel } from '@/components/coursework/format'
+import { dateTimeParts, sectionLabel } from '@/components/coursework/format'
 import { ActionForm, FieldError, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import type { Task, TaskSection } from '@/lib/core/coursework'
@@ -29,8 +29,9 @@ function Need({ children }: { children: string }) {
 }
 
 /** Nombre, consigna y fecha límite: los mismos campos para crear la tarea y para editarla. La ayuda del archivo
-    va solo al crearla, que es cuando hay campo de archivo. */
-function Fields({ task }: { task?: Task }) {
+    va solo al crearla, que es cuando hay campo de archivo. `min`: desde qué día se puede elegir la fecha límite
+    (`AAAA-MM-DD`). Sin `min`, cualquiera (una tarea ya vencida que se edita sin cambiarle la fecha). */
+function Fields({ task, min }: { task?: Task; min?: string }) {
   return (
     <>
       <div className={FIELD}>
@@ -82,6 +83,7 @@ function Fields({ task }: { task?: Task }) {
         idPrefix='tarea-fecha'
         value={task?.dueAt}
         suggestedTime='23:59'
+        minDate={min}
       />
     </>
   )
@@ -146,13 +148,16 @@ export function NewTaskForm({
   subjectId,
   sections,
   selectedId,
-  cancelHref
+  cancelHref,
+  now
 }: {
   subjectId: string
   /** Las comisiones vigentes que dicta el docente en la materia. */
   sections: TaskSection[]
   selectedId: string
   cancelHref: string
+  /** ISO: la hora del reloj de la app. Una tarea no nace vencida. */
+  now: string
 }) {
   return (
     <section aria-labelledby='tarea-nueva' className='rounded-[22px] bg-card p-4 shadow-card'>
@@ -161,7 +166,7 @@ export function NewTaskForm({
       </h2>
       <ActionForm action={createTask} noValidate className='mt-3 flex flex-col gap-4'>
         <input type='hidden' name='subjectId' value={subjectId} />
-        <Fields />
+        <Fields min={dateTimeParts(now).date} />
         <CreateOnly sections={sections} selectedId={selectedId} />
         <div className='flex flex-wrap gap-2'>
           <SubmitButton className={cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')}>
@@ -179,7 +184,7 @@ export function NewTaskForm({
   )
 }
 
-export function EditTaskForm({ task }: { task: Task }) {
+export function EditTaskForm({ task, now }: { task: Task; now: string }) {
   return (
     <details className='group rounded-[22px] bg-card shadow-card'>
       <summary className='flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-[22px] px-4 text-base font-extrabold transition-colors hover:bg-ink/[0.03] focus-ring-inset [&::-webkit-details-marker]:hidden'>
@@ -196,7 +201,8 @@ export function EditTaskForm({ task }: { task: Task }) {
         </p>
         <ActionForm action={updateTask} noValidate className='mt-3 flex flex-col gap-4'>
           <input type='hidden' name='taskId' value={task.id} />
-          <Fields task={task} />
+          {/* Una tarea ya vencida se edita sin tocarle la fecha: el campo no la puede marcar como inválida. */}
+          <Fields task={task} min={task.past ? undefined : dateTimeParts(now).date} />
           <div className='flex flex-wrap gap-2'>
             <SubmitButton className={cn(buttonVariants(), 'rounded-[10px] px-4 text-[0.9375rem] font-bold')}>
               Guardar cambios

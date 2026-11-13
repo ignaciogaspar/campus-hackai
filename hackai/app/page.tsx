@@ -12,7 +12,7 @@ import { PersonPicker } from '@/components/session/person-picker'
 import { returnNotice } from '@/components/session/return-notice'
 import { signInQr } from '@/components/session/sign-in-qr'
 import { PageHeader } from '@/components/shell/page-header'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, SuccessNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
@@ -47,10 +47,11 @@ function signInErrorMessage(error: string | string[]): string {
     : UNKNOWN_PERSON
 }
 
-type SignInParams = { error?: string | string[]; next?: string | string[] }
+/** `salida`: se llega de «Cerrar sesión» (app/actions/session.ts). */
+type SignInParams = { error?: string | string[]; next?: string | string[]; salida?: string | string[] }
 
 export default async function IngresoPage({ searchParams }: { searchParams: Promise<SignInParams> }) {
-  const [session, { error, next }] = await Promise.all([getSession(), searchParams])
+  const [session, { error, next, salida }] = await Promise.all([getSession(), searchParams])
   // `next`: la ruta a la que se quiso entrar sin sesión, como el enlace a un archivo.
   const returnTo = safeReturnTo(next)
   if (session) redirect(returnTo ?? homeFor(session.role))
@@ -79,6 +80,14 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
       <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:gap-3 lg:px-6 lg:pt-5 min-[90rem]:grid min-[90rem]:grid-cols-[minmax(0,1fr)_15rem] min-[90rem]:items-start min-[90rem]:gap-x-10'>
         <div className='flex min-w-0 flex-col gap-5 lg:gap-3'>
           {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
+
+          {error === undefined && salida !== undefined && (
+            <SuccessNotice>
+              <p>
+                <b>Cerraste sesión.</b> Para volver a entrar, elegí con quién.
+              </p>
+            </SuccessNotice>
+          )}
 
           {returnTo && returnTo !== '/' && (
             <p

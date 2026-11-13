@@ -1,6 +1,7 @@
 /* Cómo se muestran las novedades sin leer que da Espacios: agrupadas por
    materia y, dentro de cada una, una fila por canal con quién publicó lo
-   último, el texto, cuándo y a dónde lleva. También los totales de la campana
+   último, el texto, cuándo y a dónde lleva (con `?desde=novedades`, para que
+   «Volver» traiga de vuelta acá). También los totales de la campana
    (con las notas nuevas) y de cada materia. Sin reglas de negocio: qué está sin leer, de quién es un
    directo y si todo es de un mismo hilo lo dice Espacios. */
 import { channelTitle, messageTime, spaceHref } from '@/components/spaces/format'
@@ -27,7 +28,8 @@ export type NewsRow = {
 
 export type SubjectNews = { subjectId: string; subjectName: string; count: number; rows: NewsRow[] }
 
-function rowOf(item: UnreadItem): NewsRow {
+/** La fila de un canal con novedades: también la usa el Hoy del docente, para que se lea igual que en Novedades. */
+export function newsRow(item: UnreadItem): NewsRow {
   const direct = item.kind === 'directo'
   const thread = direct ? undefined : (item.thread ?? undefined)
   return {
@@ -42,7 +44,7 @@ function rowOf(item: UnreadItem): NewsRow {
     createdAt: item.latest.createdAt,
     origin: item.latest.origin,
     count: item.count,
-    href: spaceHref(item.subjectId, { canal: item.channelId, hilo: thread })
+    href: spaceHref(item.subjectId, { canal: item.channelId, hilo: thread, desde: 'novedades' })
   }
 }
 
@@ -78,10 +80,18 @@ export function newsBySubject(items: UnreadItem[]): SubjectNews[] {
       rows: []
     }
     group.count += item.count
-    group.rows.push(rowOf(item))
+    group.rows.push(newsRow(item))
     groups.set(item.subjectId, group)
   }
   return [...groups.values()]
+}
+
+/** A dónde lleva la campana desde `pathname`: Novedades, con la pantalla de la que sale en `?desde=` para que
+    «Volver» lleve ahí (lib/home.ts). Desde Novedades misma, o desde algo que no es una pantalla, sin `desde`. */
+export function newsHref(pathname: string): string {
+  const from = pathname.replace(/^\/+/, '')
+  if (from === '' || from === 'novedades') return '/novedades'
+  return `/novedades?${new URLSearchParams({ desde: from })}`
 }
 
 /** Todo lo sin leer, para la campana. */

@@ -5,6 +5,7 @@ import { InstallButton } from '@/components/shell/install-button'
 import { NotificationsBell, SessionBell } from '@/components/shell/notifications-bell'
 import { HeaderBrand, HeaderSessionActions } from '@/components/shell/shell-context'
 import type { SubjectArt } from '@/components/subjects/subject-icon'
+import type { Back } from '@/lib/home'
 import { cn } from '@/lib/utils'
 
 /** Las ilustraciones de public/headers/: una por pantalla y una por disciplina para el espacio de cada materia. */
@@ -14,8 +15,9 @@ type Props = {
   title: string
   /** Arriba del título, chico: de dónde es la pantalla («De todas tus materias»). */
   kicker?: string
-  /** Debajo del título, en una línea: la fecha, la carrera o la comisión. */
-  subtitle?: string
+  /** Debajo del título, en una línea: la fecha, la carrera o la comisión. Puede ser un componente que cambie con la
+      URL, como el de Inscripciones. */
+  subtitle?: ReactNode
   /** A la izquierda del título, como el ícono de la materia en su espacio. */
   icon?: ReactNode
   /** La ilustración de la derecha, sobre el navy. */
@@ -24,6 +26,9 @@ type Props = {
   school?: string
   /** Pantallas que no son de primer nivel: en la app instalada no hay atrás del navegador. */
   backHref?: string
+  /** Como `backHref`, para las pantallas a las que se llega desde varios lados: a dónde vuelve y su nombre, que
+      se ve al lado de la flecha («‹ Novedades»). Sale de `backFor` (lib/home.ts). */
+  back?: Back
   /** Pantallas a las que se llega desde la barra lateral: en compu no llevan flecha. */
   hideBackOnDesktop?: boolean
   /** Lo sin leer de todas las materias, para la campana, si la pantalla ya lo leyó de Espacios.
@@ -62,7 +67,8 @@ export function PageHeader({
   icon,
   art,
   school,
-  backHref,
+  backHref: backPath,
+  back,
   hideBackOnDesktop,
   unread,
   signedOut = false,
@@ -70,6 +76,7 @@ export function PageHeader({
   actions,
   children
 }: Props) {
+  const backHref = back?.href ?? backPath
   return (
     <header className='relative isolate overflow-hidden bg-navy text-white'>
       {art && <HeaderArtLayer art={art} />}
@@ -83,10 +90,14 @@ export function PageHeader({
           {backHref ? (
             <Link
               href={backHref}
-              aria-label='Volver'
-              className='-ml-2 grid size-10 place-items-center rounded-full text-white hover:bg-white/10 focus-ring'
+              aria-label={back?.label ?? 'Volver'}
+              className={cn(
+                '-ml-2 flex min-h-11 min-w-11 items-center justify-center rounded-full text-white hover:bg-white/10 focus-ring',
+                back && 'min-w-0 gap-0.5 pr-3 pl-1'
+              )}
             >
-              <ChevronLeft aria-hidden='true' className='size-5' />
+              <ChevronLeft aria-hidden='true' className='size-5 flex-none' />
+              {back && <span className='truncate text-sm font-semibold'>{back.short}</span>}
             </Link>
           ) : (
             <HeaderBrand school={school} />

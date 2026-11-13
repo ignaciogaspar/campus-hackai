@@ -2,8 +2,7 @@
 
 import { SquarePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 type InstallPrompt = Event & { prompt: () => Promise<void> }
 
@@ -25,9 +24,6 @@ export function IosInstallSteps() {
           Abrila desde el ícono <b>Austral</b>.
         </li>
       </ol>
-      <SheetClose asChild>
-        <Button variant='outline'>Listo</Button>
-      </SheetClose>
     </SheetContent>
   )
 }

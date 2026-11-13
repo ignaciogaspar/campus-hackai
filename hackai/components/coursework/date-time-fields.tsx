@@ -28,7 +28,8 @@ export function DateTimeFields({
   timeName,
   idPrefix,
   value,
-  suggestedTime
+  suggestedTime,
+  minDate
 }: {
   /** El nombre del par de campos: «Fecha límite», «Fecha y hora». */
   legend: string
@@ -42,6 +43,8 @@ export function DateTimeFields({
   value?: string
   /** La hora que se propone cuando todavía no hay fecha: «23:59», «18:00». */
   suggestedTime: string
+  /** Desde qué día se puede elegir (`AAAA-MM-DD`), si hay un mínimo: una tarea no nace vencida. */
+  minDate?: string
 }) {
   const initial = value ? dateTimeParts(value) : { date: '', time: suggestedTime }
   const [date, setDate] = useState(initial.date)
@@ -76,6 +79,7 @@ export function DateTimeFields({
               type='date'
               name={dateName}
               required
+              min={minDate}
               max={MAX_DATE}
               value={date}
               onChange={(event) => setDate(event.currentTarget.value)}
@@ -105,7 +109,9 @@ export function DateTimeFields({
         </label>
       </div>
       <p id={helpId} className={cn('font-normal text-pretty', words ? 'text-ink' : 'text-muted-foreground')}>
-        {words ? `${lead} ${words}, hora de Buenos Aires.` : 'Elegí el día y la hora, en hora de Buenos Aires.'}
+        {words
+          ? `${lead} ${words}, hora de Buenos Aires.`
+          : `Elegí el día y la hora, en hora de Buenos Aires${minDate ? ', de acá en adelante' : ''}.`}
       </p>
       <FieldError field={dateName} />
       <FieldError field={timeName} />

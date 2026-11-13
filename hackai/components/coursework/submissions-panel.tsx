@@ -1,11 +1,18 @@
 /* Quién entregó una tarea, para el docente: el resumen (cuántos entregaron,
    cuántos tarde, cuántos faltan) y una fila por alumno de la comisión con su
-   estado. Las filas con entrega abren la entrega; las demás no llevan a ningún
-   lado. En el celular es una columna de filas de 56 px o más; el estado va a la
-   derecha de cada nombre. Sin reglas de negocio: el estado lo decide
-   Seguimiento. */
+   estado y la nota que le cargó. Las filas con entrega abren la entrega; las
+   demás, si la tarea lleva nota, llevan a ponerle la nota en Calificaciones. En
+   el celular es una columna de filas de 56 px o más; el estado va a la derecha
+   de cada nombre. Sin reglas de negocio: el estado lo decide Seguimiento. */
 import { Users } from 'lucide-react'
-import { countsLabel, pageOf, rowStatus, submissionHref } from '@/components/coursework/format'
+import {
+  countsLabel,
+  gradesHref,
+  pageOf,
+  rowStatus,
+  submissionHref,
+  taskGradeLabel
+} from '@/components/coursework/format'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { Pagination } from '@/components/ui/pagination'
@@ -19,14 +26,28 @@ export function SubmissionPill({ row }: { row: Pick<SubmissionRow, 'state' | 'su
   return <StatusPill tone={TONES[row.state]}>{rowStatus(row)}</StatusPill>
 }
 
-function StudentRow({ row, hrefFor }: { row: SubmissionRow; hrefFor: (submissionId: string) => string }) {
-  const { student, submission } = row
+function StudentRow({
+  row,
+  hrefFor,
+  gradeHrefFor
+}: {
+  row: SubmissionRow
+  hrefFor: (submissionId: string) => string
+  /** A dónde lleva una fila sin entrega para ponerle la nota; `null` si no se puede (tarea sin nota, sin cuenta). */
+  gradeHrefFor: (studentId: string | null) => string | null
+}) {
+  const { student, submission, grade } = row
   return (
     <ListItem
-      href={submission ? hrefFor(submission.id) : undefined}
+      href={submission ? hrefFor(submission.id) : (gradeHrefFor(student.personId) ?? undefined)}
       title={student.name}
       description={`Legajo ${student.legajo}`}
-      end={<SubmissionPill row={row} />}
+      end={
+        <>
+          <SubmissionPill row={row} />
+          {grade && <span className='text-xs font-semibold text-ink tabular-nums'>{taskGradeLabel(grade)}</span>}
+        </>
+      }
     />
   )
 }
@@ -68,6 +89,11 @@ export function SubmissionsPanel({
                   key={row.student.legajo}
                   row={row}
                   hrefFor={(submissionId) => submissionHref(subjectId, task.id, submissionId, comision)}
+                  gradeHrefFor={(studentId) =>
+                    task.graded && studentId
+                      ? gradesHref(subjectId, { comision, columna: `tarea:${task.id}`, alumno: studentId })
+                      : null
+                  }
                 />
               ))}
             </List>

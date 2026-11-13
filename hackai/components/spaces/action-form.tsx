@@ -104,6 +104,7 @@ export function ActionForm({
   action,
   resetOnSuccess = false,
   clearOnEdit = false,
+  feedbackFirst = false,
   className,
   children,
   onInput,
@@ -115,6 +116,8 @@ export function ActionForm({
   /** Esconde el resultado anterior apenas se vuelve a escribir: si no, un «Guardamos 3 notas» viejo parece de lo
       que se acaba de cambiar. */
   clearOnEdit?: boolean
+  /** El resultado va arriba de los campos y no abajo: en un formulario largo, abajo queda fuera de la pantalla. */
+  feedbackFirst?: boolean
   children: ReactNode
 }) {
   const { state, dispatch, pending, submit, error, field: errorField } = useSpaceAction(action)
@@ -126,6 +129,12 @@ export function ActionForm({
   // Un error de un campo que este formulario no tiene (o sin su FieldError) se muestra abajo, como los demás.
   const [unplaced, setUnplaced] = useState<SpaceActionState | null>(null)
   const field = !hidden && unplaced !== state ? errorField : null
+  const feedback = (
+    <FormFeedback
+      error={hidden || field ? null : error}
+      success={!hidden && state.status === 'ok' ? state.message : null}
+    />
+  )
 
   useEffect(() => {
     if (state.status === 'ok' && resetOnSuccess) form.current?.reset()
@@ -154,13 +163,11 @@ export function ActionForm({
       className={className}
       {...props}
     >
+      {feedbackFirst && feedback}
       <Pending.Provider value={pending}>
         <FieldErrors.Provider value={{ formId, field, message: field ? error : null }}>{children}</FieldErrors.Provider>
       </Pending.Provider>
-      <FormFeedback
-        error={hidden || field ? null : error}
-        success={!hidden && state.status === 'ok' ? state.message : null}
-      />
+      {!feedbackFirst && feedback}
     </form>
   )
 }
