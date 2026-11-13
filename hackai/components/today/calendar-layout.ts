@@ -25,7 +25,10 @@ export type CalendarEvent = {
   time: string | null
   code: string | null
   title: string
+  /** La materia y, en un final, su turno; en una clase, la comisión. */
   subject: string
+  /** El nombre de la materia, sin el turno ni la comisión: para el filtro y para nombrar un final. */
+  subjectName: string
   /** Dónde: el aula de una clase o el lugar de un final, si el SIU lo da. */
   place: string | null
   tone: CalendarTone
@@ -144,6 +147,7 @@ export function eventsOf(
       code: item.subjectCode,
       title: item.name,
       subject: item.examPeriod ? `${item.subjectName} · ${item.examPeriod}` : item.subjectName,
+      subjectName: item.subjectName,
       place: item.location,
       tone: item.kind,
       origin: item.source,
@@ -169,6 +173,7 @@ function closingEvent(e: OpenEnrollment, closesAt: string, now: string): Calenda
     code: null,
     title: `Cierra la inscripción ${CLOSING[e.kind]}`,
     subject: e.subjectName,
+    subjectName: e.subjectName,
     place: null,
     tone: 'inscripcion',
     origin: 'siu',
@@ -225,6 +230,7 @@ export function classesIn(days: string[], slots: ClassSlot[], today: string): Ca
           code: slot.code,
           title: slot.subject,
           subject: `Comisión ${slot.section}`,
+          subjectName: slot.subject,
           place: slot.location,
           tone: 'clase',
           origin: 'siu',

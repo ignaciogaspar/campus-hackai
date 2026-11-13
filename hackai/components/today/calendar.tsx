@@ -85,15 +85,15 @@ const describe = (e: CalendarEvent) =>
     .filter(Boolean)
     .join(' · ')
 
-/* Un evento: pastel, con el borde de arriba del color de lo que es. Se ve
-   entero: el nombre baja de línea en vez de cortarse, y nada se pisa. Si tiene
-   destino (la tarea, el espacio de la materia, la mesa), es un enlace. */
+/* Un evento: pastel, con el borde de arriba del color de lo que es y, salvo
+   en las clases, su tipo escrito arriba. Se ve entero: el nombre baja de línea
+   en vez de cortarse, y nada se pisa. Lo que ya pasó va en gris y lo dice. Si
+   tiene destino (la tarea, el espacio de la materia, la mesa), es un enlace. */
 function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
   const className = cn(
-    'flex min-w-0 flex-1 flex-col gap-1 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
+    'flex min-w-0 flex-1 flex-col gap-0.5 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
     fill && 'overflow-hidden',
-    TONES[e.tone].block,
-    e.past && 'opacity-50',
+    e.past ? 'border-ink/25 bg-muted text-ink/75' : TONES[e.tone].block,
     e.next && 'shadow-[0_4px_12px_-4px_rgb(16_20_44/0.2)]',
     e.href && 'transition-[filter] hover:brightness-[0.97] focus-ring'
   )
@@ -109,23 +109,43 @@ function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: bo
   )
 }
 
+/** Qué es, escrito: «Parcial», «Entrega · vence 23:59». Las clases no lo dicen: son lo de siempre. */
+function kindLabel(e: CalendarEvent): string | null {
+  if (e.tone === 'clase') return null
+  if (e.tone === 'entrega' && e.time) return `Entrega · vence ${e.time}`
+  return TONES[e.tone].label
+}
+
 function BlockContent({ e, short }: { e: CalendarEvent; short: boolean }) {
+  const label = kindLabel(e)
+  // Un final se llama «Final»: su nombre es la materia, y debajo va el turno.
+  const title = e.tone === 'final' ? e.subjectName : e.title
+  const detail = e.tone === 'final' ? e.subject.slice(e.subjectName.length).replace(/^ · /, '') : e.subject
+  const time = e.tone === 'entrega' ? null : e.time
   return (
     <>
-      <b className='text-[0.75rem] leading-snug font-semibold break-words hyphens-auto'>{e.title}</b>
-      {!short && (!e.code || e.tone === 'clase') && (
-        <span className='text-[0.6875rem] leading-snug break-words text-ink/70'>{e.subject}</span>
+      {(label || e.past) && !short && (
+        <span className='text-[0.75rem] leading-snug font-semibold text-ink/70'>
+          {[label, e.past ? 'Ya pasó' : null].filter(Boolean).join(' · ')}
+        </span>
       )}
-      <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.6875rem] text-ink/60 tabular-nums'>
+      <b className='text-[0.8125rem] leading-snug font-semibold break-words'>{title}</b>
+      {!short && detail && detail !== title && (
+        <span className='text-[0.8125rem] leading-snug break-words text-ink/75'>{detail}</span>
+      )}
+      <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.8125rem] text-ink/70 tabular-nums'>
         {e.code && (
-          <span className='rounded bg-white/80 px-1 text-[0.625rem] leading-4 font-semibold text-ink/70'>{e.code}</span>
+          <span className='rounded bg-white/80 px-1 text-[0.75rem] leading-[1.125rem] font-semibold text-ink/75'>
+            {e.code}
+          </span>
         )}
-        {e.time}
-        {e.next && <span className='font-semibold text-ink/80'>Próximo</span>}
+        {short && label && <span className='font-semibold'>{label}</span>}
+        {time}
+        {e.next && <span className='font-semibold text-ink'>Próximo</span>}
       </span>
       {e.place && !short && (
-        <span className='flex items-start gap-1 text-[0.6875rem] leading-snug text-ink/60'>
-          <MapPin aria-hidden='true' className='mt-px size-3 flex-none' strokeWidth={2} />
+        <span className='flex items-start gap-1 text-[0.8125rem] leading-snug text-ink/70'>
+          <MapPin aria-hidden='true' className='mt-0.5 size-3.5 flex-none' strokeWidth={2} />
           <span className='break-words'>{e.place}</span>
         </span>
       )}
@@ -265,7 +285,7 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
 
       {allDay.length > 0 && (
         <div className={cn(GRID, 'border-b border-border')}>
-          <span className='self-center pr-2 text-right text-[0.625rem] leading-tight text-muted-foreground'>
+          <span className='self-center pr-2 text-right text-[0.75rem] leading-tight text-muted-foreground'>
             Todo el día
           </span>
           {days.map((d) => (
@@ -404,13 +424,15 @@ function MiniMonth({
         ))}
         {monthOf(month).map((d, i) => {
           const inWeek = week.includes(d)
-          const dot = events.find((e) => e.day === d && !e.past)
+          const ofDay = events.filter((e) => e.day === d)
+          const dot = ofDay.find((e) => !e.past)
+          const said = ofDay.map((e) => `${TONES[e.tone].label} de ${e.code ?? e.subjectName}`).join(', ')
           return (
             <button
               key={d}
               type='button'
               onClick={() => onDay(d)}
-              aria-label={capitalize(format(d, { weekday: 'long', day: 'numeric', month: 'long' }))}
+              aria-label={`${capitalize(format(d, { weekday: 'long', day: 'numeric', month: 'long' }))}${said ? `: ${said}` : ''}`}
               aria-current={d === today ? 'date' : undefined}
               className={cn(
                 'relative grid h-8 cursor-pointer place-items-center text-[0.75rem] tabular-nums transition-colors focus-ring',
