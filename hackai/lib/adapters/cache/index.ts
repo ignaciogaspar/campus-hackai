@@ -113,7 +113,11 @@ export function withSiuCache(
     meetsCertificateConditions: read('meetsCertificateConditions', 0, siu.meetsCertificateConditions),
     enroll: siu.enroll,
     drop: siu.drop,
-    selfServiceUrl: siu.selfServiceUrl
+    selfServiceUrl: siu.selfServiceUrl,
+    // Los trámites cambian con lo que pide el alumno: pasan directo, como inscribir.
+    ...(siu.certificateRequests && { certificateRequests: siu.certificateRequests }),
+    ...(siu.requestCertificate && { requestCertificate: siu.requestCertificate }),
+    ...(siu.officialDocument && { officialDocument: siu.officialDocument })
   }
 }
 

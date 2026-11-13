@@ -316,6 +316,34 @@ Inscribirse o darse de baja con el SIU caído no toca nada: Cursada lee el SIU a
 
 Lo último leído vive en la memoria del proceso. Si el hosting levanta un proceso nuevo, por ejemplo una función serverless fría, la copia se pierde y la primera lectura con el sistema caído devuelve el error.
 
+## Entrar con tu cuenta real del SIU
+
+Cualquiera de la Austral puede usar HackAI con sus datos reales del SIU, leídos en vivo de la Autogestión con su propia sesión, sin configurar nada (ADR 0009). Las personas de la demo siguen en el ingreso, para mostrar los espacios con conversaciones y la vista docente. Research: [`docs/research/2026-11-12-datos-reales-siu-campus.md`](../docs/research/2026-11-12-datos-reales-siu-campus.md).
+
+Se usa desde la compu: en el celular (por el User-Agent, `lib/device.ts`) el ingreso solo muestra las personas de la demo, porque el navegador del teléfono no deja copiar la cookie.
+
+1. En el ingreso, «Entrá con tu cuenta del SIU» (`/entrar-con-siu`).
+2. Iniciá sesión en `https://siu.austral.edu.ar/portal` con tu cuenta de Microsoft.
+3. En las herramientas del navegador, Application > Cookies > `https://siu.austral.edu.ar`, copiá el valor de `siu_sess__portal_ua_UA` y pegalo.
+4. Aceptá cómo se usa la sesión. HackAI te reconoce y entrás a tu inicio.
+
+Cómo se cuida la sesión: viaja cifrada (AES-256-GCM con una clave derivada de `SESSION_SECRET`) en una cookie de tu navegador (`hackai_siu`), y en cada pedido se arma tu cuenta en el servidor con ella; no va a la base ni a logs. A cada persona la reconoce un HMAC de su documento, que no se guarda. «Salir» borra las dos cookies. Cada cuenta tiene sus propios ids (`real-<clave>-…`), así dos alumnos no se cruzan (`lib/adapters/siu-real/registry.ts`).
+
+**Una sola cuenta desde el `.env.local`** (opcional, para correr local sin pasar por el ingreso): `HACKAI_SIU_REAL=si` y `SIU_SESION=<el valor>`; esa persona aparece primera en el ingreso de demo.
+
+Qué se lee: tus inscripciones a cursada, la historia académica con las notas de los parciales y TP de lo que estás cursando, la actuación provisoria, el cronograma de evaluaciones, el plan de estudios con tus optativas y sus horas, y los créditos de Vida Universitaria. De lo público del SIU (Horarios de Cursadas) salen tu facultad, las fechas de los períodos y los días, horas, aulas y cupo de tus comisiones. También las materias con la inscripción abierta, con sus comisiones, cupo, inscriptos y docentes; «Inscribirme» te manda a la pantalla de esa materia en el SIU. Y los parciales de las materias ya cerradas.
+
+**En vivo.** El SIU se vuelve a leer cada 20 segundos (`HACKAI_SIU_REAL_SEGUNDOS`) y la pantalla abierta pregunta cada 10 si cambió algo (`/api/siu/version`). Si cambió, se redibuja sola: una nota, un cupo o una inscripción nueva aparecen en menos de medio minuto, sin recargar. Lo que no cambia se guarda más: lo público, una hora; los parciales de materias cerradas, mientras corre el proceso. Si el SIU deja de responder, sigue lo último leído hasta cinco minutos. Nada va a la base ni a los logs.
+
+- **Inscribirte y darte de baja de verdad** (por defecto; `HACKAI_SIU_ESCRITURAS=no` lo apaga): HackAI abre la materia en el SIU, toma el formulario de la comisión y lo manda como el botón «Inscribirse» o «Dar de baja». Es una inscripción real en tu cuenta. Apagado, te manda a la pantalla de la materia en la Autogestión. Las mesas de examen todavía no: no había ninguna abierta para relevar.
+- **Trámites.** Tus solicitudes de constancias, como las lista la Autogestión, con su estado. Si podés pedir cada constancia lo dice lo que ofrece Nueva solicitud del SIU. La historia académica y el plan se descargan como el PDF oficial del SIU (el analítico lo sigue armando HackAI). Con las escrituras prendidas, «Nueva solicitud» pide la constancia de alumno regular en el SIU; la de examen final (pide elegir la mesa) se pide en la Autogestión. Descargar una constancia «Online» se hace desde la Autogestión.
+- **Aviso de notas nuevas.** Una nota que el SIU muestra después de que abriste HackAI llega como notificación del navegador (la pantalla ofrece «Avisarme» para dar el permiso) y entra en Novedades.
+- **La sesión vence.** El login es con Microsoft (SAML), así que HackAI no la puede renovar. Cuando vence, tus pantallas muestran que el SIU no responde, la consola avisa «SIU real: no hay sesión», y hay que pegar una cookie nueva.
+- **Quedan vacías** las inasistencias y las inscripciones a examen: hoy el SIU no muestra ninguna, y no se relevó cómo vienen con datos. Una materia cuyo horario el SIU no tiene cargado (por ejemplo, una comisión «S/H») sale «a confirmar».
+- **Lo que el SIU no da, HackAI no lo completa.** La inscripción abierta sale sin fecha de apertura ni de cierre («sin fecha de cierre informada»); la modalidad y la instancia de tus comisiones actuales, «a confirmar» (solo las da la oferta); de las optativas cuentan las horas, porque el SIU no pide una cantidad.
+- **Avance y créditos de Vida Universitaria:** el % de avance es el del SIU (Reportes > Promedio y porcentaje de avance), y los créditos que pide la carrera salen de la materia «Programa de Vida Universitaria» del plan, en «Otros Requisitos».
+- **La oferta para inscribirse** sigue siendo la del SIU de la demo.
+
 ## Mostrar una caída en la demo
 
 En la encuesta aparecen créditos perdidos porque el SIU se cayó. Para mostrar que HackAI sigue andando, quien presenta tira el SIU o Moodle desde `/caidas` y recorre las pantallas.
@@ -351,6 +379,7 @@ Van en `hackai/.env.local`, que no se versiona. `.env.example` las lista sin val
 | `HACKAI_IDENTITY`, `HACKAI_SIU`, `HACKAI_CLASSROOM`, `HACKAI_EXTERNAL_CHANNEL`, `HACKAI_FILES` | Qué adaptador usa cada puerto. Vacías, usan los de memoria con los datos sintéticos. Valores posibles: `lib/composition.ts`. |
 | `HACKAI_CLOCK` | El reloj: `memoria` (por defecto) queda fijo en el martes 10/11 del set sintético, el «hoy» de los tests; `sistema` usa la fecha real. La demo va con `sistema` («Datos y fecha de la demo»). |
 | `HACKAI_STORE` | Dónde guardan lo suyo los módulos: `memoria` (por defecto) o `supabase`, sobre las tablas de `supabase/migrations/`. Lo usan Personas y Espacios. |
+| `HACKAI_SIU_REAL_PUBLICO`, `HACKAI_SIU_ESCRITURAS`, `HACKAI_SIU_REAL`, `SIU_SESION`, `SIU_URL`, `HACKAI_SIU_REAL_SEGUNDOS` | Sin configurar nada, cualquiera entra con su cuenta del SIU desde el ingreso y las acciones (inscribirse, darse de baja, pedir la constancia de alumno regular) van al SIU de verdad: `HACKAI_SIU_REAL_PUBLICO=no` y `HACKAI_SIU_ESCRITURAS=no` los apagan. `HACKAI_SIU_REAL=si` con `SIU_SESION` suma una cuenta fija desde el `.env.local`; `SIU_URL` solo si la Autogestión no es la de la Austral; `HACKAI_SIU_REAL_SEGUNDOS` cada cuánto se vuelve a leer (20 por defecto). Ver «Entrar con tu cuenta real del SIU». |
 | `HACKAI_CAIDAS` | `si` deja tirar el SIU o Moodle desde `/caidas` para mostrarlo en la demo. Vacía o `no` (por defecto): no existe, como en producción. Ver «Mostrar una caída en la demo». |
 | `HACKAI_CACHE_SEGUNDOS` | Cuánto guarda la caché de lecturas (`lib/adapters/cache/`) lo que no cambia con lo que hace el alumno: personas, materias, comisiones, planes y vínculos. Vacía: 300. `0` no guarda nada (solo comparte la consulta en vuelo), por ejemplo para editar el seed o las notas en la base durante la demo; si no, un cambio así tarda hasta 5 minutos en verse en cada instancia de Vercel. Inscripciones, historia, cupos e inasistencias nunca se guardan. |
 | `HACKAI_TEST_SUPABASE_URL`, `HACKAI_TEST_SUPABASE_SERVICE_ROLE_KEY` | Solo para los tests: base de prueba contra la que corren las baterías de contrato del SIU y del Moodle simulados, de Archivos y de los almacenes de Personas y Espacios. |

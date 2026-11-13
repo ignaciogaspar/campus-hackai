@@ -7,7 +7,7 @@
    Next.js no vuelve a ejecutar este layout al navegar entre pantallas hermanas:
    cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta.
    Sí lo vuelve a ejecutar `router.refresh()`, que es como UnreadRefresh baja
-   estos no leídos al leer un canal. */
+   estos no leídos al leer un canal, y como SiuLive trae lo nuevo del SIU real. */
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
@@ -17,6 +17,7 @@ import type { NavSubject } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { NavigationProgress } from '@/components/shell/navigation-progress'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
+import { SiuLive } from '@/components/siu/siu-live'
 import { spaceHref } from '@/components/spaces/format'
 import { UnreadRefresh } from '@/components/spaces/unread-refresh'
 import { requireSession } from '@/lib/auth'
@@ -65,6 +66,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {/* Leen la URL con useSearchParams: sin Suspense, Next.js no podría armar las pantallas estáticas. */}
       <Suspense fallback={null}>
         <UnreadRefresh />
+        {/* Con la cuenta real del SIU, la pantalla se redibuja sola cuando el SIU cambia. */}
+        {system().siuLive?.isReal(session.personId) && <SiuLive />}
         <NavigationProgress />
       </Suspense>
     </AppShell>

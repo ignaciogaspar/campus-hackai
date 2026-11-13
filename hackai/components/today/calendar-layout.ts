@@ -120,24 +120,29 @@ export function eventsOf(
       next: item.id === nextId
     }
   })
-  const closings = enrollments.map(
-    (e): CalendarEvent => ({
-      id: `inscripcion:${e.kind}:${e.subjectId}`,
-      day: dayKey(e.closesAt),
-      minutes: null,
-      end: null,
-      time: null,
-      code: null,
-      title: `Cierra la inscripción ${CLOSING[e.kind]}`,
-      subject: e.subjectName,
-      place: null,
-      tone: 'inscripcion',
-      origin: 'siu',
-      past: e.closesAt < now,
-      next: false
-    })
+  // Una inscripción sin fecha de cierre informada no tiene día en el calendario.
+  const closings = enrollments.flatMap((e): CalendarEvent[] =>
+    e.closesAt === null ? [] : [closingEvent(e, e.closesAt, now)]
   )
   return [...dates, ...closings]
+}
+
+function closingEvent(e: OpenEnrollment, closesAt: string, now: string): CalendarEvent {
+  return {
+    id: `inscripcion:${e.kind}:${e.subjectId}`,
+    day: dayKey(closesAt),
+    minutes: null,
+    end: null,
+    time: null,
+    code: null,
+    title: `Cierra la inscripción ${CLOSING[e.kind]}`,
+    subject: e.subjectName,
+    place: null,
+    tone: 'inscripcion',
+    origin: 'siu',
+    past: closesAt < now,
+    next: false
+  }
 }
 
 const WEEKDAYS: Record<MySubject['schedule'][number]['day'], number> = {

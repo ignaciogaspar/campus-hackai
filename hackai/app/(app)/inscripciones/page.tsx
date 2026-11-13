@@ -280,12 +280,14 @@ function openItems(openings: OpenEnrollment[], standings: SubjectStanding[]): Li
       detail: [
         plan,
         o.credits !== null ? `Actividad · ${creditsText(o.credits)}` : null,
-        `${closingText(o.closesInDays)} (${shortDate(o.closesAt)})`,
+        o.closesAt === null || o.closesInDays === null
+          ? 'Sin fecha de cierre informada por el SIU'
+          : `${closingText(o.closesInDays)} (${shortDate(o.closesAt)})`,
         spots.full ? spots.text : null
       ]
         .filter(Boolean)
         .join(' · '),
-      urgent: spots.full || (o.closesInDays >= 0 && o.closesInDays <= CLOSING_SOON_DAYS)
+      urgent: spots.full || (o.closesInDays !== null && o.closesInDays >= 0 && o.closesInDays <= CLOSING_SOON_DAYS)
     }
   })
 }

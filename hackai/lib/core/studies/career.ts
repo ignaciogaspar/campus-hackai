@@ -78,6 +78,8 @@ export type Career = {
   electiveHours: CareerProgress
   /** Cuánto de la carrera está aprobado, de 0 a 100. */
   percent: number
+  /** Si `percent` es el del SIU; si no, una estimación de HackAI con las materias del plan. */
+  percentFromSiu: boolean
 }
 
 export const EMPTY_CAREER: Career = {
@@ -89,7 +91,8 @@ export const EMPTY_CAREER: Career = {
   universityLife: { approved: 0, total: 0 },
   universityLifeCredits: { approved: 0, total: 0 },
   electiveHours: { approved: 0, total: 0 },
-  percent: 0
+  percent: 0,
+  percentFromSiu: false
 }
 
 /** Una comisión que cursó o cursa, con lo que hace falta para la carrera. */
@@ -119,9 +122,10 @@ export type Approved = {
 
 export type CareerInput = {
   now: string
-  program: { id: string; name: string } | null
+  program: { id: string; name: string; progressPercent?: number | null } | null
   plan: SiuStudyPlan | null
-  /** `credits`: los que da una actividad de vida universitaria; `null` o sin dato en una materia. */
+  /** `credits`: los que da una actividad de vida universitaria, o las horas de una optativa; `null` o sin dato
+      en una materia obligatoria. */
   subjects: Map<string, { code: string; name: string; credits?: number | null }>
   /** Las comisiones de la más importante a la menos: actuales primero y después la más reciente. */
   sections: TakenSection[]
@@ -245,12 +249,28 @@ function unitsOf(
     (sum, s) => sum + (input.subjects.get(s.subjectId)?.credits ?? 0),
     0
   )
-  const hours = approvedOf('optativa').length * rules.hoursPerElective
-  const requiredHours = (input.plan?.electivesRequired ?? 0) * rules.hoursPerElective
+  // Las horas de cada optativa, si el SIU las da (en `credits`); si no, las de una optativa típica.
+  const hours = approvedOf('optativa').reduce(
+    (sum, s) => sum + (input.subjects.get(s.subjectId)?.credits ?? rules.hoursPerElective),
+    0
+  )
+  const requiredHours =
+    input.plan?.electiveHoursRequired ?? (input.plan?.electivesRequired ?? 0) * rules.hoursPerElective
   return {
-    universityLifeCredits: { approved: credits, total: rules.universityLifeCredits },
+    universityLifeCredits: {
+      approved: credits,
+      total: input.plan?.universityLifeCreditsRequired ?? rules.universityLifeCredits
+    },
     electiveHours: { approved: hours, total: requiredHours }
   }
+}
+
+/** El avance del SIU, si lo da; si no, la estimación con las materias del plan. */
+function percentOf(input: CareerInput, estimate: number): Pick<Career, 'percent' | 'percentFromSiu'> {
+  const fromSiu = input.program?.progressPercent
+  return typeof fromSiu === 'number'
+    ? { percent: Math.round(fromSiu), percentFromSiu: true }
+    : { percent: estimate, percentFromSiu: false }
 }
 
 const bySubjectOrder = (a: SubjectStanding, b: SubjectStanding) =>
@@ -282,6 +302,6 @@ export function buildCareer(input: CareerInput): Career {
     electives,
     universityLife,
     ...unitsOf(subjects, input),
-    percent: total ? Math.round((done / total) * 100) : 0
+    ...percentOf(input, total ? Math.round((done / total) * 100) : 0)
   }
 }
