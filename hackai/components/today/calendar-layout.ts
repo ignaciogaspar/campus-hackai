@@ -326,16 +326,20 @@ export function clustersOf(events: CalendarEvent[]): Cluster[] {
 /** Cuánto mide cada franja de la grilla de la semana: dos horas. */
 export const SLOT_MINUTES = 120
 
-/** Desde y hasta qué minuto va la grilla: al menos de 8 a 20 y, si algo empieza
-    antes o termina después, se estira hasta la franja de dos horas que lo cubre.
-    Las franjas arrancan en hora par (8, 10, 12…). */
-export function rangeOf(clusters: Cluster[], first = 8 * 60, last = 20 * 60): { from: number; to: number } {
-  const start = Math.min(first, ...clusters.map((c) => c.start))
-  const end = Math.max(last, ...clusters.map((c) => c.end))
-  return {
-    from: Math.floor(start / SLOT_MINUTES) * SLOT_MINUTES,
-    to: Math.ceil(end / SLOT_MINUTES) * SLOT_MINUTES
-  }
+/** Cuánto se ve, como mínimo, de la grilla de una semana con eventos: ocho horas. */
+const MIN_SPAN = 8 * 60
+const DAY_END = 24 * 60
+
+/** Desde y hasta qué minuto va la grilla: de la franja de dos horas del primer
+    evento de la semana a la del último, con al menos ocho horas (si no entran
+    antes de la medianoche, empieza antes). Sin eventos, de 8 a 20. Las franjas
+    arrancan en hora par (8, 10, 12…). Así la grilla abre donde hay algo. */
+export function rangeOf(clusters: Cluster[]): { from: number; to: number } {
+  if (clusters.length === 0) return { from: 8 * 60, to: 20 * 60 }
+  const start = Math.floor(Math.min(...clusters.map((c) => c.start)) / SLOT_MINUTES) * SLOT_MINUTES
+  const end = Math.ceil(Math.max(...clusters.map((c) => c.end)) / SLOT_MINUTES) * SLOT_MINUTES
+  const to = Math.min(DAY_END, Math.max(end, start + MIN_SPAN))
+  return { from: Math.max(0, Math.min(start, to - MIN_SPAN)), to }
 }
 
 /** Un evento de un grupo con su carril: lo que se pisa va lado a lado, cada uno en su carril. */

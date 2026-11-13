@@ -178,7 +178,7 @@ function NowLine({ minutes, from }: { minutes: number; from: number }) {
       className='pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 items-center'
       style={{ top: remAt(minutes - from) }}
     >
-      <span className='w-[3.75rem] pr-2.5 text-right text-[0.6875rem] font-semibold text-blue tabular-nums'>
+      <span className='w-[3.75rem] pr-2.5 text-right text-[0.75rem] font-semibold text-blue tabular-nums'>
         {Math.floor(minutes / 60)}:{String(minutes % 60).padStart(2, '0')}
       </span>
       <span className='h-px flex-1 bg-blue' />
@@ -295,15 +295,18 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
 
       <div className={cn(GRID, 'relative')} style={{ height: remAt(to - from) }}>
         <div aria-hidden='true' className='relative'>
-          {starts.map((start) => (
-            <span
-              key={start}
-              className='absolute right-0 pt-1.5 pr-2.5 text-[0.6875rem] text-muted-foreground tabular-nums'
-              style={{ top: remAt(start - from) }}
-            >
-              {start / 60}:00
-            </span>
-          ))}
+          {/* La hora de la fila se esconde si la de la línea de ahora cae encima: no van dos horas apiladas. */}
+          {starts
+            .filter((start) => !showNow || nowMinutes - start < -10 || nowMinutes - start > 30)
+            .map((start) => (
+              <span
+                key={start}
+                className='absolute right-0 pt-1.5 pr-2.5 text-[0.75rem] text-muted-foreground tabular-nums'
+                style={{ top: remAt(start - from) }}
+              >
+                {start / 60}:00
+              </span>
+            ))}
         </div>
         {days.map((d) => (
           <DayColumn key={d} day={d} clusters={clusters} from={from} starts={starts} today={d === today} />

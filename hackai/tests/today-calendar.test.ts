@@ -218,11 +218,15 @@ test('lo que se pisa en un día va junto en un grupo que cubre todas sus horas',
   )
 })
 
-test('la grilla va de dos en dos horas: arranca en hora par y cubre lo que empieza antes o termina después', () => {
-  assert.deepEqual(rangeOf([]), { from: 8 * 60, to: 20 * 60 })
-  // Una clase hasta las 22 estira la grilla hasta las 22; sin nada a esa hora, termina a las 20.
-  const night = { day: '2026-11-17', start: 20 * 60, end: 22 * 60, events: [] }
-  assert.deepEqual(rangeOf([night]), { from: 8 * 60, to: 22 * 60 })
+test('la grilla abre en la franja del primer evento de la semana, con al menos ocho horas a la vista', () => {
+  assert.deepEqual(rangeOf([]), { from: 8 * 60, to: 20 * 60 }, 'sin nada, de 8 a 20')
+  // Las clases de 18 a 21 no quedan debajo de ocho horas vacías: la grilla va de 16 a 24.
+  const night = { day: '2026-11-17', start: 18 * 60, end: 21 * 60, events: [] }
+  assert.deepEqual(rangeOf([night]), { from: 16 * 60, to: 24 * 60 })
+  // Una de 10 a 12 abre a las 10 y sigue hasta las 18.
+  const morning = { day: '2026-11-17', start: 10 * 60, end: 12 * 60, events: [] }
+  assert.deepEqual(rangeOf([morning]), { from: 10 * 60, to: 18 * 60 })
+  // De 7:30 a 21:15 cubre todo, en franjas de dos horas que arrancan en hora par.
   const early = { day: '2026-11-17', start: 7 * 60 + 30, end: 9 * 60, events: [] }
   const late = { day: '2026-11-17', start: 20 * 60, end: 21 * 60 + 15, events: [] }
   assert.deepEqual(rangeOf([early, late]), { from: 6 * 60, to: 22 * 60 })
