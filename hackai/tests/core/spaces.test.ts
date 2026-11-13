@@ -68,6 +68,8 @@ function build(
     externalChannel?: ExternalChannelPort
     /** Los milisegundos que espacian las sincronizaciones con el canal externo al abrir un espacio. */
     timer?: () => number
+    /** Dónde corre lo que `open` trae de Moodle y de Discord. Sin esto, `open` lo espera. */
+    defer?: (task: () => Promise<unknown>) => Promise<void>
   } = {}
 ) {
   let now = data.now
@@ -92,7 +94,8 @@ function build(
     clock,
     store,
     // Sin temporizador propio no avanza: cada espacio se sincroniza una vez al abrirlo.
-    timer: overrides.timer ?? (() => 0)
+    timer: overrides.timer ?? (() => 0),
+    defer: overrides.defer
   })
   return { spaces, studies, people, store, files, siuState, setNow }
 }
@@ -1113,7 +1116,7 @@ const LAST_SYNTHETIC = '1310000000000000005'
 
 /** Espacios con el canal externo a mano: se puede «caer», escribir en él como si
     fuera Discord y adelantar el temporizador que espacia las sincronizaciones. */
-function buildSynced() {
+function buildSynced({ defer }: { defer?: (task: () => Promise<unknown>) => Promise<void> } = {}) {
   let ms = 0
   const discord = createMemoryExternalChannel(syntheticData, createFixedClock(NOW))
   const { port, state } = fallible(discord)
@@ -1133,7 +1136,7 @@ function buildSynced() {
       return port.openThread(channelId, messageId)
     }
   }
-  const built = build(syntheticData, { externalChannel, timer: () => ms })
+  const built = build(syntheticData, { externalChannel, timer: () => ms, defer })
   const wait = (seconds: number) => {
     ms += seconds * 1000
   }
@@ -1532,6 +1535,50 @@ test('al abrir el espacio, los avisos del foro de Moodle llegan a #avisos de su 
       createdAt: '2026-11-06T20:12:00.000Z'
     }
   )
+})
+
+test('con `defer`, abrir el espacio no espera a Moodle: muestra lo guardado y lo de Moodle entra cuando corre lo diferido', async () => {
+  const later: Array<() => Promise<unknown>> = []
+  const { spaces } = build(syntheticData, {
+    classroom: createMemoryClassroom(syntheticData),
+    defer: async (task) => {
+      later.push(task)
+    }
+  })
+
+  const opened = await spaces.open('p-taguirre', 'am1')
+
+  assert.ok(opened.ok)
+  assert.equal(named(opened.value, 'avisos', 'A').unread, 0, 'el aviso de Moodle todavía no entró')
+  assert.equal(later.length, 1)
+  await Promise.all(later.map((task) => task()))
+  const [aviso] = await messagesOf(spaces, 'p-taguirre', named(opened.value, 'avisos', 'A').id)
+  assert.equal(aviso.origin, 'moodle')
+})
+
+test('con `defer`, abrir el espacio no espera a Discord: lo nuevo de allá entra cuando corre lo diferido', async () => {
+  const later: Array<() => Promise<unknown>> = []
+  const { spaces, discord } = buildSynced({
+    defer: async (task) => {
+      later.push(task)
+    }
+  })
+  const ids = await am1(spaces)
+  later.length = 0
+  assert.ok((await spaces.link('p-mledesma', ids.avisosA, { system: 'discord', channelId: discordAvisos.id })).ok)
+  discord.receive(discordAvisos.id, { author: LEDESMA_EN_DISCORD, text: 'La clase de hoy es en el aula 3.' })
+  const texts = async () => {
+    const seen = await spaces.channel('p-taguirre', ids.avisosA)
+    assert.ok(seen.ok)
+    return seen.value.threads.map((t) => t.message.text)
+  }
+
+  assert.ok((await spaces.open('p-taguirre', 'am1')).ok)
+
+  assert.notEqual((await texts()).at(-1), 'La clase de hoy es en el aula 3.')
+  assert.ok(later.length > 0)
+  await Promise.all(later.map((task) => task()))
+  assert.equal((await texts()).at(-1), 'La clase de hoy es en el aula 3.')
 })
 
 test('volver a abrir el espacio no duplica los avisos de Moodle, y el de la A no llega a #avisos de la B', async () => {

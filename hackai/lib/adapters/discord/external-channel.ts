@@ -13,7 +13,8 @@
      el primer mensaje de su cadena como `threadId`, aunque esté en una lectura
      anterior.
    - Se leen los hilos activos y los archivados después del cursor: un hilo que
-     recibió mensajes y se archivó entre dos lecturas no los pierde.
+     recibió mensajes y se archivó entre dos lecturas no los pierde. El canal,
+     la lista de hilos y los hilos con novedades se piden en paralelo.
    - Ante un 429 espera el `retry_after` que pide Discord y reintenta, hasta
      `maxRetries` veces y `maxRetryAfterMs` de espera. Si pide más, devuelve
      `falla-externa` en vez de bloquear, y la próxima sincronización reintenta.
@@ -222,9 +223,18 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
   /** Hilos del canal con mensajes posteriores al cursor: los activos y los
       archivados después del cursor, que ya no figuran entre los activos. */
   async function threadsWithNews(guildId: string, channelId: string, cursor: string | null): Promise<string[]> {
-    const { threads: active } = must(
-      await api<{ threads: DiscordChannel[] }>('GET', `/guilds/${guildId}/threads/active`)
-    )
+    const [{ threads: active }, archived] = await Promise.all([
+      api<{ threads: DiscordChannel[] }>('GET', `/guilds/${guildId}/threads/active`).then(must),
+      archivedThreads(channelId, cursor)
+    ])
+    const withNews = (t: DiscordChannel) =>
+      t.parent_id === channelId &&
+      (cursor === null || (t.last_message_id != null && BigInt(t.last_message_id) > BigInt(cursor)))
+    return [...new Set([...active, ...archived].filter(withNews).map((t) => t.id))]
+  }
+
+  /** Hilos archivados del canal, del más reciente al más viejo, hasta los archivados antes del cursor. */
+  async function archivedThreads(channelId: string, cursor: string | null): Promise<DiscordChannel[]> {
     const archived: DiscordChannel[] = []
     const since = cursor === null ? null : snowflakeTime(cursor)
     let before: string | null = null
@@ -238,10 +248,7 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
       if (!res.has_more || !last || (since !== null && Date.parse(last) < since)) break
       before = last
     }
-    const withNews = (t: DiscordChannel) =>
-      t.parent_id === channelId &&
-      (cursor === null || (t.last_message_id != null && BigInt(t.last_message_id) > BigInt(cursor)))
-    return [...new Set([...active, ...archived].filter(withNews).map((t) => t.id))]
+    return archived
   }
 
   /** Primer mensaje de la cadena de respuestas a la que pertenece `messageId`.
@@ -354,12 +361,13 @@ export function createDiscordExternalChannel(options: DiscordOptions): ExternalC
         const guild = await channelGuild(channelId)
         if (!guild.ok) return guild
 
-        const sources = [await readAfter(channelId, cursor, null)]
-        if (guild.value) {
-          for (const threadId of await threadsWithNews(guild.value, channelId, cursor)) {
-            sources.push(await readAfter(threadId, cursor, threadId))
-          }
-        }
+        // El canal y la lista de hilos a la vez, y después los hilos con novedades a la vez: uno detrás del
+        // otro sumaban un request entero por cada paso (#111).
+        const [own, threadIds] = await Promise.all([
+          readAfter(channelId, cursor, null),
+          guild.value ? threadsWithNews(guild.value, channelId, cursor) : Promise.resolve([])
+        ])
+        const sources = [own, ...(await Promise.all(threadIds.map((id) => readAfter(id, cursor, id))))]
 
         // Si una fuente quedó cortada, el cursor no puede pasar su último mensaje leído.
         const limit = sources

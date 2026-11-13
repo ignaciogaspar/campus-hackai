@@ -341,6 +341,8 @@ export function createSync({ people, externalChannel, files, store, timer }: Syn
     if (!cursor.ok) return NOTHING
     const page = await externalChannel.read(channel.externalLink.channelId, cursor.value)
     if (!page.ok) return NOTHING
+    // Sin nada nuevo no hay qué guardar: así no se leen los mensajes del canal en cada sincronización.
+    if (page.value.messages.length === 0 && page.value.cursor === cursor.value) return NOTHING
     const imported = await importPage(channel, page.value)
     return { ...NOTHING, imported: imported.ok ? imported.value : 0 }
   }
@@ -351,10 +353,11 @@ export function createSync({ people, externalChannel, files, store, timer }: Syn
     return addCounts(sent, await importNew(channel))
   }
 
+  /** Los canales en paralelo: cada uno tiene su cursor y sus pendientes, y uno detrás del otro sumaban
+      segundos por canal (#111). */
   async function syncChannels(channels: Linked[]): Promise<SyncCounts> {
-    let total = NOTHING
-    for (const channel of channels) total = addCounts(total, await syncChannel(channel))
-    return total
+    const counts = await Promise.all(channels.map(syncChannel))
+    return counts.reduce(addCounts, NOTHING)
   }
 
   return {

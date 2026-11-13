@@ -49,6 +49,7 @@
    configuración, no algo que el núcleo pueda resolver. */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { after } from 'next/server'
 import { cache as reactCache } from 'react'
 import { STATIC_TTL_MS, withClassroomCache, withPeopleStoreCache, withSiuCache } from '@/lib/adapters/cache'
 import { createOutageSwitch, type OutageSwitch, withClassroomOutage, withSiuOutage } from '@/lib/adapters/caida'
@@ -252,7 +253,8 @@ export function compose(
       store:
         adapters.store === 'supabase' ? createSupabaseSpacesStore({ client: supabase() }) : createMemorySpacesStore(),
       // El tiempo real del proceso, aunque el reloj sea el fijo de la demo.
-      timer: () => performance.now()
+      timer: () => performance.now(),
+      defer: afterResponse
     }),
     requestScope
   )
@@ -270,6 +272,20 @@ export function compose(
     studies,
     spaces,
     today
+  }
+}
+
+/** Corre la tarea después de mandar la página, con `after()` de Next, así abrir un espacio no espera a Moodle
+    ni a Discord. Fuera de un pedido (tests, scripts) `after` falla, y la tarea se espera ahí mismo. */
+async function afterResponse(task: () => Promise<unknown>): Promise<void> {
+  const run = () =>
+    task().catch((error: unknown) => {
+      console.error('Falló lo que se trae de Moodle o del canal externo después de abrir un espacio', error)
+    })
+  try {
+    after(run)
+  } catch {
+    await run()
   }
 }
 

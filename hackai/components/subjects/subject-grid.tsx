@@ -25,6 +25,7 @@ import { offerHref } from '@/components/enrollment/offer-href'
 import { gradeText, StatusChip } from '@/components/grades/status'
 import { spaceHref } from '@/components/spaces/format'
 import { SubjectIcon } from '@/components/subjects/subject-icon'
+import { LinkPending } from '@/components/ui/link-pending'
 import type { MySubject, PendingFinal, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
@@ -86,7 +87,7 @@ function SubjectCard({
               href={spaceHref(subjectId)}
               className='stretched text-ink outline-none transition-colors group-hover:text-blue after:absolute after:inset-0 after:rounded-2xl after:content-[""]'
             >
-              {name}
+              <LinkPending overlay>{name}</LinkPending>
             </Link>
           </h3>
           <p className='mt-0.5 truncate text-[0.75rem] text-muted-foreground'>{detail}</p>
