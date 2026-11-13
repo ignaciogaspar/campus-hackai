@@ -102,13 +102,12 @@ function GroupLabel({ children, className }: { children: ReactNode; className?: 
   return <p className={cn('px-3 pt-6 pb-2 text-[0.75rem] text-muted-foreground', FADES, className)}>{children}</p>
 }
 
-/* Al pie de la barra lateral, en compu: quién entró, su carrera (o «Docente»)
-   y su facultad, sin cortarse: el nombre y la carrera en dos líneas como mucho. El avatar y el nombre
-   abren el menú de la cuenta, con el nombre completo, la carrera o «Docente»,
-   la facultad y «Cerrar sesión» escrito. Plegada la barra queda el avatar, que
-   abre el mismo menú. Al abrirse, el foco va al menú y no a «Cerrar sesión»,
-   para que un Enter de más no saque a nadie. En el celular lo mismo está en la
-   hoja que abre el avatar del encabezado (components/session/profile-menu.tsx). */
+/* Al pie de la barra lateral, en compu: quién entró y su carrera (o «Docente»), sin cortarse: dos líneas
+   cada uno como mucho, con la letra y el margen de las filas del menú. Abierta la barra no hay avatar, así el
+   texto tiene todo el ancho; plegada queda solo el avatar. Los dos abren el menú de la cuenta, con el nombre
+   completo, la carrera o «Docente», la facultad (en compu se ve solo ahí) y «Cerrar sesión» escrito. Al
+   abrirse, el foco va al menú y no a «Cerrar sesión», para que un Enter de más no saque a nadie. En el
+   celular lo mismo está en la hoja que abre el avatar del encabezado (components/session/profile-menu.tsx). */
 function SidebarAccount({ person, detail }: { person: Person; detail?: string }) {
   return (
     <div className='mt-auto flex flex-col'>
@@ -118,19 +117,21 @@ function SidebarAccount({ person, detail }: { person: Person; detail?: string })
       <Popover>
         <PopoverTrigger
           aria-label={`Tu perfil: ${person.name}`}
-          className='flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-150 hover:bg-white/55 focus-ring data-[state=open]:bg-white group-data-[sidebar=plegada]/nav:justify-center group-data-[sidebar=plegada]/nav:px-0'
+          className='flex w-full cursor-pointer flex-col rounded-lg px-3 py-2 text-left transition-colors duration-150 hover:bg-white/55 focus-ring data-[state=open]:bg-white group-data-[sidebar=plegada]/nav:items-center group-data-[sidebar=plegada]/nav:px-0 group-data-[sidebar=plegada]/nav:py-1.5'
         >
-          <Avatar person={person} className='size-10 ring-2 ring-white/80' />
-          <span className={cn('flex min-w-0 flex-1 flex-col', FADES, WRAPS)}>
-            <span className='line-clamp-2 text-[0.875rem] leading-snug font-semibold break-words text-ink'>
+          <Avatar
+            person={person}
+            className='hidden size-10 ring-2 ring-white/80 group-data-[sidebar=plegada]/nav:grid'
+          />
+          <span className={cn('flex w-full min-w-0 flex-col gap-0.5', FADES, WRAPS)}>
+            <span className='line-clamp-2 text-[0.8125rem] leading-snug font-semibold break-words text-pretty text-ink'>
               {person.name}
             </span>
             {detail && (
-              <span className='line-clamp-2 text-[0.8125rem] leading-snug text-muted-foreground'>{detail}</span>
+              <span className='line-clamp-2 text-[0.75rem] leading-snug text-pretty text-muted-foreground'>
+                {detail}
+              </span>
             )}
-            <span className='mt-0.5 text-[0.75rem] leading-snug text-pretty text-muted-foreground'>
-              {person.school.name}
-            </span>
           </span>
         </PopoverTrigger>
         <PopoverContent
