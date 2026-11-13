@@ -79,6 +79,11 @@ export function createMemorySiu(data: SyntheticData, clock: ClockPort, options: 
       return subject ? ok(copy(subject)) : fail('no-encontrado')
     },
 
+    async subjects(ids) {
+      const requested = new Set(ids)
+      return ok(copy(db.subjects.filter((subject) => requested.has(subject.id))))
+    },
+
     async section(sectionId) {
       const section = db.sections.find((s) => s.id === sectionId)
       return section ? ok(copy(section)) : fail('no-encontrado')

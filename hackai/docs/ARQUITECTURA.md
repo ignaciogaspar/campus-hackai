@@ -172,6 +172,7 @@ hackai/
 │   ├── ports/           identity, siu, classroom, external-channel, files, clock
 │   ├── adapters/        identity-demo/, siu-simulado/, moodle-simulado/, discord/, supabase/, memoria/, caida/, cache/
 │   ├── composition      arma los módulos con sus adaptadores; el único lugar que los conoce a todos
+│   ├── request-memo    comparte lecturas exitosas dentro de un render
 │   └── demo-base/       preparar, verificar y probar la base de la demo (npm run demo:*); no lo usa la app
 ├── app/                 pantallas y server actions
 ├── components/
@@ -189,6 +190,9 @@ hackai/
 - `app/` importa `composition` y los tipos de `core/`. Las pantallas no tienen reglas de negocio.
 - `components/` no importa `composition`, salvo la campana de sesión (`components/shell/notifications-bell.tsx`): lee los no leídos y las notas nuevas (`lib/new-grades.ts`) como una página, porque Next.js no vuelve a ejecutar el layout al navegar y el número quedaría viejo. No lleva reglas de negocio.
 - `composition` es el único lugar que conoce los adaptadores. Elige los de Supabase y Discord en producción; los tests arman sus propias instancias con los de memoria. Fuera de `lib/`, también los usan los scripts de `scripts/` (seeds y base de la demo), que arman lo suyo con `lib/adapters/supabase/demo-base.ts` y se lo pasan a `lib/demo-base/`.
+
+Composition comparte las lecturas repetidas entre el layout, la página y los módulos durante un render.
+Las escrituras invalidan las lecturas que pueden haber cambiado. El alcance termina con el render.
 
 ## De la demo a producción
 

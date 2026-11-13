@@ -7,8 +7,10 @@
    llamada tiene tiempo máximo, y una caída o un error de la base vuelve como
    `falla-externa`, nunca como excepción. Los logs llevan la operación y el
    código de error, nunca datos de personas. */
+
 import { randomInt, randomUUID } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createStore, STATIC_TTL_MS } from '@/lib/adapters/cache/store'
 import { createQueryRunner, type Query } from '@/lib/adapters/supabase/query'
 import type { ClockPort } from '@/lib/ports/clock'
 import type {
@@ -38,6 +40,9 @@ export type SimulatedSiuOptions = {
   selfServiceBaseUrl: string
   /** Tiempo máximo de cada consulta a la base. */
   timeoutMs?: number
+  personTtlMs?: number
+  /** Tiempo real para el vencimiento de la caché, independiente del reloj académico. */
+  nowMs?: () => number
   log?: (message: string) => void
 }
 
@@ -237,6 +242,8 @@ export function createSimulatedSiu({
   clock,
   selfServiceBaseUrl,
   timeoutMs = 5000,
+  personTtlMs = STATIC_TTL_MS,
+  nowMs = Date.now,
   log = console.warn
 }: SimulatedSiuOptions): SiuPort {
   /** Fijas: el simulado siempre inscribe y tiene cronograma, a diferencia de la API real. */
@@ -257,13 +264,18 @@ export function createSimulatedSiu({
     return result.ok ? ok(result.value ?? []) : result
   }
 
-  /** Que la persona exista en el SIU: `no-encontrado` si no. */
-  async function requirePerson(personId: string): Promise<Result<true, ExternalFailure | 'no-encontrado'>> {
-    const found = await read('persona', (s) =>
-      client.from('siu_persons').select('id').eq('id', personId).abortSignal(s).maybeSingle()
+  // El padrón y la validación comparten la lectura, incluso en el primer pedido.
+  const person = createStore(nowMs).read('person', personTtlMs, async (personId: string) => {
+    const row = await read<PersonRow>('persona', (s) =>
+      client.from('siu_persons').select(PERSON).eq('id', personId).abortSignal(s).maybeSingle()
     )
-    if (!found.ok) return found
-    return found.value ? ok(true) : fail('no-encontrado')
+    if (!row.ok) return row
+    return row.value ? ok(toPerson(row.value)) : fail('no-encontrado' as const)
+  })
+
+  async function forPerson<R>(personId: string, read: () => Promise<R>) {
+    const [found, value] = await Promise.all([person(personId), read()])
+    return found.ok ? value : found
   }
 
   async function terms(): Promise<Result<SiuTerm[], ExternalFailure>> {
@@ -353,13 +365,7 @@ export function createSimulatedSiu({
   return {
     capabilities,
 
-    async person(personId) {
-      const row = await read<PersonRow>('persona', (s) =>
-        client.from('siu_persons').select(PERSON).eq('id', personId).abortSignal(s).maybeSingle()
-      )
-      if (!row.ok) return row
-      return row.value ? ok(toPerson(row.value)) : fail('no-encontrado')
-    },
+    person,
 
     terms,
 
@@ -369,6 +375,13 @@ export function createSimulatedSiu({
       )
       if (!row.ok) return row
       return row.value ? ok(row.value) : fail('no-encontrado')
+    },
+
+    async subjects(ids) {
+      if (ids.length === 0) return ok([])
+      return list<SiuSubject>('materias', (s) =>
+        client.from('siu_subjects').select('id, code, name, credits').in('id', ids).abortSignal(s)
+      )
     },
 
     async section(sectionId) {
@@ -397,33 +410,33 @@ export function createSimulatedSiu({
     },
 
     async teacherSections(personId) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const rows = await list<SectionRow>('comisiones-docente', (s) =>
-        client.from('siu_sections').select('*').contains('teacher_ids', [personId]).order('id').abortSignal(s)
-      )
-      return rows.ok ? ok(rows.value.map(toSection)) : rows
+      return forPerson(personId, async () => {
+        const rows = await list<SectionRow>('comisiones-docente', (s) =>
+          client.from('siu_sections').select('*').contains('teacher_ids', [personId]).order('id').abortSignal(s)
+        )
+        return rows.ok ? ok(rows.value.map(toSection)) : rows
+      })
     },
 
     async courseEnrollments(personId, options = {}) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const rows = await list<CourseEnrollmentRow & { section: { term: { end_at: string } | null } | null }>(
-        'inscripciones',
-        (s) =>
-          client
-            .from('siu_course_enrollments')
-            .select('*, section:siu_sections(term:siu_terms(end_at))')
-            .eq('person_id', personId)
-            .order('id')
-            .abortSignal(s)
-      )
-      if (!rows.ok) return rows
-      const at = now()
-      const found = rows.value.filter(
-        (r) => options.historic || (ACTIVE.includes(r.status) && r.section?.term && iso(r.section.term.end_at) >= at)
-      )
-      return ok(found.map(({ section: _section, ...row }) => toCourseEnrollment(row)))
+      return forPerson(personId, async () => {
+        const rows = await list<CourseEnrollmentRow & { section: { term: { end_at: string } | null } | null }>(
+          'inscripciones',
+          (s) =>
+            client
+              .from('siu_course_enrollments')
+              .select('*, section:siu_sections(term:siu_terms(end_at))')
+              .eq('person_id', personId)
+              .order('id')
+              .abortSignal(s)
+        )
+        if (!rows.ok) return rows
+        const at = now()
+        const found = rows.value.filter(
+          (r) => options.historic || (ACTIVE.includes(r.status) && r.section?.term && iso(r.section.term.end_at) >= at)
+        )
+        return ok(found.map(({ section: _section, ...row }) => toCourseEnrollment(row)))
+      })
     },
 
     async examBoards(filter) {
@@ -443,22 +456,22 @@ export function createSimulatedSiu({
     },
 
     async examEnrollments(personId, options = {}) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const rows = await list<ExamEnrollmentRow & { board: { date: string } | null }>('inscripciones-mesas', (s) =>
-        client
-          .from('siu_exam_enrollments')
-          .select('*, board:siu_exam_boards(date)')
-          .eq('person_id', personId)
-          .order('id')
-          .abortSignal(s)
-      )
-      if (!rows.ok) return rows
-      const at = now()
-      const found = rows.value.filter(
-        (r) => options.historic || (ACTIVE.includes(r.status) && r.board && iso(r.board.date) >= at)
-      )
-      return ok(found.map(({ board: _board, ...row }) => toExamEnrollment(row)))
+      return forPerson(personId, async () => {
+        const rows = await list<ExamEnrollmentRow & { board: { date: string } | null }>('inscripciones-mesas', (s) =>
+          client
+            .from('siu_exam_enrollments')
+            .select('*, board:siu_exam_boards(date)')
+            .eq('person_id', personId)
+            .order('id')
+            .abortSignal(s)
+        )
+        if (!rows.ok) return rows
+        const at = now()
+        const found = rows.value.filter(
+          (r) => options.historic || (ACTIVE.includes(r.status) && r.board && iso(r.board.date) >= at)
+        )
+        return ok(found.map(({ board: _board, ...row }) => toExamEnrollment(row)))
+      })
     },
 
     async assessments(sectionId) {
@@ -477,29 +490,29 @@ export function createSimulatedSiu({
     },
 
     async history(personId) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const rows = await list<HistoryRow>('historia', (s) =>
-        client.from('siu_history').select('*').eq('person_id', personId).order('id').abortSignal(s)
-      )
-      if (!rows.ok) return rows
-      return ok(
-        rows.value.map(
-          (r): SiuHistoryEntry => ({
-            id: r.id,
-            personId: r.person_id,
-            subjectId: r.subject_id,
-            type: r.type,
-            date: iso(r.date),
-            grade: grade(r.grade),
-            result: r.result,
-            gradeRecord: r.grade_record,
-            sectionId: r.section_id,
-            assessmentId: r.assessment_id,
-            loadedAt: optionalIso(r.loaded_at)
-          })
+      return forPerson(personId, async () => {
+        const rows = await list<HistoryRow>('historia', (s) =>
+          client.from('siu_history').select('*').eq('person_id', personId).order('id').abortSignal(s)
         )
-      )
+        if (!rows.ok) return rows
+        return ok(
+          rows.value.map(
+            (r): SiuHistoryEntry => ({
+              id: r.id,
+              personId: r.person_id,
+              subjectId: r.subject_id,
+              type: r.type,
+              date: iso(r.date),
+              grade: grade(r.grade),
+              result: r.result,
+              gradeRecord: r.grade_record,
+              sectionId: r.section_id,
+              assessmentId: r.assessment_id,
+              loadedAt: optionalIso(r.loaded_at)
+            })
+          )
+        )
+      })
     },
 
     async studyPlan(programId) {
@@ -529,80 +542,85 @@ export function createSimulatedSiu({
     },
 
     async provisionalResults(personId) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const rows = await list<ProvisionalRow>('actuacion-provisoria', (s) =>
-        client.from('siu_provisional_results').select('*').eq('person_id', personId).order('id').abortSignal(s)
-      )
-      if (!rows.ok) return rows
-      return ok(
-        rows.value.map(
-          (r): SiuProvisionalResult => ({
-            id: r.id,
-            personId: r.person_id,
-            sectionId: r.section_id,
-            assessmentId: r.assessment_id,
-            grade: grade(r.grade),
-            date: iso(r.date),
-            loadedAt: optionalIso(r.loaded_at)
-          })
+      return forPerson(personId, async () => {
+        const rows = await list<ProvisionalRow>('actuacion-provisoria', (s) =>
+          client.from('siu_provisional_results').select('*').eq('person_id', personId).order('id').abortSignal(s)
         )
-      )
+        if (!rows.ok) return rows
+        return ok(
+          rows.value.map(
+            (r): SiuProvisionalResult => ({
+              id: r.id,
+              personId: r.person_id,
+              sectionId: r.section_id,
+              assessmentId: r.assessment_id,
+              grade: grade(r.grade),
+              date: iso(r.date),
+              loadedAt: optionalIso(r.loaded_at)
+            })
+          )
+        )
+      })
     },
 
     async absences(personId) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const [rows, enrollments] = await Promise.all([
-        list<AbsenceRow>('inasistencias', (s) =>
-          client.from('siu_absences').select('*').eq('person_id', personId).order('date').abortSignal(s)
-        ),
-        list<{ section_id: string }>('inasistencias', (s) =>
-          client.from('siu_course_enrollments').select('section_id').eq('person_id', personId).abortSignal(s)
-        )
-      ])
-      if (!rows.ok) return rows
-      if (!enrollments.ok) return enrollments
-      const sections = [...new Set(enrollments.value.map((e) => e.section_id))]
-      const limits = sections.length
-        ? await list<AbsenceLimitRow>('inasistencias', (s) =>
-            client.from('siu_absence_limits').select('*').in('section_id', sections).order('section_id').abortSignal(s)
+      return forPerson(personId, async () => {
+        const [rows, enrollments] = await Promise.all([
+          list<AbsenceRow>('inasistencias', (s) =>
+            client.from('siu_absences').select('*').eq('person_id', personId).order('date').abortSignal(s)
+          ),
+          list<{ section_id: string }>('inasistencias', (s) =>
+            client.from('siu_course_enrollments').select('section_id').eq('person_id', personId).abortSignal(s)
           )
-        : ok<AbsenceLimitRow[]>([])
-      if (!limits.ok) return limits
-      return ok({
-        absences: rows.value.map(
-          (r): SiuAbsence => ({
-            id: r.id,
-            personId: r.person_id,
-            sectionId: r.section_id,
-            date: iso(r.date),
-            justified: r.justified
-          })
-        ),
-        limits: limits.value.map((l) => ({ sectionId: l.section_id, max: Number(l.max) }))
+        ])
+        if (!rows.ok) return rows
+        if (!enrollments.ok) return enrollments
+        const sections = [...new Set(enrollments.value.map((e) => e.section_id))]
+        const limits = sections.length
+          ? await list<AbsenceLimitRow>('inasistencias', (s) =>
+              client
+                .from('siu_absence_limits')
+                .select('*')
+                .in('section_id', sections)
+                .order('section_id')
+                .abortSignal(s)
+            )
+          : ok<AbsenceLimitRow[]>([])
+        if (!limits.ok) return limits
+        return ok({
+          absences: rows.value.map(
+            (r): SiuAbsence => ({
+              id: r.id,
+              personId: r.person_id,
+              sectionId: r.section_id,
+              date: iso(r.date),
+              justified: r.justified
+            })
+          ),
+          limits: limits.value.map((l) => ({ sectionId: l.section_id, max: Number(l.max) }))
+        })
       })
     },
 
     async meetsCertificateConditions(personId, type) {
-      const exists = await requirePerson(personId)
-      if (!exists.ok) return exists
-      const row = await read<{ meets_conditions: boolean }>('certificado', (s) =>
-        client
-          .from('siu_certificates')
-          .select('meets_conditions')
-          .eq('person_id', personId)
-          .eq('type', type)
-          .abortSignal(s)
-          .maybeSingle()
-      )
-      if (!row.ok) return row
-      return ok(row.value?.meets_conditions ?? false)
+      return forPerson(personId, async () => {
+        const row = await read<{ meets_conditions: boolean }>('certificado', (s) =>
+          client
+            .from('siu_certificates')
+            .select('meets_conditions')
+            .eq('person_id', personId)
+            .eq('type', type)
+            .abortSignal(s)
+            .maybeSingle()
+        )
+        if (!row.ok) return row
+        return ok(row.value?.meets_conditions ?? false)
+      })
     },
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complejidad 21 (máximo 15). Se refactoriza después de la demo (#30).
     async enroll(personId, target) {
-      const exists = await requirePerson(personId)
+      const exists = await person(personId)
       if (!exists.ok) return exists
       const found = await lookup(personId, target)
       if (!found.ok) return found
@@ -634,7 +652,7 @@ export function createSimulatedSiu({
     },
 
     async drop(personId, target) {
-      const exists = await requirePerson(personId)
+      const exists = await person(personId)
       if (!exists.ok) return exists
       const found = await lookup(personId, target)
       if (!found.ok) return found
