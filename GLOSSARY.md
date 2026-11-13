@@ -45,7 +45,7 @@ En el SIU, el papel con el que un usuario ve el portal (alumno, docente, gestió
 _Avoid_: usar «perfil» para la propuesta o para la página de datos personales.
 
 **Secretaría (Secretary)**:
-Persona de la secretaría académica de una facultad que asigna las aulas y carga el Planning. En HackAI es el rol `secretaria`: no cursa ni dicta, entra directo a `/planning`.
+Persona de la secretaría académica de una facultad que asigna las aulas y carga el Planning. En HackAI es el rol `secretaria`: no cursa ni dicta, entra directo a `/planning` y es el único rol que ve Reportes, que en la universidad usa la Dirección de Estudios para el seguimiento de los alumnos.
 _Avoid_: «admin», «bedelía» (no está confirmado que sean lo mismo).
 
 **Gestión (Staff)**:
@@ -335,6 +335,34 @@ _Avoid_: «planilla», «libreta».
 **Nota publicada (Published grade)**:
 Nota de una columna que el docente publicó en HackAI: desde ese momento el alumno la ve, con el comentario entero, en Notas, y le llega a la campana y a Novedades. Una nota sin publicar no la ve nadie más que el docente. Es una nota de HackAI, distinta de la nota cargada en el SIU: para una evaluación calificada y publicada en HackAI, Notas muestra la de HackAI.
 
+**Reportes (Reports)**:
+Módulo y sección de HackAI (`/reportes`) para la Dirección de Estudios: el tablero de alumnos de grado (activos, ingresantes, graduados y bajas), el listado y la ficha de cada alumno, con filtros libres (varias facultades, carreras, sedes y años de ingreso a la vez, créditos y avance) y al cierre de cualquier año. Reemplaza bajar un reporte del SIU por carrera y por año de ingreso, y los tableros de Power BI básicos. Solo lo ve secretaría.
+_Avoid_: «reporte» para una constancia o un certificado de Trámites.
+
+**Padrón académico (Academic records)**:
+Todos los alumnos de grado a la vez, como los ve el SIU en sus reportes: el catálogo (facultades, sedes, propuestas con su plan, actividades de Vida Universitaria) y el legajo de cada alumno con su historia, inscripciones, créditos y sanciones. Es un puerto: en la demo, un padrón sintético con semilla.
+_Avoid_: confundirlo con el Padrón (Roster) de Campus Austral, que es la lista de un curso.
+
+**Año del reporte y corte (Report year, cutoff)**:
+El año del que se pide un reporte y la fecha hasta la que cuenta lo que pasó: el 31 de diciembre de ese año o, en el año actual, hoy. Un alumno está activo al corte si ingresó y no se recibió ni se dio de baja hasta ese día.
+
+**Ficha del alumno (Student file)**:
+En Reportes, todo lo de un alumno en una pantalla: sus datos y propuestas, su avance, promedio, aplazos, historia, inscripciones y sanciones (la ficha del SIU), su plan con lo que le falta resaltado (el reporte de plan de estudios) y sus créditos de Vida Universitaria con las actividades de donde vienen (el reporte de créditos por alumno), más cuándo se dictan las materias que le faltan según el Planning.
+
+**Lo que le falta (Missing subjects)**:
+Las materias del plan que el alumno todavía no aprobó, contando las que tiene regulares (le falta el final) y las que cursa, más las optativas que le quedan por elegir.
+
+**Indicador de riesgo (Risk indicator)**:
+Marca de Reportes sobre un alumno activo que conviene acompañar: atrasado respecto de su cohorte, muchos aplazos, sin inscripciones en el año, inhabilitación administrativa vigente o pocos créditos de Vida Universitaria. Los umbrales son una hipótesis (`docs/product/preguntas-abiertas.md`, pregunta 42).
+_Avoid_: «alerta» (es de la campana).
+
+**Alumno en seguimiento (Follow-up)**:
+Alumno que secretaría marcó en Reportes para acompañarlo, con una nota corta («pidió beca»). Hay uno por legajo y lo comparte todo secretaría.
+_Avoid_: confundirlo con Seguimiento (Coursework), el módulo de tareas y calificaciones.
+
+**Inhabilitación administrativa (Administrative hold)**:
+Sanción de la universidad por deuda o documentación pendiente: mientras está vigente, el alumno no puede inscribirse a materias ni a finales y se le bloquea el campus.
+
 ### Este repo
 
 **Snapshot de campus (Campus snapshot)**:
@@ -349,3 +377,6 @@ El contenido de `campus/`: una copia del repo de Nacho en una fecha, sin histori
 - **Clase**: la `SectionClass` de Cursada es un día del horario de una comisión del SIU (la que lleva lista); la clase del Planning (`PlanningClass`) es una fila de la planilla de secretaría, unida a la materia por su nombre y no a una comisión del SIU. Decir cuál.
 - **Actividad**: en el SIU es una materia o una extracurricular; en Moodle, un recurso del curso (tarea, foro); en Campus Austral, una dinámica de clase. Preferir el término específico.
 - **Nota**: la del acta (oficial, SIU), la calificación (Moodle) y la nota calculada al leer de Campus Austral son tres cosas distintas.
+- **Seguimiento**: el módulo Seguimiento (Coursework) son las tareas y calificaciones de una materia; un alumno «en seguimiento» (Follow-up) es el que secretaría marcó en Reportes para acompañarlo.
+- **Cohorte**: en Campus Austral es el grupo que cursa junto; en Reportes, los alumnos de un mismo año de ingreso («cohorte 2012»).
+- **Padrón**: el de Campus Austral es la lista de un curso; el padrón académico de Reportes son todos los alumnos de grado.

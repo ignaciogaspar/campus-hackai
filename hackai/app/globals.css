@@ -64,6 +64,11 @@
   --kind-entrega: #1d6797;
   --kind-entrega-background: #e5f3fb;
   --kind-entrega-border: #c8e4f5;
+  /* Series de los gráficos de Reportes (components/reports/): ingresantes, graduados y bajas. Orden fijo, validado
+     para daltonismo con la skill dataviz; el verde agua pide etiquetas o tabla al lado (la tabla está). */
+  --viz-1: #2c4e99;
+  --viz-2: #1baf7a;
+  --viz-3: #eb6834;
   --background: #f5f7fc;
   --foreground: var(--tinta);
   --card: oklch(1 0 0);
@@ -156,6 +161,9 @@
   --color-success: var(--success);
   --color-success-background: var(--success-background);
   --color-navy: var(--navy);
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
   --color-blue: var(--azul);
   --color-orange: var(--naranja);
   --color-ink: var(--tinta);
@@ -266,5 +274,63 @@
   }
   80% {
     transform: rotate(3deg);
+  }
+}
+
+/* Reportes (components/reports/): las barras crecen desde su base, las líneas se dibujan y las tarjetas suben un
+   poco al aparecer, al entrar a la pantalla y cada vez que cambian los filtros. Todo con
+   `motion-reduce:animate-none`: con «reducir movimiento» se ven quietas, ya en su lugar. */
+@theme {
+  --animate-grow-x: grow-x 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-grow-y: grow-y 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-draw: draw 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise: rise 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes grow-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes grow-y {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+
+/* «Imprimir o guardar como PDF» de Reportes: solo el contenido, sin la barra lateral, la de abajo, el encabezado
+   navy ni los botones (`data-print='hide'`). Lo plegado se abre antes de imprimir (components/reports/print-button.tsx). */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: #fff;
+  }
+  body:has([data-print-root]) nav,
+  body:has([data-print-root]) header,
+  [data-print='hide'] {
+    display: none !important;
+  }
+  [data-print-root] [data-slot='card'] {
+    box-shadow: none;
+    border: 1px solid var(--borde);
+    break-inside: avoid;
+  }
+  [data-print-root] * {
+    animation: none !important;
   }
 }
