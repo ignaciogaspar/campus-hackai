@@ -416,9 +416,10 @@ function WeekToolbar({
       <button
         type='button'
         onClick={onToday}
-        className='h-8 cursor-pointer rounded-lg px-3 text-[0.8125rem] font-semibold text-blue transition-colors hover:bg-accent focus-ring'
+        className='h-8 cursor-pointer rounded-lg px-3 text-[0.8125rem] font-semibold whitespace-nowrap text-blue transition-colors hover:bg-accent focus-ring'
       >
-        Hoy
+        {/* No solo «Hoy»: así se llama la sección del docente, y este botón hace otra cosa. */}
+        Ir a hoy
       </button>
       <button type='button' aria-label='Semana anterior' onClick={() => onDay(addDays(week[0], -7))} className={arrow}>
         <ChevronLeft aria-hidden='true' className='size-4.5' strokeWidth={1.8} />

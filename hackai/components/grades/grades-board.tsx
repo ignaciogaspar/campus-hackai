@@ -5,7 +5,7 @@
    filtros, el agrupamiento y la materia abierta se guardan en la URL. */
 import { CalendarCheck2, ChevronDown, CircleCheck, SearchX, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { gradeDate, termLabel } from '@/components/academic/format'
 import { GradeBadge } from '@/components/academic/grade-badge'
 import {
@@ -109,12 +109,12 @@ function Progress({ subject }: { subject: SubjectStanding }) {
 
 /* Una materia en una fila compacta: el nombre arriba y, debajo, el estado y la sigla en la misma línea; en curso,
    sus notas, y con el final pendiente, la mesa a la que está inscripto. */
-function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: () => void }) {
+function SubjectCard({ subject, onOpen }: { subject: SubjectStanding; onOpen: (from: HTMLElement) => void }) {
   return (
     <li className='min-w-0'>
       <button
         type='button'
-        onClick={onOpen}
+        onClick={(e) => onOpen(e.currentTarget)}
         aria-haspopup='dialog'
         className='flex h-full w-full min-w-0 cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left transition-[border-color,box-shadow] duration-150 hover:border-blue/25 hover:shadow-card focus-ring motion-reduce:transition-none'
       >
@@ -153,7 +153,8 @@ function Group({
   items: SubjectStanding[]
   open: boolean
   onToggle: () => void
-  onOpen: (subjectId: string) => void
+  /** Con la tarjeta que se tocó, para devolverle el foco al cerrar el panel. */
+  onOpen: (subjectId: string, from: HTMLElement) => void
 }) {
   const id = `grupo-${name.replace(/\W+/g, '-')}`
   return (
@@ -183,7 +184,7 @@ function Group({
       {open && (
         <ul id={id} className='grid grid-cols-1 gap-2.5 lg:grid-cols-2 2xl:grid-cols-3'>
           {items.map((s) => (
-            <SubjectCard key={s.subjectId} subject={s} onOpen={() => onOpen(s.subjectId)} />
+            <SubjectCard key={s.subjectId} subject={s} onOpen={(from) => onOpen(s.subjectId, from)} />
           ))}
         </ul>
       )}
@@ -307,6 +308,12 @@ export function GradesBoard({
   const [filters, setFilters] = useState(initialFilters)
   const [grouping, setGrouping] = useState(initialGrouping)
   const [openId, setOpenId] = useState<string | null>(initialOpen ?? null)
+  // La tarjeta que abrió el panel: al cerrarlo, el foco vuelve ahí y no al principio de la página.
+  const opener = useRef<HTMLElement | null>(null)
+  const openFrom = (subjectId: string, from: HTMLElement) => {
+    opener.current = from
+    setOpenId(subjectId)
+  }
   // Los grupos plegados, por nombre: al cambiar de agrupamiento cambian los nombres y todo vuelve a verse.
   const [folded, setFolded] = useState<Set<string>>(new Set())
   const set = (patch: Partial<GradeFilters>) => setFilters((f) => ({ ...f, ...patch }))
@@ -381,7 +388,7 @@ export function GradesBoard({
               items={group.items}
               open={!folded.has(group.name)}
               onToggle={() => fold(group.name)}
-              onOpen={setOpenId}
+              onOpen={openFrom}
             />
           ))}
         </div>
@@ -393,6 +400,11 @@ export function GradesBoard({
             side='right'
             title={open.name}
             description={open.termName ? termLabel(open.termName) : undefined}
+            onCloseAutoFocus={(e) => {
+              if (!opener.current?.isConnected) return
+              e.preventDefault()
+              opener.current.focus()
+            }}
           >
             <SubjectDetail subject={open} />
           </SheetContent>

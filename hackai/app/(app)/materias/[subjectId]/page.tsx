@@ -5,7 +5,9 @@
    una consulta en `?hilo=`, el filtro de Consultas en `?filtro=`, lo buscado
    en el material en `?buscar=` y el
    formulario de canal nuevo en `?nuevo=canal`: todo se navega con enlaces, sin
-   JavaScript. Escribirle a un docente por primera vez es un formulario.
+   JavaScript. Escribirle a un docente por primera vez es un formulario. De
+   dónde se llegó va en `?desde=` (Novedades, Hoy, Mis materias): ahí lleva
+   «Volver» y, si falta, al inicio del rol (lib/home.ts).
 
    En el celular es una columna y el campo para escribir queda pegado abajo.
    Con un hilo abierto, el celular lo muestra en modo foco: sin las pestañas
@@ -76,6 +78,7 @@ import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Role } from '@/lib/core/people'
 import type { AccessError, Channel, ChannelView, SpaceSection, Spaces, SpaceView } from '@/lib/core/spaces'
+import { type Back, backFor } from '@/lib/home'
 import type { Fail } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -141,7 +144,8 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
     nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined,
     vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined,
     buscar: singleParam(raw.buscar)?.trim() || undefined,
-    comision: singleParam(raw.comision)
+    comision: singleParam(raw.comision),
+    desde: singleParam(raw.desde)
   }
 }
 
@@ -169,10 +173,20 @@ function RetryLink({ href }: { href: string }) {
   )
 }
 
-function SpaceError({ error, retryHref, role }: { error: AccessError; retryHref: string; role: Role }) {
+function SpaceError({
+  error,
+  retryHref,
+  role,
+  back
+}: {
+  error: AccessError
+  retryHref: string
+  role: Role
+  back: Back
+}) {
   return (
     <>
-      <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop art='general' />
+      <PageHeader title='Espacio de la materia' back={back} hideBackOnDesktop art='general' desktopBell={false} />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{error === 'sin-acceso' ? noAccessText(role) : OPEN_ERRORS[error]}</p>
@@ -477,8 +491,12 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const query = readQuery(raw)
   const notice = singleParam(raw.discord)
 
+  const back = backFor(session.role, query.desde)
+
   const opened = await openSpace(session.personId, subjectId)
-  if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} role={session.role} />
+  if (!opened.ok) {
+    return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} role={session.role} back={back} />
+  }
   const view = opened.value
   const taught = taughtSections(view)
   const focus = focusSection(
@@ -513,7 +531,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           .join(' · ')}
         icon={<SubjectIcon name={view.space.name} size='lg' tone='glass' className='max-sm:hidden' />}
         art={subjectTheme(view.space.name).art}
-        backHref='/materias'
+        back={back}
         hideBackOnDesktop
         desktopBell={false}
       >

@@ -11,7 +11,7 @@ import type { SignInError } from '@/app/actions/session'
 import { PersonPicker } from '@/components/session/person-picker'
 import { signInQr } from '@/components/session/sign-in-qr'
 import { PageHeader } from '@/components/shell/page-header'
-import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { EmptyState, ErrorNotice, SuccessNotice } from '@/components/ui/states'
 import { getSession, homeFor } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
@@ -46,10 +46,11 @@ function signInErrorMessage(error: string | string[]): string {
     : UNKNOWN_PERSON
 }
 
-type SignInParams = { error?: string | string[]; next?: string | string[] }
+/** `salida`: se llega de «Cerrar sesión» (app/actions/session.ts). */
+type SignInParams = { error?: string | string[]; next?: string | string[]; salida?: string | string[] }
 
 export default async function IngresoPage({ searchParams }: { searchParams: Promise<SignInParams> }) {
-  const [session, { error, next }] = await Promise.all([getSession(), searchParams])
+  const [session, { error, next, salida }] = await Promise.all([getSession(), searchParams])
   // `next`: la ruta a la que se quiso entrar sin sesión, como el enlace a un archivo.
   const returnTo = safeReturnTo(next)
   if (session) redirect(returnTo ?? homeFor(session.role))
@@ -77,6 +78,13 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         {qr && <PhoneQr qr={qr.image} url={qr.url} />}
 
         {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
+        {error === undefined && salida !== undefined && (
+          <SuccessNotice>
+            <p>
+              <b>Cerraste sesión.</b> Para volver a entrar, elegí con quién.
+            </p>
+          </SuccessNotice>
+        )}
 
         {system().siuLive?.canConnect && !mobile && (
           <Link

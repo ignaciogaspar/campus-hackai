@@ -45,7 +45,9 @@ export async function signInAsDemoPerson(personId: string, form?: FormData): Pro
   redirect(returnTo ?? homeFor(person.value.role))
 }
 
+/** Cierra la sesión y vuelve al ingreso con `?salida=1`, que avisa «Cerraste sesión»: así un clic de más no deja
+    a nadie afuera sin saber por qué. */
 export async function signOut(): Promise<void> {
   await endSession()
-  redirect('/')
+  redirect('/?salida=1')
 }

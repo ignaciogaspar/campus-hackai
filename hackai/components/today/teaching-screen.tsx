@@ -78,7 +78,12 @@ function QuestionRow({ question: q }: { question: OpenQuestion }) {
   const where = q.sectionName ? `${q.subjectName} · Comisión ${q.sectionName}` : q.subjectName
   return (
     <ListItem
-      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId, comision: q.sectionId ?? undefined })}
+      href={spaceHref(q.subjectId, {
+        canal: q.channelId,
+        hilo: q.messageId,
+        comision: q.sectionId ?? undefined,
+        desde: 'hoy'
+      })}
       start={
         <Icon>
           <ChannelIcon kind='consultas' className='size-5' />
@@ -126,7 +131,8 @@ function UnreadRow({ item }: { item: UnreadItem }) {
       href={spaceHref(item.subjectId, {
         canal: item.channelId,
         hilo: item.kind === 'directo' ? undefined : (item.thread ?? undefined),
-        comision: item.sectionId ?? undefined
+        comision: item.sectionId ?? undefined,
+        desde: 'hoy'
       })}
       start={
         <Icon>
@@ -166,7 +172,7 @@ function UnreadList({ view }: { view: TeachingView }) {
 function SectionRow({ section: s }: { section: TaughtSection }) {
   return (
     <ListItem
-      href={spaceHref(s.subjectId, { comision: s.sectionId })}
+      href={spaceHref(s.subjectId, { comision: s.sectionId, desde: 'hoy' })}
       className='items-center'
       start={
         <span

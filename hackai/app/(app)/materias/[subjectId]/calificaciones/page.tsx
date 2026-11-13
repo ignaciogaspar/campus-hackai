@@ -35,6 +35,7 @@ import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-tool
 import { StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { backFor } from '@/lib/home'
 import { cn } from '@/lib/utils'
 
 type Params = Promise<{ subjectId: string }>
@@ -83,7 +84,7 @@ export default async function GradebookPage({ params, searchParams }: { params: 
         subject={book.subject}
         role={session.role}
         sections={selectedSection && !several ? [selectedSection] : []}
-        backHref='/materias'
+        back={backFor(session.role, raw.desde)}
         toolbarBell
       />
       <main className={SUBJECT_MAIN}>

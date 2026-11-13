@@ -130,6 +130,8 @@ export type SpaceQuery = {
   buscar?: string
   /** La comisión elegida en el selector del docente que dicta más de una. */
   comision?: string
+  /** De dónde se llegó, para «Volver»: `novedades`, `hoy`, `materias` (lib/home.ts). */
+  desde?: string
 }
 
 /** Donde viven los espacios: `/materias/<id de la materia>`. */

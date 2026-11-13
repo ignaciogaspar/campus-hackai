@@ -76,7 +76,7 @@ export function StaleNotice({ children }: { children: ReactNode }) {
   )
 }
 
-/* Algo salió bien y conviene decirlo: se publicó, se guardó. */
+/* Algo salió bien y conviene decirlo: se publicó, se guardó, «Cerraste sesión» en el ingreso. */
 export function SuccessNotice({ children }: { children: ReactNode }) {
   return (
     <Notice icon={CircleCheck} tone='bg-success-background text-success' role='status'>
