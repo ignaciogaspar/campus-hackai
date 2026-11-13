@@ -69,6 +69,32 @@ test('las clases de una comisión salen de su horario: cada martes y jueves del 
   assert.ok(classes.every((c, i) => i === 0 || classes[i - 1].classAt < c.classAt))
 })
 
+test('la próxima clase de la comisión es la primera que no empezó; con el período sin empezar, dice cuándo empieza', async () => {
+  const { studies, advance } = build()
+
+  // Martes a las 12: la clase de hoy, a las 14, todavía no empezó.
+  assert.deepEqual(value(await studies.nextClass(TEACHER, SECTION)), {
+    classAt: TODAY_CLASS,
+    endAt: '2026-11-10T19:00:00.000Z',
+    termStartsOn: null
+  })
+  // La comisión de verano empieza el lunes 11 de enero, de 9 a 13.
+  assert.deepEqual(value(await studies.nextClass(TEACHER, 'sec-fi1-fi-v')), {
+    classAt: '2027-01-11T12:00:00.000Z',
+    endAt: '2027-01-11T16:00:00.000Z',
+    termStartsOn: '2027-01-11'
+  })
+  assert.deepEqual(await studies.nextClass(OTHER_TEACHER, SECTION), { ok: false, error: 'sin-acceso' })
+
+  // A las 17 la de hoy ya empezó: la próxima es la del jueves.
+  advance(5 * 60)
+  assert.equal(value(await studies.nextClass(TEACHER, SECTION))?.classAt, '2026-11-12T17:00:00.000Z')
+
+  // Después de la última clase del cuatrimestre (jueves 26/11) no hay próxima.
+  advance(17 * 24 * 60)
+  assert.equal(value(await studies.nextClass(TEACHER, SECTION)), null)
+})
+
 test('la materia dice si la comisión tiene clase hoy, con el reloj de la lectura', async () => {
   const { studies, advance } = build()
   const today = value(await studies.subjectsOf(TEACHER)).data.current.find((s) => s.sectionId === SECTION)
