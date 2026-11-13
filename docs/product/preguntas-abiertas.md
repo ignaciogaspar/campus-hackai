@@ -175,7 +175,8 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 
 - **Por qué importa:** Inscripciones muestra solo las comisiones de la carrera del alumno, y Notas y Estado de la carrera usan el año de cada materia, las optativas y las actividades de vida universitaria. En el SIU simulado todo eso existe (`studyPlan` y `programIds` en el puerto); en la API real no lo confirmamos.
 - **Lo que sabemos (#61):** la API pública v2.1 casi no lo trae: `/planes-versiones/{id}/actividades` da solo código, nombre y si es optativa. No hay año de la carrera, vida universitaria, porcentaje de avance ni correlativas.
-- **Hipótesis:** en producción hace falta otro canal, o un adaptador que devuelva el plan sin años y las comisiones abiertas a todas, y entonces las pantallas se ven sin filtrar. El porcentaje de Estado de la carrera lo calcula HackAI mientras tanto; #61 propone mostrar el oficial del SIU y no uno propio.
+- **Hipótesis:** en producción hace falta otro canal, o un adaptador que devuelva el plan sin años y las comisiones abiertas a todas, y entonces las pantallas se ven sin filtrar.
+- **Lo que cambió (13/11/2026):** con la cuenta del alumno, HackAI lee la Autogestión del SIU (`hackai/lib/adapters/siu-real/`). De ahí salen el % de avance oficial por certificado y orientación, las horas de optativas y los créditos de vida universitaria que pide el plan. El % que calcula HackAI queda solo para el SIU simulado, marcado como estimado.
 - **Estado:** abierta
 - **Decisión:** pendiente
 
@@ -241,6 +242,15 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Por qué importa:** HackAI marca la condición de cada alumno con la nota de cursada (promociona, regular o desaprobada) y pasa la promoción al SIU. Si el mínimo o quién lo decide no son los de la Austral, la condición que ve el alumno está mal.
 - **Hipótesis (12/11/2026):** sin configurar, una comisión promociona si el SIU la da como `instance = 'promocion'`, desde 7. El docente lo puede cambiar por comisión (de 4 a 10). Regulariza desde 4. Las instancias de examen que suma el docente quedan en HackAI y no pasan al SIU; corregirle la fecha a un parcial del SIU tampoco cambia el cronograma del SIU.
 - **Opciones:** el mínimo lo fija la cátedra (como está); un mínimo único de la facultad; que lo decida solo el SIU.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 30. ¿El reporte de avance del SIU lista todas las orientaciones o solo la elegida, y qué falta para mostrar los bloques del plan con su regla?
+
+- **Por qué importa:** Plan de estudios muestra el % de cada fila de Reportes > Promedio y porcentaje de avance, para ver qué orientación tenés más cerca (#61). Si el SIU solo lista la elegida, esa comparación no se puede hacer con este reporte.
+- **Lo que sabemos (13/11/2026):** la cuenta relevada tiene una sola fila (el título, sin orientación). El plan del SIU viene en módulos («Módulo: 1er. Año», «Materias Optativas», «Otros Requisitos»), cada uno con su regla de cumplimiento y un botón «Verificar» que responde cuánto lleva. Hoy HackAI lee solo la regla de las optativas.
+- **Hipótesis:** el reporte trae una fila por certificado de la propuesta, con las orientaciones aunque no estén elegidas. Para mostrar cada bloque con su regla (#61, «Qué te falta, por bloque del plan»), alcanza con leer la regla y el «Verificar» de cada módulo.
+- **Opciones:** relevarlo con una cuenta que tenga orientaciones; dejar los bloques por año como están; leer todas las reglas del plan.
 - **Estado:** abierta
 - **Decisión:** pendiente
 

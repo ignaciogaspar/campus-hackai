@@ -158,6 +158,13 @@ _Avoid_: «requisito» a secas.
 Documento que el alumno pide por el SIU para presentar ante un tercero: de alumno regular o de examen final. La solicitud tiene estado y vencimiento.
 _Avoid_: «certificado» para la constancia; «analítico».
 
+**Certificación (Certification)**:
+Lo que otorga la carrera al cumplir una parte del plan: el título final, un título intermedio u otra certificación. El SIU la llama «certificado» y da el % de avance de cada una (Reportes > Promedio y porcentaje de avance). HackAI muestra ese % y no calcula uno propio. En el código, el avance de una es `CertificateProgress` (`SiuCertificateProgress` en el puerto).
+_Avoid_: «constancia» o «certificado» a secas: son la constancia que se pide por el SIU.
+
+**Orientación (Orientation)**:
+Recorrido dentro de la carrera que el alumno elige en el SIU (Trámites > Orientación) y que da su propia certificación. El SIU marca cuál eligió («Ori. Elegida»). Elegirla o cambiarla queda en la Autogestión del SIU.
+
 **Analítico (Transcript)**:
 Documento oficial con la historia académica completa, que se descarga junto con el diploma digital.
 

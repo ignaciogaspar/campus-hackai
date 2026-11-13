@@ -17,7 +17,13 @@
      créditos de las actividades de vida universitaria aprobadas y las horas de
      las optativas aprobadas. */
 import { requirementsOf } from '@/lib/core/studies/requirements'
-import type { SiuAssessment, SiuHistoryEntry, SiuPlanSubjectKind, SiuStudyPlan } from '@/lib/ports/siu'
+import type {
+  SiuAssessment,
+  SiuCertificateProgress,
+  SiuHistoryEntry,
+  SiuPlanSubjectKind,
+  SiuStudyPlan
+} from '@/lib/ports/siu'
 
 /** Cómo cuenta una materia: obligatoria, optativa, de vida universitaria o, si no está en su plan, fuera del plan. */
 export type PlanKind = SiuPlanSubjectKind | 'fuera-del-plan'
@@ -87,6 +93,18 @@ export type Career = {
   percent: number
   /** Si `percent` es el del SIU; si no, una estimación de HackAI con las materias del plan. */
   percentFromSiu: boolean
+  /** El avance oficial de cada certificado y orientación, como lo da el SIU. Vacío si no lo da. */
+  certificates: CertificateProgress[]
+}
+
+/** El avance oficial de un certificado (el título o una orientación), tal como lo calcula el SIU. */
+export type CertificateProgress = {
+  name: string
+  orientation: string | null
+  /** La orientación que eligió. */
+  chosen: boolean
+  /** De 0 a 100, redondeado. `null` si el SIU no lo informa. */
+  percent: number | null
 }
 
 export const EMPTY_CAREER: Career = {
@@ -99,7 +117,8 @@ export const EMPTY_CAREER: Career = {
   universityLifeCredits: { approved: 0, total: 0 },
   electiveHours: { approved: 0, total: 0 },
   percent: 0,
-  percentFromSiu: false
+  percentFromSiu: false,
+  certificates: []
 }
 
 /** Una comisión que cursó o cursa, con lo que hace falta para la carrera. */
@@ -129,7 +148,12 @@ export type Approved = {
 
 export type CareerInput = {
   now: string
-  program: { id: string; name: string; progressPercent?: number | null } | null
+  program: {
+    id: string
+    name: string
+    progressPercent?: number | null
+    certificates?: SiuCertificateProgress[]
+  } | null
   plan: SiuStudyPlan | null
   /** `credits`: los que da una actividad de vida universitaria, o las horas de una optativa; `null` o sin dato
       en una materia obligatoria. */
@@ -285,6 +309,16 @@ function percentOf(input: CareerInput, estimate: number): Pick<Career, 'percent'
     : { percent: estimate, percentFromSiu: false }
 }
 
+/** El avance oficial por certificado, en el orden del SIU. HackAI no calcula ninguno. */
+function certificatesOf(input: CareerInput): CertificateProgress[] {
+  return (input.program?.certificates ?? []).map((c) => ({
+    name: c.name,
+    orientation: c.orientation,
+    chosen: c.chosen,
+    percent: c.percent === null ? null : Math.round(c.percent)
+  }))
+}
+
 const bySubjectOrder = (a: SubjectStanding, b: SubjectStanding) =>
   (a.year ?? 99) - (b.year ?? 99) ||
   KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) ||
@@ -314,6 +348,7 @@ export function buildCareer(input: CareerInput): Career {
     electives,
     universityLife,
     ...unitsOf(subjects, input),
-    ...percentOf(input, total ? Math.round((done / total) * 100) : 0)
+    ...percentOf(input, total ? Math.round((done / total) * 100) : 0),
+    certificates: certificatesOf(input)
   }
 }

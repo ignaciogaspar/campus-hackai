@@ -16,6 +16,7 @@ import { pagelets } from '@/lib/adapters/siu-real/html'
 import {
   parseAbsences,
   parseAssignments,
+  parseCertificates,
   parseCourseSchedules,
   parseEnrollments,
   parseHistory,
@@ -24,6 +25,7 @@ import {
   parsePlan,
   parseSchedule,
   parseVerifiedHours,
+  progressOf,
   splitSectionHeading,
   weekdaysBetween
 } from '@/lib/adapters/siu-real/parse'
@@ -440,7 +442,13 @@ test('responde por la persona real con lo que muestra su SIU, mandando la cookie
   assert.ok(person.ok)
   assert.equal(`${person.value.names} ${person.value.surname}`, 'Lucía Fernández')
   assert.deepEqual(person.value.programs, [
-    { id: 'real-iinf', name: 'Ingeniería en Informática', status: 'activa', progressPercent: 41.5 }
+    {
+      id: 'real-iinf',
+      name: 'Ingeniería en Informática',
+      status: 'activa',
+      progressPercent: 41.5,
+      certificates: [{ name: 'Ingeniero en Informática', orientation: null, chosen: false, percent: 41.5, approved: 2 }]
+    }
   ])
   const toSession = requests.filter((r) => !r.url.includes('/horarios_cursadas'))
   assert.ok(toSession.every((r) => r.cookie === `${SESSION_COOKIE}=cookie-de-prueba`))
@@ -609,6 +617,28 @@ test('el avance y los créditos de vida universitaria que pide el plan salen del
   const plan = await siu.studyPlan('real-iinf')
   assert.ok(plan.ok)
   assert.equal(plan.value.universityLifeCreditsRequired, 10)
+})
+
+test('el avance por certificado: una fila por título y orientación, y manda la orientación elegida', () => {
+  const fila = (cert: string, ori: string, elegida: string, avance: string, aprobadas: string) =>
+    `<tr><td>${cert}</td><td>${ori}</td><td>${elegida}</td><td>${avance}</td><td>${aprobadas}</td><td>7.50</td><td>7.80</td></tr>`
+  const html = `<table class="table"><thead><tr><th>Certificado</th><th>Orientación</th><th>Ori. Elegida</th><th>% de Avance</th><th>Aprobadas</th><th>Promedio con aplazos</th><th>Promedio sin aplazos</th></tr></thead><tbody>${fila('Ingeniero en Informática', '', 'No', '40.25 %', '20')}${fila('Ingeniero en Informática', 'Ciencia de Datos', 'Sí', '52,5 %', '22')}${fila('Ingeniero en Informática', 'Sistemas Embebidos', 'No', '38 %', '19')}</tbody></table>`
+  const certificates = parseCertificates(html)
+  assert.deepEqual(
+    certificates.map((c) => [c.orientation, c.chosen, c.percent, c.approved]),
+    [
+      [null, false, 40.25, 20],
+      ['Ciencia de Datos', true, 52.5, 22],
+      ['Sistemas Embebidos', false, 38, 19]
+    ]
+  )
+  assert.equal(progressOf(certificates), 52.5, 'el de la orientación elegida')
+  assert.equal(
+    progressOf(certificates.map((c) => ({ ...c, chosen: false }))),
+    40.25,
+    'sin elegida, el de la primera fila'
+  )
+  assert.equal(progressOf([]), null)
 })
 
 test('Trámites: las solicitudes del SIU, qué constancias deja pedir y a dónde manda', async () => {

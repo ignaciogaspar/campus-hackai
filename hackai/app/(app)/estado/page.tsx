@@ -2,11 +2,16 @@
    obligatorias en materias, las optativas y seminarios en horas y la vida
    universitaria en créditos, que es como lo pide la carrera—, el promedio, lo
    que cursa y los finales que le faltan, y el plan como mapa con el estado de
-   cada materia. Sin reglas de negocio: el avance, el promedio, los estados y
-   lo que pide la carrera los calcula Cursada. */
+   cada materia. Arriba, el avance oficial del SIU; si da más de un
+   certificado, el de cada título y orientación. Lo que falta y tiene la
+   inscripción abierta lleva a Inscripciones (#61). Sin reglas de negocio: el
+   avance, el promedio, los estados y lo que pide la carrera los calcula
+   Cursada. */
 import { BookOpen, ClipboardCheck, GraduationCap, type LucideIcon, Sigma } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Certificates } from '@/components/career/certificates'
+import { OpenNow, openCourses } from '@/components/career/open-now'
 import { PlanLegend, PlanLink, PlanMap } from '@/components/career/plan-map'
 import { ProgressBar, ProgressRing } from '@/components/career/progress'
 import { gradeText, isApproved } from '@/components/grades/status'
@@ -15,7 +20,7 @@ import { StaleBanner } from '@/components/ui/stale-banner'
 import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
-import type { Career, StudiesReadError } from '@/lib/core/studies'
+import type { Career, OpenEnrollment, StudiesReadError } from '@/lib/core/studies'
 
 export const metadata: Metadata = { title: 'Plan de estudios · Campus HackAI' }
 
@@ -60,7 +65,24 @@ function Stat({
   )
 }
 
-function Overview({ career }: { career: Career }) {
+const missing = (p: Career['electiveHours']) => p.approved < p.total
+
+/** Lo abierto que suma a las optativas y a la vida universitaria, si les falta. */
+function openFor(career: Career, open: OpenEnrollment[]) {
+  const kinds = new Map(career.subjects.map((s) => [s.subjectId, s.kind]))
+  const courses = [...openCourses(open).values()]
+  return {
+    electives: missing(career.electiveHours)
+      ? courses.filter((o) => o.kind === 'cursada' && kinds.get(o.subjectId) === 'optativa')
+      : [],
+    universityLife: missing(career.universityLifeCredits)
+      ? courses.filter((o) => o.kind === 'actividad' || kinds.get(o.subjectId) === 'vida-universitaria')
+      : []
+  }
+}
+
+function Overview({ career, open }: { career: Career; open: OpenEnrollment[] }) {
+  const openNow = openFor(career, open)
   const approved = career.subjects.filter((s) => isApproved(s.status)).length
   const taking = career.subjects.filter((s) => s.status === 'en-curso').length
   const finals = career.subjects.filter((s) => s.status === 'regular').length
@@ -97,11 +119,18 @@ function Overview({ career }: { career: Career }) {
             unit='horas'
             hint={`Tu carrera pide ${career.electiveHours.total} horas de optativas o seminarios.`}
           />
+          <OpenNow items={openNow.electives} unit={null} label='Abiertas para inscribirte' kind='optativa' />
           <ProgressBar
             label='Vida universitaria'
             progress={career.universityLifeCredits}
             unit='créditos'
             hint={`Tu carrera pide ${career.universityLifeCredits.total} créditos de actividades de vida universitaria.`}
+          />
+          <OpenNow
+            items={openNow.universityLife}
+            unit='créditos'
+            label='Abiertas para inscribirte'
+            kind='vida-universitaria'
           />
         </div>
       </section>
@@ -134,8 +163,13 @@ function Overview({ career }: { career: Career }) {
 
 export default async function EstadoPage() {
   const session = await requireSession('alumno')
-  const result = await system().studies.career(session.personId)
+  const [result, enrollments] = await Promise.all([
+    system().studies.career(session.personId),
+    system().studies.openEnrollments(session.personId)
+  ])
   const career = result.ok ? result.value.data : null
+  // Si no se pueden leer las inscripciones abiertas, el plan se ve igual, sin los atajos.
+  const open = enrollments.ok ? enrollments.value.data : []
 
   return (
     <>
@@ -149,7 +183,8 @@ export default async function EstadoPage() {
         ) : (
           <>
             {result.value.stale && <StaleBanner since={result.value.readAt} now={system().now()} />}
-            <Overview career={career} />
+            <Overview career={career} open={open} />
+            {career.certificates.length > 1 && <Certificates certificates={career.certificates} />}
             <section aria-labelledby='plan' className='flex flex-col gap-3'>
               <div className='flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-1'>
                 <div className='flex flex-col gap-1'>
@@ -161,7 +196,7 @@ export default async function EstadoPage() {
                 <PlanLink />
               </div>
               {career.subjects.length ? (
-                <PlanMap subjects={career.subjects} />
+                <PlanMap subjects={career.subjects} open={openCourses(open)} />
               ) : (
                 <EmptyState icon={BookOpen} title='No encontramos tu plan de estudios'>
                   El SIU no tiene un plan vigente para tu carrera. Consultalo en la secretaría de tu facultad.

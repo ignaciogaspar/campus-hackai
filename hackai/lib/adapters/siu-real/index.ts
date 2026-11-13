@@ -29,6 +29,7 @@ import {
   type OpenSubject,
   parseAbsences,
   parseAssignments,
+  parseCertificates,
   parseCourseSchedules,
   parseElectives,
   parseEnrollments,
@@ -37,7 +38,6 @@ import {
   parseOfferedSections,
   parseOpenSubjects,
   parsePlan,
-  parseProgress,
   parseProvisional,
   parseRequestOptions,
   parseRequests,
@@ -391,7 +391,7 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
   ) {
     const of = (page: string, id: string) => pagelets(page).get(id) ?? ''
     return {
-      progressPercent: parseProgress(of(pages.avance, 'reporte')),
+      certificates: parseCertificates(of(pages.avance, 'reporte')),
       provisional: parseProvisional(of(pages.actuacion, 'cursa')),
       schedule: parseSchedule(of(pages.cronograma, 'listado')),
       universityLife: parseUniversityLife(of(pages.vidaUniversitaria, 'info_vu')),

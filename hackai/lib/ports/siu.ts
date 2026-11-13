@@ -34,6 +34,23 @@ export type SiuProgram = {
   /** El avance del alumno en la propuesta, de 0 a 100, como lo calcula el SIU (Reportes > Promedio y porcentaje
       de avance). Solo lo da un SIU leído con la cuenta del alumno. */
   progressPercent?: number | null
+  /** El avance por certificado (título, título intermedio u orientación), como lo lista el mismo reporte. Solo lo
+      da un SIU leído con la cuenta del alumno. */
+  certificates?: SiuCertificateProgress[]
+}
+
+/** Una fila de Reportes > Promedio y porcentaje de avance: un certificado de la propuesta, con su orientación si
+    la tiene. Los nombres van como los escribe el SIU. */
+export type SiuCertificateProgress = {
+  name: string
+  /** `null` si el certificado no es de una orientación. */
+  orientation: string | null
+  /** La orientación que eligió el alumno («Ori. Elegida»). */
+  chosen: boolean
+  /** De 0 a 100. `null` si el SIU no lo informa. */
+  percent: number | null
+  /** Materias aprobadas que cuentan para el certificado. */
+  approved: number | null
 }
 
 export type SiuPerson = {

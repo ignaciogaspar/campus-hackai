@@ -20,10 +20,11 @@ import type {
   ScheduleGroup,
   UniversityLifeRow
 } from '@/lib/adapters/siu-real/parse'
-import { splitSectionHeading, weekdaysBetween } from '@/lib/adapters/siu-real/parse'
+import { progressOf, splitSectionHeading, weekdaysBetween } from '@/lib/adapters/siu-real/parse'
 import type {
   SiuAbsence,
   SiuAssessment,
+  SiuCertificateProgress,
   SiuCertificateRequest,
   SiuCourseEnrollment,
   SiuEnrollmentStatus,
@@ -107,8 +108,8 @@ export type SnapshotInput = {
   offer: { subject: OpenSubject; sections: OfferedSection[] }[]
   /** Todas las materias de Inscripción a Materias, también las ya inscriptas. */
   openSubjects: OpenSubject[]
-  /** El % de avance en la carrera que calcula el SIU. */
-  progressPercent: number | null
+  /** Reportes > Promedio y porcentaje de avance: el % que calcula el SIU, por certificado. */
+  certificates: SiuCertificateProgress[]
   /** Reportes > Inasistencias. */
   absences: AbsenceGroup[]
   /** Las clases del alumno (día de la semana y fechas), para contar las de cada comisión. */
@@ -548,7 +549,15 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
       email: '',
       role: 'alumno',
       school,
-      programs: [{ id: programId, name: plan.programName, status: 'activa', progressPercent: input.progressPercent }]
+      programs: [
+        {
+          id: programId,
+          name: plan.programName,
+          status: 'activa',
+          progressPercent: progressOf(input.certificates),
+          certificates: input.certificates
+        }
+      ]
     },
     terms: [...terms.values()],
     subjects: [...subjects.values()],

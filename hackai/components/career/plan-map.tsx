@@ -1,10 +1,14 @@
 /* El plan de estudios como mapa: un bloque por año de la carrera, más las
    optativas y la vida universitaria, y en cada uno sus materias con el color
-   de su estado. Solo muestra lo que da Cursada. */
+   de su estado. Las que le faltan y tienen la inscripción abierta llevan a su
+   oferta en Inscripciones. Solo muestra lo que da Cursada. */
+import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { closingText } from '@/components/enrollment/format'
+import { offerHref } from '@/components/enrollment/offer-href'
 import { byGroup } from '@/components/grades/filters'
 import { gradeText, STATUS } from '@/components/grades/status'
-import type { SubjectStanding, SubjectStatus } from '@/lib/core/studies'
+import type { OpenEnrollment, SubjectStanding, SubjectStatus } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 const LEGEND: SubjectStatus[] = ['aprobada', 'en-curso', 'regular', 'pendiente']
@@ -35,6 +39,32 @@ export function PlanLegend() {
   )
 }
 
+/** Puede anotarse ahora: le falta cursarla y la inscripción está abierta. */
+const canEnroll = (subject: SubjectStanding, open: OpenEnrollment | undefined): open is OpenEnrollment =>
+  open !== undefined && subject.status === 'pendiente'
+
+function OpenChip({ subject, open }: { subject: SubjectStanding; open: OpenEnrollment }) {
+  return (
+    <li>
+      <Link
+        href={offerHref(subject.subjectId, open.kind)}
+        className='flex min-w-0 items-center gap-2 rounded-xl border border-blue/30 bg-card px-3 py-2 text-[0.8125rem] transition-colors hover:border-blue/50 hover:bg-accent/40 focus-ring'
+      >
+        <span aria-hidden='true' className={cn('size-2 flex-none rounded-full', STATUS.pendiente.dot)} />
+        <span className='min-w-0 flex-1 leading-snug text-ink'>
+          {subject.name}
+          <span className='sr-only'>: {STATUS.pendiente.label}</span>
+        </span>
+        <span className='flex-none text-[0.75rem] font-semibold text-blue'>
+          Inscribite
+          {open.closesInDays !== null && <span className='hidden sm:inline'> · {closingText(open.closesInDays)}</span>}
+        </span>
+        <ChevronRight aria-hidden='true' className='size-4 flex-none text-blue' />
+      </Link>
+    </li>
+  )
+}
+
 function SubjectChip({ subject }: { subject: SubjectStanding }) {
   const grade = subject.finalGrade
   return (
@@ -55,23 +85,41 @@ function SubjectChip({ subject }: { subject: SubjectStanding }) {
   )
 }
 
-export function PlanMap({ subjects }: { subjects: SubjectStanding[] }) {
+export function PlanMap({
+  subjects,
+  open = new Map()
+}: {
+  subjects: SubjectStanding[]
+  /** Las inscripciones abiertas a cursar, por materia. */
+  open?: Map<string, OpenEnrollment>
+}) {
   return (
     <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-3'>
       {byGroup(subjects).map((group) => {
         const done = group.items.filter((s) => s.status === 'aprobada' || s.status === 'promocionada').length
+        const enrollable = group.items.filter((s) => canEnroll(s, open.get(s.subjectId))).length
         return (
           <section key={group.name} aria-label={group.name} className='rounded-2xl border border-border bg-card p-4'>
             <div className='flex items-baseline justify-between gap-2 pb-3'>
               <h3 className='text-[0.9375rem] font-bold text-ink'>{group.name}</h3>
-              <span className='text-[0.75rem] text-muted-foreground tabular-nums'>
+              <span className='text-right text-[0.75rem] text-muted-foreground tabular-nums'>
                 {done} de {group.items.length} aprobadas
+                {enrollable > 0 && (
+                  <span className='block font-semibold text-blue'>
+                    {enrollable === 1 ? '1 abierta' : `${enrollable} abiertas`} para inscribirte
+                  </span>
+                )}
               </span>
             </div>
             <ul className='flex flex-col gap-1.5'>
-              {group.items.map((s) => (
-                <SubjectChip key={s.subjectId} subject={s} />
-              ))}
+              {group.items.map((s) => {
+                const enrollment = open.get(s.subjectId)
+                return canEnroll(s, enrollment) ? (
+                  <OpenChip key={s.subjectId} subject={s} open={enrollment} />
+                ) : (
+                  <SubjectChip key={s.subjectId} subject={s} />
+                )
+              })}
             </ul>
           </section>
         )

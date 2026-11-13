@@ -150,6 +150,7 @@ export type {
 export type {
   Career,
   CareerProgress,
+  CertificateProgress,
   PlanKind,
   SubjectAssessment,
   SubjectStanding,
@@ -1849,7 +1850,12 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     return ok(
       buildCareer({
         now: at,
-        program: program && { id: program.id, name: program.name, progressPercent: program.progressPercent ?? null },
+        program: program && {
+          id: program.id,
+          name: program.name,
+          progressPercent: program.progressPercent ?? null,
+          certificates: program.certificates ?? []
+        },
         plan: read.value.plan,
         subjects: read.value.subjects,
         sections: read.value.sections.map(

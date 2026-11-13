@@ -3,6 +3,7 @@
    `snapshot.ts`. La forma de cada pantalla está relevada en
    docs/research/2026-11-12-datos-reales-siu-campus.md. */
 import { attrOf, gradeOf, isoDate, nameAndCode, rowsOf, tablesOf, textOf } from '@/lib/adapters/siu-real/html'
+import type { SiuCertificateProgress } from '@/lib/ports/siu'
 
 /** Barra superior de cualquier página: el nombre del alumno, en el menú de usuario. */
 export function parseUserName(page: string): string | null {
@@ -324,11 +325,24 @@ export function splitSectionHeading(heading: string, periods: string[]): { name:
   return { name: name ?? '', period: rest.join(' - ') }
 }
 
-/** Reportes > Promedio y porcentaje de avance en la carrera, pagelet `reporte`: Certificado, Orientación,
-    Ori. Elegida, % de Avance, Aprobadas, Promedio con aplazos, Promedio sin aplazos. El avance como número. */
-export function parseProgress(html: string): number | null {
-  const row = rowsOf(tablesOf(html)[0] ?? '')[0]
-  return row ? gradeOf(textOf(row[3] ?? '')) : null
+/** Reportes > Promedio y porcentaje de avance en la carrera, pagelet `reporte`: una fila por certificado, con
+    Certificado, Orientación, Ori. Elegida, % de Avance, Aprobadas, Promedio con aplazos, Promedio sin aplazos. */
+export function parseCertificates(html: string): SiuCertificateProgress[] {
+  return rowsOf(tablesOf(html)[0] ?? '')
+    .map((row) => ({
+      name: textOf(row[0] ?? ''),
+      orientation: textOf(row[1] ?? '') || null,
+      chosen: /^s[ií]$/i.test(textOf(row[2] ?? '')),
+      percent: gradeOf(textOf(row[3] ?? '')),
+      approved: gradeOf(textOf(row[4] ?? ''))
+    }))
+    .filter((c) => c.name)
+}
+
+/** El avance de la carrera: el del certificado de la orientación elegida, si la hay; si no, el de la primera
+    fila, que es el título. */
+export function progressOf(certificates: SiuCertificateProgress[]): number | null {
+  return (certificates.find((c) => c.chosen) ?? certificates[0])?.percent ?? null
 }
 
 export type OpenSubject = { name: string; code: string | null; url: string; enrolled: boolean }
