@@ -252,6 +252,9 @@ export function SidebarNews({ unread = 0 }: { unread?: number }) {
   return <SectionLink section={section} pathname={pathname} collapsed={collapsed} count={unread} />
 }
 
+/** El menú de la barra lateral, para el enlace «Saltar al menú». */
+export const MENU_ID = 'menu'
+
 const pick = (sections: Section[], hrefs: string[]) => hrefs.flatMap((href) => sections.filter((s) => s.href === href))
 
 /* En el celular, la barra de vidrio de abajo (tab-bar.tsx) con lo de todos los
@@ -282,7 +285,11 @@ export function AppNav({
   const career = student ? CAREER : []
   const tabHrefs = student ? STUDENT_TABS : TEACHER_TABS
   const tabs = pick(main, tabHrefs)
-  const more = [...main, ...career].filter((s) => !tabHrefs.includes(s.href) && !s.desktopOnly)
+  // En la hoja «Más», agrupado con títulos: lo de todos los días y lo de la carrera. No sigue el orden de compu.
+  const more = [
+    { label: 'Día a día', tabs: main.filter((s) => !tabHrefs.includes(s.href) && !s.desktopOnly) },
+    { label: 'Tu carrera', tabs: career }
+  ].filter((group) => group.tabs.length > 0)
   return (
     <>
       <TabBar tabs={tabs} more={more} />
@@ -292,7 +299,12 @@ export function AppNav({
         className='group/nav fixed inset-y-0 left-0 z-10 hidden w-(--sidebar-w) flex-col overflow-hidden px-3 py-6 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:flex'
       >
         <SidebarTop home={homeFor(student ? 'alumno' : 'profesor')} />
-        <div className='-mx-1 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-1 [scrollbar-width:thin]'>
+        {/* Adonde lleva «Saltar al menú» (sidebar-frame.tsx): el Tab siguiente cae en la primera sección. */}
+        <div
+          id={MENU_ID}
+          tabIndex={-1}
+          className='-mx-1 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-1 outline-none [scrollbar-width:thin]'
+        >
           <GroupLabel>Menú principal</GroupLabel>
           {main.map((section) =>
             section.href === '/novedades' && newsLink ? (

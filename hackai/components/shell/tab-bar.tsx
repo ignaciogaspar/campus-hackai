@@ -21,6 +21,9 @@ export type Tab = {
   short?: string
 }
 
+/** Un grupo de la hoja «Más», con su título: «Día a día», «Tu carrera». */
+export type TabGroup = { label: string; tabs: Tab[] }
+
 export const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
 /** Cuánto hay que mantener apretado para recorrer la barra. */
@@ -58,7 +61,34 @@ function Cell({ tab, on }: { tab: Tab; on: boolean }) {
 const CELL =
   'relative z-[1] flex min-w-0 flex-col items-center justify-center gap-1 rounded-full transition-colors duration-200 focus-ring-inset'
 
-export function TabBar({ tabs, more }: { tabs: Tab[]; more: Tab[] }) {
+function MoreGroup({ group, pathname }: { group: TabGroup; pathname: string }) {
+  const id = `mas-${group.label.toLowerCase().replace(/\W+/g, '-')}`
+  return (
+    <section aria-labelledby={id} className='flex flex-col gap-1'>
+      <h3 id={id} className='px-3 pt-1 text-[0.75rem] font-semibold text-muted-foreground'>
+        {group.label}
+      </h3>
+      <ul className='flex flex-col gap-1'>
+        {group.tabs.map(({ href, label, icon: Icon }) => (
+          <li key={href}>
+            <SheetClose asChild>
+              <Link
+                href={href}
+                aria-current={isActive(pathname, href) ? 'page' : undefined}
+                className='flex min-h-12 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-accent focus-ring aria-[current=page]:bg-accent aria-[current=page]:text-blue'
+              >
+                <Icon aria-hidden='true' className='size-5' strokeWidth={1.8} />
+                {label}
+              </Link>
+            </SheetClose>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+export function TabBar({ tabs, more }: { tabs: Tab[]; more: TabGroup[] }) {
   const pathname = usePathname()
   const router = useRouter()
   const track = useRef<HTMLDivElement>(null)
@@ -72,7 +102,7 @@ export function TabBar({ tabs, more }: { tabs: Tab[]; more: Tab[] }) {
   const cells = moreTab ? [...tabs, moreTab] : tabs
   const n = cells.length
   const tabIndex = tabs.findIndex((t) => isActive(pathname, t.href))
-  const moreActive = more.some((t) => isActive(pathname, t.href))
+  const moreActive = more.some((g) => g.tabs.some((t) => isActive(pathname, t.href)))
   const active = tabIndex >= 0 ? tabIndex : moreActive ? n - 1 : -1
   const shown = scrub ?? active
 
@@ -196,23 +226,12 @@ export function TabBar({ tabs, more }: { tabs: Tab[]; more: Tab[] }) {
           )}
         </div>
         {moreTab && (
-          <SheetContent title='Más secciones'>
-            <ul className='flex flex-col gap-1'>
-              {more.map(({ href, label, icon: Icon }) => (
-                <li key={href}>
-                  <SheetClose asChild>
-                    <Link
-                      href={href}
-                      aria-current={isActive(pathname, href) ? 'page' : undefined}
-                      className='flex min-h-12 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-accent focus-ring aria-[current=page]:bg-accent aria-[current=page]:text-blue'
-                    >
-                      <Icon aria-hidden='true' className='size-5' strokeWidth={1.8} />
-                      {label}
-                    </Link>
-                  </SheetClose>
-                </li>
+          <SheetContent title='Otras secciones' description='Las que no entran en la barra de abajo.'>
+            <div className='flex flex-col gap-4'>
+              {more.map((group) => (
+                <MoreGroup key={group.label} group={group} pathname={pathname} />
               ))}
-            </ul>
+            </div>
           </SheetContent>
         )}
       </Sheet>
