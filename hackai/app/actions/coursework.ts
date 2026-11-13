@@ -39,6 +39,16 @@ const ERRORS: Record<TaskError, string> = {
   'falla-externa': 'No pudimos guardarlo porque un sistema no responde. Probá de nuevo en un rato.'
 }
 
+/** El campo del formulario de la tarea al que corresponde cada error, para mostrarlo debajo de él. */
+const TASK_FIELDS: Partial<Record<TaskError, string>> = {
+  'nombre-invalido': 'name',
+  'consigna-invalida': 'instructions',
+  'fecha-invalida': 'dueAt',
+  'sin-comisiones': 'sectionIds',
+  'demasiado-grande': 'file',
+  'archivo-vacio': 'file'
+}
+
 type SubmitError = ErrorOf<ReturnType<Coursework['submit']>>
 
 const SUBMIT_ERRORS: Record<SubmitError, string> = {
@@ -52,6 +62,14 @@ const SUBMIT_ERRORS: Record<SubmitError, string> = {
   'demasiado-grande': 'Los archivos pasan los 10 MB en total. Subí unos más livianos.',
   'ya-calificada': 'Tu docente ya calificó esta entrega, así que no se puede reemplazar.',
   'falla-externa': 'No pudimos guardar tu entrega porque un sistema no responde. Probá de nuevo en un rato.'
+}
+
+/** Los errores de la entrega que son de los archivos elegidos. */
+const SUBMIT_FIELDS: Partial<Record<SubmitError, string>> = {
+  'sin-archivos': 'files',
+  'demasiados-archivos': 'files',
+  'archivo-vacio': 'files',
+  'demasiado-grande': 'files'
 }
 
 type GradeActionError = ErrorOf<ReturnType<Coursework['grade']>> | ErrorOf<ReturnType<Coursework['publish']>>
@@ -87,8 +105,8 @@ const SCALES: GradeScale[] = ['1-10', '0-100']
 
 const UNEXPECTED = 'Algo salió mal. Recargá la página y probá de nuevo.'
 
-function failed(message: string): { status: 'error'; message: string; at: number } {
-  return { status: 'error', message, at: Date.now() }
+function failed(message: string, field?: string): { status: 'error'; message: string; at: number; field?: string } {
+  return field ? { status: 'error', message, at: Date.now(), field } : { status: 'error', message, at: Date.now() }
 }
 
 // Lo que llega a una server action viene del navegador: el tipo no lo garantiza.
@@ -120,8 +138,9 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
   const session = await requireSession()
   const subjectId = text(form, 'subjectId')
   if (!subjectId) return failed(UNEXPECTED)
-  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '')
-  if (!dueAt) return failed(ERRORS['fecha-invalida'])
+  // Una fecha que no se entiende llega vacía: Seguimiento la rechaza después de mirar el nombre y la consigna, así el
+  // error que se ve primero es el del primer campo.
+  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '') ?? ''
   const sectionIds = form.getAll('sectionIds').filter((id): id is string => typeof id === 'string' && id !== '')
   const file = chosenFile(form, 'file')
 
@@ -140,7 +159,7 @@ export async function createTask(_prev: SpaceActionState, form: FormData): Promi
         }
       : undefined
   })
-  if (!result.ok) return failed(ERRORS[result.error])
+  if (!result.ok) return failed(ERRORS[result.error], TASK_FIELDS[result.error])
   revalidatePath(tasksHref(subjectId))
   redirect(tasksHref(subjectId, sectionIds[0]))
 }
@@ -150,15 +169,14 @@ export async function updateTask(_prev: SpaceActionState, form: FormData): Promi
   const session = await requireSession()
   const taskId = text(form, 'taskId')
   if (!taskId) return failed(UNEXPECTED)
-  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '')
-  if (!dueAt) return failed(ERRORS['fecha-invalida'])
+  const dueAt = dueAtFromInput(text(form, 'dueAt') ?? '') ?? ''
 
   const result = await system().coursework.updateTask(session.personId, taskId, {
     name: text(form, 'name') ?? '',
     instructions: text(form, 'instructions') ?? '',
     dueAt
   })
-  if (!result.ok) return failed(ERRORS[result.error])
+  if (!result.ok) return failed(ERRORS[result.error], TASK_FIELDS[result.error])
   revalidatePath(tasksHref(result.value.subjectId))
   revalidatePath(taskHref(result.value.subjectId, taskId))
   return { status: 'ok', message: 'Guardamos los cambios.', at: Date.now() }
@@ -352,7 +370,7 @@ export async function submitTask(_prev: SpaceActionState, form: FormData): Promi
   )
 
   const result = await system().coursework.submit(session.personId, taskId, files)
-  if (!result.ok) return failed(SUBMIT_ERRORS[result.error])
+  if (!result.ok) return failed(SUBMIT_ERRORS[result.error], SUBMIT_FIELDS[result.error])
   const task = await system().coursework.task(session.personId, taskId)
   if (task.ok) {
     revalidatePath(tasksHref(task.value.subjectId))

@@ -7,26 +7,38 @@ import { ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { createTask, updateTask } from '@/app/actions/coursework'
 import { inputValueOf, sectionLabel } from '@/components/coursework/format'
-import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
+import { ActionForm, FieldError, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import type { Task, TaskSection } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
 
-const LABEL = 'flex flex-col gap-1 text-[0.8125rem] font-semibold'
+/** Un campo: el nombre (con si es obligatorio), el control, la ayuda y el error, uno debajo del otro. El error va
+    afuera del label para que no se sume al nombre del campo. */
+const FIELD = 'flex flex-col gap-1 text-[0.8125rem] font-semibold'
 const BOX =
-  'flex min-h-11 items-center rounded-[10px] border border-border bg-card has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring'
+  'flex min-h-11 items-center rounded-[10px] border border-border bg-card has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring has-[[aria-invalid=true]]:border-destructive'
 const HELP = 'font-normal text-muted-foreground'
 const CHOICE =
   'flex min-h-11 cursor-pointer items-center gap-3 rounded-[10px] px-2 text-[0.9375rem] hover:bg-muted has-[:checked]:bg-accent has-[:checked]:font-semibold'
 const CHECK = 'size-4 accent-blue focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring'
 
+/** «(obligatorio)» u «(opcional)» al lado del nombre del campo, más suave que el nombre. */
+function Need({ children }: { children: string }) {
+  return <span className={HELP}> ({children})</span>
+}
+
+/** Nombre, consigna y fecha límite: los mismos campos para crear la tarea y para editarla. La ayuda del archivo
+    va solo al crearla, que es cuando hay campo de archivo. */
 function Fields({ task }: { task?: Task }) {
   return (
     <>
-      <label className={LABEL}>
-        Nombre
+      <div className={FIELD}>
+        <label htmlFor='tarea-nombre'>
+          Nombre<Need>obligatorio</Need>
+        </label>
         <span className={BOX}>
           <input
+            id='tarea-nombre'
             name='name'
             required
             maxLength={120}
@@ -36,28 +48,38 @@ function Fields({ task }: { task?: Task }) {
             className='min-h-11 w-full bg-transparent px-3 text-[0.9375rem] font-normal outline-none'
           />
         </span>
-      </label>
-      <label className={LABEL}>
-        Consigna
+        <FieldError field='name' />
+      </div>
+      <div className={FIELD}>
+        <label htmlFor='tarea-consigna'>
+          Consigna<Need>opcional</Need>
+        </label>
         <span className={BOX}>
           <textarea
+            id='tarea-consigna'
             name='instructions'
             rows={5}
             maxLength={5000}
             defaultValue={task?.instructions}
-            aria-describedby='tarea-consigna-ayuda'
+            aria-describedby={task ? undefined : 'tarea-consigna-ayuda'}
             placeholder='Qué tienen que hacer y cómo se entrega.'
             className='min-h-28 w-full resize-y bg-transparent px-3 py-2 text-[0.9375rem] font-normal outline-none'
           />
         </span>
-        <span id='tarea-consigna-ayuda' className={HELP}>
-          Podés sumar un archivo con los enunciados
-        </span>
-      </label>
-      <label className={LABEL}>
-        Fecha límite
+        {!task && (
+          <span id='tarea-consigna-ayuda' className={HELP}>
+            Podés sumar un archivo con los enunciados más abajo
+          </span>
+        )}
+        <FieldError field='instructions' />
+      </div>
+      <div className={FIELD}>
+        <label htmlFor='tarea-fecha'>
+          Fecha límite<Need>obligatorio</Need>
+        </label>
         <span className={BOX}>
           <input
+            id='tarea-fecha'
             type='datetime-local'
             name='dueAt'
             required
@@ -69,7 +91,8 @@ function Fields({ task }: { task?: Task }) {
         <span id='tarea-fecha-ayuda' className={HELP}>
           En hora de Buenos Aires
         </span>
-      </label>
+        <FieldError field='dueAt' />
+      </div>
     </>
   )
 }
@@ -77,16 +100,22 @@ function Fields({ task }: { task?: Task }) {
 function CreateOnly({ sections, selectedId }: { sections: TaskSection[]; selectedId: string }) {
   return (
     <>
-      <label className={LABEL}>
-        Archivo (opcional, hasta 10 MB)
+      <div className={FIELD}>
+        <label htmlFor='tarea-archivo'>
+          Archivo<Need>opcional, hasta 10 MB</Need>
+        </label>
         <input
+          id='tarea-archivo'
           type='file'
           name='file'
           className='text-[0.8125rem] font-normal file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-[10px] file:border-0 file:bg-ice file:px-3 file:font-semibold file:text-blue focus-visible:outline-3 focus-visible:outline-ring'
         />
-      </label>
+        <FieldError field='file' />
+      </div>
       <fieldset className='flex flex-col gap-1'>
-        <legend className='mb-1 text-[0.8125rem] font-semibold'>¿Para qué comisiones?</legend>
+        <legend className='mb-1 text-[0.8125rem] font-semibold'>
+          ¿Para qué comisiones?<Need>obligatorio, al menos una</Need>
+        </legend>
         {sections.map((s) => (
           <label key={s.sectionId} className={CHOICE}>
             <input
@@ -99,16 +128,26 @@ function CreateOnly({ sections, selectedId }: { sections: TaskSection[]; selecte
             {sectionLabel(s.name)}
           </label>
         ))}
+        <FieldError field='sectionIds' className='px-2' />
       </fieldset>
-      <div className='flex flex-col gap-0.5'>
+      {/* La advertencia va antes de la casilla: se lee antes de decidir, porque después no se puede cambiar. */}
+      <fieldset className='flex flex-col gap-1'>
+        <legend className='text-[0.8125rem] font-semibold'>¿Lleva nota?</legend>
+        <p id='tarea-nota-ayuda' className={cn(HELP, 'mb-1 text-[0.8125rem]')}>
+          Después no se puede cambiar. Si no lleva nota, no tiene columna en Calificaciones.
+        </p>
         <label className={CHOICE}>
-          <input type='checkbox' name='graded' value='si' defaultChecked className={CHECK} />
+          <input
+            type='checkbox'
+            name='graded'
+            value='si'
+            defaultChecked
+            aria-describedby='tarea-nota-ayuda'
+            className={CHECK}
+          />
           Lleva nota
         </label>
-        <p className={cn(HELP, 'px-2 text-[0.8125rem]')}>
-          Si no lleva nota, no tiene columna en Calificaciones. Después no se puede cambiar.
-        </p>
-      </div>
+      </fieldset>
     </>
   )
 }
@@ -130,7 +169,7 @@ export function NewTaskForm({
       <h2 id='tarea-nueva' className='text-lg font-extrabold'>
         Tarea nueva
       </h2>
-      <ActionForm action={createTask} className='mt-3 flex flex-col gap-4'>
+      <ActionForm action={createTask} noValidate className='mt-3 flex flex-col gap-4'>
         <input type='hidden' name='subjectId' value={subjectId} />
         <Fields />
         <CreateOnly sections={sections} selectedId={selectedId} />
@@ -165,7 +204,7 @@ export function EditTaskForm({ task }: { task: Task }) {
         <p className='text-[0.8125rem] text-muted-foreground'>
           Podés cambiar el nombre, la consigna y la fecha límite. Las comisiones y si lleva nota quedan como están.
         </p>
-        <ActionForm action={updateTask} className='mt-3 flex flex-col gap-4'>
+        <ActionForm action={updateTask} noValidate className='mt-3 flex flex-col gap-4'>
           <input type='hidden' name='taskId' value={task.id} />
           <Fields task={task} />
           <div className='flex flex-wrap gap-2'>

@@ -16,11 +16,12 @@ import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
 import type { ErrorOf } from '@/lib/result'
 
-/** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. */
+/** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. Un error que es de un campo
+    nombra el campo (`field`, su `name`): el formulario lo muestra debajo de él y le lleva el foco. */
 export type SpaceActionState =
   | { status: 'idle' }
   | { status: 'ok'; message: string | null; at: number }
-  | { status: 'error'; message: string; at: number }
+  | { status: 'error'; message: string; at: number; field?: string }
 
 type SpaceError =
   | ErrorOf<ReturnType<Spaces['post']>>

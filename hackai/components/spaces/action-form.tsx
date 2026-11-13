@@ -2,7 +2,9 @@
 
 /* Formulario que llama a una server action del espacio y muestra cómo salió:
    el botón queda deshabilitado mientras se manda y el error aparece debajo,
-   con role="alert". Sin JavaScript manda igual, como un formulario común.
+   con role="alert". Si el error es de un campo (`field`), va debajo de ese
+   campo, en su FieldError, con aria-invalid y el foco ahí. Sin JavaScript
+   manda igual, como un formulario común.
 
    Con JavaScript el envío se hace a mano dentro de una transición, en vez de
    con `action`: React 19 vacía los campos después de cada envío, y si algo
@@ -16,6 +18,7 @@ import {
   useActionState,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState
 } from 'react'
@@ -38,6 +41,35 @@ export function tooLarge(form: FormData): boolean {
 }
 
 const Pending = createContext(false)
+
+/** El error de campo que se está mostrando, si hay, y el id del formulario para armar los ids de cada FieldError. */
+const FieldErrors = createContext<{ formId: string; field: string | null; message: string | null }>({
+  formId: '',
+  field: null,
+  message: null
+})
+
+const fieldErrorId = (formId: string, field: string) => `${formId}-${field}-error`
+
+/** El control que corresponde a un campo: el primero, si son varios con el mismo nombre (casillas, archivos). */
+function controlOf(form: HTMLFormElement, field: string): HTMLElement | null {
+  const found = form.elements.namedItem(field)
+  if (found instanceof RadioNodeList) return found[0] instanceof HTMLElement ? found[0] : null
+  return found instanceof HTMLElement ? found : null
+}
+
+/** Marca el campo con error (aria-invalid y la descripción del error) y le lleva el foco. Devuelve cómo desmarcarlo. */
+function markInvalid(control: HTMLElement, errorId: string): () => void {
+  const describedBy = control.getAttribute('aria-describedby')
+  control.setAttribute('aria-invalid', 'true')
+  control.setAttribute('aria-describedby', [errorId, describedBy].filter(Boolean).join(' '))
+  control.focus()
+  return () => {
+    control.removeAttribute('aria-invalid')
+    if (describedBy) control.setAttribute('aria-describedby', describedBy)
+    else control.removeAttribute('aria-describedby')
+  }
+}
 
 /** El estado de una server action del espacio, con el envío a mano y el control del tamaño. */
 export function useSpaceAction(action: SpaceAction) {
@@ -63,7 +95,9 @@ export function useSpaceAction(action: SpaceAction) {
   }
 
   const error = localError ?? (state.status === 'error' ? state.message : null)
-  return { state, dispatch, pending, submit, error }
+  // El campo del error, si la acción lo nombró. El del tamaño no es de un campo: va abajo.
+  const field = localError === null && state.status === 'error' ? (state.field ?? null) : null
+  return { state, dispatch, pending, submit, error, field }
 }
 
 export function ActionForm({
@@ -83,15 +117,30 @@ export function ActionForm({
   clearOnEdit?: boolean
   children: ReactNode
 }) {
-  const { state, dispatch, pending, submit, error } = useSpaceAction(action)
+  const { state, dispatch, pending, submit, error, field: errorField } = useSpaceAction(action)
   const form = useRef<HTMLFormElement>(null)
+  const formId = useId()
   // El resultado sobre el que se volvió a escribir. Uno nuevo vuelve a mostrarse.
   const [editedOn, setEditedOn] = useState<SpaceActionState | null>(null)
   const hidden = clearOnEdit && editedOn === state
+  // Un error de un campo que este formulario no tiene (o sin su FieldError) se muestra abajo, como los demás.
+  const [unplaced, setUnplaced] = useState<SpaceActionState | null>(null)
+  const field = !hidden && unplaced !== state ? errorField : null
 
   useEffect(() => {
     if (state.status === 'ok' && resetOnSuccess) form.current?.reset()
   }, [state, resetOnSuccess])
+
+  useEffect(() => {
+    if (!field || !form.current) return
+    const control = controlOf(form.current, field)
+    const shown = form.current.querySelector(`[data-field-error="${CSS.escape(field)}"]`)
+    if (!control || !shown) {
+      setUnplaced(state)
+      return
+    }
+    return markInvalid(control, fieldErrorId(formId, field))
+  }, [field, state, formId])
 
   return (
     <form
@@ -105,8 +154,13 @@ export function ActionForm({
       className={className}
       {...props}
     >
-      <Pending.Provider value={pending}>{children}</Pending.Provider>
-      <FormFeedback error={hidden ? null : error} success={!hidden && state.status === 'ok' ? state.message : null} />
+      <Pending.Provider value={pending}>
+        <FieldErrors.Provider value={{ formId, field, message: field ? error : null }}>{children}</FieldErrors.Provider>
+      </Pending.Provider>
+      <FormFeedback
+        error={hidden || field ? null : error}
+        success={!hidden && state.status === 'ok' ? state.message : null}
+      />
     </form>
   )
 }
@@ -124,6 +178,22 @@ export function FormFeedback({ error, success }: { error: string | null; success
         {success}
       </p>
     </>
+  )
+}
+
+/** El error de un campo de un ActionForm, debajo del campo: aparece cuando la acción devuelve un error con ese
+    `field`. El campo queda con aria-invalid, descripto por este texto, y con el foco. */
+export function FieldError({ field, className }: { field: string; className?: string }) {
+  const { formId, field: current, message } = useContext(FieldErrors)
+  const text = current === field ? message : null
+  return (
+    <span
+      id={fieldErrorId(formId, field)}
+      data-field-error={field}
+      className={cn('text-[0.8125rem] font-semibold text-destructive', !text && 'hidden', className)}
+    >
+      {text}
+    </span>
   )
 }
 
