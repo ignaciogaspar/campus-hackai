@@ -22,17 +22,21 @@ export function SheetContent({
   title,
   description,
   side = 'bottom',
+  onCloseAutoFocus,
   children
 }: {
   title: string
   description?: string
   side?: keyof typeof SIDES
+  /** Al cerrarse, a dónde va el foco: por defecto vuelve al botón que la abrió; `preventDefault` lo deja a cargo de quien la usa. */
+  onCloseAutoFocus?: (event: Event) => void
   children: ReactNode
 }) {
   return (
     <Dialog.Portal>
       <Dialog.Overlay className='fixed inset-0 z-20 bg-navy/45 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none' />
       <Dialog.Content
+        onCloseAutoFocus={onCloseAutoFocus}
         className={cn(
           'fixed z-30 flex flex-col gap-4 bg-card px-5 outline-none data-[state=open]:animate-in motion-reduce:animate-none',
           SIDES[side]

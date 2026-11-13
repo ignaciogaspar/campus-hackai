@@ -156,6 +156,7 @@ export default async function TramitesPage() {
               />
             ) : (
               <Requests
+                now={system().now()}
                 heading={
                   <Heading
                     id='solicitudes'
