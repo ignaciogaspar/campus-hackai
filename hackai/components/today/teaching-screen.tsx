@@ -68,7 +68,7 @@ function QuestionRow({ question: q }: { question: OpenQuestion }) {
           <ChannelIcon kind='consultas' className='size-5' />
         </Icon>
       }
-      title={<span className='line-clamp-2'>{q.text}</span>}
+      title={<span className='line-clamp-3'>{q.text}</span>}
       description={`${q.author.name} · ${where}`}
       meta={
         <>
