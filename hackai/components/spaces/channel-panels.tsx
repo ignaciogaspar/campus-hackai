@@ -13,7 +13,7 @@ import { ArrowKeysList } from '@/components/spaces/arrow-keys'
 import { BackLink } from '@/components/spaces/back-link'
 import { Composer } from '@/components/spaces/composer'
 import { ComposerDock, LockedNote } from '@/components/spaces/composer-dock'
-import { latestOf, questionState, spaceHref } from '@/components/spaces/format'
+import { channelLabel, latestOf, questionState, spaceHref } from '@/components/spaces/format'
 import { LatestMark } from '@/components/spaces/latest-mark'
 import { MessageCard, ReplyBlock } from '@/components/spaces/messages'
 import { ThreadItem } from '@/components/spaces/unread-memory'
@@ -292,7 +292,8 @@ export function FreeChannelPanel({ subjectId, channel, threads, viewerId }: Pane
 }
 
 /* El hilo de una consulta o de un mensaje: el original, todas sus respuestas y
-   el campo para responder. La flecha vuelve al canal. */
+   el campo para responder. La flecha vuelve al canal. En el celular la página
+   lo abre en modo foco, sin las pestañas ni el riel de canales arriba. */
 export function ThreadPanel({
   subjectId,
   channel,
@@ -302,7 +303,13 @@ export function ThreadPanel({
   backLabel
 }: PanelProps & { threadId: string; backLabel: string }) {
   const thread = threads.find((t) => t.message.id === threadId)
-  const back = <BackLink href={spaceHref(subjectId, { canal: channel.id })}>Volver a {backLabel}</BackLink>
+  // En el celular es la única fila arriba del hilo (modo foco): «← Consultas · A».
+  const back = (
+    <BackLink href={spaceHref(subjectId, { canal: channel.id })}>
+      <span className='lg:hidden'>{channelLabel(channel, true)}</span>
+      <span className='max-lg:hidden'>Volver a {backLabel}</span>
+    </BackLink>
+  )
   if (!thread) {
     return (
       <>

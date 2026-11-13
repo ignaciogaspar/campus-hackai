@@ -87,6 +87,9 @@
      distancia del borde flota y cuánto lugar ocupa con esa distancia. */
   --tabbar-bottom: max(0.75rem, env(safe-area-inset-bottom));
   --tabbar-space: calc(4rem + var(--tabbar-bottom));
+  /* Lo que tapan abajo, en el celular, la barra y el campo para escribir del espacio (ComposerDock, que mide su
+     alto en --dock-height): la página deja ese lugar y el último mensaje queda por encima. */
+  --dock-space: calc(var(--tabbar-space) + 0.5rem + var(--dock-height, 0px) + 0.75rem);
 }
 
 @layer base {

@@ -8,7 +8,10 @@
    JavaScript. Escribirle a un docente por primera vez es un formulario.
 
    En el celular es una columna y el campo para escribir queda pegado abajo.
-   En compu, tres columnas: canales, conversación y un panel de contexto.
+   Con un hilo abierto, el celular lo muestra en modo foco: sin las pestañas
+   de la materia, el selector de comisión ni el riel de canales, con una sola
+   fila para volver. En compu, tres columnas: canales, conversación y un panel
+   de contexto.
 
    Mientras un canal está abierto se actualiza solo (ChannelUpdates): lo nuevo
    del canal externo o de otros aparece sin recargar. Al leer un canal, la
@@ -411,9 +414,15 @@ function CenterContent({
     aviso de la vuelta de Discord se ve aunque no haya un canal abierto. */
 function CenterPane(props: Parameters<typeof CenterContent>[0]) {
   const { server } = props.discord
+  // En el modo foco del hilo, en el celular, la tarjeta de Discord tampoco va.
+  const focused = props.query.hilo !== undefined && props.pane.kind === 'canal'
   return (
     <>
-      {server && <DiscordServer {...server} />}
+      {server && (
+        <div className={cn(focused && 'max-lg:hidden')}>
+          <DiscordServer {...server} />
+        </div>
+      )}
       <CenterContent {...props} />
     </>
   )
@@ -455,6 +464,8 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   // Si tenía no leídos, los de la barra lateral quedaron viejos: con `data-just-read` en <main>,
   // UnreadRefresh la vuelve a leer.
   const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
+  // Con un hilo abierto, en el celular van solo el encabezado y el hilo: sin pestañas, comisión ni riel de canales.
+  const focused = query.hilo !== undefined && selected !== null && selected.kind !== 'directo'
 
   return (
     <>
@@ -474,7 +485,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
 
       <main
         data-just-read={hadUnread ? '' : undefined}
-        className={cn(SUBJECT_WIDTH, 'flex flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8')}
+        className={cn(SUBJECT_WIDTH, 'flex flex-col gap-4 px-4 pt-5 pb-(--dock-space) lg:px-8 lg:pt-8 lg:pb-8')}
       >
         {view.staleSince && (
           <StaleNotice>
@@ -483,18 +494,20 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        {view.viewer.role === 'profesor' ? (
-          <TeacherNav subjectId={subjectId} view={view} requested={comision} />
-        ) : (
-          <SubjectToolbar
-            subjectId={subjectId}
-            current='espacio'
-            viewer={view.viewer.role}
-            sections={[]}
-            selectedId={comision ?? ''}
-            hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
-          />
-        )}
+        <div className={cn(focused && 'max-lg:hidden')}>
+          {view.viewer.role === 'profesor' ? (
+            <TeacherNav subjectId={subjectId} view={view} requested={comision} />
+          ) : (
+            <SubjectToolbar
+              subjectId={subjectId}
+              current='espacio'
+              viewer={view.viewer.role}
+              sections={[]}
+              selectedId={comision ?? ''}
+              hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+            />
+          )}
+        </div>
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs
@@ -504,6 +517,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
             canManage={view.viewer.canManage}
             creating={pane.kind === 'nuevo'}
             showingDirects={pane.kind === 'directos'}
+            focused={focused}
           />
 
           <section

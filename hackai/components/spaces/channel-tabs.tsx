@@ -41,17 +41,19 @@ type Props = {
   creating: boolean
   /** Si está a la vista la lista de Directos. */
   showingDirects: boolean
+  /** Con un hilo abierto: en el celular el riel no va, así la consulta se ve entera (modo foco). */
+  focused?: boolean
 }
 
 type RailProps = Pick<Props, 'subjectId' | 'canManage' | 'creating'> & { tabs: RailTab[] }
 
-function PhoneRail({ subjectId, tabs, canManage, creating }: RailProps) {
+function PhoneRail({ subjectId, tabs, canManage, creating, focused }: RailProps & { focused?: boolean }) {
   const needsMore = canManage || tabs.length > PHONE_SLOTS
   const shown = needsMore ? tabs.slice(0, PHONE_SLOTS - 1) : tabs
   const more = needsMore ? tabs.slice(PHONE_SLOTS - 1) : []
 
   return (
-    <nav aria-label='Canales del espacio' className='lg:hidden'>
+    <nav aria-label='Canales del espacio' className={focused ? 'hidden' : 'lg:hidden'}>
       <ArrowKeysList className={railTrack({ size: 'md' })}>
         {shown.map(({ id, kind, href, label, unread, selected }) => (
           <li key={id} className='flex min-w-0 [&>*]:flex-1'>
@@ -126,7 +128,7 @@ function directsTab(subjectId: string, directs: Channel[], selected: boolean): R
   }
 }
 
-export function ChannelTabs({ subjectId, channels, selectedId, canManage, creating, showingDirects }: Props) {
+export function ChannelTabs({ subjectId, channels, selectedId, canManage, creating, showingDirects, focused }: Props) {
   const several = hasSeveralSections(channels)
   const directs = channels.filter(isDirect)
   const tabs: RailTab[] = channels
@@ -145,7 +147,7 @@ export function ChannelTabs({ subjectId, channels, selectedId, canManage, creati
   tabs.push(directsTab(subjectId, directs, !creating && (showingDirects || readingDirect)))
   return (
     <>
-      <PhoneRail subjectId={subjectId} tabs={tabs} canManage={canManage} creating={creating} />
+      <PhoneRail subjectId={subjectId} tabs={tabs} canManage={canManage} creating={creating} focused={focused} />
       <DesktopRail subjectId={subjectId} tabs={tabs} canManage={canManage} creating={creating} />
     </>
   )

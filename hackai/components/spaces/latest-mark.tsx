@@ -13,9 +13,9 @@
      persona subió a leer algo, no se la mueve.
    El margen de la marca deja el mensaje por encima del campo para escribir,
    fijo abajo en el celular (y de la navegación inferior) y pegado al pie de
-   la columna en compu. En el celular cuenta también la línea de «Mensaje
-   enviado.», que agranda el campo un rato: 67 px de navegación, unos 90 del
-   campo con esa línea y un respiro. */
+   la columna en compu. En el celular es `--dock-space`, que sigue el alto real
+   del campo (con el adjunto o la confirmación de que se envió): por eso lo
+   propio se deja a la vista en el cuadro siguiente, ya medido. */
 import { type ReactNode, useEffect, useRef } from 'react'
 import type { Latest } from '@/components/spaces/format'
 import { cn } from '@/lib/utils'
@@ -76,17 +76,14 @@ export function LatestMark({ scope, latest, at, children }: Props) {
     shown.current = { scope, id }
     if (!el) return
     if (before?.scope !== scope) requestAnimationFrame(() => reveal(firstNew(list.current) ?? el))
-    else if (before.id !== id && (mine || near.current)) reveal(el)
+    else if (before.id !== id && (mine || near.current)) requestAnimationFrame(() => reveal(el))
   }, [scope, id, mine])
 
   const marker = (
     <div
       ref={mark}
       aria-hidden='true'
-      className={cn(
-        'h-0',
-        at === 'bottom' ? 'scroll-mb-[calc(180px+env(safe-area-inset-bottom))] lg:scroll-mb-24' : 'scroll-mt-4'
-      )}
+      className={cn('h-0', at === 'bottom' ? 'scroll-mb-(--dock-space) lg:scroll-mb-24' : 'scroll-mt-4')}
     />
   )
   return (
