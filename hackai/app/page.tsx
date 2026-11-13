@@ -74,9 +74,10 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
         </span>
       </PageHeader>
 
-      {/* Primero la lista de personas: el QR va debajo y, desde xl, en una columna al costado que queda a la vista. */}
-      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:px-6 lg:pt-8 xl:grid xl:grid-cols-[minmax(0,1fr)_15rem] xl:items-start xl:gap-x-10'>
-        <div className='flex min-w-0 flex-col gap-5'>
+      {/* Primero la lista de personas: el QR va debajo y, desde 1440 px, en una columna al costado que queda a la vista
+          (más angosta, el buscador no entraría entero). */}
+      <main className='flex w-full flex-col gap-5 px-4 pt-5 pb-16 lg:gap-3 lg:px-6 lg:pt-5 min-[90rem]:grid min-[90rem]:grid-cols-[minmax(0,1fr)_15rem] min-[90rem]:items-start min-[90rem]:gap-x-10'>
+        <div className='flex min-w-0 flex-col gap-5 lg:gap-3'>
           {error !== undefined && <ErrorNotice>{signInErrorMessage(error)}</ErrorNotice>}
 
           {returnTo && returnTo !== '/' && (
@@ -89,29 +90,32 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
             </p>
           )}
 
-          {system().siuLive?.canConnect && !mobile && (
-            <Link
-              href='/entrar-con-siu'
-              className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring'
-            >
-              <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
-                <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
-              </span>
-              <span className='min-w-0 flex-1'>
-                <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
-                <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
-                  Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
+          {/* En compu, «¿Quién sos?» y la cuenta del SIU van en la misma fila: así la lista arranca más arriba. */}
+          <div className='flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:items-center lg:gap-6'>
+            {system().siuLive?.canConnect && !mobile && (
+              <Link
+                href='/entrar-con-siu'
+                className='flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:bg-accent focus-ring lg:order-last lg:py-2.5'
+              >
+                <span className='grid size-10 flex-none place-items-center rounded-xl bg-accent text-blue'>
+                  <KeyRound aria-hidden='true' className='size-5' strokeWidth={1.9} />
                 </span>
-              </span>
-              <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
-            </Link>
-          )}
+                <span className='min-w-0 flex-1'>
+                  <span className='block text-[0.9375rem] font-semibold text-ink'>Entrá con tu cuenta del SIU</span>
+                  <span className='block text-[0.8125rem] text-pretty text-muted-foreground'>
+                    Para ver tus materias, notas y trámites reales. O elegí una persona de la demo.
+                  </span>
+                </span>
+                <ChevronRight aria-hidden='true' className='size-5 flex-none text-muted-foreground' />
+              </Link>
+            )}
 
-          <div>
-            <h2 className='text-lg font-extrabold text-ink'>¿Quién sos?</h2>
-            <p className='text-sm text-pretty text-muted-foreground'>
-              Elegí un alumno o un docente inventado para entrar. No hace falta clave.
-            </p>
+            <div>
+              <h2 className='text-lg font-extrabold text-ink'>¿Quién sos?</h2>
+              <p className='text-sm text-pretty text-muted-foreground'>
+                Elegí un alumno o un docente inventado para entrar. No hace falta clave.
+              </p>
+            </div>
           </div>
 
           {!listed.ok ? (
@@ -133,12 +137,12 @@ export default async function IngresoPage({ searchParams }: { searchParams: Prom
 
 /** En la compu, el QR para seguir en el celular. En el celular no aparece: se ve desde 768 px de ancho
     (`md`), para que no se esconda en un proyector con zoom o una ventana a media pantalla. Debajo de la lista,
-    y desde xl al costado, con el código arriba del texto. La dirección va sin «https://», que no hace falta
+    y desde 1440 px al costado, con el código arriba del texto. La dirección va sin «https://», que no hace falta
     para escribirla. */
 function PhoneQr({ qr, url }: { qr: string; url: string }) {
   const shown = url.replace(/^https?:\/\//, '').replace(/\/$/, '')
   return (
-    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 md:flex xl:sticky xl:top-6 xl:flex-col xl:items-start'>
+    <aside className='hidden items-center gap-4 self-start rounded-[18px] border border-border bg-card p-4 md:flex min-[90rem]:sticky min-[90rem]:top-6 min-[90rem]:flex-col min-[90rem]:items-start'>
       {/* biome-ignore lint/performance/noImgElement: es un SVG en data:, no hay nada que optimizar */}
       <img
         src={qr}

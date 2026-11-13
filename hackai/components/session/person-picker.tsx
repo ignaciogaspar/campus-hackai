@@ -87,8 +87,8 @@ export function PersonPicker({ people, returnTo }: { people: Person[]; returnTo?
   const filtered = filters.query || filters.school || filters.program || filters.role !== 'todos'
 
   return (
-    <div className='flex flex-col gap-3'>
-      <div className='sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-background/95 px-4 py-2 backdrop-blur-sm lg:-mx-6 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_14rem_16rem] lg:items-center lg:gap-3 lg:px-6'>
+    <div className='flex flex-col gap-3 lg:gap-2'>
+      <div className='sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-background/95 px-4 py-2 backdrop-blur-sm lg:-mx-6 lg:grid lg:grid-cols-[auto_minmax(17rem,1fr)_minmax(0,12rem)_minmax(0,13rem)] lg:items-center lg:gap-3 lg:px-6'>
         <fieldset aria-label='Qué personas ver' className={railTrack({ size: 'sm', className: 'lg:w-80' })}>
           {ROLES.map(({ value, label }) => (
             <button
