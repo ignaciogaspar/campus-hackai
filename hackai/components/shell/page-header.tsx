@@ -14,8 +14,9 @@ type Props = {
   title: string
   /** Arriba del título, chico: de dónde es la pantalla («De todas tus materias»). */
   kicker?: string
-  /** Debajo del título, en una línea: la fecha, la carrera o la comisión. */
-  subtitle?: string
+  /** Debajo del título, en una línea: la fecha, la carrera o la comisión. Puede ser un componente que cambie con la
+      URL, como el de Inscripciones. */
+  subtitle?: ReactNode
   /** A la izquierda del título, como el ícono de la materia en su espacio. */
   icon?: ReactNode
   /** La ilustración de la derecha, sobre el navy. */

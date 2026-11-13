@@ -91,7 +91,8 @@ function ListGroup({
   )
 }
 
-/* Los tipos, en un riel de una fila arriba de la lista (fuera del scroll): con cuántas abiertas hay de cada uno. */
+/* Los tipos, en un riel de una fila arriba de la lista (fuera del scroll): con cuántas abiertas hay de cada uno. En el
+   celular, si no entran (con letra grande), el riel se desliza y el borde derecho se desvanece para mostrarlo. */
 function KindFilter({
   current,
   counts,
@@ -104,7 +105,10 @@ function KindFilter({
   return (
     <nav
       aria-label='Tipo de materia'
-      className={cn(railTrack({ size: 'sm' }), 'w-full overflow-x-auto [scrollbar-width:none]')}
+      className={cn(
+        railTrack({ size: 'sm' }),
+        'w-full overflow-x-auto [scrollbar-width:none] max-sm:[mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]'
+      )}
     >
       {KINDS.map(({ kind, label, short }) => (
         <Link
@@ -118,7 +122,7 @@ function KindFilter({
           aria-current={kind === current ? 'page' : undefined}
           className={railItem({
             size: 'sm',
-            className: 'group/kind flex-auto shrink-0 gap-1 px-2.5 text-[0.75rem] max-sm:px-1.5'
+            className: 'group/kind min-h-11 flex-auto shrink-0 gap-1 px-2.5 text-[0.75rem] max-sm:px-1.5'
           })}
         >
           {short ? (
@@ -243,9 +247,13 @@ export function EnrollmentLists({
                 window.history.replaceState(null, '', target)
               }}
               aria-current={item.tab === tab ? 'page' : undefined}
-              className={railItem({ size: 'sm' })}
+              className={railItem({
+                size: 'sm',
+                className: 'min-h-11 py-1 text-center leading-tight whitespace-normal'
+              })}
             >
-              {item.label}
+              <span className='sm:hidden'>{item.short}</span>
+              <span className='max-sm:hidden'>{item.label}</span>
             </Link>
           )
         })}

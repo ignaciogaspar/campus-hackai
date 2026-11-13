@@ -1,7 +1,14 @@
 /* El cupo de una comisión o una mesa y el cierre de una inscripción, en palabras, con lo que calcula Cursada. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { capacityText, closingText, creditsText, elsewhereText, spotsLeftText } from '@/components/enrollment/format'
+import {
+  byAvailability,
+  capacityText,
+  closingText,
+  creditsText,
+  elsewhereText,
+  spotsLeftText
+} from '@/components/enrollment/format'
 
 test('el cupo dice cuántos lugares quedan, con el verbo en singular si queda uno', () => {
   assert.deepEqual(capacityText({ capacity: 40, spotsLeft: 12 }), { text: 'Quedan 12 lugares de 40', full: false })
@@ -62,5 +69,25 @@ test('si no se sabe nada de la otra comisión, no sugiere la baja', () => {
   assert.equal(
     elsewhereText({ name: 'A', period: null, canDrop: false }, 'Curso de Verano 2027'),
     'Ya estás inscripto en la comisión A.'
+  )
+})
+
+test('las comisiones van con la inscripta primero, después las abiertas con lugar y al final las demás', () => {
+  const item = (name: string, fields: { alreadyEnrolled?: boolean; spotsLeft?: number | null; window?: string }) => ({
+    name,
+    alreadyEnrolled: fields.alreadyEnrolled ?? false,
+    spotsLeft: fields.spotsLeft === undefined ? 10 : fields.spotsLeft,
+    enrollmentWindow: (fields.window ?? 'abierta') as 'abierta' | 'cerrada' | 'no-abrio'
+  })
+  const sorted = byAvailability([
+    item('Sin cupo', { spotsLeft: 0 }),
+    item('Cerrada', { window: 'cerrada' }),
+    item('Con lugar', {}),
+    item('Sin tope', { spotsLeft: null }),
+    item('Inscripta', { alreadyEnrolled: true, window: 'cerrada' })
+  ])
+  assert.deepEqual(
+    sorted.map((i) => i.name),
+    ['Inscripta', 'Con lugar', 'Sin tope', 'Sin cupo', 'Cerrada']
   )
 })

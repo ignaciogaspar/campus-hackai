@@ -16,9 +16,10 @@ export const KINDS: { kind: Kind; label: string; short?: string }[] = [
 export const asKind = (value: string | undefined): Kind =>
   KINDS.find((k) => k.kind === value && value !== 'todas')?.kind ?? 'todas'
 
-export const TABS: { tab: Tab; label: string }[] = [
-  { tab: 'materias', label: 'Inscripción a materias' },
-  { tab: 'examenes', label: 'Inscripción a exámenes' }
+/** `short`: en el celular, para que las dos entren también con letra grande. */
+export const TABS: { tab: Tab; label: string; short: string }[] = [
+  { tab: 'materias', label: 'Inscripción a materias', short: 'Materias' },
+  { tab: 'examenes', label: 'Inscripción a exámenes', short: 'Finales' }
 ]
 
 export function href(tab: Tab, subjectId?: string, kind: Kind = 'todas'): string {

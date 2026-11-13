@@ -1,12 +1,14 @@
 /* El detalle de una materia en Inscripciones: sus comisiones (cursada) o sus
-   mesas (final), cada una con todo lo que hace falta para elegir —modalidad,
-   fechas y horarios, duración, cupo, si se promociona, sede, docentes y
-   observaciones— y los botones para inscribirse y, ya inscripto, obtener el certificado.
-   Qué se ofrece, si está abierto y si ya está inscripto lo decide Cursada. */
+   mesas (final), compactas: lo que decide la elección (días y horarios o fecha,
+   y cupo) a la vista, con el botón para inscribirse, y el resto —modalidad,
+   fechas, duración, si se promociona, sede, docentes y observaciones— en «Ver
+   detalle». Ya inscripto, el certificado. Qué se ofrece, si está abierto y si
+   ya está inscripto lo decide Cursada. */
 import {
   Building2,
   CalendarClock,
   CalendarRange,
+  ChevronDown,
   Hourglass,
   type LucideIcon,
   MessageSquareText,
@@ -60,22 +62,25 @@ function Fact({
 
 const teachersOf = (item: OfferItem) => item.teachers.map((t) => t.name).join(', ') || 'A confirmar'
 
-/** Lo común a una comisión y una mesa: el marco, el nombre, el estado y los botones. */
+/** Lo común a una comisión y una mesa: el marco, el nombre, el estado, los datos que deciden la elección (`facts`),
+    el resto plegado en «Ver detalle» (`more`) y los botones. */
 function OfferCard({
   item,
   title,
   facts,
+  more,
   actions
 }: {
   item: OfferItem
   title: string
   facts: ReactNode
+  more: ReactNode
   actions: ReactNode
 }) {
   return (
     <li
       className={cn(
-        'flex flex-col gap-4 rounded-2xl border bg-card p-5',
+        'flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:gap-4 sm:p-5',
         item.alreadyEnrolled ? 'border-blue/40 shadow-[0_0_0_3px_var(--accent)]' : 'border-border',
         item.enrollmentWindow !== 'abierta' && 'bg-muted/40'
       )}
@@ -87,11 +92,23 @@ function OfferCard({
         </div>
         {item.alreadyEnrolled && <StatusPill tone='success'>Inscripto</StatusPill>}
       </div>
-      <dl className='grid grid-cols-2 gap-x-4 gap-y-3.5 sm:gap-x-6'>{facts}</dl>
+      <dl className='grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-6'>{facts}</dl>
+      <details className='group/more -my-1'>
+        <summary className='inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-lg text-[0.8125rem] font-semibold text-blue focus-ring [&::-webkit-details-marker]:hidden'>
+          <span className='group-open/more:hidden'>Ver detalle</span>
+          <span className='hidden group-open/more:inline'>Ocultar detalle</span>
+          <ChevronDown
+            aria-hidden='true'
+            className='size-4 transition-transform group-open/more:rotate-180 motion-reduce:transition-none'
+            strokeWidth={2}
+          />
+        </summary>
+        <dl className='grid grid-cols-2 gap-x-4 gap-y-3.5 pt-2 pb-1 sm:gap-x-6'>{more}</dl>
+      </details>
       <p className='text-[0.75rem] text-muted-foreground'>
         <WindowNote item={item} />
       </p>
-      <div className='flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-start'>
+      <div className='flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:flex-wrap sm:items-start sm:pt-4'>
         {actions}
       </div>
     </li>
@@ -133,6 +150,16 @@ export function SectionCard({
       title={`Comisión ${item.name}`}
       facts={
         <>
+          <Fact icon={CalendarClock} label='Días y horarios' wide>
+            {schedule}
+          </Fact>
+          <Fact icon={Users} label='Cupo' wide>
+            <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
+          </Fact>
+        </>
+      }
+      more={
+        <>
           <Fact icon={MonitorSmartphone} label='Modalidad'>
             {modality ?? 'A confirmar'}
           </Fact>
@@ -145,13 +172,7 @@ export function SectionCard({
           <Fact icon={Hourglass} label='Duración'>
             {item.start && item.end ? durationText(item.start, item.end) : 'A confirmar'}
           </Fact>
-          <Fact icon={CalendarClock} label='Días y horarios' wide>
-            {schedule}
-          </Fact>
-          <Fact icon={Users} label='Cupo'>
-            <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
-          </Fact>
-          <Fact icon={ScrollText} label='¿Es promocionable?'>
+          <Fact icon={ScrollText} label='¿Es promocionable?' wide>
             {instanceText(item.instance) ?? 'A confirmar'}
           </Fact>
           <Fact icon={UserRound} label='Profesores' wide>
@@ -224,10 +245,14 @@ export function BoardCard({
           <Fact icon={Building2} label='Sede y aula'>
             {item.location}
           </Fact>
-          <Fact icon={Users} label='Cupo'>
+          <Fact icon={Users} label='Cupo' wide>
             <span className={cn(capacity.full && 'font-semibold text-destructive')}>{capacity.text}</span>
           </Fact>
-          <Fact icon={ScrollText} label='Condición'>
+        </>
+      }
+      more={
+        <>
+          <Fact icon={ScrollText} label='Condición' wide>
             {item.needsRegularity ? 'Necesitás regularizar la cursada antes de la mesa' : 'Regular'}
           </Fact>
           <Fact icon={UserRound} label='Tribunal' wide>

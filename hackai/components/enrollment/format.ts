@@ -85,6 +85,18 @@ export function elsewhereText(other: OtherSection, period: string): string {
   return other.period === null ? `${enrolled}.` : `${enrolled} y su inscripción cerró, así que no te podés cambiar.`
 }
 
+type Availability = Pick<OfferItem, 'alreadyEnrolled' | 'spotsLeft' | 'enrollmentWindow'>
+
+/** 0: en la que ya está; 1: abierta y con lugar; 2: el resto (sin cupo, cerrada o que no abrió). */
+const availabilityRank = (item: Availability) =>
+  item.alreadyEnrolled ? 0 : item.enrollmentWindow === 'abierta' && item.spotsLeft !== 0 ? 1 : 2
+
+/** Las comisiones o mesas en el orden en que sirven: la inscripta, las abiertas con lugar y después las demás. Dentro
+    de cada grupo quedan como vienen. */
+export function byAvailability<T extends Availability>(items: T[]): T[] {
+  return [...items].sort((a, b) => availabilityRank(a) - availabilityRank(b))
+}
+
 /** «Se puede promocionar» o «Con final»: cómo se aprueba la cursada de una comisión. */
 export function instanceText(instance: OfferItem['instance']): string | null {
   if (instance === 'promocion') return 'Sí, se puede promocionar'
