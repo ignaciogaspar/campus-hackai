@@ -8,6 +8,7 @@
 
    Usa Personas para saber si quien carga es de secretaría, y su almacén. */
 import type { People, PeopleError, PersonId } from '@/lib/core/people'
+import { isChangeOf } from '@/lib/core/planning/changes'
 import { checkRows } from '@/lib/core/planning/checks'
 import { classesBetween } from '@/lib/core/planning/schedule'
 import { COLUMNS, type PlanningColumn, parseRows } from '@/lib/core/planning/sheet'
@@ -111,7 +112,15 @@ export type Planning = {
     personId: PersonId,
     entryId: string
   ): Promise<Result<void, 'solo-secretaria' | 'clase-desconocida' | PeopleError>>
+  /** Las clases de esas comisiones que entre esos días (`AAAA-MM-DD`, los dos incluidos) cambiaron de aula u horario
+      o se suspendieron, por día y hora: lo que se le avisa a quien las cursa o las dicta. Se reconocen por materia,
+      comisión y facultad, sin importar tildes ni mayúsculas; una clase del Planning sin facultad vale para todas. */
+  changesFor(sections: PlanningSection[], from: string, to: string): Promise<Result<PlanningClass[], ExternalFailure>>
 }
+
+/** Una comisión, como la ve el SIU, para buscar sus clases en el Planning: el nombre de la materia, el de la
+    comisión y la facultad (su id o su sigla). */
+export type PlanningSection = { subject: string; section: string | null; school: string }
 
 const DAY_ORDER = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
 
@@ -169,6 +178,12 @@ export function createPlanning({ people, store }: { people: People; store: Plann
       if (entries.length === 0) return fail('sin-clases')
       const saved = mode === 'reemplazar' ? await store.replace(entries) : await store.add(entries)
       return saved.ok ? ok({ saved: saved.value, duplicates: checked.value.counts.duplicates }) : saved
+    },
+
+    async changesFor(sections, from, to) {
+      const entries = await store.entries()
+      if (!entries.ok) return entries
+      return ok(classesBetween(entries.value, from, to).filter((c) => isChangeOf(c, sections)))
     },
 
     async remove(personId, entryId) {

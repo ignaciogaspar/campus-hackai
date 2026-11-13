@@ -188,6 +188,7 @@ Usa Cursada (que ya traduce a Personas: solo toma de ahí el tipo del id de la p
 
 | `grades(persona)` | La carrera del alumno (`career` de Cursada) con lo publicado en HackAI puesto donde corresponde: una evaluación del SIU calificada y publicada en HackAI se ve con la nota y el comentario entero de HackAI; una tarea con nota publicada es una fila más; lo del SIU que no pasó por HackAI queda como estaba. Si Seguimiento no responde, salen las notas del SIU y `hackaiUnavailable` lo avisa |
 | `newGrades(persona, visto)` | Las notas nuevas de la campana y de Novedades: las del SIU y las publicadas en HackAI, lo más nuevo primero. Una nota del SIU que ya se publicó en HackAI (misma materia y misma evaluación) se cuenta una sola vez. Con el SIU caído no se cuentan las del SIU |
+| `classChanges(persona)` | Las clases de sus materias actuales que en los próximos 7 días (hoy incluido) cambian de aula u horario o se suspenden, según el Planning (`changesFor`), por día y hora: al alumno las de las comisiones que cursa, al docente las que dicta. Si Cursada o el Planning no responden, vacío; una persona que Cursada no conoce, `persona-desconocida`. Lo usan la campana, la barra lateral y Novedades |
 
 Compone Cursada, Espacios y Seguimiento, y usa el reloj para el próximo parcial. No tiene almacén propio. El Calendario y el `.ics` salen de `today(persona)`, así que muestran las tareas de HackAI sin más; si Seguimiento no responde, faltan esas tareas y `unavailable` lleva `coursework`. Una lectura que falla deja su parte vacía y el resto se ve igual: solo corta todo una persona que Cursada no conoce.
 
@@ -201,6 +202,7 @@ En qué aula y a qué hora se dicta cada clase, de todas las materias. Lo carga 
 | `entries()` | Lo cargado, para la pantalla de secretaría: las semanales por día y hora, después las de fecha |
 | `preview(filas, modo)` | Qué pasa con cada fila, sin guardar: `ok` (con un aviso si es una clase extra), `repetida` o `error` con el motivo. Las columnas se reconocen por el encabezado en cualquier orden (`columns`); sin encabezado van en el orden de la planilla de ejemplo. Entiende horas y fechas como texto o como los números con que las guarda Excel. Chequea cada fila contra las anteriores y, con `agregar`, contra lo cargado (`lib/core/planning/checks.ts`): una fila igual a otra o a una ya cargada es `repetida` y se carga una vez; dos clases distintas en la misma aula, el mismo día y en horarios que se pisan son error («Aula A9 ya está ocupada los lunes de 9:00 a 13:00 por Física I (línea 4)…»); la misma comisión con dos clases que se pisan, o dos filas con fecha para su mismo día, también; y suspender una clase que no tiene clase semanal ese día. Una clase semanal con un cambio ese día deja su aula libre ese día |
 | `load(persona, filas, modo)` | Guarda la planilla solo si ninguna fila tiene error (si no, `con-errores` y no toca nada): `reemplazar` cambia todo el planning, `agregar` suma (un cambio de último momento o una clase a mano). Las repetidas se guardan una vez. Sin clases nuevas, `sin-clases`. Solo secretaría (`solo-secretaria`) |
+| `changesFor(comisiones, desde, hasta)` | Las clases de esas comisiones que entre esos días cambiaron de aula u horario o se suspendieron (no las clases extra), por día y hora. Una comisión se reconoce por materia, nombre de la comisión y facultad, sin importar tildes ni mayúsculas; una clase sin facultad vale para todas |
 | `remove(persona, clase)` | Borra una clase cargada. Solo secretaría |
 
 Usa Personas para el rol y su almacén (`planning_entries`, `supabase/migrations/0013_planning.sql`). En Supabase reemplazar inserta la carga nueva y recién después borra las otras, así una falla a la mitad deja el planning anterior. En memoria arranca con el planning sintético (`syntheticData.planning`); en Supabase, vacío. En `/cargar-clases` la planilla del cuatrimestre se sube como .xlsx (`lib/xlsx-read.ts`, sin dependencias, con `node:zlib`) o .csv (`lib/delimited-text.ts`) y reemplaza lo cargado (`reemplazar`); los cambios sueltos (otra aula, una suspensión, una clase extra) se cargan a mano de a una y se suman (`agregar`).
@@ -240,7 +242,7 @@ today ──► studies ──► people
   └──► coursework ──► studies
 ```
 
-Planning usa solo Personas (`planning ──► people`), para saber si quien carga es de secretaría.
+Planning usa solo Personas (`planning ──► people`), para saber si quien carga es de secretaría. Hoy usa Planning (`today ──► planning`) para `classChanges`: cruza las materias actuales de la persona con `changesFor` en los próximos 7 días, y la campana, la barra lateral y Novedades los avisan («Cambios en tus clases»), sin los que ya vio según la cookie `hackai_cambios_vistos` (`lib/class-changes-seen.ts`). Tocar uno abre `/planning?dia=…&materia=…` en esa clase.
 
 Reportes usa Personas y Planning (`reports ──► people`, `reports ──► planning`): el rol de quien mira y los horarios de lo que le falta a cada alumno. Nadie llama a Reportes.
 

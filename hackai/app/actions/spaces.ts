@@ -9,13 +9,21 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { discordChannelIdFrom } from '@/components/spaces/discord-format'
 import { spaceHref } from '@/components/spaces/format'
 import { requireSession, setServerCookie } from '@/lib/auth'
+import {
+  CLASS_CHANGES_SEEN_COOKIE,
+  CLASS_CHANGES_SEEN_MAX_AGE,
+  changeKey,
+  withSeenChanges
+} from '@/lib/class-changes-seen'
 import { system } from '@/lib/composition'
 import type { MaterialLayout, NewChannel, Spaces } from '@/lib/core/spaces'
 import { GRADES_SEEN_COOKIE, GRADES_SEEN_MAX_AGE, seenValue } from '@/lib/grades-seen'
+import { classChangesFor } from '@/lib/new-class-changes'
 import type { ErrorOf } from '@/lib/result'
 
 /** Lo que muestra el formulario después de mandar: nada, que salió bien o por qué no. Un error que es de un campo
@@ -301,14 +309,24 @@ export async function openDirect(_prev: SpaceActionState, form: FormData): Promi
   redirect(spaceHref(subjectId, { canal: result.value.id }))
 }
 
-/** «Marcar todo como leído» de Novedades: lo sin leer de todos sus espacios y, al alumno, también sus notas
-    nuevas. Devuelve por qué no se pudo, o `null` si salió bien. */
+/** «Marcar todo como leído» de Novedades: lo sin leer de todos sus espacios, los cambios de clase y, al alumno,
+    también sus notas nuevas. Devuelve por qué no se pudo, o `null` si salió bien. */
 export async function markAllNewsRead(): Promise<string | null> {
   const session = await requireSession()
   const marked = await system().spaces.markAllRead(session.personId)
   if (!marked.ok) return ERRORS[marked.error]
   if (session.role === 'alumno') {
     await setServerCookie(GRADES_SEEN_COOKIE, seenValue(session.personId, system().now()), GRADES_SEEN_MAX_AGE)
+  }
+  const changes = await classChangesFor(session)
+  if (changes.length > 0) {
+    const current = (await cookies()).get(CLASS_CHANGES_SEEN_COOKIE)?.value
+    const keys = changes.map(changeKey)
+    await setServerCookie(
+      CLASS_CHANGES_SEEN_COOKIE,
+      withSeenChanges(current, session.personId, keys),
+      CLASS_CHANGES_SEEN_MAX_AGE
+    )
   }
   revalidatePath('/', 'layout')
   return null
