@@ -5,6 +5,8 @@
    comisión, mail) queda vacío. */
 import { argentinaIso, slug } from '@/lib/adapters/siu-real/html'
 import type {
+  AbsenceGroup,
+  Assignment,
   CourseSchedule,
   DetailRow,
   ElectiveRow,
@@ -18,8 +20,9 @@ import type {
   ScheduleGroup,
   UniversityLifeRow
 } from '@/lib/adapters/siu-real/parse'
-import { splitSectionHeading } from '@/lib/adapters/siu-real/parse'
+import { splitSectionHeading, weekdaysBetween } from '@/lib/adapters/siu-real/parse'
 import type {
+  SiuAbsence,
   SiuAssessment,
   SiuCertificateRequest,
   SiuCourseEnrollment,
@@ -52,6 +55,8 @@ export type Snapshot = {
   history: SiuHistoryEntry[]
   provisionalResults: SiuProvisionalResult[]
   assessments: SiuAssessment[]
+  /** Las faltas de Reportes > Inasistencias. */
+  absences: SiuAbsence[]
   studyPlan: SiuStudyPlan | null
   /** El enlace «Moodle» de cada comisión, para saber su curso del Campus. */
   moodleLinks: { sectionId: string; url: string }[]
@@ -104,6 +109,10 @@ export type SnapshotInput = {
   openSubjects: OpenSubject[]
   /** El % de avance en la carrera que calcula el SIU. */
   progressPercent: number | null
+  /** Reportes > Inasistencias. */
+  absences: AbsenceGroup[]
+  /** Las clases del alumno (día de la semana y fechas), para contar las de cada comisión. */
+  assignments: Assignment[]
   procedures: Procedures
 }
 
@@ -257,6 +266,13 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
   }
 
   const sections = new Map<string, SiuSection>()
+  /** Cuántas clases tiene la comisión: cada día de la semana que tiene asignado, entre sus fechas. El SIU no da
+      feriados ni clases suspendidas: es la cuenta del calendario. `null` si no tiene asignaciones con fecha. */
+  const classCountOf = (code: string, section: string) => {
+    const mine = input.assignments.filter((a) => a.subjectCode === code && slug(a.section) === slug(section))
+    return mine.length ? mine.reduce((sum, a) => sum + weekdaysBetween(a.from, a.to, a.weekday), 0) || null : null
+  }
+
   const addSection = (code: string, section: string, termId: string, site = '') => {
     const id = sectionId(code, section, termId)
     const classes = classesOf(code, section)
@@ -275,7 +291,8 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
         instance: null,
         capacity: classes.capacity,
         programIds: [programId],
-        notes: null
+        notes: null,
+        classCount: classCountOf(code, section)
       })
     return id
   }
@@ -434,6 +451,25 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
 
   history.push(...grades)
 
+  const absences: SiuAbsence[] = input.absences.flatMap((group) => {
+    const found = enrolledSection(group.subjectCode, group.subjectName, group.section)
+    if (!found) return []
+    return group.rows.flatMap((row, i) =>
+      row.date
+        ? [
+            {
+              id: `${found.id}-falta-${i + 1}`,
+              personId,
+              sectionId: found.id,
+              date: row.date,
+              justified: row.justified,
+              amount: row.amount
+            }
+          ]
+        : []
+    )
+  })
+
   const provisionalResults: SiuProvisionalResult[] = input.provisional.flatMap((row, i) => {
     const found = enrolledSection(null, row.subjectName, row.section)
     if (!found) return []
@@ -521,6 +557,7 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
     history,
     provisionalResults,
     assessments,
+    absences,
     studyPlan,
     moodleLinks,
     enrolledCounts,

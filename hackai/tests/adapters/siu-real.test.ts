@@ -14,6 +14,8 @@ import { createRealSiu, SESSION_COOKIE } from '@/lib/adapters/siu-real'
 import { dropFormIn, enrollFormIn } from '@/lib/adapters/siu-real/actions'
 import { pagelets } from '@/lib/adapters/siu-real/html'
 import {
+  parseAbsences,
+  parseAssignments,
   parseCourseSchedules,
   parseEnrollments,
   parseHistory,
@@ -22,7 +24,8 @@ import {
   parsePlan,
   parseSchedule,
   parseVerifiedHours,
-  splitSectionHeading
+  splitSectionHeading,
+  weekdaysBetween
 } from '@/lib/adapters/siu-real/parse'
 import { realPersonId, withRealPeople, withRealPerson, withRealSubject } from '@/lib/adapters/siu-real/person'
 import { createRealSiuRegistry, siuIdOf } from '@/lib/adapters/siu-real/registry'
@@ -123,6 +126,29 @@ const NUEVA_SOLICITUD = `<h2>Solicitar constancias</h2><form id="form" action="$
 <select name="constancia" id="constancia"><option value="0">-- Seleccione --</option><option value="1" data-formulario="34000240">Constancia de Alumno Regular</option><option value="102" data-formulario="34000236">Constancia Examen Final</option></select>
 <select name="copias" id="copias"></select><input type="text" name="presentar" id="presentar" /><textarea name="observaciones"></textarea></form>`
 
+const INASISTENCIAS = `<div id="listado"><div class="actividad"><h3 class="titulo-corte">(BD2) Bases de Datos - Comisión: Bases de Datos INF</h3><table class="table table-bordered table-condensed comisiones"><tr class="titulo"><th width="10%">Fecha</th><th width="11%">Tipo de clase</th><th>Tema dictado</th><th width="15%">Cant. inasistencias</th><th width="10%">Justificada</th></tr>
+<tr><td>02/09/2026</td><td>Teórico-Práctica</td><td></td><td>1.00</td><td>No</td></tr><tr><td>16/09/2026</td><td>Teórico-Práctica</td><td></td><td>0.50</td><td>Si</td></tr></table></div></div>`
+
+/** El calendario de Inscripción a Materias: las asignaciones del alumno, junto a datos personales que no se usan. */
+const ASIGNACIONES = [
+  {
+    MATERIA: 'BD2',
+    NOMBRE: 'Bases de Datos INF',
+    DIA_SEMANA: '4',
+    FECHA_ASIGN_DESDE: '2026-08-03',
+    FECHA_ASIGN_HASTA: '2026-11-13'
+  },
+  {
+    MATERIA: 'BD2',
+    NOMBRE: 'Bases de Datos INF',
+    DIA_SEMANA: '6',
+    FECHA_ASIGN_DESDE: '2026-08-03',
+    FECHA_ASIGN_HASTA: '2026-11-13'
+  },
+  { MATERIA: 'RED1', NOMBRE: 'Redes INF', DIA_SEMANA: null, FECHA_ASIGN_DESDE: null, FECHA_ASIGN_HASTA: null }
+]
+const PERSONA = { apellido: 'Fernández', nombres: 'Lucía', nro_documento: '30111222' }
+
 const json = (value: unknown) => JSON.stringify(value)
 
 /** Lo que responde el SIU de prueba en cada ruta. Las de sesión se cortan si la sesión venció. */
@@ -146,8 +172,12 @@ const ROUTES: Record<string, { session: boolean; body: string; contentType?: str
   'historia_academica/detalle_promocion': { session: true, body: json({ cod: 1, cont: '' }) },
   cursada: {
     session: true,
-    body: page({ info_materia: '<h3>Comenzar inscripción</h3>', lista_materias: LISTA_MATERIAS })
+    body: page(
+      { info_materia: '<h3>Comenzar inscripción</h3>', lista_materias: LISTA_MATERIAS, notificaciones: '' },
+      { notificaciones: { persona: json(PERSONA), asignaciones: json(ASIGNACIONES) } }
+    )
   },
+  reporte_inasistencias: { session: true, body: page({ inasistencias: INASISTENCIAS }) },
   'cursada/elegir_materia/ayu6': { session: true, body: json({ cod: 1, cont: COMISIONES_AYUDANTIA }) },
   'cursada/elegir_materia/bd2': { session: true, body: json({ cod: 1, cont: COMISIONES_BASES_DE_DATOS }) },
   'cursada/inscribir': {
@@ -877,4 +907,51 @@ test('la sesión del SIU viaja cifrada y la persona se reconoce sin guardar su d
   assert.match(personKey('30111222'), /^[a-f0-9]{12}$/)
   assert.equal(personKey('30111222'), personKey('30111222'))
   assert.notEqual(personKey('30111222'), personKey('30111223'))
+})
+
+test('lee Reportes > Inasistencias: comisión, fecha, cantidad (con decimales) y si está justificada', () => {
+  assert.deepEqual(parseAbsences(INASISTENCIAS), [
+    {
+      subjectCode: 'BD2',
+      subjectName: 'Bases de Datos',
+      section: 'Bases de Datos INF',
+      rows: [
+        { date: '2026-09-02T03:00:00.000Z', classType: 'Teórico-Práctica', amount: 1, justified: false },
+        { date: '2026-09-16T03:00:00.000Z', classType: 'Teórico-Práctica', amount: 0.5, justified: true }
+      ]
+    }
+  ])
+})
+
+test('lee las asignaciones del alumno y deja afuera las que no tienen día o fechas', () => {
+  assert.deepEqual(parseAssignments(json(ASIGNACIONES)), [
+    { subjectCode: 'BD2', section: 'Bases de Datos INF', weekday: 4, from: '2026-08-03', to: '2026-11-13' },
+    { subjectCode: 'BD2', section: 'Bases de Datos INF', weekday: 6, from: '2026-08-03', to: '2026-11-13' }
+  ])
+  assert.deepEqual(parseAssignments('no es json'), [])
+})
+
+test('cuenta cuántas veces cae un día de la semana entre dos fechas', () => {
+  // Del lunes 3/8 al viernes 13/11 de 2026: 15 miércoles (4) y 15 viernes (6).
+  assert.equal(weekdaysBetween('2026-08-03', '2026-11-13', 4), 15)
+  assert.equal(weekdaysBetween('2026-08-03', '2026-11-13', 6), 15)
+  assert.equal(weekdaysBetween('2026-08-03', '2026-08-03', 2), 1)
+  assert.equal(weekdaysBetween('2026-08-04', '2026-08-03', 2), 0)
+})
+
+test('las faltas de la persona real salen del SIU, y las clases de la comisión, de sus asignaciones', async () => {
+  const { siu } = build()
+  const report = await siu.absences('real-alumno')
+  assert.ok(report.ok)
+  assert.deepEqual(
+    report.value.absences.map((a) => [a.sectionId, a.date.slice(0, 10), a.amount, a.justified]),
+    [
+      [SECTION, '2026-09-02', 1, false],
+      [SECTION, '2026-09-16', 0.5, true]
+    ]
+  )
+  assert.deepEqual(report.value.limits, [], 'el SIU no da el máximo')
+  const section = await siu.section(SECTION)
+  assert.ok(section.ok)
+  assert.equal(section.value.classCount, 30, 'miércoles y viernes, 15 de cada uno')
 })

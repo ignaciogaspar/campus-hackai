@@ -88,7 +88,7 @@
    Usa Personas para traducir personas a ids del SIU y de Moodle, y los puertos
    del SIU, del aula virtual y el reloj. */
 import type { People, PersonId, Role } from '@/lib/core/people'
-import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail } from '@/lib/core/studies/absences'
+import { type AbsenceRecord, absencesFrom, type MyAbsencesDetail, maxAbsences } from '@/lib/core/studies/absences'
 import {
   type Approved as ApprovedInCareer,
   buildCareer,
@@ -97,6 +97,7 @@ import {
   type LoadedGrade,
   type TakenSection
 } from '@/lib/core/studies/career'
+import { requirementsOf } from '@/lib/core/studies/requirements'
 import {
   createSectionStudents,
   type SectionStudent,
@@ -883,8 +884,9 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     })
   }
 
-  /** Las faltas de cada materia actual del alumno. Sin las del SIU no hay
-      cuenta que valga: falla, y `fresh` devuelve lo último leído. */
+  /** Las faltas de las materias actuales del alumno en las que tiene alguna. El máximo es el que da el SIU o,
+      si no lo da, el que sale de la asistencia que pide la facultad y las clases de la comisión. Sin las del SIU
+      no hay cuenta que valga: falla, y `fresh` devuelve lo último leído. */
   async function absencesOf(personId: PersonId): Promise<Result<MyAbsencesDetail, ReadError>> {
     const who = await siuPersonOf(personId)
     if (!who.ok) return who
@@ -894,16 +896,26 @@ export function createStudies({ people, siu, classroom, clock }: StudiesDeps): S
     if (!report.ok) return fail(asUnknownPerson(report.error))
     // Por ahora la única fuente es el SIU; la toma de lista (#108) suma la de HackAI.
     const records: AbsenceRecord[] = report.value.absences
-      .map((a) => ({ id: a.id, sectionId: a.sectionId, date: a.date, justified: a.justified, source: 'siu' as const }))
+      .map((a) => ({
+        id: a.id,
+        sectionId: a.sectionId,
+        date: a.date,
+        justified: a.justified,
+        amount: a.amount ?? 1,
+        source: 'siu' as const
+      }))
       .sort((a, b) => a.date.localeCompare(b.date))
+    const rules = requirementsOf(activePrograms(who.value.person)[0]?.id ?? null)
     return ok({
       subjects: mine.value.sections
-        .filter((s) => s.current)
+        .filter((s) => s.current && records.some((a) => a.sectionId === s.section.id))
         .map(({ section, subject }) => {
           const mineHere = records.filter((a) => a.sectionId === section.id)
-          const max = report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
+          const fromSiu = report.value.limits.find((l) => l.sectionId === section.id)?.max ?? null
+          const classes = fromSiu === null && section.classCount ? section.classCount : null
+          const max = fromSiu ?? (classes ? maxAbsences(classes, rules.attendanceRequired) : null)
           return {
-            ...absencesFrom(mineHere, max),
+            ...absencesFrom(mineHere, max, classes),
             subjectId: subject.id,
             subjectCode: subject.code,
             subjectName: subject.name,

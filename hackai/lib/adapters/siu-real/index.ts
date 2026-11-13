@@ -27,6 +27,8 @@ import {
 import { pageletInfo, pagelets, textOf, urlIn } from '@/lib/adapters/siu-real/html'
 import {
   type OpenSubject,
+  parseAbsences,
+  parseAssignments,
   parseCourseSchedules,
   parseElectives,
   parseEnrollments,
@@ -78,7 +80,8 @@ const SESSION_PAGES = [
   'cursada',
   'porcentaje_avance_carrera',
   'solicitudes',
-  'solicitudes/nueva_solicitud'
+  'solicitudes/nueva_solicitud',
+  'reporte_inasistencias'
 ]
 
 /** Cuánto se sigue mostrando lo último leído si el SIU deja de responder. */
@@ -382,6 +385,21 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
     }
   }
 
+  /** Lo que se lee directo de cada reporte, sin pedir nada más. */
+  function reportsOf(
+    pages: Record<'avance' | 'actuacion' | 'cronograma' | 'vidaUniversitaria' | 'inasistencias' | 'cursada', string>
+  ) {
+    const of = (page: string, id: string) => pagelets(page).get(id) ?? ''
+    return {
+      progressPercent: parseProgress(of(pages.avance, 'reporte')),
+      provisional: parseProvisional(of(pages.actuacion, 'cursa')),
+      schedule: parseSchedule(of(pages.cronograma, 'listado')),
+      universityLife: parseUniversityLife(of(pages.vidaUniversitaria, 'info_vu')),
+      absences: parseAbsences(of(pages.inasistencias, 'inasistencias')),
+      assignments: parseAssignments(pageletInfo(pages.cursada, 'notificaciones').asignaciones)
+    }
+  }
+
   async function load(): Promise<Result<Snapshot, ExternalFailure>> {
     try {
       const pages = await Promise.all(SESSION_PAGES.map(page))
@@ -389,8 +407,9 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
         warn('SIU real: no hay sesión. La cookie de SIU_SESION venció o no es válida; pegá una nueva en .env.local.')
         return fail('falla-externa')
       }
-      const [inscripciones, historia, actuacion, cronograma, plan, vidaUniversitaria, cursada, avance, ...tramites] =
+      const [inscripciones, historia, actuacion, cronograma, plan, vidaUniversitaria, cursada, avance, ...rest] =
         pages as string[]
+      const [solicitudes, nuevaSolicitud, inasistencias] = rest
       const parsedPlan = parsePlan(pagelets(plan).get('info_plan') ?? '')
       const enrollments = parseEnrollments(pagelets(inscripciones).get('cursadas') ?? '')
       const history = parseHistory(pagelets(historia).get('info_historia') ?? '')
@@ -418,12 +437,9 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
           closed,
           offer,
           openSubjects,
-          progressPercent: parseProgress(pagelets(avance).get('reporte') ?? ''),
-          procedures: proceduresOf(tramites, historia, plan),
-          provisional: parseProvisional(pagelets(actuacion).get('cursa') ?? ''),
-          schedule: parseSchedule(pagelets(cronograma).get('listado') ?? ''),
-          plan: parsedPlan,
-          universityLife: parseUniversityLife(pagelets(vidaUniversitaria).get('info_vu') ?? '')
+          ...reportsOf({ avance, actuacion, cronograma, vidaUniversitaria, inasistencias, cursada }),
+          procedures: proceduresOf([solicitudes, nuevaSolicitud], historia, plan),
+          plan: parsedPlan
         })
       )
     } catch (error) {
@@ -600,8 +616,9 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
     provisionalResults: (id) =>
       isMine(id) ? fromSnapshot((s) => s.provisionalResults) : fallback.provisionalResults(id),
 
-    // Hoy el SIU no registra inasistencias de la persona real: no hay forma relevada que leer.
-    absences: async (id) => (isMine(id) ? ok({ absences: [], limits: [] }) : fallback.absences(id)),
+    // El reporte del SIU no da el máximo: lo calcula Cursada con las clases de cada comisión.
+    absences: (id) =>
+      isMine(id) ? fromSnapshot((s) => ({ absences: s.absences, limits: [] })) : fallback.absences(id),
 
     // La puede pedir si Nueva solicitud la ofrece hoy: el SIU no da otra respuesta.
     meetsCertificateConditions: (id, type) =>

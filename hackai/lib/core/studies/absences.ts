@@ -12,13 +12,16 @@ const NEAR_LIMIT = 1
 export type AbsenceWarning = 'cerca' | 'limite'
 
 export type MyAbsences = {
+  /** Faltas, sumando lo que vale cada una: puede tener decimales (media falta). */
   count: number
   /** Cuántas de `count` están justificadas. */
   justified: number
-  /** Máximo de la comisión, solo si el SIU lo da. */
+  /** Máximo de la comisión: el que da el SIU o, si no, el que sale de la asistencia requerida y sus clases. */
   max: number | null
   /** Cuántas le quedan antes del máximo; nunca menos de cero. Sin máximo, `null`. */
   left: number | null
+  /** Las clases de la comisión con las que se calculó el máximo, si salió de la asistencia requerida. */
+  classes: number | null
   warning: AbsenceWarning | null
 }
 
@@ -33,16 +36,26 @@ export type AbsenceRecord = {
   /** Instante ISO de la clase. */
   date: string
   justified: boolean
+  /** Cuántas faltas vale (el SIU puede cargar media o doble). */
+  amount: number
   source: AbsenceSource
 }
 
-/** Cuenta las faltas de una comisión contra su máximo (`null` si el SIU no lo da). */
-export function absencesFrom(records: AbsenceRecord[], max: number | null): MyAbsences {
-  const left = max === null ? null : Math.max(0, max - records.length)
+/** El máximo de faltas de una comisión con tantas clases, si se pide esa asistencia: lo que se puede faltar sin
+    bajar del mínimo, redondeado hacia abajo (16 clases con 75% de asistencia: 4 faltas). */
+export function maxAbsences(classes: number, attendanceRequired: number): number {
+  return Math.floor(classes * (1 - attendanceRequired) + 1e-9)
+}
+
+/** Cuenta las faltas de una comisión contra su máximo (`null` si no se sabe). `classes`: las clases con las que se
+    calculó el máximo, si salió de la asistencia requerida. */
+export function absencesFrom(records: AbsenceRecord[], max: number | null, classes: number | null = null): MyAbsences {
+  const count = Math.round(records.reduce((sum, a) => sum + a.amount, 0) * 100) / 100
+  const left = max === null ? null : Math.max(0, Math.round((max - count) * 100) / 100)
   let warning: AbsenceWarning | null = null
   // «Se acerca» pide alguna falta: con máximo 1 y ninguna, no hay aviso.
-  if (left !== null) warning = left === 0 ? 'limite' : left <= NEAR_LIMIT && records.length > 0 ? 'cerca' : null
-  return { count: records.length, justified: records.filter((a) => a.justified).length, max, left, warning }
+  if (left !== null) warning = left === 0 ? 'limite' : left <= NEAR_LIMIT && count > 0 ? 'cerca' : null
+  return { count, justified: records.filter((a) => a.justified).length, max, left, classes, warning }
 }
 
 /** El detalle de una materia actual del alumno: la cuenta y cada falta. */

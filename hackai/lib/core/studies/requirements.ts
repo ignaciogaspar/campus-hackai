@@ -10,9 +10,16 @@ export type CareerRequirements = {
   universityLifeCredits: number
   /** Horas que cuenta cada optativa o seminario aprobado. */
   hoursPerElective: number
+  /** Asistencia mínima a las clases de cada materia, de 0 a 1. La facultad pide el 75% en todas las materias
+      (según el equipo, 13/11/2026): con más del 25% de faltas, el alumno queda libre. */
+  attendanceRequired: number
 }
 
-export const MOCK_REQUIREMENTS: CareerRequirements = { universityLifeCredits: 10, hoursPerElective: 64 }
+export const MOCK_REQUIREMENTS: CareerRequirements = {
+  universityLifeCredits: 10,
+  hoursPerElective: 64,
+  attendanceRequired: 0.75
+}
 
 /** Lo que pide la carrera. Todas piden lo mismo hasta que lo configure un administrador. */
 export function requirementsOf(_programId: string | null): CareerRequirements {

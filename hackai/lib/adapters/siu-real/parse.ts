@@ -425,3 +425,64 @@ export function parseRequestOptions(html: string): RequestOption[] {
 export function requestFormAction(html: string): string | null {
   return attrOf(html.match(/<form\b[^>]*>/)?.[0] ?? '', 'action')
 }
+
+export type AbsenceRow = { date: string | null; classType: string; amount: number; justified: boolean }
+export type AbsenceGroup = { subjectName: string; subjectCode: string | null; section: string; rows: AbsenceRow[] }
+
+/** Reportes > Inasistencias, pagelet `inasistencias`: un `div.actividad` por comisión con faltas, «(CÓDIGO) Materia -
+    Comisión: Nombre», y su tabla: Fecha, Tipo de clase, Tema dictado, Cant. inasistencias, Justificada. La cantidad
+    puede tener decimales (media falta). El reporte no da el máximo. */
+export function parseAbsences(html: string): AbsenceGroup[] {
+  return html
+    .split(/<div\b(?=[^>]*class=["']actividad["'])/)
+    .slice(1)
+    .flatMap((chunk) => {
+      const heading = textOf(chunk.match(/<h3\b[^>]*>([\s\S]*?)<\/h3>/)?.[1] ?? '')
+      const match = heading.match(/^\(([^)]+)\)\s*(.*?)\s+-\s+Comisi[oó]n:\s*(.*)$/)
+      if (!match) return []
+      const rows = rowsOf(tablesOf(chunk)[0] ?? '')
+        .filter((cells) => cells.length >= 5)
+        .map((cells) => ({
+          date: isoDate(textOf(cells[0])),
+          classType: textOf(cells[1]),
+          amount: gradeOf(textOf(cells[3])) ?? 1,
+          justified: /^s[ií]/i.test(textOf(cells[4]))
+        }))
+      return [{ subjectCode: match[1].trim(), subjectName: match[2].trim(), section: match[3].trim(), rows }]
+    })
+}
+
+export type Assignment = { subjectCode: string; section: string; weekday: number; from: string; to: string }
+
+/** Las clases del alumno, del calendario de Inscripción a Materias (el `info.asignaciones` del pagelet
+    `notificaciones`): una por comisión y día de la semana, con las fechas desde y hasta. `DIA_SEMANA` va de 1
+    (domingo) a 7 (sábado). Una sin día o sin fechas (sin horario cargado) no va. Del `info` solo se leen las
+    asignaciones: el resto son datos personales que no se usan. */
+export function parseAssignments(raw: unknown): Assignment[] {
+  let list: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      list = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(list)) return []
+  return list.flatMap((item): Assignment[] => {
+    const a = item as Record<string, unknown>
+    const weekday = Number(a.DIA_SEMANA)
+    const [from, to] = [a.FECHA_ASIGN_DESDE, a.FECHA_ASIGN_HASTA]
+    if (!(weekday >= 1 && weekday <= 7) || typeof from !== 'string' || typeof to !== 'string') return []
+    if (typeof a.MATERIA !== 'string' || typeof a.NOMBRE !== 'string') return []
+    return [{ subjectCode: a.MATERIA, section: a.NOMBRE, weekday, from: from.slice(0, 10), to: to.slice(0, 10) }]
+  })
+}
+
+/** Cuántas veces cae un día de la semana (1 domingo… 7 sábado) entre dos fechas `aaaa-mm-dd`, inclusive. */
+export function weekdaysBetween(from: string, to: string, weekday: number): number {
+  const start = Date.parse(`${from}T00:00:00Z`)
+  const end = Date.parse(`${to}T00:00:00Z`)
+  if (!(start <= end)) return 0
+  const first = start + ((weekday - 1 - new Date(start).getUTCDay() + 7) % 7) * 86_400_000
+  return first > end ? 0 : Math.floor((end - first) / (7 * 86_400_000)) + 1
+}

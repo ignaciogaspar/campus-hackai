@@ -185,8 +185,8 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Lo que sabemos:** según el equipo, en la Austral el máximo suele ser 3 faltas por materia (12/11/2026).
 - **Hipótesis:** el SIU da ese máximo por comisión, y las justificadas cuentan para el máximo como las otras. En el SIU simulado todas las comisiones tienen máximo 3; si una no lo tiene, la tarjeta muestra solo la cuenta. Contar las justificadas es lo prudente: si no cuentan, el alumno tiene más margen del que ve. Avisa cuando le queda una falta y cuando llega al máximo.
 - **Opciones:** como está; no contar las justificadas; sacar el máximo de otra fuente (el reglamento de cada facultad o lo que cargue la cátedra en HackAI); mostrar solo la cuenta.
-- **Estado:** abierta
-- **Decisión:** pendiente
+- **Estado:** decidida (13/11/2026)
+- **Decisión:** el SIU no da el máximo: Reportes > Inasistencias solo trae las faltas, con su cantidad (puede ser media) y si están justificadas, y el porcentaje de asistencia de cada comisión solo lo ve la gestión. La facultad pide el 75% de asistencia en todas las materias, así que el máximo es el 25% de las clases de la comisión, redondeado hacia abajo. Las clases se cuentan con el calendario de asignaciones del SIU (día de la semana y fechas desde y hasta), sin descontar feriados. Las justificadas cuentan. Inasistencias muestra solo las materias con faltas.
 
 ### 23. ¿Cuántos créditos de vida universitaria y cuántas horas de optativas o seminarios pide cada carrera, y quién lo carga?
 

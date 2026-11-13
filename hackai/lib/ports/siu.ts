@@ -87,6 +87,9 @@ export type SiuSection = {
   programIds: string[]
   /** Observaciones de la comisión, como las carga la facultad. */
   notes: string | null
+  /** Cuántas clases tiene la comisión en su período, si se puede saber (el SIU real: su calendario de
+      asignaciones). Sirve para el máximo de faltas cuando el SIU no lo da. */
+  classCount?: number | null
 }
 
 export type SiuEnrollmentStatus = 'aceptada' | 'pendiente' | 'rechazada' | 'baja'
@@ -200,6 +203,8 @@ export type SiuAbsence = {
   sectionId: string
   date: string
   justified: boolean
+  /** Cuántas inasistencias vale esa clase («Cant. inasistencias» del SIU: puede ser 0,5 o 2). Sin dato, 1. */
+  amount?: number
 }
 
 /** Máximo de inasistencias de una comisión. Que el SIU de la Austral lo dé es
