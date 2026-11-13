@@ -40,6 +40,12 @@
      sea nueva para la campana lo decide `newGrades` (última semana, después de
      la última vez que el alumno las vio); quien junta estas notas con las del
      SIU es Hoy, no Cursada.
+   - Pegar notas: el docente pega texto con tabulaciones copiado de Excel o
+     Google Sheets en una columna y ve una vista previa (`previewPaste`) antes
+     de guardar: a quién reconoció (por legajo, mail o nombre), a quién no y cómo
+     leyó cada nota (de 1 a 10 o de 0 a 100, coma o punto, «A» de ausente).
+     `applyPaste` vuelve a leer el mismo texto y guarda; antes no se guarda nada.
+     Una nota pegada no pisa el comentario que ya tenía.
 
    Usa Cursada, el puerto de Archivos y el reloj. Cursada no lo llama. */
 import { createCourseworkModule } from '@/lib/core/coursework/module'
@@ -246,6 +252,61 @@ export type SubmissionDetail = {
 }
 
 export type AccessError = 'persona-desconocida' | 'sin-acceso' | ExternalFailure
+/** La escala de las notas que se pegan: de 1 a 10 como se guardan, o de 0 a 100 (se pasan a de 1 a 10). */
+export type GradeScale = '1-10' | '0-100'
+
+/** Por qué dato de la línea se reconoció al alumno. */
+export type PastedBy = 'legajo' | 'mail' | 'nombre'
+
+/** Qué se entendió de una línea pegada. Solo `nota` y `ausente` se guardan. */
+export type PasteOutcome =
+  | 'nota'
+  | 'ausente'
+  /** El alumno es de la comisión, pero la nota no es un número de la escala ni «A». */
+  | 'invalida'
+  /** El alumno es de la comisión y la línea no trae nota: no se toca lo que ya tenía. */
+  | 'sin-nota'
+  | 'no-reconocido'
+  /** El nombre coincide con más de un alumno de la comisión. */
+  | 'ambiguo'
+  /** Es de la comisión pero todavía no entró a HackAI: no se le puede cargar nota. */
+  | 'sin-cuenta'
+  /** El mismo alumno ya venía en una línea anterior: se usa esa. */
+  | 'repetido'
+
+export type PasteRow = {
+  /** El número de línea del texto pegado, desde 1. */
+  line: number
+  /** Lo que se pegó para identificar al alumno. */
+  key: string
+  /** La nota como se pegó. */
+  raw: string
+  outcome: PasteOutcome
+  by: PastedBy | null
+  personId: PersonId | null
+  /** «Apellido, Nombres», si se lo reconoció. */
+  name: string | null
+  legajo: string | null
+  /** La nota ya de 1 a 10; `null` si es un ausente o no se leyó. */
+  value: number | null
+}
+
+export type PasteCounts = {
+  /** Con nota, para guardar. */
+  ready: number
+  /** Ausentes, para guardar. */
+  absent: number
+  /** Líneas que no se pudieron emparejar con un alumno de la comisión. */
+  unmatched: number
+  invalid: number
+  /** Líneas sin nota o repetidas, que no cambian nada. */
+  skipped: number
+}
+
+export type PastePreview = { scale: GradeScale; rows: PasteRow[]; counts: PasteCounts }
+
+export type PasteError = 'texto-vacio' | 'texto-demasiado-largo'
+
 export type GradeError = 'nota-invalida' | 'comentario-invalido'
 export type ColumnError = 'solo-docentes' | 'columna-desconocida'
 export type TaskTextError = 'nombre-invalido' | 'consigna-invalida' | 'fecha-invalida'
@@ -318,6 +379,25 @@ export type Coursework = {
     sectionId: string,
     columnId: string
   ): Promise<Result<{ published: number }, AccessError | ColumnError | 'sin-notas'>>
+  /** Qué entendería `applyPaste` del texto pegado en una columna de una comisión que dicta el docente: una línea por
+      alumno con a quién reconoció y qué nota leyó. No guarda nada. */
+  previewPaste(
+    personId: PersonId,
+    sectionId: string,
+    columnId: string,
+    text: string,
+    scale: GradeScale
+  ): Promise<Result<PastePreview, AccessError | ColumnError | PasteError>>
+  /** Guarda las notas y los ausentes del texto pegado, leído igual que en `previewPaste`. Conserva el comentario que
+      ya tenía cada alumno; en una columna ya publicada las notas salen publicadas. Sin ninguna nota que guardar es
+      `sin-notas`. Devuelve cuántas guardó. */
+  applyPaste(
+    personId: PersonId,
+    sectionId: string,
+    columnId: string,
+    text: string,
+    scale: GradeScale
+  ): Promise<Result<{ saved: number }, AccessError | ColumnError | PasteError | 'sin-notas'>>
   /** Las notas publicadas del alumno, la más nueva primero. Nunca trae una de una columna sin publicar. */
   publishedFor(personId: PersonId): Promise<Result<PublishedGrade[], AccessError>>
   /** Las publicadas con número en los últimos 7 días y después de `seenAt` (cuando el alumno vio sus notas por última

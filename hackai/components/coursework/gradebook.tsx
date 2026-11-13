@@ -3,11 +3,11 @@
    por parcial del SIU), después se ve su estado y se publica, y debajo hay una
    fila por alumno con su nota. Tocar un alumno abre su nota y comentario.
    Sin tablas anchas: la misma lista sirve en la compu. */
-import { ClipboardList, NotebookPen } from 'lucide-react'
+import { ClipboardList, ClipboardPaste, NotebookPen } from 'lucide-react'
 import Link from 'next/link'
 import { publishColumn } from '@/app/actions/coursework'
 import { GradeBadge } from '@/components/academic/grade-badge'
-import { dueTime, gradesHref } from '@/components/coursework/format'
+import { dueTime, gradesHref, pasteGradesHref } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -107,6 +107,13 @@ export function ColumnSummary({
           >
             {everythingPublished ? 'Todo publicado' : publishLabel(column)}
           </SubmitButton>
+          <Link
+            href={pasteGradesHref(subjectId, { comision: sectionId, columna: column.id })}
+            className={cn(buttonVariants({ variant: 'ghost' }), 'rounded-[10px] px-4 text-[0.9375rem]')}
+          >
+            <ClipboardPaste aria-hidden='true' className='size-4' strokeWidth={2} />
+            Pegar notas de una planilla
+          </Link>
         </div>
         <p className='text-[0.8125rem] text-muted-foreground'>
           Al publicar, cada alumno ve su nota y tu comentario, y le llega el aviso a la campana.

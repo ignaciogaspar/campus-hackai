@@ -25,7 +25,14 @@ export const taskHref = (subjectId: string, taskId: string, comision?: string) =
 
 /** Qué se mira en Calificaciones: la comisión, la columna y, si se está calificando, el alumno. `listo` marca que se
     terminó de calificar la lista. */
-export type GradesView = { comision?: string; columna?: string; alumno?: string; listo?: boolean }
+export type GradesView = {
+  comision?: string
+  columna?: string
+  alumno?: string
+  listo?: boolean
+  /** Cuántas notas se acaban de guardar pegándolas desde una planilla. */
+  pegadas?: number
+}
 
 /** Calificaciones de la materia, con lo que se mira en `?comision=`, `?columna=` y `?alumno=`. */
 export function gradesHref(subjectId: string, view: GradesView = {}): string {
@@ -34,9 +41,22 @@ export function gradesHref(subjectId: string, view: GradesView = {}): string {
   if (view.columna) params.set('columna', view.columna)
   if (view.alumno) params.set('alumno', view.alumno)
   if (view.listo) params.set('listo', 'si')
+  if (view.pegadas) params.set('pegadas', String(view.pegadas))
   const query = params.toString()
   return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
 }
+
+/** Pegar notas desde una planilla en una columna de Calificaciones. */
+export function pasteGradesHref(subjectId: string, view: { comision?: string; columna?: string } = {}): string {
+  const params = new URLSearchParams()
+  if (view.comision) params.set('comision', view.comision)
+  if (view.columna) params.set('columna', view.columna)
+  const query = params.toString()
+  return `${subjectPath(subjectId)}/calificaciones/pegar${query ? `?${query}` : ''}`
+}
+
+/** La cantidad de notas: «1 nota», «12 notas». */
+export const notesLabel = (count: number) => (count === 1 ? '1 nota' : `${count} notas`)
 
 /** La nota que escribió la persona: acepta coma o punto decimal. `null` si no escribió nada; `NaN` si lo escrito no
     es un número. */
