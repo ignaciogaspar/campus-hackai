@@ -7,11 +7,13 @@ import type {
   CourseworkStoreError,
   DatedTask,
   NewTask,
+  StoredGrade,
   StoredSubmission,
   StoredTask,
   StoredTaskFile,
   SubmitError,
   TaskChanges,
+  TaskGrade,
   TaskView
 } from '@/lib/core/coursework'
 import {
@@ -27,7 +29,7 @@ import {
 import { createGradebook } from '@/lib/core/coursework/gradebook'
 import { countsOf, rowsOf, studentInTaught, studentsOf } from '@/lib/core/coursework/roster'
 import { checkedFiles, removeAll, saveAll } from '@/lib/core/coursework/submissions'
-import { byDue, checkedTaskTexts, datedOf, submissionFor, taskFor } from '@/lib/core/coursework/tasks'
+import { byDue, checkedTaskTexts, datedOf, submissionFor, taskFor, taskGradeOf } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
 import type { MySection } from '@/lib/core/studies'
 import { isFileId, type NewFile } from '@/lib/ports/files'
@@ -42,11 +44,12 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     task: StoredTask,
     mine: MySection[],
     staleSince: string | null,
-    submission: StoredSubmission | null = null
+    submission: StoredSubmission | null = null,
+    grade: TaskGrade | null = null
   ): TaskView {
     const [first] = mine
     return {
-      ...taskFor(task, mine.map(sectionOf), clock.now(), submission),
+      ...taskFor(task, mine.map(sectionOf), clock.now(), submission, grade),
       subject: subjectOf(first),
       role: first.role,
       canManage: teaches(mine),
@@ -146,6 +149,15 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     return ok(new Map(found.value.map((s) => [s.taskId, s])))
   }
 
+  /** Las notas de la comisión del alumno, para mostrarle la suya en cada entrega. Sin entregas no hay nada que leer. */
+  async function publishedOf(
+    section: MySection,
+    submitted: Map<string, StoredSubmission>
+  ): Promise<Result<StoredGrade[], CourseworkStoreError>> {
+    if (section.role !== 'alumno' || submitted.size === 0) return ok([])
+    return store.gradesOfSection(section.sectionId)
+  }
+
   async function tasksOf(personId: PersonId, subjectId: string, sectionId?: string): ReturnType<Coursework['tasksOf']> {
     const read = await sectionsOf(studies, personId)
     if (!read.ok) return read
@@ -159,8 +171,16 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     const ofSection = stored.value.filter((t) => t.sectionIds.includes(selected.sectionId))
     const submitted = await submissionsOf(personId, selected.role, ofSection)
     if (!submitted.ok) return submitted
+    const grades = await publishedOf(selected, submitted.value)
+    if (!grades.ok) return grades
     const tasks = ofSection.map((t) =>
-      taskFor(t, sectionsOfTask(t, ofSubject).map(sectionOf), now, submitted.value.get(t.id) ?? null)
+      taskFor(
+        t,
+        sectionsOfTask(t, ofSubject).map(sectionOf),
+        now,
+        submitted.value.get(t.id) ?? null,
+        taskGradeOf(grades.value, t.id, personId, true)
+      )
     )
     return ok({
       subject: subjectOf(selected),
@@ -315,7 +335,9 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     if (!roster.ok) return roster
     const stored = await store.submissionsOfTask(taskId)
     if (!stored.ok) return stored
-    const rows = rowsOf(roster.value.students, stored.value, task)
+    const grades = await store.gradesOfSection(sectionId)
+    if (!grades.ok) return grades
+    const rows = rowsOf(roster.value.students, stored.value, task, grades.value)
     return ok({
       task: viewOf(task, mine, staleSince),
       sectionId,
@@ -345,11 +367,13 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     const opened = await teacherOpens(personId, stored.value)
     if (!opened.ok) return opened
     const { task, mine, student, sectionId, staleSince } = opened.value
+    const grades = await store.gradesOfSection(sectionId)
+    if (!grades.ok) return grades
     return ok({
       task: viewOf(task, mine, staleSince),
       sectionId,
       student,
-      submission: submissionFor(stored.value, task),
+      submission: submissionFor(stored.value, task, taskGradeOf(grades.value, task.id, stored.value.personId, false)),
       staleSince
     })
   }
@@ -364,7 +388,10 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
       const { task, mine, staleSince } = found.value
       const submitted = await submissionsOf(personId, mine[0].role, [task])
       if (!submitted.ok) return submitted
-      return ok(viewOf(task, mine, staleSince, submitted.value.get(task.id) ?? null))
+      const grades = await publishedOf(mine[0], submitted.value)
+      if (!grades.ok) return grades
+      const grade = taskGradeOf(grades.value, task.id, personId, true)
+      return ok(viewOf(task, mine, staleSince, submitted.value.get(task.id) ?? null, grade))
     },
     submit,
     submissions,

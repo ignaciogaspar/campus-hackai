@@ -12,7 +12,9 @@
    - Una tarea sin nota queda marcada (`graded: false`): no tendrá columna en
      Calificaciones.
    - «Vencida» (`past`) se calcula al leer, con el reloj: si el docente corre la
-     fecha límite, se recalcula.
+     fecha límite, se recalcula. Una tarea no se crea con la fecha límite ya
+     pasada, ni se le corre la fecha al pasado (`fecha-pasada`); una vencida se
+     sigue editando si no se le toca la fecha.
    - El archivo de la consigna se guarda en Archivos y se entrega solo a quien
      ve la tarea.
    - Entregar es cosa del alumno de una de las comisiones de la tarea: sube uno
@@ -21,9 +23,11 @@
      leer, con la fecha límite vigente. Volver a entregar reemplaza la entrega
      anterior (y borra sus archivos) hasta que el docente la califica. Los
      archivos de una entrega los baja quien la hizo y los docentes de la
-     comisión del alumno.
+     comisión del alumno. En su entrega, el alumno ve la nota y la devolución
+     recién cuando se publican; el docente ve la que cargó.
    - Quién entregó: el docente ve todos los alumnos de una comisión suya (los de
-     Cursada) con su estado, y abre cada entrega. Una comisión que no dicta es
+     Cursada) con su estado y la nota que les cargó, y abre cada entrega. Una
+     comisión que no dicta es
      `sin-acceso`; la entrega de un alumno de otra comisión, para él, no existe.
    - Las tareas con fecha de las materias actuales del alumno (`dated`) las
      compone Hoy para el calendario y el `.ics`.
@@ -83,6 +87,18 @@ export type TaskFile = { name: string; contentType: string; size: number; url: s
 /** La materia de una tarea, para el título de la pantalla. */
 export type TaskSubject = { subjectId: string; subjectName: string; subjectCode: string; termName: string }
 
+/** La nota de un alumno en una tarea, como la ve quien mira: el alumno, solo la publicada; el docente, la que
+    cargó, publicada o no. */
+export type TaskGrade = {
+  /** De 1 a 10; `null` si estuvo ausente. */
+  value: number | null
+  absent: boolean
+  /** La devolución del docente. */
+  comment: string
+  /** Si el alumno ya la ve. */
+  published: boolean
+}
+
 /** Una entrega del alumno a una tarea. */
 export type Submission = {
   id: string
@@ -94,6 +110,9 @@ export type Submission = {
   late: { minutes: number } | null
   /** Si el docente ya la calificó: desde entonces no se reemplaza. */
   graded: boolean
+  /** La nota y la devolución: al alumno, recién cuando se publican (calificada sin publicar es `graded` sin
+      `grade`); al docente, la que cargó. `null` si no hay. */
+  grade: TaskGrade | null
 }
 
 export type Task = {
@@ -359,8 +378,14 @@ export type SubmissionStudent = SectionStudent
 /** Entregó a tiempo, entregó tarde o todavía no entregó. */
 export type SubmissionState = 'entregada' | 'atrasada' | 'sin-entrega'
 
-/** Un alumno de la comisión y su entrega a la tarea, si la hizo. */
-export type SubmissionRow = { student: SubmissionStudent; state: SubmissionState; submission: Submission | null }
+/** Un alumno de la comisión y su entrega a la tarea, si la hizo, con la nota que le cargó el docente (también sin
+    entrega). */
+export type SubmissionRow = {
+  student: SubmissionStudent
+  state: SubmissionState
+  submission: Submission | null
+  grade: TaskGrade | null
+}
 
 export type SubmissionCounts = { onTime: number; late: number; missing: number }
 

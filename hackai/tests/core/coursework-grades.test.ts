@@ -337,6 +337,59 @@ test('una nota cargada o cambiada en una columna ya publicada se ve al toque', a
   assert.equal(value(await coursework.publishedFor('p-lbenitez')).length, 1)
 })
 
+// --- La nota en la tarea ----------------------------------------------------
+
+test('el alumno ve la nota y la devolución en su entrega recién cuando se publican', async () => {
+  const { coursework } = build()
+  const task = value(await coursework.createTask('p-mledesma', taskOf()))
+  value(await coursework.submit('p-taguirre', task.id, [upload('tp.txt')]))
+  const column = `tarea:${task.id}`
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: column })))
+
+  // Calificada pero sin publicar: la entrega está cerrada y el alumno todavía no ve la nota.
+  const corrected = value(await coursework.task('p-taguirre', task.id)).submission
+  assert.equal(corrected?.graded, true)
+  assert.equal(corrected?.grade, null)
+
+  value(await coursework.publish('p-mledesma', A, column))
+
+  const published = { value: 8, absent: false, comment: 'Muy bien el punto 2.', published: true }
+  assert.deepEqual(value(await coursework.task('p-taguirre', task.id)).submission?.grade, published)
+  const listed = value(await coursework.tasksOf('p-taguirre', 'am1')).tasks.find((t) => t.id === task.id)
+  assert.deepEqual(listed?.submission?.grade, published)
+  // A otro alumno no le llega la nota de Tomás.
+  value(await coursework.submit('p-lbenitez', task.id, [upload('tp-lucia.txt')]))
+  assert.equal(value(await coursework.task('p-lbenitez', task.id)).submission?.grade, null)
+})
+
+test('el docente ve la nota cargada en cada fila de entregas, también sin publicar y sin entrega', async () => {
+  const { coursework } = build()
+  const task = value(await coursework.createTask('p-mledesma', taskOf()))
+  const column = `tarea:${task.id}`
+  value(await coursework.submit('p-taguirre', task.id, [upload('tp.txt')]))
+  value(await coursework.submit('p-lbenitez', task.id, [upload('tp-lucia.txt')]))
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: column })))
+  value(await coursework.grade('p-mledesma', gradeOf({ columnId: column, studentId: 'p-jescobar', value: 2 })))
+
+  const { rows } = value(await coursework.submissions('p-mledesma', task.id, A))
+
+  assert.deepEqual(
+    rows.map((r) => [r.student.personId, r.state, r.grade?.value ?? null, r.grade?.published ?? null]),
+    [
+      ['p-taguirre', 'entregada', 8, false],
+      ['p-lbenitez', 'entregada', null, null],
+      ['p-jescobar', 'sin-entrega', 2, false]
+    ]
+  )
+  const detail = value(await coursework.submission('p-mledesma', rows[0].submission?.id ?? ''))
+  assert.deepEqual(detail.submission.grade, {
+    value: 8,
+    absent: false,
+    comment: 'Muy bien el punto 2.',
+    published: false
+  })
+})
+
 // --- La campana -------------------------------------------------------------
 
 test('las notas nuevas son las publicadas con número en la última semana y después de que el alumno las vio', async () => {

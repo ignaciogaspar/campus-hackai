@@ -18,6 +18,7 @@ import {
   relativeDue,
   rowStatus,
   sectionsLabel,
+  subjectNotesHref,
   submissionHref,
   submissionStatus,
   taskHref,
@@ -183,4 +184,9 @@ test('cuánto falta para una fecha límite se dice en días de Buenos Aires', ()
   assert.equal(relativeDue('2026-11-11T00:30:00-03:00', now), 'vence mañana')
   assert.equal(relativeDue('2026-11-13T23:59:00-03:00', now), 'vence en 3 días')
   assert.equal(relativeDue('2026-11-10T22:00:00-03:00', now), 'venció')
+})
+
+test('la nota de una tarea se busca en Notas, con la materia elegida', () => {
+  assert.equal(subjectNotesHref('am1'), '/notas?materia=am1')
+  assert.equal(subjectNotesHref('a/b'), '/notas?materia=a%2Fb')
 })

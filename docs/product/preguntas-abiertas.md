@@ -276,6 +276,22 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 34. ¿Las entregas del aula de Moodle van mezcladas en la lista de Tareas?
+
+- **Por qué importa:** la tarjeta de Mis materias y el Calendario muestran las entregas de Moodle («Guía 3 resuelta»), pero la pestaña Tareas lista solo las de HackAI. Un alumno con la lista vacía puede concluir que no tiene nada pendiente (#132, U-24).
+- **Hipótesis (13/11/2026):** para la demo, una nota arriba de la lista nombra la próxima entrega del aula y lleva al aula y al Calendario, sin mezclarlas.
+- **Opciones:** como está; mezclarlas en la lista con el sello de Moodle y el enlace al aula; una sección aparte «En Moodle» debajo de la lista.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 35. ¿Notas lista las tareas con nota que todavía no se corrigieron?
+
+- **Por qué importa:** la tarea del alumno ya muestra la nota y la devolución cuando se publican, y avisa que van a aparecer en Notas (#132, U-26). Pero en Notas, «Parciales y trabajos prácticos» no nombra la tarea hasta que tiene nota publicada, ni como pendiente.
+- **Hipótesis (13/11/2026):** alcanza con que aparezca cuando se publica, como cualquier nota.
+- **Opciones:** como está; listarla como «Entregada · sin corregir» desde que se entrega; listarla también sin entregar, con su fecha límite.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

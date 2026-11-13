@@ -61,6 +61,9 @@ export function gradesHref(subjectId: string, view: GradesView = {}): string {
   return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
 }
 
+/** Notas del alumno con la materia elegida: ahí aparece la nota de una tarea cuando se publica. */
+export const subjectNotesHref = (subjectId: string) => `/notas?${new URLSearchParams({ materia: subjectId })}`
+
 /** Cómo se evalúa la comisión: instancias de examen, pesos y promoción. */
 export const evaluationHref = (subjectId: string, comision?: string) =>
   href(`${subjectPath(subjectId)}/calificaciones/evaluacion`, comision)
