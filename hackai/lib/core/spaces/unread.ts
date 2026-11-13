@@ -1,7 +1,7 @@
 /* Las novedades sin leer de una persona en todos sus espacios, para
    Novedades, Hoy y la navegación: por canal, cuánto no leyó y lo más nuevo,
    con quién lo publicó; en un directo, de quién es; y si todo es de un mismo
-   hilo, cuál. Solo cuentan las comisiones actuales y los espacios que ya
+   hilo (o es una consulta nueva), cuál. Solo cuentan las comisiones actuales y los espacios que ya
    existen: pedir novedades no crea espacios. */
 import type { People, PersonId } from '@/lib/core/people'
 import type { MessageId, SpacesStore, StoredChannel, StoredMessage, UnreadItem, UnreadLatest } from '@/lib/core/spaces'
@@ -36,11 +36,13 @@ async function latestOf(authors: Authors, unread: UnreadIn): Promise<UnreadLates
   }
 }
 
-/** El hilo de lo sin leer, si es uno solo y trae alguna respuesta. */
+/** El hilo de lo sin leer, si es uno solo y trae alguna respuesta o es una consulta: una consulta nueva sin
+    respuestas lleva a su hilo, donde está «Responder». Un aviso suelto lleva al canal. */
 function threadOf(messages: StoredMessage[]): MessageId | null {
   const roots = new Set(messages.map((m) => m.replyTo ?? m.id))
-  const hasReply = messages.some((m) => m.replyTo !== null)
-  return roots.size === 1 && hasReply ? [...roots][0] : null
+  if (roots.size !== 1) return null
+  const isThread = messages.some((m) => m.replyTo !== null || m.resolved !== null)
+  return isThread ? [...roots][0] : null
 }
 
 /** La novedad de un canal, o `null` si no hay nada sin leer. */

@@ -1,26 +1,28 @@
 'use client'
 
 /* El campo para escribir en un canal o responder en un hilo: crece con el
-   texto, deja adjuntar un archivo y no se puede mandar vacío. Al mandar se
-   vacía, como en cualquier chat, así se puede seguir escribiendo; el botón
-   queda deshabilitado hasta que llega la respuesta. Si sale bien se confirma
-   con un texto de estado («Mensaje enviado.») que se va al rato o al seguir
-   escribiendo; si no, el texto vuelve para corregirlo y el error se anuncia.
+   texto, deja adjuntar un archivo y no se puede mandar vacío. Abajo del texto,
+   «Adjuntar» y «Enviar» (o «Publicar»), con su nombre a la vista y 44 px de
+   alto. Al mandar se vacía, como en cualquier chat, así se puede seguir
+   escribiendo; el botón queda deshabilitado hasta que llega la respuesta. Si
+   sale bien se confirma con un texto de estado que dice a quién le llegó
+   («Publicado para la Comisión A.») y queda hasta seguir escribiendo; si no,
+   el texto vuelve para corregirlo y el error se anuncia.
    En la compu Enter
    envía y Shift+Enter salta de línea; en el celular Enter salta de línea y se
    envía con el botón (composer-keys.ts). Ctrl o ⌘ + Enter envía siempre. En
-   Avisos, Enter salta de línea en todos lados y el botón dice «Publicar».
-   Dónde se ubica (pegado abajo en el celular) lo pone ComposerDock. */
-import { Paperclip, SendHorizontal, X } from 'lucide-react'
+   Avisos, Enter salta de línea en todos lados y el botón dice «Publicar». En el
+   hilo de una consulta, quien la puede marcar resuelta tiene además «Responder
+   y marcar resuelta». Dónde se ubica (pegado abajo en el celular) lo pone ComposerDock. */
+import { Check, Paperclip, SendHorizontal, X } from 'lucide-react'
 import { type ChangeEvent, type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { postMessage } from '@/app/actions/spaces'
 import { FormFeedback, useSpaceAction } from '@/components/spaces/action-form'
 import { sendsOnKey } from '@/components/spaces/composer-keys'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const MAX_HEIGHT = 160
-/** Cuánto queda a la vista la confirmación de que se envió. */
-const NOTICE_MS = 4000
 
 /** El alto justo para el texto, hasta MAX_HEIGHT; de ahí en más se scrollea adentro. */
 function fitHeight(el: HTMLTextAreaElement | null) {
@@ -37,9 +39,22 @@ type Props = {
   placeholder: string
   /** En Avisos, a quién le llega: Enter salta de línea y se publica con el botón «Publicar» o Ctrl o ⌘ + Enter. */
   announcementFor?: string
+  /** En el hilo de una consulta sin resolver, para quien la puede marcar resuelta: suma «Responder y marcar
+      resuelta», que hace las dos cosas de un toque. Enter sigue solo respondiendo. */
+  resolvable?: boolean
+  /** La confirmación de que salió, con a quién le llega: «Publicado para la Comisión A.». */
+  confirmation: string
 }
 
-export function Composer({ subjectId, channelId, replyTo, placeholder, announcementFor }: Props) {
+export function Composer({
+  subjectId,
+  channelId,
+  replyTo,
+  placeholder,
+  announcementFor,
+  resolvable,
+  confirmation
+}: Props) {
   const { state, dispatch, pending, submit, error } = useSpaceAction(postMessage)
   const [text, setText] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -82,10 +97,9 @@ export function Composer({ subjectId, channelId, replyTo, placeholder, announcem
       setFile(null)
       input.value = ''
     }
-    setNotice(state.message)
-    const timer = setTimeout(() => setNotice(null), NOTICE_MS)
-    return () => clearTimeout(timer)
-  }, [state])
+    // Queda hasta la próxima acción (escribir o volver a mandar): si se iba sola, no se llegaba a leer.
+    setNotice(state.message ?? confirmation)
+  }, [state, confirmation])
 
   function onText(event: ChangeEvent<HTMLTextAreaElement>) {
     setText(event.target.value)
@@ -103,81 +117,87 @@ export function Composer({ subjectId, channelId, replyTo, placeholder, announcem
     form.current?.requestSubmit()
   }
 
+  const [sendLabel, sendingLabel] = announcementFor ? ['Publicar', 'Publicando…'] : ['Enviar', 'Enviando…']
   return (
     <form ref={form} action={dispatch} onSubmit={onSubmit} className='flex flex-col gap-1'>
       <input type='hidden' name='subjectId' value={subjectId} />
       <input type='hidden' name='channelId' value={channelId} />
       {replyTo && <input type='hidden' name='replyTo' value={replyTo} />}
 
-      <div className='flex items-end gap-1.5 rounded-[14px] border border-border bg-card p-1 pl-1 has-[textarea:focus-visible]:outline-3 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-ring'>
-        <label
-          htmlFor={`${id}-file`}
-          className='grid size-10 flex-none cursor-pointer place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ring'
-        >
-          <Paperclip aria-hidden='true' className='size-5' strokeWidth={1.8} />
-          <span className='sr-only'>Adjuntar archivo</span>
-          <input
-            ref={fileInput}
-            id={`${id}-file`}
-            type='file'
-            name='attachment'
-            className='sr-only'
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
+      <div className='flex flex-col gap-1 rounded-[14px] border border-border bg-card p-1 has-[textarea:focus-visible]:outline-3 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-ring'>
+        {file && (
+          <span className='mx-1 mt-1 inline-flex w-fit max-w-full items-center gap-1 rounded-lg bg-muted py-0.5 pr-0.5 pl-2 text-xs font-semibold'>
+            <span className='truncate'>{file.name}</span>
+            <button
+              type='button'
+              onClick={clearFile}
+              className='grid size-8 flex-none place-items-center rounded-full hover:bg-card focus-ring'
+            >
+              <X aria-hidden='true' className='size-3.5' />
+              <span className='sr-only'>Quitar {file.name}</span>
+            </button>
+          </span>
+        )}
+        <label htmlFor={`${id}-text`} className='sr-only'>
+          {placeholder}
         </label>
+        <textarea
+          ref={textarea}
+          id={`${id}-text`}
+          name='text'
+          rows={1}
+          value={text}
+          onChange={onText}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          aria-describedby={announcementFor ? `${id}-help` : undefined}
+          className='max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-2 text-[0.9375rem] leading-6 outline-none placeholder:text-muted-foreground'
+        />
 
-        <div className='flex min-w-0 flex-1 flex-col'>
-          {file && (
-            <span className='mt-1 inline-flex w-fit max-w-full items-center gap-1 rounded-lg bg-muted py-0.5 pr-0.5 pl-2 text-xs font-semibold'>
-              <span className='truncate'>{file.name}</span>
-              <button
-                type='button'
-                onClick={clearFile}
-                className='grid size-8 flex-none place-items-center rounded-full hover:bg-card focus-ring'
-              >
-                <X aria-hidden='true' className='size-3.5' />
-                <span className='sr-only'>Quitar {file.name}</span>
-              </button>
-            </span>
-          )}
-          <label htmlFor={`${id}-text`} className='sr-only'>
-            {placeholder}
+        <div className='flex flex-wrap items-center gap-1.5'>
+          <label
+            htmlFor={`${id}-file`}
+            className='mr-auto inline-flex h-11 flex-none cursor-pointer items-center gap-1.5 rounded-[10px] px-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-ring'
+          >
+            <Paperclip aria-hidden='true' className='size-5' strokeWidth={1.8} />
+            Adjuntar
+            <span className='sr-only'>un archivo</span>
+            <input
+              ref={fileInput}
+              id={`${id}-file`}
+              type='file'
+              name='attachment'
+              className='sr-only'
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
           </label>
-          <textarea
-            ref={textarea}
-            id={`${id}-text`}
-            name='text'
-            rows={1}
-            value={text}
-            onChange={onText}
-            onKeyDown={onKeyDown}
-            placeholder={placeholder}
-            aria-describedby={announcementFor ? `${id}-help` : undefined}
-            className={cn(
-              'max-h-40 min-h-10 w-full resize-none bg-transparent py-2 text-[0.9375rem] leading-6 outline-none placeholder:text-muted-foreground',
-              // En el celular, «Aviso para la Comisión Verano» no entra en una línea al lado de «Publicar»: el campo
-              // arranca con dos, así se lee entero a quién le llega.
-              announcementFor && 'max-lg:min-h-16'
-            )}
-          />
-        </div>
 
-        <button
-          type='submit'
-          disabled={empty || pending}
-          aria-busy={pending || undefined}
-          className={cn(
-            'flex h-10 flex-none items-center justify-center gap-1.5 rounded-[10px] bg-primary text-primary-foreground transition-opacity focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none',
-            announcementFor ? 'px-3 text-sm font-bold' : 'w-10'
+          {resolvable && (
+            <button
+              type='submit'
+              name='resolve'
+              value='1'
+              disabled={empty || pending}
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'sm' }),
+                'order-last h-11 w-full rounded-[10px] disabled:cursor-not-allowed sm:order-none sm:w-auto'
+              )}
+            >
+              <Check aria-hidden='true' strokeWidth={2.2} />
+              Responder y marcar resuelta
+            </button>
           )}
-        >
-          <SendHorizontal aria-hidden='true' className='size-5' strokeWidth={2} />
-          {announcementFor ? (
-            <span>{pending ? 'Publicando…' : 'Publicar'}</span>
-          ) : (
-            <span className='sr-only'>{pending ? 'Enviando…' : 'Enviar'}</span>
-          )}
-        </button>
+
+          <button
+            type='submit'
+            disabled={empty || pending}
+            aria-busy={pending || undefined}
+            className='flex h-11 flex-none items-center justify-center gap-1.5 rounded-[10px] bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none'
+          >
+            <SendHorizontal aria-hidden='true' className='size-5' strokeWidth={2} />
+            {pending ? sendingLabel : sendLabel}
+          </button>
+        </div>
       </div>
 
       {announcementFor && (

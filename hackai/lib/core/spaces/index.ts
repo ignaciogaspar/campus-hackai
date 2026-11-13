@@ -237,12 +237,13 @@ export type UnreadItem = {
   latest: UnreadLatest
   /** En un canal directo, la otra persona: de quién es el mensaje. En el resto, `null`. */
   counterpart: Author | null
-  /** Si todo lo sin leer del canal es de un mismo hilo y hay alguna respuesta, el id del mensaje que lo
-      abre: la novedad lleva a ese hilo. Si no, `null` y lleva al canal. */
+  /** Si todo lo sin leer del canal es de un mismo hilo y hay alguna respuesta, o es una consulta nueva sin
+      respuestas, el id del mensaje que lo abre: la novedad lleva a ese hilo. Si no, `null` y lleva al canal. */
   thread: MessageId | null
 }
 
-/** Una consulta sin resolver que le toca responder a un docente, con cuántas respuestas tiene. */
+/** Una consulta sin resolver que le toca responder a un docente, con cuántas respuestas tiene y si ya la
+    respondió un docente. */
 export type OpenQuestion = {
   messageId: MessageId
   channelId: ChannelId
@@ -258,6 +259,9 @@ export type OpenQuestion = {
   origin: Origin
   createdAt: string
   replies: number
+  /** Si la última respuesta es de un docente: está respondida y falta marcarla resuelta. Si después repreguntó un
+      alumno, o nadie respondió, `false`. */
+  answeredByTeacher: boolean
 }
 
 /** Una consulta que encontró la búsqueda, de un `#consultas` que la persona ve. */

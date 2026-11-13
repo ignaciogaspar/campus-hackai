@@ -28,7 +28,6 @@ import { EmptyState, ErrorNotice } from '@/components/ui/states'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { OpenQuestion, UnreadItem } from '@/lib/core/spaces'
 import type { TaughtSection, TeachingPart, TeachingView } from '@/lib/core/today'
-import { cn } from '@/lib/utils'
 
 const DOWN: Record<TeachingPart, string> = {
   sections: 'No pudimos traer tus comisiones porque el SIU no responde. Probá de nuevo en un rato.',
@@ -55,9 +54,24 @@ function Icon({ children }: { children: ReactNode }) {
   )
 }
 
-function replies(n: number): string {
-  if (n === 0) return 'Sin respuesta'
-  return n === 1 ? '1 respuesta' : `${n} respuestas`
+/** El estado de la consulta con las mismas palabras que el hilo: «Sin responder» hasta que responde un docente;
+    después, que falta marcarla resuelta. */
+function QuestionState({ question: q }: { question: OpenQuestion }) {
+  if (q.answeredByTeacher) {
+    return <span className='font-semibold text-blue'>Respondida · falta marcarla resuelta</span>
+  }
+  const others = q.replies === 1 ? '1 respuesta' : `${q.replies} respuestas`
+  return (
+    <>
+      <span className='font-semibold text-warning-foreground'>Sin responder</span>
+      {q.replies > 0 && (
+        <>
+          <span aria-hidden='true'>·</span>
+          <span>{others}</span>
+        </>
+      )}
+    </>
+  )
 }
 
 function QuestionRow({ question: q }: { question: OpenQuestion }) {
@@ -76,7 +90,7 @@ function QuestionRow({ question: q }: { question: OpenQuestion }) {
         <>
           <time dateTime={q.createdAt}>{messageTime(q.createdAt)}</time>
           <span aria-hidden='true'>·</span>
-          <span className={cn(q.replies === 0 && 'font-semibold text-warning-foreground')}>{replies(q.replies)}</span>
+          <QuestionState question={q} />
           {q.origin !== 'hackai' && <OriginBadge origin={q.origin} />}
         </>
       }

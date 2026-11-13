@@ -54,17 +54,19 @@ type Props = {
   creating: boolean
   /** Si está a la vista la lista de Directos. */
   showingDirects: boolean
+  /** Con un hilo abierto: en el celular el riel no va, así la consulta se ve entera (modo foco). */
+  focused?: boolean
 }
 
 type RailProps = Pick<Props, 'subjectId' | 'comision' | 'canManage' | 'creating'> & { tabs: RailTab[] }
 
-function PhoneRail({ subjectId, comision, tabs, canManage, creating }: RailProps) {
+function PhoneRail({ subjectId, comision, tabs, canManage, creating, focused }: RailProps & { focused?: boolean }) {
   const needsMore = canManage || tabs.length > PHONE_SLOTS
   const shown = needsMore ? tabs.slice(0, PHONE_SLOTS - 1) : tabs
   const more = needsMore ? tabs.slice(PHONE_SLOTS - 1) : []
 
   return (
-    <nav aria-label='Canales del espacio' className='lg:hidden'>
+    <nav aria-label='Canales del espacio' className={focused ? 'hidden' : 'lg:hidden'}>
       <ArrowKeysList className={cn(railTrack({ size: 'md' }), PHONE_TRACK)}>
         {shown.map(({ id, kind, href, label, unread, selected }) => (
           <li key={id} className='flex min-w-0 [&>*]:flex-1'>
@@ -139,7 +141,16 @@ function directsTab(subjectId: string, comision: string | undefined, directs: Ch
   }
 }
 
-export function ChannelTabs({ subjectId, channels, comision, selectedId, canManage, creating, showingDirects }: Props) {
+export function ChannelTabs({
+  subjectId,
+  channels,
+  comision,
+  selectedId,
+  canManage,
+  creating,
+  showingDirects,
+  focused
+}: Props) {
   const several = hasSeveralSections(channels)
   const directs = channels.filter(isDirect)
   const tabs: RailTab[] = channels
@@ -159,7 +170,7 @@ export function ChannelTabs({ subjectId, channels, comision, selectedId, canMana
   const rail = { subjectId, comision, tabs, canManage, creating }
   return (
     <>
-      <PhoneRail {...rail} />
+      <PhoneRail {...rail} focused={focused} />
       <DesktopRail {...rail} />
     </>
   )

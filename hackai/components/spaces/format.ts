@@ -3,7 +3,7 @@
    solo formato. Las horas van en la hora de Buenos Aires, con día y hora y sin
    «hoy» ni «hace un rato»: un mensaje se lee igual aunque la pantalla quede
    abierta un rato. */
-import type { Channel, ChannelKind, Thread } from '@/lib/core/spaces'
+import type { Channel, ChannelKind, MaterialView, Thread } from '@/lib/core/spaces'
 
 const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
@@ -24,6 +24,13 @@ export function messageTime(iso: string): string {
 /** «9/11», para el material. */
 export function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { timeZone: TIME_ZONE, day: 'numeric', month: 'numeric' })
+}
+
+/** Las secciones del material que se ven abiertas al entrar: la del archivo más nuevo y toda la que tiene algo
+    sin ver, en el orden en que se muestran. Así lo nuevo se ve sin desplegar nada. */
+export function openMaterialSections(material: MaterialView): string[] {
+  const newest = material.recent[0]?.id
+  return material.sections.filter((s) => s.items.some((item) => item.unread || item.id === newest)).map((s) => s.title)
 }
 
 /** «52 KB», «1,2 MB». */
@@ -90,6 +97,13 @@ export function hasSeveralSections(channels: Channel[]): boolean {
 /** Si el canal va en la pestaña Directos y no suelto en el riel. */
 export const isDirect = (channel: Channel) => channel.kind === 'directo'
 
+/** El canal que se abre al entrar al espacio sin `?canal=`, si alguno tiene algo sin leer: el primero, así lo nuevo
+    queda a la vista. Los directos no se abren solos: tienen su pestaña. `null` si no hay nada sin leer, y se abre el
+    de siempre (section-focus.ts). */
+export function firstUnreadChannel(channels: Channel[]): Channel | null {
+  return channels.find((c) => !isDirect(c) && c.unread > 0) ?? null
+}
+
 /** El espacio de una materia, como lo necesitan los formularios: la ruta va por materia y el módulo, por espacio. */
 export type SpaceRef = { subjectId: string; spaceId: string }
 
@@ -134,6 +148,18 @@ export function spaceHref(subjectId: string, query: SpaceQuery = {}): string {
   }
   const search = params.toString()
   return `${SPACES_PATH}/${encodeURIComponent(subjectId)}${search ? `?${search}` : ''}`
+}
+
+/** En qué está una consulta, con las mismas palabras en el hilo y en el Hoy del docente. */
+export type QuestionState = 'sin-responder' | 'respondida' | 'resuelta'
+
+/** «Sin responder» hasta que la última respuesta es de un docente; después, «respondida» hasta que la marcan
+    resuelta. Si un alumno repregunta, vuelve a estar sin responder. `null` si el mensaje no es una consulta. */
+export function questionState(thread: Thread): QuestionState | null {
+  const { question } = thread.message
+  if (!question) return null
+  if (question.resolved) return 'resuelta'
+  return thread.replies.at(-1)?.author.role === 'profesor' ? 'respondida' : 'sin-responder'
 }
 
 /** El último mensaje de una lista, y si lo escribió quien mira. */

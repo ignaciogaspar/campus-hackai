@@ -316,6 +316,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 39. ¿Los archivos adjuntos a un aviso entran al material y a la búsqueda?
+
+- **Por qué importa:** en el recorrido de UX (#130, U-23), en Contabilidad I el aviso del 3/11 trae `temas-segundo-parcial.pdf`, pero Material dice «Todavía no hay material» y buscar «parcial» no encuentra nada. El alumno busca el archivo donde está el resto y no lo encuentra.
+- **Hipótesis (13/11/2026):** no entran: el material es lo que el docente sube o importa como material, y un adjunto queda en su aviso. Mientras, el estado vacío de Material dice que los adjuntos de los avisos quedan en Avisos.
+- **Opciones:** como está; sumar los adjuntos de Avisos al material en una sección «Adjuntos de avisos», con su origen; que la búsqueda del espacio encuentre también los adjuntos, sin sumarlos al material.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

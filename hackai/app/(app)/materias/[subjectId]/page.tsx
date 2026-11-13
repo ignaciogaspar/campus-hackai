@@ -8,7 +8,10 @@
    JavaScript. Escribirle a un docente por primera vez es un formulario.
 
    En el celular es una columna y el campo para escribir queda pegado abajo.
-   En compu, tres columnas: canales, conversación y un panel de contexto.
+   Con un hilo abierto, el celular lo muestra en modo foco: sin las pestañas
+   de la materia, el selector de comisión ni el riel de canales, con una sola
+   fila para volver. En compu, tres columnas: canales, conversación y un panel
+   de contexto.
 
    Mientras un canal está abierto se actualiza solo (ChannelUpdates): lo nuevo
    del canal externo o de otros aparece sin recargar. Al leer un canal, la
@@ -20,6 +23,11 @@
    riel muestra solo los canales de la comisión elegida, sin `?canal=` se abren
    sus Avisos y abrir un canal de otra comisión pone el selector en esa. Los
    enlaces del riel, Directos y el canal nuevo llevan `?comision=`.
+
+   Sin `?canal=` se abre el primer canal del riel con algo sin leer (si no hay,
+   lo que elige la comisión). Lo que no se había
+   leído sigue marcado mientras se mira, con el separador «Nuevos»
+   (UnreadMemory), aunque UnreadRefresh vuelva a leer la página.
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
@@ -48,6 +56,7 @@ import { DiscordLink, type ServerChoices } from '@/components/spaces/discord-lin
 import { DiscordServer, type DiscordServerProps } from '@/components/spaces/discord-server'
 import {
   channelLabel,
+  firstUnreadChannel,
   hasSeveralSections,
   isDirect,
   messageTime,
@@ -58,6 +67,7 @@ import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { focusSection, type SectionFocus } from '@/components/spaces/section-focus'
+import { UnreadMemory } from '@/components/spaces/unread-memory'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { noAccessText, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
 import { SUBJECT_WIDTH, SubjectToolbar } from '@/components/subjects/subject-toolbar'
@@ -221,17 +231,22 @@ function ChannelArea({
   const props = { subjectId, channel, threads, viewerId: view.viewer.personId }
   // Trae lo nuevo del canal sin recargar, también con un hilo abierto.
   const updates = <ChannelUpdates channelId={channel.id} version={version} />
+  // Lo que no se había leído sigue marcado aunque UnreadRefresh vuelva a leer la página ya leída.
+  const unread = [
+    ...threads.flatMap((t) => [t.message, ...t.replies]),
+    ...(opened.value.material?.sections.flatMap((s) => s.items) ?? [])
+  ].flatMap((m) => (m.unread ? [m.id] : []))
   if (query.hilo && channel.kind !== 'directo') {
     const backLabel = channelLabel(channel, hasSeveralSections(channels))
     return (
-      <>
+      <UnreadMemory scope={channel.id} unread={unread}>
         {updates}
         <ThreadPanel {...props} threadId={query.hilo} backLabel={backLabel} />
-      </>
+      </UnreadMemory>
     )
   }
   return (
-    <>
+    <UnreadMemory scope={channel.id} unread={unread}>
       {updates}
       <DiscordLink subjectId={subjectId} channel={channel} choices={discord.choices} />
       <ChannelPanel
@@ -242,7 +257,7 @@ function ChannelArea({
         query={query}
         search={search}
       />
-    </>
+    </UnreadMemory>
   )
 }
 
@@ -317,10 +332,10 @@ async function searchIn(
 
 /** Con el formulario de canal nuevo o la lista de directos a la vista no se abre ningún canal, así no se
     marca leído lo que no se vio. */
-async function paneFor(personId: string, view: SpaceView, query: SpaceQuery, focus: SectionFocus): Promise<Pane> {
+async function paneFor(personId: string, view: SpaceView, query: SpaceQuery, channelId: string | null): Promise<Pane> {
   if (query.nuevo === 'canal' && view.viewer.canManage) return { kind: 'nuevo' }
   if (query.vista === 'directos') return { kind: 'directos' }
-  const opened = await openChannel(personId, view, focus.channelId)
+  const opened = await openChannel(personId, view, channelId)
   return { kind: 'canal', opened, search: await searchIn(personId, view, opened, query.buscar) }
 }
 
@@ -425,9 +440,15 @@ function CenterContent({
     aviso de la vuelta de Discord se ve aunque no haya un canal abierto. */
 function CenterPane(props: Parameters<typeof CenterContent>[0]) {
   const { server } = props.discord
+  // En el modo foco del hilo, en el celular, la tarjeta de Discord tampoco va.
+  const focused = props.query.hilo !== undefined && props.pane.kind === 'canal'
   return (
     <>
-      {server && <DiscordServer {...server} />}
+      {server && (
+        <div className={cn(focused && 'max-lg:hidden')}>
+          <DiscordServer {...server} />
+        </div>
+      )}
       <CenterContent {...props} />
     </>
   )
@@ -436,6 +457,17 @@ function CenterPane(props: Parameters<typeof CenterContent>[0]) {
 /** Las comisiones del selector: las vigentes que dicta el docente. El alumno no tiene selector. */
 function taughtSections(view: SpaceView): SpaceSection[] {
   return view.viewer.role === 'profesor' ? view.viewer.sections.filter((s) => s.current) : []
+}
+
+/** Sin `?canal=`, el primer canal del riel con algo sin leer; si no hay, el de la comisión elegida. */
+function channelToOpen(query: SpaceQuery, focus: SectionFocus): string | null {
+  if (query.canal) return focus.channelId
+  return firstUnreadChannel(focus.channels)?.id ?? focus.channelId
+}
+
+/** Con un hilo abierto, en el celular van solo el encabezado y el hilo: sin pestañas, comisión ni riel de canales. */
+function threadFocus(query: SpaceQuery, selected: Channel | null): boolean {
+  return query.hilo !== undefined && selected !== null && selected.kind !== 'directo'
 }
 
 export default async function SpacePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
@@ -456,7 +488,8 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   )
   // Solo con el selector a la vista los enlaces llevan la comisión.
   const comision = taught.length > 1 ? (focus.sectionId ?? undefined) : undefined
-  const pane = await paneFor(session.personId, view, query, focus)
+  const channelId = channelToOpen(query, focus)
+  const pane = await paneFor(session.personId, view, query, channelId)
   const discord = await discordFor(session.personId, subjectId, view, pane, isDiscordNotice(notice) ? notice : null)
 
   // El canal elegido ya quedó leído: su contador sale de lo que devolvió `channel`.
@@ -465,6 +498,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   // Si tenía no leídos, los de la barra lateral quedaron viejos: con `data-just-read` en <main>,
   // UnreadRefresh la vuelve a leer.
   const hadUnread = (view.channels.find((c) => c.id === selected?.id)?.unread ?? 0) > 0
+  const focused = threadFocus(query, selected)
 
   return (
     <>
@@ -488,7 +522,10 @@ export default async function SpacePage({ params, searchParams }: { params: Para
 
       <main
         data-just-read={hadUnread ? '' : undefined}
-        className={cn(SUBJECT_WIDTH, 'flex flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8')}
+        className={cn(
+          SUBJECT_WIDTH,
+          'flex flex-col gap-4 px-4 pt-5 pb-[calc(var(--dock-extra)+1rem)] lg:px-8 lg:pt-8 lg:pb-8'
+        )}
       >
         {view.staleSince && (
           <StaleNotice>
@@ -497,24 +534,27 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        <SubjectToolbar
-          subjectId={subjectId}
-          current='espacio'
-          viewer={view.viewer.role}
-          sections={taught}
-          selectedId={focus.sectionId ?? ''}
-          hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
-        />
+        <div className={cn(focused && 'max-lg:hidden')}>
+          <SubjectToolbar
+            subjectId={subjectId}
+            current='espacio'
+            viewer={view.viewer.role}
+            sections={taught}
+            selectedId={focus.sectionId ?? ''}
+            hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+          />
+        </div>
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs
             subjectId={subjectId}
             channels={channels}
             comision={comision}
-            selectedId={pane.kind === 'canal' ? focus.channelId : null}
+            selectedId={pane.kind === 'canal' ? channelId : null}
             canManage={view.viewer.canManage}
             creating={pane.kind === 'nuevo'}
             showingDirects={pane.kind === 'directos'}
+            focused={focused}
           />
 
           <section

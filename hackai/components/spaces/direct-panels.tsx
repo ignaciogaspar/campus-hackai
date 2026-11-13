@@ -12,6 +12,7 @@ import { latestOf, type SpaceRef, spaceHref } from '@/components/spaces/format'
 import { LatestMark } from '@/components/spaces/latest-mark'
 import { AuthorAvatar, MessageCard } from '@/components/spaces/messages'
 import { StartDirect } from '@/components/spaces/start-direct'
+import { ThreadItem } from '@/components/spaces/unread-memory'
 import { EmptyState } from '@/components/ui/states'
 import { UnreadCount } from '@/components/ui/unread-count'
 import type { Role } from '@/lib/core/people'
@@ -129,9 +130,9 @@ export function DirectPanel({ subjectId, channel, threads, viewerId, comision }:
         {messages.length ? (
           <ol className='flex flex-col gap-3'>
             {messages.map((m) => (
-              <li key={m.id}>
+              <ThreadItem key={m.id} id={m.id} unread={m.unread}>
                 <MessageCard message={m} />
-              </li>
+              </ThreadItem>
             ))}
           </ol>
         ) : (
@@ -142,7 +143,12 @@ export function DirectPanel({ subjectId, channel, threads, viewerId, comision }:
       </LatestMark>
       <ComposerDock>
         {channel.canPost ? (
-          <Composer subjectId={subjectId} channelId={channel.id} placeholder={`Escribile a ${firstName}`} />
+          <Composer
+            subjectId={subjectId}
+            channelId={channel.id}
+            placeholder={`Escribile a ${firstName}`}
+            confirmation={`Enviado a ${other.name}: lo ven solo ustedes dos.`}
+          />
         ) : (
           <LockedNote>No podés escribir en esta conversación.</LockedNote>
         )}
