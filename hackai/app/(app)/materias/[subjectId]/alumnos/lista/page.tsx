@@ -8,8 +8,9 @@ import Link from 'next/link'
 import { longDay, timeOf } from '@/components/dates'
 import { PageHeader } from '@/components/shell/page-header'
 import { AttendanceForm } from '@/components/subjects/attendance-form'
+import { ATTENDANCE_ERRORS } from '@/components/subjects/attendance-format'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
-import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
+import { ALUMNOS_TAB, chooseSection, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
 import { StaleBanner } from '@/components/ui/stale-banner'
 import { ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
@@ -23,16 +24,10 @@ type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
 const ERRORS: Record<AttendanceError | StudiesReadError, string> = {
+  ...ATTENDANCE_ERRORS,
   'falla-externa': 'No pudimos traer la lista porque el SIU no responde. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
-  'sin-acceso': 'Solo los docentes de la comisión toman lista.',
-  'clase-inexistente': 'Esa clase no está en el horario de la comisión.',
-  'clase-fuera-de-fecha': 'Solo se toma o se corrige la lista de la clase de hoy.',
-  'ausente-no-inscripto': 'Hay un alumno que no está inscripto a la comisión.',
-  'no-implementado': 'Esta función todavía no está disponible.'
+  'sin-acceso': 'Solo los docentes de la comisión toman lista.'
 }
-
-const ALUMNOS_TAB = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
 
 const one = (value: string | string[] | undefined) => (typeof value === 'string' && value !== '' ? value : undefined)
 
@@ -97,7 +92,7 @@ export default async function TomarListaPage({ params, searchParams }: { params:
           classAt={data.classAt}
           students={data.students.map((s) => ({ legajo: s.legajo, name: s.name }))}
           initialAbsent={data.absent}
-          pase={data.taken?.pase ?? null}
+          pass={data.taken?.pass ?? null}
           editable={data.today}
         />
       </main>

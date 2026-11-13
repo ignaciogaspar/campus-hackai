@@ -14,7 +14,6 @@ import { createMemoryStudiesStore } from '@/lib/adapters/memoria/studies-store'
 import { type SyntheticData, syntheticData } from '@/lib/adapters/synthetic-data'
 import { createPeople } from '@/lib/core/people'
 import { createStudies, type MyAbsencesDetail, type SubjectAbsences } from '@/lib/core/studies'
-import { classesThrough } from '@/lib/core/studies/classes'
 import type { SiuPort } from '@/lib/ports/siu'
 import { fail } from '@/lib/result'
 import { fallible, movableClock } from '@/tests/core/helpers'
@@ -57,11 +56,10 @@ async function absencesIn(studies: ReturnType<typeof build>['studies'], personId
   return { subject: detail.subjects.find((s) => s.sectionId === SECTION) as SubjectAbsences, stale: value(read).stale }
 }
 
-test('las clases de una comisión salen de su horario: cada martes y jueves del período, hasta hoy', () => {
-  const section = syntheticData.siu.sections.find((s) => s.id === SECTION)!
-  const term = syntheticData.siu.terms.find((t) => t.id === section.termId)!
+test('las clases de una comisión salen de su horario: cada martes y jueves del período, hasta hoy', async () => {
+  const { studies } = build()
 
-  const classes = classesThrough(section, term, syntheticData.now)
+  const classes = value(await studies.classesOf(TEACHER, SECTION)).toReversed()
 
   assert.equal(classes[0].classAt, '2026-08-11T17:00:00.000Z')
   assert.equal(classes[0].endAt, '2026-08-11T19:00:00.000Z')
@@ -71,12 +69,35 @@ test('las clases de una comisión salen de su horario: cada martes y jueves del 
   assert.ok(classes.every((c, i) => i === 0 || classes[i - 1].classAt < c.classAt))
 })
 
-test('no hay clases antes de que empiece el período ni después de que termina', () => {
-  const section = syntheticData.siu.sections.find((s) => s.id === SECTION)!
-  const term = { start: '2026-08-10T03:00:00.000Z', end: '2026-08-14T02:59:00.000Z' }
+test('la materia dice si la comisión tiene clase hoy, con el reloj de la lectura', async () => {
+  const { studies, advance } = build()
+  const today = value(await studies.subjectsOf(TEACHER)).data.current.find((s) => s.sectionId === SECTION)
+  assert.equal(today?.classToday, true)
 
-  assert.deepEqual(classesThrough(section, term, '2026-08-01T15:00:00.000Z'), [])
-  assert.equal(classesThrough(section, term, '2026-12-01T15:00:00.000Z').length, 2)
+  // El día siguiente (miércoles) la comisión no tiene clase.
+  advance(24 * 60)
+  const tomorrow = value(await studies.subjectsOf(TEACHER)).data.current.find((s) => s.sectionId === SECTION)
+  assert.equal(tomorrow?.classToday, false)
+})
+
+test('no hay clases antes de que empiece el período ni después de que termina', async () => {
+  const section = syntheticData.siu.sections.find((s) => s.id === SECTION)!
+  const shortTerm = (now: string) => ({
+    ...syntheticData,
+    now,
+    siu: {
+      ...syntheticData.siu,
+      terms: syntheticData.siu.terms.map((t) =>
+        t.id === section.termId ? { ...t, start: '2026-08-10T03:00:00.000Z', end: '2026-08-14T02:59:00.000Z' } : t
+      )
+    }
+  })
+
+  const before = build({ data: shortTerm('2026-08-01T15:00:00.000Z') }).studies
+  const after = build({ data: shortTerm('2026-12-01T15:00:00.000Z') }).studies
+
+  assert.deepEqual(value(await before.classesOf(TEACHER, SECTION)), [])
+  assert.equal(value(await after.classesOf(TEACHER, SECTION)).length, 2)
 })
 
 test('el docente de la comisión ve sus clases, la más nueva primero, y la de hoy marcada', async () => {
@@ -149,7 +170,7 @@ test('un ausente que marca el docente aparece en las inasistencias del alumno, a
   const before = (await absencesIn(studies)).subject.count
 
   const taken = value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.mcabrera]))
-  assert.equal(taken.pase, 'pasado')
+  assert.equal(taken.pass, 'pasado')
 
   // El SIU cae sin que el alumno haya abierto nunca sus inasistencias en este proceso... y con lo último leído.
   siuState.down = true
@@ -202,8 +223,8 @@ test('la lista pasa al SIU simulado: la falta queda ahí, sin duplicarse con la 
 
   const taken = value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.mcabrera]))
 
-  assert.equal(taken.pase, 'pasado')
-  assert.equal(taken.paseAt, syntheticData.now)
+  assert.equal(taken.pass, 'pasado')
+  assert.equal(taken.passedAt, syntheticData.now)
   const inSiu = value(await siu.absences(LEGAJO.mcabrera)).absences.filter((a) => a.date === TODAY_CLASS)
   assert.equal(inSiu.length, 1)
   assert.equal(inSiu[0].justified, false)
@@ -214,7 +235,7 @@ test('la lista pasa al SIU simulado: la falta queda ahí, sin duplicarse con la 
     ['hackai']
   )
   const sheet = value(await studies.attendanceSheet(TEACHER, SECTION, TODAY_CLASS))
-  assert.equal(sheet.taken?.pase, 'pasado')
+  assert.equal(sheet.taken?.pass, 'pasado')
   assert.deepEqual(sheet.absent, [LEGAJO.mcabrera])
 })
 
@@ -236,20 +257,20 @@ test('si el pase falla, la lista queda pendiente, el alumno ve la falta y el rei
   })
 
   const taken = value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.mcabrera]))
-  assert.equal(taken.pase, 'pendiente')
-  assert.equal(taken.paseAt, null)
+  assert.equal(taken.pass, 'pendiente')
+  assert.equal(taken.passedAt, null)
   assert.equal((await absencesIn(studies)).subject.absences.filter((a) => a.source === 'hackai').length, 1)
   assert.equal(value(await siu.absences(LEGAJO.mcabrera)).absences.filter((a) => a.date === TODAY_CLASS).length, 0)
 
   // Sigue sin responder: el reintento no avanza y lo dice.
-  assert.deepEqual(value(await studies.retryPases()), { passed: 0, pending: 1 })
+  assert.deepEqual(value(await studies.retryAttendancePass()), { passed: 0, pending: 1 })
 
   siuAnswers = true
-  assert.deepEqual(value(await studies.retryPases()), { passed: 1, pending: 0 })
-  assert.deepEqual(value(await studies.retryPases()), { passed: 0, pending: 0 })
+  assert.deepEqual(value(await studies.retryAttendancePass()), { passed: 1, pending: 0 })
+  assert.deepEqual(value(await studies.retryAttendancePass()), { passed: 0, pending: 0 })
   assert.equal(sent, 1)
   const sheet = value(await studies.attendanceSheet(TEACHER, SECTION, TODAY_CLASS))
-  assert.equal(sheet.taken?.pase, 'pasado')
+  assert.equal(sheet.taken?.pass, 'pasado')
 })
 
 test('al abrir la comisión se reintentan sus pases pendientes', async () => {
@@ -260,12 +281,12 @@ test('al abrir la comisión se reintentan sus pases pendientes', async () => {
       recordAttendance: async (...args) => (siuAnswers ? memory.recordAttendance(...args) : fail('falla-externa'))
     }
   })
-  assert.equal(value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [])).pase, 'pendiente')
+  assert.equal(value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [])).pass, 'pendiente')
 
   siuAnswers = true
   const classes = value(await studies.classesOf(TEACHER, SECTION))
 
-  assert.equal(classes[0].taken?.pase, 'pasado')
+  assert.equal(classes[0].taken?.pass, 'pasado')
 })
 
 test('con un SIU que no deja escribir, la clase queda sin pasar y el alumno ve la falta igual', async () => {
@@ -273,11 +294,11 @@ test('con un SIU que no deja escribir, la clase queda sin pasar y el alumno ve l
 
   const taken = value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.mcabrera]))
 
-  assert.equal(taken.pase, 'sin-pasar')
+  assert.equal(taken.pass, 'no-permitido')
   const { subject } = await absencesIn(studies)
   assert.equal(subject.absences.filter((a) => a.source === 'hackai').length, 1)
   // No se reintenta: no hay nada que esperar del SIU.
-  assert.deepEqual(value(await studies.retryPases()), { passed: 0, pending: 0 })
+  assert.deepEqual(value(await studies.retryAttendancePass()), { passed: 0, pending: 0 })
 })
 
 test('una falta que solo está en el SIU se sigue viendo', async () => {
@@ -320,7 +341,7 @@ test('corregir la lista el mismo día cambia las inasistencias y se vuelve a pas
 
   const corrected = value(await studies.takeAttendance(TEACHER, SECTION, TODAY_CLASS, [LEGAJO.sdominguez]))
 
-  assert.equal(corrected.pase, 'pasado')
+  assert.equal(corrected.pass, 'pasado')
   // Mcabrera ya no figura, Domínguez sí.
   const mcabrera = (await absencesIn(studies)).subject?.absences ?? []
   assert.equal(mcabrera.filter((a) => a.date === TODAY_CLASS).length, 0)

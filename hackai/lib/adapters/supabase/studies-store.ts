@@ -11,7 +11,7 @@
    la forma en que las escribe el reloj. */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createQueryRunner } from '@/lib/adapters/supabase/query'
-import type { Pase, StoredClass, StudiesStore } from '@/lib/core/studies/store'
+import type { AttendancePass, StoredClass, StudiesStore } from '@/lib/core/studies/store'
 import { fail, ok, type Result } from '@/lib/result'
 
 export type SupabaseStudiesStoreOptions = {
@@ -27,8 +27,8 @@ type ClassRow = {
   taken_at: string
   taken_by: string
   absent: string[]
-  pase: Pase
-  pase_at: string | null
+  pass_status: AttendancePass
+  passed_at: string | null
   subject_id: string
   subject_code: string
   subject_name: string
@@ -36,7 +36,7 @@ type ClassRow = {
 }
 
 const CLASS_COLUMNS =
-  'section_id, class_at, taken_at, taken_by, absent, pase, pase_at, subject_id, subject_code, subject_name, section_name'
+  'section_id, class_at, taken_at, taken_by, absent, pass_status, passed_at, subject_id, subject_code, subject_name, section_name'
 
 const iso = (value: string) => new Date(value).toISOString()
 
@@ -47,8 +47,8 @@ function toClass(row: ClassRow): StoredClass {
     takenAt: iso(row.taken_at),
     takenBy: row.taken_by,
     absent: row.absent,
-    pase: row.pase,
-    paseAt: row.pase_at === null ? null : iso(row.pase_at),
+    pass: row.pass_status,
+    passedAt: row.passed_at === null ? null : iso(row.passed_at),
     snapshot: {
       subjectId: row.subject_id,
       subjectCode: row.subject_code,
@@ -109,7 +109,12 @@ export function createSupabaseStudiesStore({
 
     async pending() {
       const found = await run<ClassRow[]>('listas por pasar', (s) =>
-        client.from('section_classes').select(CLASS_COLUMNS).eq('pase', 'pendiente').order('class_at').abortSignal(s)
+        client
+          .from('section_classes')
+          .select(CLASS_COLUMNS)
+          .eq('pass_status', 'pendiente')
+          .order('class_at')
+          .abortSignal(s)
       )
       return found.ok ? ok((found.value ?? []).map(toClass)) : fail('falla-externa')
     },
@@ -119,8 +124,8 @@ export function createSupabaseStudiesStore({
         taken_at: input.takenAt,
         taken_by: input.takenBy,
         absent: [...new Set(input.absent)],
-        pase: 'pendiente' as const,
-        pase_at: null,
+        pass_status: 'pendiente' as const,
+        passed_at: null,
         subject_id: input.snapshot.subjectId,
         subject_code: input.snapshot.subjectCode,
         subject_name: input.snapshot.subjectName,
@@ -150,11 +155,11 @@ export function createSupabaseStudiesStore({
       return saved.value ? ok(saved.value) : fail('falla-externa')
     },
 
-    async setPase(sectionId, classAt, pase, paseAt) {
+    async setPass(sectionId, classAt, pass, passedAt) {
       const updated = await run('pase de la clase', (s) =>
         client
           .from('section_classes')
-          .update({ pase, pase_at: paseAt })
+          .update({ pass_status: pass, passed_at: passedAt })
           .eq('section_id', sectionId)
           .eq('class_at', classAt)
           .abortSignal(s)

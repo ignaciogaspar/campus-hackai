@@ -25,20 +25,25 @@ export function createMemoryStudiesStore(): StudiesStore {
     },
 
     async pending() {
-      return ok(copy([...classes.values()].filter((c) => c.pase === 'pendiente').sort(byClassAt)))
+      return ok(copy([...classes.values()].filter((c) => c.pass === 'pendiente').sort(byClassAt)))
     },
 
     async saveClass(input) {
-      const saved: StoredClass = { ...copy(input), absent: [...new Set(input.absent)], pase: 'pendiente', paseAt: null }
+      const saved: StoredClass = {
+        ...copy(input),
+        absent: [...new Set(input.absent)],
+        pass: 'pendiente',
+        passedAt: null
+      }
       classes.set(keyOf(input.sectionId, input.classAt), saved)
       return ok(copy(saved))
     },
 
-    async setPase(sectionId, classAt, pase, paseAt) {
+    async setPass(sectionId, classAt, pass, passedAt) {
       const found = classes.get(keyOf(sectionId, classAt))
       if (found) {
-        found.pase = pase
-        found.paseAt = paseAt
+        found.pass = pass
+        found.passedAt = passedAt
       }
       return ok(null)
     },

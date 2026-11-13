@@ -12,7 +12,7 @@ export type PeriodicSyncDeps = {
   secret: string | undefined
   syncAll: Spaces['syncAll']
   /** Reintenta pasar al SIU las listas de asistencia pendientes (Cursada). Si falla, no corta la corrida. */
-  retryPases?: Studies['retryPases']
+  retryAttendancePass?: Studies['retryAttendancePass']
   /** Reintenta el pase al SIU de las notas pendientes de Seguimiento. Sin esto, la corrida solo sincroniza espacios. */
   retryPass?: Coursework['retryPass']
   log?: (message: string) => void
@@ -52,7 +52,7 @@ async function retryGrades(retryPass: Coursework['retryPass'], log: (message: st
     Espacios si no pudo. */
 export async function handlePeriodicSync(
   request: Request,
-  { secret, syncAll, retryPases, retryPass, log = console.log }: PeriodicSyncDeps
+  { secret, syncAll, retryAttendancePass, retryPass, log = console.log }: PeriodicSyncDeps
 ): Promise<Response> {
   const configured = secret?.trim()
   if (!configured) {
@@ -63,10 +63,10 @@ export async function handlePeriodicSync(
   if (!authorized(request, configured)) return Response.json({ error: 'no-autorizado' }, { status: 401 })
 
   // Las listas de asistencia que no llegaron al SIU se reintentan en la misma corrida; lo que pase acá no corta la de Espacios.
-  const pases = retryPases ? await retryPases() : null
-  if (pases && !pases.ok) log(`[corrida-periodica] pases al SIU: ${pases.error}`)
-  if (pases?.ok)
-    log(`[corrida-periodica] pases al SIU: ${pases.value.passed} pasados, ${pases.value.pending} pendientes`)
+  const attendance = retryAttendancePass ? await retryAttendancePass() : null
+  if (attendance && !attendance.ok) log(`[corrida-periodica] pases al SIU: ${attendance.error}`)
+  if (attendance?.ok)
+    log(`[corrida-periodica] pases al SIU: ${attendance.value.passed} pasados, ${attendance.value.pending} pendientes`)
 
   const result = await syncAll()
   const grades = retryPass ? await retryGrades(retryPass, log) : null

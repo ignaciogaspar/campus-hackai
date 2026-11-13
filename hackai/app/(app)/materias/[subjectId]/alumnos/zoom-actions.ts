@@ -7,6 +7,7 @@ import type { ZoomState } from '@/components/subjects/zoom-form'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { StudiesReadError, ZoomError } from '@/lib/core/studies'
+import { formText } from '@/lib/form-data'
 
 const ERRORS: Record<ZoomError | StudiesReadError, string> = {
   'falla-externa': 'No pudimos guardar el enlace. Probá de nuevo en un rato.',
@@ -16,17 +17,12 @@ const ERRORS: Record<ZoomError | StudiesReadError, string> = {
   'no-implementado': 'Esta función todavía no está disponible.'
 }
 
-const text = (formData: FormData, name: string) => {
-  const value = formData.get(name)
-  return typeof value === 'string' ? value : ''
-}
-
 export async function saveZoomLinkAction(_prev: ZoomState, formData: FormData): Promise<ZoomState> {
   const session = await requireSession('profesor')
   const result = await system().studies.setZoomLink(
     session.personId,
-    text(formData, 'comision'),
-    text(formData, 'enlace')
+    formText(formData, 'comision'),
+    formText(formData, 'enlace')
   )
   if (!result.ok) return { kind: 'error', message: ERRORS[result.error] }
 

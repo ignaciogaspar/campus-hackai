@@ -4,7 +4,7 @@
    instante, el inicio del horario en Buenos Aires (UTC-3, sin horario de
    verano): la falta que el SIU tiene del miércoles de 8 a 10 es de las
    `11:00Z`. */
-import { addDays, dayKey, weekdayIndex } from '@/lib/dates'
+import { addDays, atBuenosAires, dayKey, weekdayIndex } from '@/lib/dates'
 import type { SiuSchedule, SiuSection, SiuTerm } from '@/lib/ports/siu'
 
 /** Una clase: cuándo empieza y cuándo termina, en ISO. */
@@ -12,9 +12,6 @@ export type SectionClass = { classAt: string; endAt: string }
 
 /** Los días del horario del SIU, en el orden de la semana (el lunes es 0, como en `weekdayIndex`). */
 const WEEKDAYS: SiuSchedule['day'][] = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
-
-/** El instante de una hora de un día `AAAA-MM-DD` en Buenos Aires. */
-const at = (day: string, time: string) => new Date(`${day}T${time}:00-03:00`).toISOString()
 
 /** Las clases de la comisión desde que empieza el período hasta el día de `throughIso` inclusive (o hasta que
     termina el período), de la primera a la última. */
@@ -28,7 +25,7 @@ export function classesThrough(
   for (let day = dayKey(term.start); day <= last; day = addDays(day, 1)) {
     for (const slot of section.schedule) {
       if (WEEKDAYS.indexOf(slot.day) === weekdayIndex(day))
-        classes.push({ classAt: at(day, slot.start), endAt: at(day, slot.end) })
+        classes.push({ classAt: atBuenosAires(day, slot.start), endAt: atBuenosAires(day, slot.end) })
     }
   }
   return classes.sort((a, b) => a.classAt.localeCompare(b.classAt))
@@ -42,7 +39,7 @@ function classesOn(section: ClassSchedule, day: string): SectionClass[] {
   if (day < dayKey(section.termStart) || day > dayKey(section.termEnd)) return []
   return section.schedule
     .filter((slot) => WEEKDAYS.indexOf(slot.day) === weekdayIndex(day))
-    .map((slot) => ({ classAt: at(day, slot.start), endAt: at(day, slot.end) }))
+    .map((slot) => ({ classAt: atBuenosAires(day, slot.start), endAt: atBuenosAires(day, slot.end) }))
 }
 
 /** Si la comisión tiene clase un día `AAAA-MM-DD`. */

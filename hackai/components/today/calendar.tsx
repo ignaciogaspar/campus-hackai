@@ -9,8 +9,9 @@
    semana se elige qué ver: clases, parciales, finales, entregas, inscripciones
    y de qué materia. Lo de arriba (`top`), lo de debajo de la semana (`below`) y lo de debajo del mes chico
    (`aside`) los arma la pantalla. */
-import { ChevronLeft, ChevronRight, Clock, MapPin, Video } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
 import { Fragment, type ReactNode, useState } from 'react'
+import { ZoomLink } from '@/components/subjects/zoom-link'
 import {
   type CalendarEvent,
   type CalendarTone,
@@ -118,19 +119,14 @@ function Block({ e }: { e: CalendarEvent }) {
 
 /* El enlace de Zoom de una clase virtual o híbrida, en un bloque propio debajo del evento: va afuera del bloque
    para que no haya un enlace dentro de otro y para que el toque tenga el tamaño de un botón. */
-function ZoomLink({ e }: { e: CalendarEvent }) {
+function EventZoom({ e }: { e: CalendarEvent }) {
   if (!e.zoomUrl || e.past) return null
   return (
-    <a
-      href={e.zoomUrl}
-      target='_blank'
-      rel='noopener noreferrer'
+    <ZoomLink
+      url={e.zoomUrl}
+      subjectName={e.title}
       className='inline-flex min-h-11 items-center gap-1.5 self-start rounded-md px-1 text-[0.75rem] font-semibold text-blue hover:underline focus-ring'
-    >
-      <Video aria-hidden='true' className='size-3.5' />
-      Entrar a Zoom
-      <span className='sr-only'>a la clase de {e.title} (se abre en otra pestaña)</span>
-    </a>
+    />
   )
 }
 
@@ -239,7 +235,7 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
             {c.events.map((e) => (
               <div key={e.id} className='flex min-w-0 flex-col'>
                 <Block e={e} />
-                <ZoomLink e={e} />
+                <EventZoom e={e} />
               </div>
             ))}
           </div>
@@ -286,7 +282,7 @@ function Agenda({ days, events, today }: { days: string[]; events: CalendarEvent
                 {ofDay.map((e) => (
                   <div key={e.id} className='flex min-w-0 flex-col'>
                     <Block e={e} />
-                    <ZoomLink e={e} />
+                    <EventZoom e={e} />
                   </div>
                 ))}
               </div>

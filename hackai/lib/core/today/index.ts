@@ -58,11 +58,11 @@ import {
   type Career,
   compareUpcoming,
   currentClass,
-  hasZoom,
   type MySection,
   type MySubject,
   type MySubjects,
   type OpenEnrollment,
+  type SectionSnapshot,
   type Studies,
   type StudiesReadError,
   type UpcomingItem
@@ -100,14 +100,10 @@ export type TodayView = {
 export type TeachingPart = 'sections' | 'questions' | 'dates' | 'unread' | 'class'
 
 /** La clase de ahora o la próxima de una comisión que dicta. */
-export type NowClass = {
+export type NowClass = SectionSnapshot & {
   /** `ahora`: empezó y no terminó. `proxima`: todavía no empezó. */
   state: 'ahora' | 'proxima'
   sectionId: string
-  sectionName: string
-  subjectId: string
-  subjectCode: string
-  subjectName: string
   /** Cuándo empieza y cuándo termina, en ISO: con `sectionId`, identifica la clase para tomar lista. */
   classAt: string
   endAt: string
@@ -255,7 +251,8 @@ function nowClassOf(subjects: MySubjects, now: string): NowClass | null {
     endAt: found.endAt,
     location: subject.location,
     modality: subject.modality,
-    zoomUrl: hasZoom(subject.modality) ? subject.zoomUrl : null
+    // Cursada ya deja el enlace solo en las comisiones virtuales o híbridas.
+    zoomUrl: subject.zoomUrl
   }
 }
 

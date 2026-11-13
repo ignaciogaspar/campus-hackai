@@ -7,13 +7,14 @@
 
    En el celular es una columna de botones de ancho completo, con el alto
    mínimo de un toque. */
-import { CalendarClock, ClipboardCheck, MapPin, Video } from 'lucide-react'
+import { CalendarClock, ClipboardCheck, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { longDay, timeOf } from '@/components/dates'
 import { modalityName } from '@/components/enrollment/format'
 import { attendanceHref } from '@/components/subjects/attendance-format'
-import { SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
+import { ALUMNOS_TAB, subjectTabHref } from '@/components/subjects/subject-nav'
+import { ZoomLink } from '@/components/subjects/zoom-link'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -22,20 +23,8 @@ import type { NowClass } from '@/lib/core/today'
 import { dayKey } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 
-const ALUMNOS_TAB = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
-
 const action = (variant: 'default' | 'outline') =>
   cn(buttonVariants({ variant, size: 'lg' }), 'h-11 w-full justify-center gap-2 text-sm font-semibold sm:w-auto')
-
-function ZoomButton({ url, subjectName }: { url: string; subjectName: string }) {
-  return (
-    <a href={url} target='_blank' rel='noopener noreferrer' className={action('default')}>
-      <Video aria-hidden='true' />
-      Entrar a Zoom
-      <span className='sr-only'>a la clase de {subjectName} (se abre en otra pestaña)</span>
-    </a>
-  )
-}
 
 function Detail({ icon: Icon, children }: { icon: typeof MapPin; children: ReactNode }) {
   return (
@@ -62,7 +51,9 @@ export function NowClassCard({ nowClass: c, now }: { nowClass: NowClass; now: st
         {title}
       </h2>
       <Card className='flex flex-col gap-3 p-4'>
-        {isToday && virtual && c.zoomUrl && <ZoomButton url={c.zoomUrl} subjectName={c.subjectName} />}
+        {isToday && c.zoomUrl && (
+          <ZoomLink url={c.zoomUrl} subjectName={c.subjectName} className={action('default')} iconClassName='' />
+        )}
         <div className='flex items-start justify-between gap-3'>
           <div className='min-w-0'>
             <h3 className='text-[0.9375rem] leading-snug font-bold text-ink'>{c.subjectName}</h3>
@@ -90,7 +81,7 @@ export function NowClassCard({ nowClass: c, now }: { nowClass: NowClass; now: st
         {isToday && (
           <Link
             href={attendanceHref(c.subjectId, c.sectionId, c.classAt)}
-            className={action(virtual && c.zoomUrl ? 'outline' : 'default')}
+            className={action(c.zoomUrl ? 'outline' : 'default')}
           >
             <ClipboardCheck aria-hidden='true' />
             Tomar lista

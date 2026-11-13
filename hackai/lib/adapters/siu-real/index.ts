@@ -535,7 +535,9 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
   }
 
   return {
-    // Las del simulado: la demo sigue inscribiendo a las personas sintéticas.
+    // Las del simulado: la demo sigue inscribiendo a las personas sintéticas. Escribir notas y asistencia se decide
+    // por comisión: las de la demo van al simulado y las de una cuenta real responden `no-soportado`, que el núcleo
+    // anota como «Sin pasar al SIU». Por eso `canWriteGrades` y `canRecordAttendance` son las del simulado.
     capabilities: { ...fallback.capabilities, hasAssessmentSchedule: true },
 
     person: (id) => (isMine(id) ? fromSnapshot((s) => s.person) : fallback.person(id)),

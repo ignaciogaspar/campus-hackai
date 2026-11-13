@@ -6,9 +6,9 @@
 import type { PersonId } from '@/lib/core/people'
 import type { ExternalFailure, Result } from '@/lib/result'
 
-/** Si la lista de una clase llegó al SIU: `pendiente` (todavía no, se reintenta), `pasado`, o `sin-pasar` (el SIU no
+/** Si la lista de una clase llegó al SIU: `pendiente` (todavía no, se reintenta), `pasado`, o `no-permitido` (el SIU no
     deja cargar la asistencia por API: la lista queda solo en HackAI). */
-export type Pase = 'pendiente' | 'pasado' | 'sin-pasar'
+export type AttendancePass = 'pendiente' | 'pasado' | 'no-permitido'
 
 /** Cómo se ve la comisión y su materia cuando se tomó la lista, para mostrar las faltas aunque el SIU no responda. */
 export type SectionSnapshot = {
@@ -29,13 +29,13 @@ export type StoredClass = {
   takenBy: PersonId
   /** Los ausentes, por su id del SIU (legajo): así también está el que no tiene cuenta vinculada. */
   absent: string[]
-  pase: Pase
+  pass: AttendancePass
   /** Cuándo se pasó al SIU. `null` si no se pasó. */
-  paseAt: string | null
+  passedAt: string | null
   snapshot: SectionSnapshot
 }
 
-export type StoredClassInput = Omit<StoredClass, 'pase' | 'paseAt'>
+export type StoredClassInput = Omit<StoredClass, 'pass' | 'passedAt'>
 
 export type StudiesStoreError = ExternalFailure
 
@@ -52,11 +52,11 @@ export type StudiesStore = {
       `pendiente`: una lista corregida se pasa de nuevo. */
   saveClass(input: StoredClassInput): Promise<Result<StoredClass, StudiesStoreError>>
   /** Marca cómo quedó el pase de una clase. Si la clase ya no existe, no hace nada. */
-  setPase(
+  setPass(
     sectionId: string,
     classAt: string,
-    pase: Pase,
-    paseAt: string | null
+    pass: AttendancePass,
+    passedAt: string | null
   ): Promise<Result<null, StudiesStoreError>>
   /** Los enlaces de Zoom cargados de esas comisiones, por id de comisión. Las que no tienen no figuran. */
   zoomLinks(sectionIds: string[]): Promise<Result<Record<string, string>, StudiesStoreError>>

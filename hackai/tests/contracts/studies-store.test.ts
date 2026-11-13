@@ -48,7 +48,7 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
 
   it('guarda una clase con sus ausentes, pendiente de pasar, y la lee de vuelta', async (store, ids) => {
     const saved = value(await store.saveClass(classOf(ids, 1, TUESDAY, [1, 2])))
-    assert.deepEqual(saved, { ...classOf(ids, 1, TUESDAY, [1, 2]), pase: 'pendiente', paseAt: null })
+    assert.deepEqual(saved, { ...classOf(ids, 1, TUESDAY, [1, 2]), pass: 'pendiente', passedAt: null })
     assert.deepEqual(value(await store.classAt(ids.section(1), TUESDAY)), saved)
     assert.equal(value(await store.classAt(ids.section(1), MONDAY)), null)
     assert.equal(value(await store.classAt(ids.section(2), TUESDAY)), null)
@@ -76,14 +76,14 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
 
   it('guardar de nuevo la misma comisión e instante reemplaza la lista y vuelve a quedar pendiente', async (store, ids) => {
     value(await store.saveClass(classOf(ids, 1, TUESDAY, [1, 2])))
-    value(await store.setPase(ids.section(1), TUESDAY, 'pasado', TAKEN))
+    value(await store.setPass(ids.section(1), TUESDAY, 'pasado', TAKEN))
     const again = value(
       await store.saveClass({ ...classOf(ids, 1, TUESDAY, [2, 3]), takenAt: '2026-11-10T16:00:00.000Z' })
     )
     assert.deepEqual(again.absent, [ids.student(2), ids.student(3)])
     assert.equal(again.takenAt, '2026-11-10T16:00:00.000Z')
-    assert.equal(again.pase, 'pendiente')
-    assert.equal(again.paseAt, null)
+    assert.equal(again.pass, 'pendiente')
+    assert.equal(again.passedAt, null)
     assert.equal(value(await store.classesOf([ids.section(1)])).length, 1)
   })
 
@@ -119,21 +119,21 @@ function studiesStoreContract(name: string, make: () => StudiesStore, skip: stri
   it('cambia el pase de una clase y lista las que siguen pendientes', async (store, ids) => {
     value(await store.saveClass(classOf(ids, 1, MONDAY, [1])))
     value(await store.saveClass(classOf(ids, 1, TUESDAY, [1])))
-    value(await store.setPase(ids.section(1), MONDAY, 'pasado', TAKEN))
+    value(await store.setPass(ids.section(1), MONDAY, 'pasado', TAKEN))
     const monday = value(await store.classAt(ids.section(1), MONDAY))
-    assert.equal(monday?.pase, 'pasado')
-    assert.equal(monday?.paseAt, TAKEN)
+    assert.equal(monday?.pass, 'pasado')
+    assert.equal(monday?.passedAt, TAKEN)
     const pending = value(await store.pending()).filter((c) => c.sectionId === ids.section(1))
     assert.deepEqual(
       pending.map((c) => c.classAt),
       [TUESDAY]
     )
-    value(await store.setPase(ids.section(1), TUESDAY, 'sin-pasar', null))
-    assert.equal(value(await store.classAt(ids.section(1), TUESDAY))?.pase, 'sin-pasar')
+    value(await store.setPass(ids.section(1), TUESDAY, 'no-permitido', null))
+    assert.equal(value(await store.classAt(ids.section(1), TUESDAY))?.pass, 'no-permitido')
   })
 
   it('cambiar el pase de una clase que no existe no hace nada', async (store, ids) => {
-    assert.deepEqual(await store.setPase(ids.section(1), TUESDAY, 'pasado', TAKEN), { ok: true, value: null })
+    assert.deepEqual(await store.setPass(ids.section(1), TUESDAY, 'pasado', TAKEN), { ok: true, value: null })
     assert.equal(value(await store.classAt(ids.section(1), TUESDAY)), null)
   })
 }
@@ -147,8 +147,8 @@ const TABLES = {
       'taken_at',
       'taken_by',
       'absent',
-      'pase',
-      'pase_at',
+      'pass_status',
+      'passed_at',
       'subject_id',
       'subject_code',
       'subject_name',
@@ -157,7 +157,7 @@ const TABLES = {
     uuid: ['id'],
     jsonb: ['absent'],
     generated: { id: 'uuid' },
-    defaults: { absent: [], pase: 'pendiente' },
+    defaults: { absent: [], pass_status: 'pendiente' },
     unique: [['section_id', 'class_at']]
   },
   section_zoom_links: { columns: ['section_id', 'url'], unique: [['section_id']] }
@@ -199,7 +199,7 @@ test('almacén de Supabase: una base caída devuelve «falla externa» sin tirar
   assert.deepEqual(await store.classesAbsent('a'), failed)
   assert.deepEqual(await store.pending(), failed)
   assert.deepEqual(await store.saveClass(classOf(fresh(), 1, TUESDAY, [1])), failed)
-  assert.deepEqual(await store.setPase('c', TUESDAY, 'pasado', TAKEN), failed)
+  assert.deepEqual(await store.setPass('c', TUESDAY, 'pasado', TAKEN), failed)
 })
 
 const url = process.env.HACKAI_TEST_SUPABASE_URL

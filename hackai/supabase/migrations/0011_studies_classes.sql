@@ -6,8 +6,8 @@
 -- (el inicio de su horario en Buenos Aires) y con `section_id` la identifica;
 -- corregir la lista el mismo día reemplaza la fila. Los ausentes se guardan
 -- por su id del SIU (legajo) en `absent`, así también figura el que no tiene
--- cuenta vinculada. `pase` dice si la lista llegó al SIU: 'pendiente' (se
--- reintenta), 'pasado' o 'sin-pasar' (el SIU no deja escribirla por API).
+-- cuenta vinculada. `pass_status` dice si la lista llegó al SIU: 'pendiente' (se
+-- reintenta), 'pasado' o 'no-permitido' (el SIU no deja escribirla por API).
 -- `subject_*` y `section_name` guardan cómo se llamaban cuando se tomó la
 -- lista, para mostrar las faltas aunque el SIU no responda.
 --
@@ -24,8 +24,8 @@ create table if not exists section_classes (
   taken_at timestamptz not null,      -- cuándo se tomó o se corrigió
   taken_by text not null,             -- id de HackAI del docente que la tomó
   absent jsonb not null default '[]'::jsonb check (jsonb_typeof(absent) = 'array'),
-  pase text not null default 'pendiente' check (pase in ('pendiente', 'pasado', 'sin-pasar')),
-  pase_at timestamptz,                -- cuándo se pasó al SIU; null si no se pasó
+  pass_status text not null default 'pendiente' check (pass_status in ('pendiente', 'pasado', 'no-permitido')),
+  passed_at timestamptz,                -- cuándo se pasó al SIU; null si no se pasó
   subject_id text not null,
   subject_code text not null,
   subject_name text not null,
@@ -34,7 +34,7 @@ create table if not exists section_classes (
 );
 
 -- Las listas por pasar, de la más vieja a la más nueva.
-create index if not exists section_classes_pending_idx on section_classes (class_at) where pase = 'pendiente';
+create index if not exists section_classes_pending_idx on section_classes (class_at) where pass_status = 'pendiente';
 
 -- Los ausentes, por id del SIU: lo que busca la vista de inasistencias del alumno.
 create index if not exists section_classes_absent_idx on section_classes using gin (absent);

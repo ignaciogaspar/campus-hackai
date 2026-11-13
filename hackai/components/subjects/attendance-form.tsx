@@ -5,13 +5,13 @@
    se puede cambiar. Solo muestra lo que dice la página y la server action. */
 import { Check, CircleAlert, UserX } from 'lucide-react'
 import { useActionState, useState } from 'react'
-import { absentCount, PASE_TEXT, PASE_TONE, SAVED_TEXT } from '@/components/subjects/attendance-format'
+import { absentCount, PASS_TEXT, PASS_TONE, SAVED_TEXT } from '@/components/subjects/attendance-format'
 import type { AttendanceAction, AttendanceState } from '@/components/subjects/attendance-state'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ErrorNotice } from '@/components/ui/states'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { Pase } from '@/lib/core/studies'
+import type { AttendancePass } from '@/lib/core/studies'
 import { cn } from '@/lib/utils'
 
 export type AttendanceStudent = { legajo: string; name: string }
@@ -24,7 +24,7 @@ export function AttendanceForm({
   classAt,
   students,
   initialAbsent,
-  pase,
+  pass,
   editable
 }: {
   action: AttendanceAction
@@ -34,7 +34,7 @@ export function AttendanceForm({
   /** Los legajos de los ausentes ya guardados. */
   initialAbsent: string[]
   /** Cómo está el pase de la lista ya guardada; `null` si todavía no se tomó. */
-  pase: Pase | null
+  pass: AttendancePass | null
   /** Solo la clase de hoy se toma o se corrige. */
   editable: boolean
 }) {
@@ -48,7 +48,7 @@ export function AttendanceForm({
       return next
     })
 
-  const shownPase = state.kind === 'guardada' ? state.pase : pase
+  const shownPass = state.kind === 'guardada' ? state.pass : pass
 
   return (
     <form action={formAction} className='flex max-w-3xl flex-col gap-3'>
@@ -62,7 +62,7 @@ export function AttendanceForm({
         <h2 className='text-sm font-bold text-muted-foreground' aria-live='polite'>
           {absentCount(absent.size, students.length)}
         </h2>
-        {shownPase && <StatusPill tone={PASE_TONE[shownPase]}>{PASE_TEXT[shownPase]}</StatusPill>}
+        {shownPass && <StatusPill tone={PASS_TONE[shownPass]}>{PASS_TEXT[shownPass]}</StatusPill>}
       </div>
       {editable && (
         <p className='px-1 text-[0.8125rem] text-muted-foreground'>
@@ -114,7 +114,7 @@ export function AttendanceForm({
         {state.kind === 'guardada' && (
           <p className='flex items-start gap-2 rounded-lg bg-success-background p-3 text-sm text-success'>
             <Check aria-hidden='true' className='mt-0.5 size-4 flex-none' />
-            <span>{SAVED_TEXT[state.pase]}</span>
+            <span>{SAVED_TEXT[state.pass]}</span>
           </p>
         )}
         {state.kind === 'error' && (
@@ -130,7 +130,7 @@ export function AttendanceForm({
       {editable ? (
         <div className='fixed inset-x-0 bottom-[calc(67px+env(safe-area-inset-bottom))] z-10 border-t border-border bg-background px-4 py-2 lg:sticky lg:bottom-0 lg:z-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:py-3'>
           <Button type='submit' size='lg' disabled={pending} className='h-11 w-full text-base'>
-            {pending ? 'Guardando…' : pase ? 'Guardar corrección' : 'Guardar lista'}
+            {pending ? 'Guardando…' : pass ? 'Guardar corrección' : 'Guardar lista'}
           </Button>
         </div>
       ) : (

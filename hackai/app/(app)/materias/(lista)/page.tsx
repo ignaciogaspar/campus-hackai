@@ -26,7 +26,6 @@ import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { MySubjects, PendingFinal, StudiesReadError, SubjectStanding } from '@/lib/core/studies'
-import { dayKey } from '@/lib/dates'
 
 export const metadata: Metadata = { title: 'Mis materias · Campus HackAI' }
 
@@ -43,8 +42,7 @@ function cardsFor(
   subjects: MySubjects,
   standings: SubjectStanding[],
   unread: Map<string, number>,
-  pending: PendingFinal[] | null,
-  today: string
+  pending: PendingFinal[] | null
 ): ReactNode[] {
   const standingOf = (id: string) => standings.find((s) => s.subjectId === id)
   if (view === 'final-pendiente')
@@ -63,7 +61,6 @@ function cardsFor(
       subject={s}
       standing={standingOf(s.subjectId)}
       unread={unread.get(s.subjectId) ?? 0}
-      today={today}
     />
   ))
 }
@@ -149,7 +146,6 @@ function SubjectsView({
 }) {
   const { standings, pending } = reads
   const now = system().now()
-  const today = dayKey(now)
   return (
     <>
       {stale && <StaleBanner since={stale} now={now} />}
@@ -161,9 +157,9 @@ function SubjectsView({
       <SubjectViews
         student={student}
         views={{
-          'en-curso': cardsFor('en-curso', subjects, standings, unread, pending, today),
-          'final-pendiente': cardsFor('final-pendiente', subjects, standings, unread, pending, today),
-          archivadas: cardsFor('archivadas', subjects, standings, unread, pending, today)
+          'en-curso': cardsFor('en-curso', subjects, standings, unread, pending),
+          'final-pendiente': cardsFor('final-pendiente', subjects, standings, unread, pending),
+          archivadas: cardsFor('archivadas', subjects, standings, unread, pending)
         }}
       />
     </>

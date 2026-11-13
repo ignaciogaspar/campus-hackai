@@ -7,15 +7,15 @@
      solo la clase de hoy (día de Buenos Aires, con el reloj inyectado).
    - Guardar no depende del SIU: la lista guardada es lo que ve el alumno. El
      pase al SIU va después y puede quedar `pendiente` (el SIU no respondió),
-     `pasado` o `sin-pasar` (el SIU no deja escribir la asistencia).
+     `pasado` o `no-permitido` (el SIU no deja escribir la asistencia).
    - El pase REEMPLAZA la lista de la clase en el SIU, así que reintentar no
      duplica y una lista corregida se pasa de nuevo. Se reintenta al abrir las
-     clases o la lista de una comisión y con `retryPases`, de la clase más
+     clases o la lista de una comisión y con `retryAttendancePass`, de la clase más
      vieja a la más nueva; corta en el primer fallo para mantener el orden. */
 import type { People, PersonId } from '@/lib/core/people'
 import { classesThrough, type SectionClass } from '@/lib/core/studies/classes'
 import { type SectionStudent, type SectionStudentsError, teacherOfSection } from '@/lib/core/studies/section-students'
-import type { Pase, SectionSnapshot, StoredClass, StudiesStore } from '@/lib/core/studies/store'
+import type { AttendancePass, SectionSnapshot, StoredClass, StudiesStore } from '@/lib/core/studies/store'
 import { dayKey } from '@/lib/dates'
 import type { ClockPort } from '@/lib/ports/clock'
 import type { SiuPort, SiuSection, SiuSubject, SiuTerm } from '@/lib/ports/siu'
@@ -26,13 +26,17 @@ export type TakenClass = {
   /** Los ausentes, por legajo (id del SIU). */
   absent: string[]
   takenAt: string
-  pase: Pase
+  pass: AttendancePass
   /** Cuándo se pasó al SIU. `null` si no se pasó. */
-  paseAt: string | null
+  passedAt: string | null
 }
 
-/** Una clase de la comisión, con su lista si ya se tomó. */
-export type ClassItem = SectionClass & { today: boolean; taken: TakenClass | null }
+/** Una clase de la comisión, con su lista si ya se tomó. La modalidad es la de la comisión: el SIU no la da por clase. */
+export type ClassItem = SectionClass & {
+  today: boolean
+  modality: SiuSection['modality']
+  taken: TakenClass | null
+}
 
 /** La lista de una clase para tomarla o corregirla. */
 export type AttendanceSheet = {
@@ -56,7 +60,7 @@ export type AttendanceError =
   /** Un ausente que no está inscripto a la comisión. */
   | 'ausente-no-inscripto'
 
-export type TakenResult = { classAt: string; absent: string[]; pase: Pase; paseAt: string | null }
+export type TakenResult = { classAt: string; absent: string[]; pass: AttendancePass; passedAt: string | null }
 
 /** Lo que dejó un reintento de pases. */
 export type RetryReport = { passed: number; pending: number }
@@ -74,8 +78,8 @@ type Context = { siuId: string; section: SiuSection; term: SiuTerm; subject: Siu
 const takenOf = (c: StoredClass): TakenClass => ({
   absent: c.absent,
   takenAt: c.takenAt,
-  pase: c.pase,
-  paseAt: c.paseAt
+  pass: c.pass,
+  passedAt: c.passedAt
 })
 
 /** Una lectura del SIU que no encuentra lo que busca es, para quien pide, que no tiene acceso. */
@@ -99,44 +103,47 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
     return ok({ siuId: teacher.value, section: section.value, term, subject: subject.value })
   }
 
-  /** Pasa la lista guardada al SIU y deja anotado cómo quedó. Nunca falla: un SIU que no responde es `pendiente`. */
-  async function pass(saved: StoredClass): Promise<{ pase: Pase; paseAt: string | null }> {
-    const sent = await siu.recordAttendance(saved.sectionId, saved.classAt, saved.absent)
-    let outcome: { pase: Pase; paseAt: string | null }
-    if (sent.ok) outcome = { pase: 'pasado', paseAt: now() }
-    else if (sent.error === 'falla-externa') return { pase: 'pendiente', paseAt: null }
-    else outcome = { pase: 'sin-pasar', paseAt: null }
-    // Si no se pudo anotar, queda `pendiente` y el reintento reenvía lo mismo: el SIU reemplaza, no duplica.
-    await store.setPase(saved.sectionId, saved.classAt, outcome.pase, outcome.paseAt)
-    return outcome
+  /** Pasa la lista guardada al SIU y deja anotado cómo quedó. Nunca falla. Si el SIU declara que no escribe
+      asistencia (`canRecordAttendance`), queda `no-permitido` sin llamarlo; si dice `no-soportado` para esa comisión
+      (el SIU real con la comisión de una cuenta real), también. Queda `pendiente` si el SIU no respondió (`down`) o
+      no conoce la comisión o a un ausente: se reintenta, y el SIU reemplaza la lista, no la duplica. */
+  async function pass(saved: StoredClass): Promise<{ pass: AttendancePass; passedAt: string | null; down: boolean }> {
+    const sent = siu.capabilities.canRecordAttendance
+      ? await siu.recordAttendance(saved.sectionId, saved.classAt, saved.absent)
+      : fail('no-soportado' as const)
+    if (!sent.ok && sent.error === 'falla-externa') return { pass: 'pendiente', passedAt: null, down: true }
+    if (!sent.ok && sent.error === 'no-encontrado') return { pass: 'pendiente', passedAt: null, down: false }
+    const outcome = sent.ok
+      ? { pass: 'pasado' as const, passedAt: now() }
+      : { pass: 'no-permitido' as const, passedAt: null }
+    // Si no se pudo anotar, queda `pendiente` y el reintento reenvía lo mismo.
+    await store.setPass(saved.sectionId, saved.classAt, outcome.pass, outcome.passedAt)
+    return { ...outcome, down: false }
   }
 
-  /** Reintenta los pases pendientes, de la clase más vieja a la más nueva, y corta en el primer fallo. */
-  async function retryPases(): Promise<Result<RetryReport, ExternalFailure>> {
-    const pending = await store.pending()
-    if (!pending.ok) return pending
+  /** Reintenta los pases pendientes (todos, o los de una comisión), de la clase más vieja a la más nueva. Corta si el
+      SIU no responde: las que siguen quedan pendientes. */
+  async function retryPending(sectionId?: string): Promise<Result<RetryReport, ExternalFailure>> {
+    const all = await store.pending()
+    if (!all.ok) return all
+    const pending = sectionId ? all.value.filter((c) => c.sectionId === sectionId) : all.value
     let passed = 0
-    for (const [i, c] of pending.value.entries()) {
+    for (const [i, c] of pending.entries()) {
       const outcome = await pass(c)
-      if (outcome.pase === 'pendiente') return ok({ passed, pending: pending.value.length - i })
-      passed += 1
+      if (outcome.down) return ok({ passed, pending: pending.length - i })
+      if (outcome.pass !== 'pendiente') passed += 1
     }
-    return ok({ passed, pending: 0 })
+    return ok({ passed, pending: pending.length - passed })
   }
 
-  /** El reintento al abrir una comisión: solo de sus clases, y lo que falle no le importa a quien abre. */
-  async function retryOf(sectionId: string) {
-    const pending = await store.pending()
-    if (!pending.ok) return
-    for (const c of pending.value.filter((p) => p.sectionId === sectionId)) {
-      if ((await pass(c)).pase === 'pendiente') return
-    }
-  }
+  /** Reintenta todos los pases pendientes. Lo corre la corrida periódica. */
+  const retryAttendancePass = () => retryPending()
 
   async function classesOf(personId: PersonId, sectionId: string): Promise<Result<ClassItem[], AttendanceError>> {
     const context = await contextOf(personId, sectionId)
     if (!context.ok) return context
-    await retryOf(sectionId)
+    // Al abrir la comisión se reintentan sus pases; lo que falle no le importa a quien abre.
+    await retryPending(sectionId)
     const taken = await store.classesOf([sectionId])
     if (!taken.ok) return taken
     const today = dayKey(now())
@@ -145,7 +152,12 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
       classesThrough(context.value.section, context.value.term, now())
         .map((c): ClassItem => {
           const stored = byInstant.get(c.classAt)
-          return { ...c, today: dayKey(c.classAt) === today, taken: stored ? takenOf(stored) : null }
+          return {
+            ...c,
+            today: dayKey(c.classAt) === today,
+            modality: context.value.section.modality,
+            taken: stored ? takenOf(stored) : null
+          }
         })
         .reverse()
     )
@@ -211,5 +223,5 @@ export function createAttendance({ people, siu, clock, store, sectionStudents }:
     return ok({ classAt, absent: absentIds, ...outcome })
   }
 
-  return { classesOf, sheet, take, retryPases }
+  return { classesOf, sheet, take, retryAttendancePass }
 }

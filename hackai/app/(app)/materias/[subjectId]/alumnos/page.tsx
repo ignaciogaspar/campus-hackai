@@ -10,10 +10,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { pageOf } from '@/components/coursework/format'
 import { PageHeader } from '@/components/shell/page-header'
+import { ATTENDANCE_ERRORS } from '@/components/subjects/attendance-format'
 import { ClassHistory } from '@/components/subjects/class-history'
 import { ClassList } from '@/components/subjects/class-list'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
-import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
+import { ALUMNOS_TAB, chooseSection, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
 import { SUBJECT_MAIN, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { ZoomForm } from '@/components/subjects/zoom-form'
 import { Card } from '@/components/ui/card'
@@ -38,16 +39,10 @@ type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
 const ERRORS: Record<StudiesReadError | SectionStudentsError | AttendanceError, string> = {
+  ...ATTENDANCE_ERRORS,
   'falla-externa': 'No pudimos traer los alumnos porque el SIU no responde. Probá de nuevo en un rato.',
-  'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
-  'sin-acceso': 'Solo los docentes de la comisión ven a sus alumnos.',
-  'no-implementado': 'Esta función todavía no está disponible.',
-  'clase-inexistente': 'Esa clase no está en el horario de la comisión.',
-  'clase-fuera-de-fecha': 'Solo se toma o se corrige la lista de la clase de hoy.',
-  'ausente-no-inscripto': 'Hay un alumno que no está inscripto a la comisión.'
+  'sin-acceso': 'Solo los docentes de la comisión ven a sus alumnos.'
 }
-
-const ALUMNOS_TAB = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
 
 function StudentRow({ student }: { student: SectionStudent }) {
   return (

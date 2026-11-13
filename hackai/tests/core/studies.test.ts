@@ -95,6 +95,7 @@ test('un alumno ve sus materias del período lectivo actual arriba y las anterio
     modality: 'presencial',
     role: 'alumno',
     zoomUrl: null,
+    classToday: false,
     classrooms: [
       {
         courseId: 'c-am1-fi-a',

@@ -59,7 +59,7 @@ test('el historial muestra la clase tomada con sus ausentes, la modalidad y el e
   assert.equal(entry.classAt, TODAY_CLASS)
   assert.equal(entry.today, true)
   assert.equal(entry.modality, 'presencial')
-  assert.equal(entry.pase, 'pasado')
+  assert.equal(entry.pass, 'pasado')
   assert.equal(entry.total, 3)
   assert.deepEqual(entry.absent.map((a) => a.legajo).sort(), [LEGAJO.mcabrera, LEGAJO.sdominguez])
   assert.ok(entry.absent.every((a) => typeof a.name === 'string' && a.name.length > 0))
@@ -90,7 +90,7 @@ test('una clase sin ausentes figura con la lista vacía, y el estado del pase pe
   const [entry] = value(await studies.classHistory(TEACHER, SECTION))
 
   assert.deepEqual(entry.absent, [])
-  assert.equal(entry.pase, 'pendiente')
+  assert.equal(entry.pass, 'pendiente')
 })
 
 test('un docente de otra comisión y un alumno no ven el historial', async () => {

@@ -70,6 +70,7 @@ export function createRealSiuRegistry(options: RegistryOptions): RealSiuRegistry
   return {
     register,
     accountOf: byPerson,
+    // Las del simulado: escribir notas y asistencia se decide por comisión (ver createRealSiu).
     capabilities: { ...fallback.capabilities, hasAssessmentSchedule: true },
 
     person: (id) => routeTo(id)?.person(id) ?? missing(),
