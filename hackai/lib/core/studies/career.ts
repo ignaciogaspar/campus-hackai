@@ -205,11 +205,12 @@ function assessmentsOf(section: TakenSection | undefined, input: CareerInput): S
 }
 
 /** El año de un período lectivo: el que dice su nombre («Anual - 2026») y, si no trae, el de su inicio. El
-    SIU publica el anual con inicio en diciembre del año anterior, así que la fecha sola lo corre un año. */
+    SIU publica el anual con inicio en diciembre del año anterior, así que la fecha sola lo corre un año.
+    Los períodos que el SIU publica hoy traen un solo año; si un nombre trajera dos, vale el más alto. */
 function termYearOf(section: TakenSection | undefined): number | null {
   if (!section) return null
-  const named = section.termName.match(/\b20\d{2}\b/)?.[0]
-  if (named) return Number(named)
+  const named = [...section.termName.matchAll(/\b20\d{2}\b/g)].map((m) => Number(m[0]))
+  if (named.length) return Math.max(...named)
   return section.termStart ? yearOf(section.termStart) : null
 }
 

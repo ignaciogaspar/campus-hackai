@@ -2454,6 +2454,10 @@ test('el año lectivo de una cursada es el del nombre del período, y sin año e
 
   assert.equal(await yearOfAm1(annual), 2026)
 
+  // Con dos años en el nombre vale el más alto.
+  term.name = 'Grado Anual 2025/2026'
+  assert.equal(await yearOfAm1(annual), 2026)
+
   term.name = 'Grado Anual'
   assert.equal(await yearOfAm1(annual), 2025)
 })
