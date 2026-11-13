@@ -184,7 +184,8 @@ export function Requests({ heading, now }: { heading: ReactNode; now: string }) 
           <li
             key={r.id}
             id={rowId(r.id)}
-            tabIndex={r.id === shown ? -1 : undefined}
+            // Fuera del orden del Tab, pero se puede enfocar: «Ver mi solicitud» deja el foco en la fila nueva.
+            tabIndex={-1}
             className={cn(
               'flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors outline-none motion-reduce:transition-none',
               r.id === shown && 'bg-success-background shadow-[inset_4px_0_0_var(--color-success)]'

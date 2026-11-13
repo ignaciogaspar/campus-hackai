@@ -137,9 +137,11 @@ function Standing({ subject }: { subject: SubjectStanding }) {
       </Field>
       <Field label='Nota final'>{finalText(subject)}</Field>
       {subject.approvedAt && <Field label='Fecha de aprobación'>{approvalDate(subject.approvedAt)}</Field>}
-      <Field label='Cursada'>
-        <Section subject={subject} />
-      </Field>
+      {(subject.sectionName || subject.termName) && (
+        <Field label='Cursada'>
+          <Section subject={subject} />
+        </Field>
+      )}
     </dl>
   )
 }
