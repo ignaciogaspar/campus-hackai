@@ -68,7 +68,8 @@ test('HACKAI_SIU=simulado usa el SIU simulado sobre Supabase, que declara sus ca
   assert.deepEqual(system.ports.siu.capabilities, {
     canEnroll: true,
     hasAssessmentSchedule: true,
-    enrolsInClassroom: false
+    enrolsInClassroom: false,
+    canRecordAttendance: true
   })
 })
 
@@ -147,7 +148,12 @@ test('el canal externo de Discord se arma con el token del entorno y sin token n
 test('los adaptadores en memoria declaran sus capacidades', () => {
   const { ports } = compose({})
   assert.deepEqual(ports.identity.capabilities, { demoList: true })
-  assert.deepEqual(ports.siu.capabilities, { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false })
+  assert.deepEqual(ports.siu.capabilities, {
+    canEnroll: true,
+    hasAssessmentSchedule: true,
+    enrolsInClassroom: false,
+    canRecordAttendance: true
+  })
   assert.deepEqual(ports.classroom.capabilities, { canEnrol: true, hasAssignments: true })
   assert.deepEqual(ports.externalChannel.capabilities, { delivery: 'cursor', threads: true, servers: true })
   assert.equal(ports.files.capabilities.maxBytes > 0, true)

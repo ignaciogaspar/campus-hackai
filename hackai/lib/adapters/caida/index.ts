@@ -76,6 +76,7 @@ export function withSiuOutage(siu: SiuPort, outages: OutageSwitch): SiuPort {
     meetsCertificateConditions: guarded(down, siu.meetsCertificateConditions),
     enroll: guarded(down, siu.enroll),
     drop: guarded(down, siu.drop),
+    recordAttendance: guarded(down, siu.recordAttendance),
     selfServiceUrl: siu.selfServiceUrl
   }
 }

@@ -247,7 +247,12 @@ export function createSimulatedSiu({
   log = console.warn
 }: SimulatedSiuOptions): SiuPort {
   /** Fijas: el simulado siempre inscribe y tiene cronograma, a diferencia de la API real. */
-  const capabilities: SiuCapabilities = { canEnroll: true, hasAssessmentSchedule: true, enrolsInClassroom: false }
+  const capabilities: SiuCapabilities = {
+    canEnroll: true,
+    hasAssessmentSchedule: true,
+    enrolsInClassroom: false,
+    canRecordAttendance: true
+  }
   const now = () => clock.now().toISOString()
 
   /** Corre una consulta con tiempo máximo. Nunca tira: una caída es `falla-externa`. */
@@ -695,6 +700,30 @@ export function createSimulatedSiu({
       if (!updated.ok) return fail('falla-externa')
       return ok({ transactionNumber: newReceiptIds().number, date: at, target: { ...target } })
     },
+
+    // --- A: asistencia ---
+    /** Reemplaza las faltas de la clase en `siu_absences` con la función `siu_record_attendance`
+        (supabase/simulados/0003_siu_attendance.sql), que borra y escribe en una sola transacción. */
+    async recordAttendance(sectionId, classAt, absentPersonIds) {
+      const exists = await requireSection(sectionId)
+      if (!exists.ok) return exists
+      const absent = [...new Set(absentPersonIds)]
+      if (absent.length) {
+        const known = await list<{ id: string }>('asistencia-personas', (s) =>
+          client.from('siu_persons').select('id').in('id', absent).abortSignal(s)
+        )
+        if (!known.ok) return known
+        if (known.value.length !== absent.length) return fail('no-encontrado')
+      }
+      const written = await run('asistencia', (s) =>
+        client
+          .rpc('siu_record_attendance', { p_section_id: sectionId, p_class_at: classAt, p_absent: absent })
+          .abortSignal(s)
+      )
+      if (!written.ok) return fail('falla-externa')
+      return ok({ date: now() })
+    },
+    // --- fin A: asistencia ---
 
     selfServiceUrl(target) {
       const base = selfServiceBaseUrl

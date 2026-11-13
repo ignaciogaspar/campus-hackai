@@ -195,6 +195,22 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 30. ¿Hasta cuándo puede el docente tomar o corregir la lista de una clase?
+
+- **Por qué importa:** tomar lista (#108) toma y corrige solo la clase de hoy. Si el docente se olvida un día, la clase queda sin lista y sin poder tomarse después.
+- **Hipótesis (13/11/2026):** se toma o corrige la clase de hoy, día calendario de Buenos Aires. Las anteriores se ven, pero no se cambian. Una clase doble el mismo día cuenta como dos clases; en las inasistencias del alumno, una lista de HackAI reemplaza todas las faltas que el SIU tenga de esa comisión ese día.
+- **Opciones:** solo hoy; hasta el final del día siguiente; hasta una fecha límite por período; sin límite, con aviso a la secretaría.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 31. ¿Cuándo se reintenta pasar al SIU una lista que no llegó?
+
+- **Por qué importa:** si el SIU no responde, la lista queda `pendiente`. El alumno ve la falta igual, pero el SIU no la tiene hasta que se reintente.
+- **Hipótesis (13/11/2026):** se reintenta al abrir las clases o la lista de esa comisión y en la corrida periódica (`/api/cron/sync`). Como el SIU reemplaza la lista de la clase, reintentar no duplica. Una lista corregida se pasa de nuevo. HackAI no justifica faltas: las suyas van sin justificar.
+- **Opciones:** lo de la hipótesis; un botón «Reintentar» en la lista de la clase; avisar al docente por la campana si pasan más de 24 horas.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

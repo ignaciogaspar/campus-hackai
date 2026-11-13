@@ -9,7 +9,7 @@ export type SubjectTab = { id: string; label: string; path: string }
 /** Las pestañas de la materia del docente, en orden. `path` cuelga de `/materias/<materia>`. */
 export const SUBJECT_TABS: SubjectTab[] = [
   { id: 'espacio', label: 'Espacio', path: '' },
-  { id: 'alumnos', label: 'Alumnos', path: '/alumnos' }
+  { id: 'alumnos', label: 'Alumnos y clases', path: '/alumnos' }
 ]
 
 /** El enlace a una pestaña de la materia, con la comisión elegida si la hay. */

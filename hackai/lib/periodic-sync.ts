@@ -3,11 +3,14 @@
    y entonces sincroniza todos los espacios. */
 import { createHash, timingSafeEqual } from 'node:crypto'
 import type { Spaces } from '@/lib/core/spaces'
+import type { Studies } from '@/lib/core/studies'
 
 export type PeriodicSyncDeps = {
   /** El valor de `CRON_SECRET`, o nada si falta en el entorno. */
   secret: string | undefined
   syncAll: Spaces['syncAll']
+  /** Reintenta pasar al SIU las listas de asistencia pendientes (Cursada). Si falla, no corta la corrida. */
+  retryPases?: Studies['retryPases']
   log?: (message: string) => void
 }
 
@@ -32,7 +35,7 @@ function authorized(request: Request, secret: string): boolean {
     secreto, 503 si falta `CRON_SECRET` y el error de Espacios si no pudo. */
 export async function handlePeriodicSync(
   request: Request,
-  { secret, syncAll, log = console.log }: PeriodicSyncDeps
+  { secret, syncAll, retryPases, log = console.log }: PeriodicSyncDeps
 ): Promise<Response> {
   const configured = secret?.trim()
   if (!configured) {
@@ -41,6 +44,12 @@ export async function handlePeriodicSync(
     return Response.json({ error: 'sin-configurar' }, { status: 503 })
   }
   if (!authorized(request, configured)) return Response.json({ error: 'no-autorizado' }, { status: 401 })
+
+  // Las listas de asistencia que no llegaron al SIU se reintentan en la misma corrida; lo que pase acá no corta la de Espacios.
+  const pases = retryPases ? await retryPases() : null
+  if (pases && !pases.ok) log(`[corrida-periodica] pases al SIU: ${pases.error}`)
+  if (pases?.ok)
+    log(`[corrida-periodica] pases al SIU: ${pases.value.passed} pasados, ${pases.value.pending} pendientes`)
 
   const result = await syncAll()
   if (!result.ok) {
