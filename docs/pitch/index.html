@@ -136,6 +136,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
 .laptop .lid { padding: 14px 14px 16px; border-radius: 18px 18px 0 0; background: #141a3d; border: 1px solid rgba(255, 255, 255, 0.3); border-bottom: 0; }
 .laptop img { display: block; width: var(--lw); border-radius: 4px; }
 .laptop .deck { position: relative; width: calc(var(--lw) + 108px); height: 16px; border-radius: 2px 2px 16px 16px; background: linear-gradient(#eef1f8, #b4bdd2); }
+.laptop video { display: block; width: var(--lw); border-radius: 4px; background: #0a0d20; }
 .laptop .deck::after { content: ''; position: absolute; left: 50%; top: 0; width: 120px; height: 6px; margin-left: -60px; border-radius: 0 0 8px 8px; background: #98a2bb; }
 
 /* El problema. */
@@ -221,12 +222,26 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
 .lado { width: 500px; flex: none; align-self: stretch; display: flex; flex-direction: column; gap: 24px; }
 .items > div { border-top: 1px solid rgba(255, 255, 255, 0.26); padding: 16px 0; display: flex; flex-direction: column; gap: 6px; }
 
+/* Demo en video: el título al lado de la compu. Al avanzar, la slide pasa a
+   «cine»: el video se agranda hasta ocupar el escenario y arranca. El tamaño y
+   el lugar del video grande los calcula cine() en el script. */
+.video .marco { position: relative; z-index: 3; flex: none; }
+.video .laptop { transform-origin: 0 0; transition: transform 0.7s var(--suave); }
+.video .lid, .video .deck { transition: background-color 0.5s ease, border-color 0.5s ease, opacity 0.5s ease; }
+.video .txt b { font-weight: 500; color: #fff; }
+.video::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #02030d; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; }
+.video.cine::after { opacity: 1; }
+.video.cine .lid { background-color: transparent; border-color: transparent; }
+.video.cine .deck { opacity: 0; }
+
 /* Iteraciones. */
 .log { display: grid; grid-template-columns: 110px 1fr 84px 1fr; }
 .log > * { border-bottom: 1px solid rgba(255, 255, 255, 0.24); padding: 14px 24px 14px 0; display: flex; align-items: center; font-size: 28px; line-height: 1.3; }
 .log .a { color: #e3e9f8; }
 .log .d { font-weight: 500; }
 .log .flecha { width: 44px; height: 22px; }
+.log.sin-fecha { grid-template-columns: 1fr 84px 1fr; }
+.log.sin-fecha > * { padding: 24px 24px 24px 0; font-size: 30px; }
 .datos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 48px; }
 .datos b { display: block; font-size: 64px; font-weight: 300; line-height: 1; letter-spacing: -2px; }
 .datos p { font-size: 22px; color: #e3e9f8; margin-top: 8px; }
@@ -254,7 +269,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
 @media (prefers-reduced-motion: reduce) {
   .slide, .slide.active { transition: none; transform: none; }
   .slide.active .in, .slide.active .ficha { animation: none; }
-  .fill { transition: none; }
+  .fill, .video .laptop { transition: none; }
 }
 @media print {
   @page { size: 1920px 1080px; margin: 0; }
@@ -336,10 +351,10 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <aside><p><b>Persona 1 · 0:40</b> La vida académica en la Austral está partida en dos sistemas. El SIU tiene lo administrativo; el Campus, que es un Moodle, las aulas y el material. Cada uno tiene su calendario, su bandeja y sus notas, y no se hablan: el único puente que encontramos es un botón «Ir» escondido en un reporte del SIU. Entonces el que cruza la información es una persona, a mano. Si es un alumno, cuando se le escapa un aviso pierde un cupo, un crédito o una fecha. Y si es alguien de gestión, como vamos a ver, se baja ochenta reportes.</p></aside>
 </section>
 
-<!-- 3 · El problema: qué les duele -->
+<!-- 3 · El problema: qué les duele a los alumnos -->
 <section class="slide osc" data-sec="0">
   <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
-  <div class="cab"><p class="cor">[El problema]</p><h2 class="T">Qué les duele</h2></div>
+  <div class="cab"><p class="cor">[El problema]</p><h2 class="T">Qué les duele a los alumnos</h2></div>
   <div class="duele">
     <div class="pan barras">
       <p class="cor">(01) Alumnos · encuesta, n = 39</p>
@@ -350,19 +365,46 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
       <div class="barra in" style="--i:4"><div class="barra-cab"><p>Avisos que no llegan <small>· lo más pedido</small></p><b>44%</b></div><div class="track"><div class="fill destaca" style="--w:44%"></div></div></div>
     </div>
     <div class="pan voces">
-      <p class="cor">(02) Docentes y gestión · entrevistas</p>
+      <p class="cor">(02) Quiénes respondieron y qué pidieron</p>
       <div class="items">
-        <div class="in" style="--i:2"><h3 class="h">10 a 15 minutos</h3><p class="txt-s">para tomar lista, en cada clase.</p></div>
-        <div class="in" style="--i:3"><h3 class="h">3 cargas por nota</h3><p class="txt-s">Moodle, un Excel y el SIU: «en esos pasos hay errores».</p></div>
-        <div class="in" style="--i:4"><h3 class="h">80 reportes</h3><p class="txt-s">para ver un solo indicador de toda la universidad.</p></div>
+        <div class="in" style="--i:2"><h3 class="h">5 facultades</h3><p class="txt-s">39 respuestas, del 6 al 10/11.</p></div>
+        <div class="in" style="--i:3"><h3 class="h">Lo más pedido</h3><p class="txt-s">que los avisos lleguen, cuando los dejamos escribir.</p></div>
+        <div class="in" style="--i:4"><h3 class="h">Lo que se pierde</h3><p class="txt-s">créditos y optativas, por no enterarse a tiempo.</p></div>
       </div>
     </div>
   </div>
-  <p class="pie">Encuesta, n = 39. Entrevistas a 3 docentes, Admisiones y la Dirección de Estudios, 12 y 13/11.</p>
-  <aside><p><b>Persona 1 · 0:45</b> No lo supusimos: lo preguntamos. Respondieron 39 alumnos de cinco facultades. Más de la mitad se queja de los cursos viejos mezclados, de las aulas desordenadas y de la inscripción en el SIU. Y el 44 por ciento dice que los avisos no llegan, lo más pedido cuando los dejamos escribir. Después hablamos con docentes y con gestión, y apareció el mismo problema del otro lado. Un profesor tarda hasta quince minutos en tomar lista. Una docente con 120 alumnos corrige en Moodle, pasa las notas a un Excel y después las carga en el SIU: tres pasos, y en esos pasos hay errores. Y en la Dirección de Estudios, para saber cómo vienen los alumnos de toda la universidad, tienen que bajar un reporte por carrera y por año de ingreso: ochenta reportes, o esperar meses a que sistemas les arme un tablero de Power BI.</p></aside>
+  <p class="pie">Encuesta a alumnos, n = 39, cinco facultades, 6 al 10/11.</p>
+  <aside><p><b>Persona 1 · 0:20</b> No lo supusimos: lo preguntamos. Respondieron 39 alumnos de cinco facultades. Más de la mitad se queja de los cursos viejos mezclados, de las aulas desordenadas y de la inscripción en el SIU. Y el 44 por ciento dice que los avisos no llegan: fue lo más pedido cuando los dejamos escribir, y ahí aparecieron créditos y optativas perdidos por no enterarse a tiempo.</p></aside>
 </section>
 
-<!-- 4 · Usuario -->
+<!-- 4 · El problema: docentes y gestión -->
+<section class="slide osc" data-sec="0">
+  <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
+  <div class="cab"><p class="cor">[El problema]</p><h2 class="T">Y a docentes y gestión</h2></div>
+  <div class="par">
+    <div class="pan voces">
+      <p class="cor">(01) Docentes · entrevistas, 12 y 13/11</p>
+      <div class="items">
+        <div class="in" style="--i:0"><h3 class="h">10 a 15 minutos</h3><p class="txt-s">para tomar lista en el SIU, en cada clase.</p></div>
+        <div class="in" style="--i:1"><h3 class="h">3 cargas por nota</h3><p class="txt-s">Moodle, un Excel y el SIU: «en esos pasos hay errores».</p></div>
+        <div class="in" style="--i:2"><h3 class="h">120 alumnos, 6 notas</h3><p class="txt-s">Al SIU solo suben los parciales y la nota final.</p></div>
+      </div>
+    </div>
+    <div class="pan voces">
+      <p class="cor">(02) Gestión · Dirección de Estudios, 13/11</p>
+      <div class="items">
+        <div class="in" style="--i:3"><h3 class="h">80 reportes</h3><p class="txt-s">20 carreras por 4 años de ingreso, para un solo indicador.</p></div>
+        <div class="in" style="--i:4"><h3 class="h">3 reportes por alumno</h3><p class="txt-s">La ficha, el plan de estudios y los créditos, sin conexión.</p></div>
+        <div class="in" style="--i:5"><h3 class="h">«Meses, años»</h3><p class="txt-s">para un tablero nuevo: sistemas y Gobierno de Datos.</p></div>
+      </div>
+    </div>
+  </div>
+  <p class="pan tira in" style="--i:6">«Al final estás sacando datos de un lugar para llevarlos a otro.» · Dirección de Estudios</p>
+  <p class="pie">Entrevistas a 3 docentes, Admisiones y la Dirección de Estudios, 12 y 13/11.</p>
+  <aside><p><b>Persona 1 · 0:50</b> Después hablamos con docentes y con gestión, y apareció el mismo problema del otro lado. Un profesor nos contó que tomar lista en el SIU le lleva hasta quince minutos por clase. Una docente con 120 alumnos corrige en Moodle, pasa las notas a un Excel y después las carga en el SIU: tres pasos, y en esos pasos hay errores. Son seis notas por alumno, así que al SIU solo suben los parciales y la nota final. Esa misma persona trabaja en la Dirección de Estudios, que acompaña a los alumnos de toda la universidad. Para ver un solo indicador baja un reporte por carrera y por año de ingreso: ochenta reportes. Para ver a un alumno, la ficha, el plan de estudios y los créditos están en tres reportes que no se conectan. Y un tablero nuevo de Power BI, con sistemas y Gobierno de Datos, le lleva meses. Lo resumió ella: al final estás sacando datos de un lugar para llevarlos a otro.</p></aside>
+</section>
+
+<!-- 5 · Usuario -->
 <section class="slide cla" data-sec="0">
   <div class="arriba">
     <div class="cab"><p class="cor">[El usuario]</p><h2 class="T">Para quién<span class="l2">lo construimos</span></h2></div>
@@ -391,10 +433,10 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
       <div class="chips"><p class="chip">¿Cómo vienen?</p><p class="chip">¿Quién está en riesgo?</p><p class="chip">¿Qué le falta a este alumno?</p></div>
     </div>
   </div>
-  <aside><p><b>Persona 1 · 0:45</b> El usuario principal es el alumno de grado, y lo que necesita son tres respuestas: qué me toca, a qué me puedo anotar y si hay algo nuevo. Después, el docente: publicar, tomar lista y cargar notas, una sola vez. Y apareció un tercero que no teníamos: gestión. La Dirección de Estudios, que nos contó en una entrevista cómo acompaña a los alumnos para que no se queden en el camino, y la secretaría que asigna las aulas. Su pregunta es otra: cómo vienen todos, quién está en riesgo y qué le falta a cada uno para recibirse.</p></aside>
+  <aside><p><b>Persona 1 · 0:35</b> El usuario principal es el alumno de grado, y lo que necesita son tres respuestas: qué me toca, a qué me puedo anotar y si hay algo nuevo. Después, el docente: publicar, tomar lista y cargar notas, una sola vez. Y un tercero que no teníamos hasta esa entrevista: gestión, que es la Dirección de Estudios y la secretaría que asigna las aulas. Su pregunta es otra: cómo vienen todos, quién está en riesgo y qué le falta a cada uno para recibirse.</p></aside>
 </section>
 
-<!-- 5 · Estrategia -->
+<!-- 6 · Estrategia -->
 <section class="slide cla" data-sec="1">
   <div class="cab"><p class="cor">[La estrategia]</p><h2 class="T">Sistema propio,<span class="l2">apoyado en lo que ya existe</span></h2></div>
   <div class="flujo grad in" style="--i:0">
@@ -414,7 +456,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <aside><p><b>Persona 1 · 0:40</b> La consigna permitía construir desde cero, sobre Moodle y el SIU, o envolver lo que hay. Elegimos una combinación. HackAI es un sistema propio que no reemplaza nada: el SIU, Moodle y Discord entran por un puerto, cada uno con su adaptador. La regla es simple: si un sistema existente resuelve algo bien, HackAI lo delega; si no lo resuelve nadie, lo resuelve el núcleo. Y como cada sistema está aislado, si mañana cambia el SIU, cambiamos un adaptador y no la aplicación.</p><p><b>Pase</b> Pero lo que importa es qué cambia para cada uno. Persona 2 se los muestra.</p></aside>
 </section>
 
-<!-- 6 · Antes y después -->
+<!-- 7 · Antes y después -->
 <section class="slide osc" data-sec="1">
   <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
   <div class="cab"><p class="cor">[Antes y después]</p><h2 class="T">Cómo cambia cada trámite</h2></div>
@@ -432,7 +474,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <aside><p><b>Persona 2 · 1:00</b> Esto es lo que cambia, trámite por trámite. A la izquierda, lo que medimos navegando el SIU y el Campus reales y lo que nos contaron en las entrevistas. A la derecha, lo mismo en HackAI. Para el alumno: un calendario en vez de dos, el aviso que te llega en vez de ir a buscarlo, y los finales que debés en una pestaña, sin cruzar pantallas. Para el docente: la lista arranca con todos presentes y solo tocás a los que faltan, y las notas se cargan una vez. Para gestión: lo que hoy son ochenta reportes es una pantalla. Una aclaración: los números de HackAI los contamos nosotros sobre datos sintéticos; medirlos con usuarios es lo que sigue.</p></aside>
 </section>
 
-<!-- 7 · Demo en vivo -->
+<!-- 8 · Demo en vivo -->
 <section class="slide osc" data-sec="2">
   <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
   <div class="cab"><p class="cor">[La demo]</p><h2 class="T">Ahora, andando</h2></div>
@@ -462,7 +504,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <p class="pan tira in" style="--i:3">Personas sintéticas. Discord es real; el SIU y el Moodle están simulados con la forma de sus APIs.</p>
   <aside>
     <p><b>Persona 2 · entrada</b> Ahora lo ven andando. Lo que van a ver corre con personas sintéticas. Discord es real; el SIU y el Moodle están simulados con la forma de sus APIs.</p>
-    <p><b>7.1 Alumno · Persona 2 · 2:00</b></p>
+    <p><b>8.1 Alumno · Persona 2 · 2:00</b></p>
     <p>1. Ingreso de demo → Tomás Aguirre. «En producción se entra con la cuenta Microsoft de la Austral; acá elegimos una persona sintética.»</p>
     <p>2. Cae en Materias. «Solo lo que cursa hoy. Las viejas están archivadas. Cada tarjeta muestra horario, aula y la próxima entrega.»</p>
     <p>3. Pestaña Final pendiente. «Lo que el SIU no responde: qué finales debo y su próxima mesa.»</p>
@@ -472,11 +514,11 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
     <p>7. Calendario → Agregar a mi calendario. «Clases, parciales, finales y entregas en un solo lugar. Los parciales, los finales y las entregas van al calendario del celular.»</p>
     <p>8. Si sobra tiempo: Inscripciones → Física I de verano → Inscribirme. «El cupo y el horario antes de elegir, y un paso para quedar adentro.»</p>
     <p><b>Pase</b> Ese aviso lo publicó un docente. Persona 3 les muestra su lado.</p>
-    <p><b>7.2 Docente · Persona 3 · 1:30</b></p>
+    <p><b>8.2 Docente · Persona 3 · 1:30</b></p>
     <p>1. Ventana de Diego Arrieta → Hoy. «Su día en una pantalla: su clase, con Zoom si es virtual, y las consultas sin responder.»</p>
     <p>2. Materias → Programación I → Alumnos y clases → la clase de hoy → Tomar lista → tocar a un ausente → Guardar lista. «Todos presentes, toca a los que faltan. En una clase de 30 con 3 ausentes son cuatro toques; hoy le lleva quince minutos.»</p>
-    <p>3. Calificaciones → Pegar de una planilla → vista previa → guardar → Publicar las notas. «Corrige una vez. El alumno la ve, y la nota pasa al SIU, que en la demo es el simulado.» Elegir un parcial y tener las filas ya copiadas.</p>
-    <p><b>7.3 Secretaría y Dirección de Estudios · Persona 3 · 1:30</b></p>
+    <p>3. Calificaciones → Pegar de una planilla → vista previa → guardar → Publicar las notas. «Corrige una vez. El alumno la ve, y la nota pasa al SIU, que en la demo es el simulado. Cuando le mostramos el prototipo a la docente de los 120 alumnos, nos dijo que cargar las notas desde su planilla es, para ella, la función principal.» Elegir un parcial y tener las filas ya copiadas.</p>
+    <p><b>8.3 Secretaría y Dirección de Estudios · Persona 3 · 1:30</b></p>
     <p>1. Ventana de Secretaría → Cargar clases → Planning. «Secretaría sube la planilla de aulas del cuatrimestre, y alumnos y docentes ven el Planning. De acá salió el cambio de aula que le llegó a Tomás.»</p>
     <p>2. Reportes → Facultad: Ingeniería y Ciencias Empresariales → Ingreso: 2024, 2025 y 2026. «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso, y también al cierre de años anteriores.»</p>
     <p>3. Una barra de «Por facultad» o un indicador de «Para acompañar» → listado → un alumno. «De un número al listado y del listado al alumno, sin salir de Reportes.» Decir que los indicadores son una propuesta del equipo, sin validar todavía.</p>
@@ -487,7 +529,37 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   </aside>
 </section>
 
-<!-- 8 · Real y simulado -->
+<!-- Demo en video 1 · El docente -->
+<section class="slide osc video" data-sec="2" data-demo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Demo · docente]</p>
+      <h2 class="T sm">El docente<span class="l2">de punta a punta</span></h2>
+      <div class="aire"></div>
+      <p class="txt"><b>Diego Arrieta</b>, docente sintético: su día, un aviso a la comisión, la lista con un toque y las notas pegadas de su planilla.</p>
+    </div>
+    <div class="marco in" style="--i:0"><div class="laptop"><div class="lid"><video src="video/docente.mp4#t=5" muted playsinline preload="auto"></video></div><div class="deck"></div></div></div>
+  </div>
+  <p class="pie">Video del 13/11, con personas y datos sintéticos; el SIU es simulado · 1:27 · avanzá para verlo en grande</p>
+  <aside><p><b>Persona 3 · video del docente · 1:27</b> Cada acción lleva su rótulo abajo. 0:05 Hoy: «Su día en una pantalla: su próxima clase, sus comisiones y las consultas sin resolver.» · 0:11 Espacio y aviso: «Publica una vez y le llega a toda la comisión.» · 0:27 Alumnos y clases, y 0:30 lista: «Todos presentes, toca a los que faltan. En una clase de 30 con 3 ausentes son cuatro toques; hoy le lleva quince minutos.» · 0:41 «Queda guardada y pasa al SIU, que en la demo es el simulado.» · 0:51 Calificaciones y 0:58 pegar de la planilla: «Cuando le mostramos el prototipo a la docente de los 120 alumnos, nos dijo que es, para ella, la función principal.» · 1:19 «Publica: el alumno la ve y la nota pasa al SIU simulado.»</p><p><b>Cómo se pasa</b> El primer avance agranda el video y lo arranca. El siguiente pasa a la próxima slide. Hacia atrás, el primero lo achica. Cada paso lleva su rótulo abajo, para narrar encima.</p></aside>
+</section>
+
+<!-- Demo en video 2 · Gestión -->
+<section class="slide osc video" data-sec="2" data-demo="1">
+  <div class="prod">
+    <div class="lado">
+      <p class="cor">[Demo · gestión]</p>
+      <h2 class="T sm">Gestión<span class="l2">del aula al alumno</span></h2>
+      <div class="aire"></div>
+      <p class="txt"><b>Secretaría</b>: carga un cambio de aula en el Planning y, en Reportes, va del número al alumno y a lo que le falta para recibirse.</p>
+    </div>
+    <div class="marco in" style="--i:0"><div class="laptop"><div class="lid"><video src="video/gestion.mp4#t=5" muted playsinline preload="auto"></video></div><div class="deck"></div></div></div>
+  </div>
+  <p class="pie">Video del 13/11, con una población sintética; los indicadores son una propuesta del equipo · 1:37 · avanzá para verlo en grande</p>
+  <aside><p><b>Persona 3 · video de gestión · 1:37</b> Cada acción lleva su rótulo abajo. 0:05 Planning: «Las clases del día, con su aula y su horario.» · 0:12 Cargar una clase: «Un cambio de aula de último momento: le llega a quien cursa y a quien dicta esa clase.» · 0:49 «Y el lunes 16 ya figura en el aula nueva.» · 0:54 Reportes: «Lo que hoy son ochenta reportes: activos, ingresantes, graduados y bajas.» · 1:02 «Cruza dos facultades a la vez.» · 1:09 «De un número al listado: quiénes siguen activos desde 2012.» · 1:18 Ficha: «Lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta, y dónde se dicta.» · 1:27 «Lo marca para seguirlo.» Decir que los indicadores son una propuesta del equipo, sin validar todavía.</p><p><b>Cómo se pasa</b> El primer avance agranda el video y lo arranca. El siguiente pasa a la próxima slide. Hacia atrás, el primero lo achica. Cada paso lleva su rótulo abajo, para narrar encima.</p></aside>
+</section>
+
+<!-- 9 · Real y simulado -->
 <section class="slide cla" data-sec="3">
   <div class="arriba">
     <div class="cab"><p class="cor">[La evidencia]</p><h2 class="T">Qué es real<span class="l2">y qué está simulado</span></h2></div>
@@ -522,7 +594,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <aside><p><b>Persona 4 · 0:40</b> Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.</p></aside>
 </section>
 
-<!-- 9 · Qué medimos -->
+<!-- 10 · Qué medimos -->
 <section class="slide cla" data-sec="3">
   <div class="arriba">
     <div class="cab"><p class="cor">[La evidencia]</p><h2 class="T">Qué medimos<span class="l2">y qué falta medir</span></h2></div>
@@ -539,28 +611,23 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <aside><p><b>Persona 4 · 0:50</b> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. La promesa de avisar a tiempo: un aviso publicado aparece en otra pantalla en 13 segundos sin recargar, y en Discord casi al instante. Y que se pueda usar: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Lo que no medimos, y lo decimos: no cronometramos las tareas con alumnos ni la lista con un docente. Tenemos el protocolo armado.</p><p><b>Si sobra tiempo</b> La cita de la Dirección de Estudios sobre lo que tarda hacer un tablero: «el departamento de sistemas me lleva meses, años». Contarla como dato del problema, no como elogio.</p></aside>
 </section>
 
-<!-- 10 · Iteraciones -->
+<!-- 11 · Iteraciones -->
 <section class="slide osc" data-sec="3">
   <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
   <div class="cab"><p class="cor">[Las iteraciones]</p><h2 class="T">Lo que cambiamos en el camino</h2></div>
-  <div class="log in" style="--i:0">
-    <p class="cor">(10/11)</p><p class="a">La base heredada no compilaba.</p><div><i class="flecha"></i></div><p class="d">Sistema propio, con puertos.</p>
-    <p class="cor">(12/11)</p><p class="a">La API del SIU no deja inscribir.</p><div><i class="flecha"></i></div><p class="d">HackAI usa la sesión del propio alumno.</p>
-    <p class="cor">(12/11)</p><p class="a">La pantalla Hoy le mostraba demasiado al alumno.</p><div><i class="flecha"></i></div><p class="d">Mis materias pasó a ser el inicio.</p>
-    <p class="cor">(12/11)</p><p class="a">Tomar lista lleva de 10 a 15 minutos.</p><div><i class="flecha"></i></div><p class="d">Docentes al alcance: lista con toques.</p>
-    <p class="cor">(13/11)</p><p class="a">Entrar a una materia tardaba hasta 17 segundos.</p><div><i class="flecha"></i></div><p class="d">Unos 3 segundos.</p>
-    <p class="cor">(13/11)</p><p class="a">Cada nota se carga tres veces; 80 reportes.</p><div><i class="flecha"></i></div><p class="d">Carga única de notas y Reportes.</p>
-    <p class="cor">(13/11)</p><p class="a">Con la cuenta real, el aula era la simulada.</p><div><i class="flecha"></i></div><p class="d">El Campus real, en vivo y sin guardarlo.</p>
+  <div class="log sin-fecha in" style="--i:0">
+    <p class="a">La base heredada no compilaba.</p><div><i class="flecha"></i></div><p class="d">Sistema propio, con puertos.</p>
+    <p class="a">La API del SIU no deja inscribir.</p><div><i class="flecha"></i></div><p class="d">HackAI usa la sesión del propio alumno.</p>
+    <p class="a">La pantalla Hoy le mostraba demasiado al alumno.</p><div><i class="flecha"></i></div><p class="d">Mis materias pasó a ser el inicio.</p>
+    <p class="a">Tomar lista lleva de 10 a 15 minutos.</p><div><i class="flecha"></i></div><p class="d">Docentes al alcance: lista con toques.</p>
+    <p class="a">Entrar a una materia tardaba hasta 17 segundos.</p><div><i class="flecha"></i></div><p class="d">Unos 3 segundos.</p>
+    <p class="a">Cada nota se carga tres veces; 80 reportes.</p><div><i class="flecha"></i></div><p class="d">Carga única de notas y Reportes.</p>
+    <p class="a">Con la cuenta real, el aula era la simulada.</p><div><i class="flecha"></i></div><p class="d">El Campus real, en vivo y sin guardarlo.</p>
   </div>
-  <div class="aire"></div>
-  <div class="datos in" style="--i:2">
-    <div><b>452</b><p>commits</p></div><div><b>53</b><p>PRs</p></div><div><b>82</b><p>issues cerrados</p></div><div><b>~1.400</b><p>tests automáticos</p></div>
-  </div>
-  <p class="pie">Del primer commit, el 10/11, a la noche del 13/11</p>
   <aside><p><b>Persona 4 · 0:50</b> No salió derecho. Arrancamos sobre una base que no compilaba y decidimos el sistema propio. Descubrimos que la API del SIU no deja inscribir y usamos la sesión del alumno. El primer inicio mostraba demasiado y lo simplificamos. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos al alcance. Y hoy, la Dirección de Estudios nos contó que carga cada nota tres veces y que baja ochenta reportes para ver una cohorte: de ahí salen la carga única de notas y la pantalla de reportes que vieron. Y cuando un alumno entraba con su cuenta real, el aula seguía siendo la simulada: ahora lee su Campus de verdad, sin guardar nada. Todo con revisión y tests automáticos en cada cambio.</p></aside>
 </section>
 
-<!-- 11 · Próximo paso -->
+<!-- 12 · Próximo paso -->
 <section class="slide cla" data-sec="4">
   <div class="arriba">
     <div class="cab"><p class="cor">[El próximo paso]</p><h2 class="T">Qué validaríamos<span class="l2">después</span></h2></div>
@@ -596,7 +663,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
   <aside><p><b>Persona 4 · 0:40</b> Qué sigue. Con usuarios: cronometrar las tareas con alumnos y la lista con un docente, un piloto con una cátedra que ya usa Discord, y llevarle los reportes a la Dirección de Estudios con un caso real. Con la universidad: el ingreso con Microsoft, el acceso a las APIs y un acuerdo de datos. Y la próxima hipótesis salió de la entrevista con la Dirección de Estudios, que nos contó que siempre soñó con algo así: si ya sabemos qué le falta a un alumno y cuándo se dicta cada materia, HackAI le puede proponer el camino más corto para recibirse.</p></aside>
 </section>
 
-<!-- 12 · Cierre -->
+<!-- 13 · Cierre -->
 <section class="slide osc" data-sec="x">
   <div class="velo" style="right:0; top:0; width:560px; height:118px"></div>
   <div class="velo" style="left:0; bottom:0; width:420px; height:96px"></div>
@@ -624,7 +691,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
     <div class="laptop in" style="--i:0"><div class="lid"><img src="img/materias-w.png" alt="Mis materias en la compu: dos materias en curso, cada una con su horario, su próxima entrega y el acceso a su espacio"></div><div class="deck"></div></div>
   </div>
   <p class="pie">Captura de HackAI con datos sintéticos</p>
-  <aside><p><b>Respaldo de 7.1, pasos 2 y 3 · Persona 2</b> «Solo lo que cursa hoy. Las viejas están archivadas. Cada tarjeta muestra horario, aula y la próxima entrega.» Y la pestaña Final pendiente: «Lo que el SIU no responde: qué finales debo y su próxima mesa.»</p></aside>
+  <aside><p><b>Respaldo de 8.1, pasos 2 y 3 · Persona 2</b> «Solo lo que cursa hoy. Las viejas están archivadas. Cada tarjeta muestra horario, aula y la próxima entrega.» Y la pestaña Final pendiente: «Lo que el SIU no responde: qué finales debo y su próxima mesa.»</p></aside>
 </section>
 
 <!-- Respaldo 2 · Espacio de la materia -->
@@ -643,7 +710,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
     <div class="laptop in" style="--i:0"><div class="lid"><img src="img/material-w.png" alt="Espacio de Análisis Matemático I: los canales Avisos, Consultas, Material y Directos, y el material ordenado por unidad con la etiqueta de su origen"></div><div class="deck"></div></div>
   </div>
   <p class="pie">Captura de HackAI con datos sintéticos</p>
-  <aside><p><b>Respaldo de 7.1, pasos 4 a 6 · Persona 2</b> «Cada materia tiene su espacio, que se crea solo desde el SIU, con el material en el mismo orden que el aula.» «Se publica una vez y llega por Discord, al celular, por la aplicación que ya usa.» «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.»</p></aside>
+  <aside><p><b>Respaldo de 8.1, pasos 4 a 6 · Persona 2</b> «Cada materia tiene su espacio, que se crea solo desde el SIU, con el material en el mismo orden que el aula.» «Se publica una vez y llega por Discord, al celular, por la aplicación que ya usa.» «Si secretaría cambia el aula o suspende una clase, le llega a quien la cursa y a quien la dicta.»</p></aside>
 </section>
 
 <!-- Respaldo 3 · Inscripción -->
@@ -662,7 +729,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
     <div class="laptop in" style="--i:0"><div class="lid"><img src="img/inscripcion-w.png" alt="Inscripciones: la lista de materias con inscripción abierta y, al lado, la comisión de verano de Física I con modalidad, fechas, horarios y cupo"></div><div class="deck"></div></div>
   </div>
   <p class="pie">Datos sintéticos. En la demo, la inscripción va contra el SIU simulado.</p>
-  <aside><p><b>Respaldo de 7.1, paso 8 · Persona 2</b> Física I de verano: la comisión de la mañana está sin cupo y la de la tarde tiene lugar. «El cupo y el horario antes de elegir, y un paso para quedar adentro.»</p></aside>
+  <aside><p><b>Respaldo de 8.1, paso 8 · Persona 2</b> Física I de verano: la comisión de la mañana está sin cupo y la de la tarde tiene lugar. «El cupo y el horario antes de elegir, y un paso para quedar adentro.»</p></aside>
 </section>
 
 <!-- Respaldo 4 · Docente -->
@@ -681,7 +748,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
     <div class="laptop in" style="--i:0"><div class="lid"><img src="img/calificaciones-w.png" alt="Calificaciones de una comisión: una nota por alumno para el primer parcial, con botones para publicar, pegar de una planilla y bajar a Excel"></div><div class="deck"></div></div>
   </div>
   <p class="pie">Captura de HackAI con datos sintéticos</p>
-  <aside><p><b>Respaldo de 7.2 · Persona 3</b> «Su día en una pantalla: su clase, con Zoom si es virtual, y las consultas sin responder.» «Todos presentes, toca a los que faltan. En una clase de 30 con 3 ausentes son cuatro toques; hoy le lleva quince minutos.» «Corrige una vez. El alumno la ve, y la nota pasa al SIU, que en la demo es el simulado.»</p></aside>
+  <aside><p><b>Respaldo de 8.2 · Persona 3</b> «Su día en una pantalla: su clase, con Zoom si es virtual, y las consultas sin responder.» «Todos presentes, toca a los que faltan. En una clase de 30 con 3 ausentes son cuatro toques; hoy le lleva quince minutos.» «Corrige una vez. El alumno la ve, y la nota pasa al SIU, que en la demo es el simulado.»</p></aside>
 </section>
 
 <!-- Respaldo 5 · Reportes -->
@@ -700,7 +767,7 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
     <div class="laptop in" style="--i:0"><div class="lid"><img src="img/reportes-w.png" alt="Reportes de secretaría: activos, ingresantes, graduados y bajas, con filtros por facultad, carrera y año de ingreso"></div><div class="deck"></div></div>
   </div>
   <p class="pie">Captura de HackAI. Los reportes corren sobre una población sintética.</p>
-  <aside><p><b>Respaldo de 7.3 · Persona 3</b> «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso.» «De un número al listado y del listado al alumno, sin salir de Reportes.» «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.» Decir que los indicadores son una propuesta del equipo, sin validar todavía.</p></aside>
+  <aside><p><b>Respaldo de 8.3 · Persona 3</b> «Lo que hoy son ochenta reportes. Activos, ingresantes, graduados y bajas, cruzando facultades, carreras y años de ingreso.» «De un número al listado y del listado al alumno, sin salir de Reportes.» «Es lo que nos pidió la Dirección de Estudios: no lo que el alumno hizo, sino lo que le falta para terminar.» Decir que los indicadores son una propuesta del equipo, sin validar todavía.</p></aside>
 </section>
 
 </main>
@@ -711,15 +778,22 @@ body { font-family: 'Inter', -apple-system, 'Segoe UI', Arial, sans-serif; color
 
 <script>
 // Navegación del deck: flechas, espacio, clic o deslizar; F pantalla completa; N guion.
+// En las slides con video, el primer avance lo agranda y lo arranca.
 const stage = document.getElementById('stage')
 const slides = [...document.querySelectorAll('.slide')]
 const avance = document.getElementById('avance')
 const ayuda = document.getElementById('ayuda')
 const guion = document.getElementById('guion')
 const SECCIONES = ['Problema', 'Solución', 'Demo', 'Evidencia', 'Próximo paso']
-// Las slides de respaldo van después del cierre y no cuentan en la numeración.
-const principales = slides.filter((s) => !s.dataset.respaldo).length
-const rotulo = (k) => (k < principales ? `${String(k + 1).padStart(2, '0')} / ${principales}` : `Respaldo ${k - principales + 1} / ${slides.length - principales}`)
+// Los videos de la demo y las slides de respaldo llevan su propia numeración y
+// no cuentan en la de las principales.
+const tipo = (s) => (s.dataset.respaldo ? 'Respaldo' : s.dataset.demo ? 'Demo' : '')
+const total = {}
+const orden = slides.map((s) => (total[tipo(s)] = (total[tipo(s)] ?? 0) + 1))
+const rotulo = (k) => {
+  const t = tipo(slides[k])
+  return t ? `${t} ${orden[k]} / ${total[t]}` : `${String(orden[k]).padStart(2, '0')} / ${total['']}`
+}
 let actual = -1
 let inicio = null
 
@@ -737,9 +811,49 @@ function fit() {
   stage.style.transform = `translate(-50%, -50%) scale(${escala})`
 }
 
+// Lugar de un elemento dentro de su slide, en píxeles del lienzo de 1920×1080.
+function lugar(el, slide) {
+  let x = 0
+  let y = 0
+  for (let e = el; e && e !== slide; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop }
+  return { x, y }
+}
+
+// Agranda el video de la slide hasta ocupar el escenario y lo arranca, o lo
+// devuelve a la compu. La compu entera se escala desde su esquina de arriba.
+function cine(slide, abrir) {
+  const video = slide.querySelector('video')
+  const laptop = slide.querySelector('.laptop')
+  if (!video || !laptop) return
+  slide.classList.toggle('cine', abrir)
+  if (!abrir) {
+    video.pause()
+    laptop.style.transform = ''
+    return
+  }
+  const l = lugar(laptop, slide)
+  const v = lugar(video, slide)
+  const k = Math.min(1920 / video.offsetWidth, 1080 / video.offsetHeight)
+  const dx = (1920 - k * video.offsetWidth) / 2 - l.x - k * (v.x - l.x)
+  const dy = (1080 - k * video.offsetHeight) / 2 - l.y - k * (v.y - l.y)
+  laptop.style.transform = `translate(${dx}px, ${dy}px) scale(${k})`
+  video.currentTime = 0
+  video.play().catch(() => {})
+}
+
+// Un paso adelante o atrás: en una slide con video, el primer avance lo agranda
+// y el primer retroceso lo achica; si no, cambia de slide.
+function paso(d) {
+  const slide = slides[actual]
+  const enCine = slide.classList.contains('cine')
+  if (slide.querySelector('video') && (d > 0) !== enCine) cine(slide, d > 0)
+  else go(actual + d)
+}
+
 function go(n) {
   n = Math.max(0, Math.min(slides.length - 1, n))
   if (n === actual) return
+  if (actual >= 0) cine(slides[actual], false)
   slides.forEach((s, k) => {
     s.classList.toggle('active', k === n)
     s.classList.toggle('antes', k < n)
@@ -757,8 +871,8 @@ window.go = go
 addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return
   const k = e.key
-  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { e.preventDefault(); go(actual + 1) }
-  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); go(actual - 1) }
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(k)) { e.preventDefault(); paso(1) }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); paso(-1) }
   else if (k === 'Home') go(0)
   else if (k === 'End') go(slides.length - 1)
   else if (k === 'f' || k === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
@@ -767,7 +881,7 @@ addEventListener('keydown', (e) => {
 })
 addEventListener('click', (e) => {
   if (guion.contains(e.target)) return
-  go(actual + (e.clientX < innerWidth * 0.3 ? -1 : 1))
+  paso(e.clientX < innerWidth * 0.3 ? -1 : 1)
   ayuda.classList.add('fuera')
 })
 let toqueX = null
@@ -775,7 +889,7 @@ addEventListener('touchstart', (e) => { toqueX = e.touches[0].clientX }, { passi
 addEventListener('touchend', (e) => {
   if (toqueX === null) return
   const dx = e.changedTouches[0].clientX - toqueX
-  if (Math.abs(dx) > 50) go(actual + (dx < 0 ? 1 : -1))
+  if (Math.abs(dx) > 50) paso(dx < 0 ? 1 : -1)
   toqueX = null
 })
 addEventListener('resize', fit)
