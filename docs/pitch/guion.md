@@ -40,6 +40,7 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 **Sin confirmar con el equipo:**
 
 - **Cuántas entrevistas y cuántos docentes** (slides 3, 9 y 10). El guion dice «3 docentes» y «6 entrevistas». Según `docs/entrevistas/`, la persona de la Dirección de Estudios es también la docente de Comunicación de los 120 alumnos, así que cuenta dos veces; y lo del profesor del 12/11 lo contó por escrito un integrante, no fue una entrevista directa. Recontar y corregir las tres slides con el mismo número.
+- **Si se habló con secretaría** (slide 4). En la entrevista de la Dirección de Estudios alguien del equipo dice «recién hablábamos con secretaría», pero no hay notas de esa charla en `docs/entrevistas/`. El guion nombra a la secretaría sin decir si se la entrevistó; si hubo charla, decirlo.
 - **Los números del repo** (slide 10): los tests están contados por texto, sin correr la suite.
 
 **Si la demo falla:** Persona 2 y Persona 3 pasan a las slides de respaldo (Mis materias, espacio de la materia, inscripción, lado del docente y una captura de reportes) y siguen su parte del guion sin cambiar el orden.
@@ -82,12 +83,12 @@ Probar el recorrido completo una vez en la última hora, con estas mismas person
 *Docentes y gestión (entrevistas, 12 y 13/11):*
 
 - **Tomar lista:** de 10 a 15 minutos por clase, alumno por alumno (profesor).
-- **Notas:** la misma nota se carga en Moodle, después en un Excel y después en el SIU: «tres cosas distintas» (Dirección de Estudios, que también da clases: 120 alumnos por cuatrimestre).
+- **Notas:** la misma nota se carga en Moodle, después en un Excel y después en el SIU: «hay como tres pasos y en esos pasos hay errores» (Dirección de Estudios, que también da clases: 120 alumnos por cuatrimestre).
 - **Reportes:** 20 carreras por 4 cohortes son **80 reportes** para ver un solo indicador de toda la universidad (Dirección de Estudios).
 
 Pie: «Encuesta, n = 39. Entrevistas a 3 docentes, Admisiones y la Dirección de Estudios, 12 y 13/11.»
 
-> No lo supusimos: lo preguntamos. Respondieron 39 alumnos de cinco facultades. Más de la mitad se queja de los cursos viejos mezclados, de las aulas desordenadas y de la inscripción en el SIU. Y el 44 por ciento dice que los avisos no llegan, lo más pedido cuando los dejamos escribir. Después hablamos con docentes y con gestión, y apareció el mismo problema del otro lado. Un profesor tarda hasta quince minutos en tomar lista. Una docente con 120 alumnos corrige en Moodle, pasa las notas a un Excel y después las carga en el SIU: la misma nota, tres veces. Y en la Dirección de Estudios, para saber cómo vienen los alumnos de toda la universidad, tienen que bajar un reporte por carrera y por año de ingreso: ochenta reportes, o esperar meses a que sistemas les arme un tablero de Power BI.
+> No lo supusimos: lo preguntamos. Respondieron 39 alumnos de cinco facultades. Más de la mitad se queja de los cursos viejos mezclados, de las aulas desordenadas y de la inscripción en el SIU. Y el 44 por ciento dice que los avisos no llegan, lo más pedido cuando los dejamos escribir. Después hablamos con docentes y con gestión, y apareció el mismo problema del otro lado. Un profesor tarda hasta quince minutos en tomar lista. Una docente con 120 alumnos corrige en Moodle, pasa las notas a un Excel y después las carga en el SIU: tres pasos, y en esos pasos hay errores. Y en la Dirección de Estudios, para saber cómo vienen los alumnos de toda la universidad, tienen que bajar un reporte por carrera y por año de ingreso: ochenta reportes, o esperar meses a que sistemas les arme un tablero de Power BI.
 
 ## 4. Usuario: para quién lo construimos · 0:45
 
@@ -99,7 +100,7 @@ Pie: «Encuesta, n = 39. Entrevistas a 3 docentes, Admisiones y la Dirección de
 | **Después** | El docente | Publicar, tomar lista, corregir y cargar notas una sola vez | Avisos que llegan, lista en segundos, notas sin pasos de más |
 | **Gestión** | Secretaría y Dirección de Estudios | Asignar aulas y seguir a los alumnos que se están quedando | ¿Cómo vienen? ¿Quién está en riesgo? ¿Qué le falta a este alumno? |
 
-> El usuario principal es el alumno de grado, y lo que necesita son tres respuestas: qué me toca, a qué me puedo anotar y si hay algo nuevo. Después, el docente: publicar, tomar lista y cargar notas, una sola vez. Y apareció un tercero que no teníamos: gestión. La Dirección de Estudios, que nos contó en una entrevista cómo acompaña a los alumnos para que no se queden en el camino, y la secretaría que asigna las aulas, con la que todavía no hablamos. Su pregunta es otra: cómo vienen todos, quién está en riesgo y qué le falta a cada uno para recibirse.
+> El usuario principal es el alumno de grado, y lo que necesita son tres respuestas: qué me toca, a qué me puedo anotar y si hay algo nuevo. Después, el docente: publicar, tomar lista y cargar notas, una sola vez. Y apareció un tercero que no teníamos: gestión. La Dirección de Estudios, que nos contó en una entrevista cómo acompaña a los alumnos para que no se queden en el camino, y la secretaría que asigna las aulas. Su pregunta es otra: cómo vienen todos, quién está en riesgo y qué le falta a cada uno para recibirse.
 
 ## 5. La estrategia: sistema propio, apoyado en lo que ya existe · 0:40
 
