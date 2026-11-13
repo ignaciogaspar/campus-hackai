@@ -11,8 +11,8 @@ Pitch del 13/11/2026, en el orden de «La historia de su demo»: problema, usuar
 | **Persona 1** | 1 a 6: portada, problema, usuario y estrategia | 3:30 | Abre el pitch |
 | **Persona 2** | 7 y 8.1: antes y después, demo del alumno | 3:00 | Maneja la compu en la demo del alumno |
 | **Persona 3** | 8.2 y 8.3: demo del docente y de secretaría | 3:00 | Publica el aviso en vivo durante la demo del alumno |
-| **Persona 4** | 9 a 13: real y simulado, evidencia, iteraciones, próximo paso y cierre | 3:15 | Cierra el pitch |
-| | | **12:45** | |
+| **Persona 4** | 9 a 13: real y simulado, evidencia, iteraciones, próximo paso y cierre | 3:00 | Cierra el pitch |
+| | | **12:30** | |
 
 Cada persona termina con una frase de pase que nombra a la siguiente.
 
@@ -57,7 +57,7 @@ Cada slide muestra el título y la compu con el video quieto; el primer avance l
 
 **Sin decidir con el equipo:** si Persona 3 narra los videos o hace su parte en vivo. Los dos videos suman 3:04, lo mismo que su tiempo. Si va en vivo, las dos slides se pasan de largo con cuatro avances, o se salta a la 9 escribiendo `#11` al final de la dirección.
 
-**Si la demo falla:** Persona 2 y Persona 3 pasan a las slides de respaldo (Mis materias, espacio de la materia, inscripción, lado del docente y una captura de reportes) y siguen su parte del guion sin cambiar el orden.
+**Si la demo falla:** el deck ya no tiene slides de respaldo (decisión del 13/11). Persona 3 pasa a los dos videos, que cubren docente y gestión. Para el alumno no hay respaldo en el deck: Persona 2 lo cuenta sobre la slide 7, «Cómo cambia cada trámite», sin cambiar el orden.
 
 ---
 
@@ -231,7 +231,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 
 ---
 
-# Persona 4 · 3:15
+# Persona 4 · 3:00
 
 ## 9. Evidencia: qué es real y qué está simulado · 0:40
 
@@ -245,7 +245,7 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 
 > Lo que nos pidieron decir con todas las letras. Es real la integración con Discord, la aplicación publicada, y el SIU y el Campus con la cuenta del propio alumno: desde la compu lee en vivo sus materias y todo lo que tienen sus aulas y, si él lo confirma, lo inscribe de verdad en el SIU; nada de eso se guarda en nuestra base. Está simulado el SIU y el Moodle de la demo, las personas, y lo que vieron recién: la inscripción de la demo y el pase de notas al SIU. Los reportes de gestión corren sobre una población sintética. Y queda pendiente lo que depende de la universidad: el ingreso con Microsoft, los accesos a las APIs y, para los reportes, los datos de toda la universidad con la autorización de Gobierno de Datos.
 
-## 10. Evidencia: qué medimos y qué falta medir · 0:50
+## 10. Evidencia: qué medimos · 0:40
 
 **En pantalla:**
 
@@ -254,30 +254,32 @@ Durante la demo del alumno (paso 5), publica el aviso desde la sesión de Marian
 | **39** alumnos encuestados, de cinco facultades | El problema |
 | **6** entrevistas: alumnas, 3 docentes, Admisiones, Dirección de Estudios | El problema, del lado docente y de gestión |
 | **17** tareas frecuentes con sus clicks de hoy | La línea base |
-| **13 s** tarda un aviso en aparecer en otra pantalla, sin recargar | La promesa de avisar a tiempo |
-| **3 s** para cambiar de canal; antes, de 14 a 28 s | Que se pueda usar |
+| **5 → 3** clicks, al integrar las dos plataformas | Reducción de clicks en los flujos |
+| **3 s** para cambiar de canal; antes, de 14 a 28 s | Reducción del tiempo en los flujos |
 
-**Falta:** cronometrar las cinco tareas con alumnos (T1 a T5) y la lista con un docente (T6), hoy contra HackAI. Y mostrarle la pantalla de reportes a la Dirección de Estudios.
+La slide ya no dice qué falta medir (decisión del 13/11): eso queda en la slide 12, «Qué validaríamos después». El «5 → 3» lo pidió Facundo el 13/11. **Sin confirmar:** qué flujo es. No coincide con ninguna fila de la slide 7 ni de la línea base (`docs/product/problema.md`), donde saber qué te toca pasa de 3 clicks a 1 e inscribirse queda en 3. Antes de presentar, acordar qué flujo se nombra si lo preguntan. El «3 s» es una medición del equipo sobre HackAI, antes y después de un arreglo, no contra el SIU ni el Campus: si lo preguntan, decirlo así.
 
-> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. La promesa de avisar a tiempo: un aviso publicado aparece en otra pantalla en 13 segundos sin recargar, y en Discord casi al instante. Y que se pueda usar: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Lo que no medimos, y lo decimos: no cronometramos las tareas con alumnos ni la lista con un docente. Tenemos el protocolo armado.
+> Qué medimos. El problema: 39 alumnos encuestados y seis entrevistas, del lado alumno, docente y de gestión, más una línea base de 17 tareas con sus clicks en el SIU y el Campus reales. Al integrar las dos plataformas reducimos los clicks de los flujos: de cinco a tres. Y redujimos el tiempo: cambiar de canal tardaba hasta 28 segundos y lo bajamos a 3. Los clicks de HackAI los contamos nosotros sobre datos sintéticos; cronometrarlos con usuarios es el próximo paso.
 
 **Si sobra tiempo**, la cita de la Dirección de Estudios sobre lo que tarda hacer un tablero: «el departamento de sistemas me lleva meses, años». Contarla como dato del problema, no como elogio.
 
-## 11. Evidencia: lo que cambiamos en el camino · 0:50
+## 11. Evidencia: cada charla nos cambió el alcance · 0:45
 
-**En pantalla**, sin las fechas (quedan acá como referencia para quien presenta):
+Una sola historia: cada vez que hablamos con alguien, cambió el alcance. Cierra lo que Persona 1 abre en la slide 4 («apareció un tercero que no teníamos»). La slide no lleva fechas ni números del repositorio; las fechas quedan acá para quien presenta.
 
-| Fecha | Qué aprendimos | Qué cambiamos |
+**En pantalla:**
+
+| Con quién hablamos | Qué nos dijeron | Qué cambiamos |
 | --- | --- | --- |
-| 10/11 | La base que heredamos no compilaba y era de un solo curso | Sistema propio, con SIU y Moodle detrás de puertos |
-| 12/11 | La API del SIU pide un usuario institucional y no deja inscribir | HackAI usa la sesión del propio alumno, con su confirmación |
-| 12/11 | Hoy le mostraba demasiado al alumno de entrada | Mis materias pasó a ser el inicio; Hoy quedó para el docente |
-| 12/11 | Docentes: tomar lista lleva de 10 a 15 minutos | Docentes al alcance: tomar lista con toques, tareas y entregas propias |
-| 13/11 | Entrar a una materia tardaba hasta 17 segundos | Unos 3 segundos: Moodle y Discord se consultan después |
-| 13/11 | La Dirección de Estudios carga cada nota tres veces, baja 80 reportes y no ve qué le falta a cada alumno | Notas que se cargan una vez, y Reportes para secretaría: cruzados y con la ficha de lo que falta |
-| 13/11 | Con la cuenta real, el aula de cada materia seguía siendo la simulada, y solo traíamos archivos y enlaces: el 44 % de lo que tiene un curso | El Campus real con la cuenta del alumno: todo el contenido del aula, en vivo y sin guardarlo |
+| **39 alumnos** (encuesta, 6 al 10/11) | Los cursos viejos se mezclan (56 %) y los avisos no llegan (44 %) | Mis materias solo con lo actual, y avisos por Discord |
+| **Docentes** (entrevistas, 12/11) | Tomar lista lleva de 10 a 15 minutos por clase | Sumamos al docente: lista con toques y notas cargadas una vez |
+| **Dirección de Estudios** (entrevista, 13/11) | 80 reportes para un indicador, y cada nota se carga tres veces | Sumamos a gestión: Reportes y la ficha de lo que le falta a cada alumno |
 
-> No salió derecho. Arrancamos sobre una base que no compilaba y decidimos el sistema propio. Descubrimos que la API del SIU no deja inscribir y usamos la sesión del alumno. El primer inicio mostraba demasiado y lo simplificamos. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos al alcance. Y hoy, la Dirección de Estudios nos contó que carga cada nota tres veces y que baja ochenta reportes para ver una cohorte: de ahí salen la carga única de notas y la pantalla de reportes que vieron. Y cuando un alumno entraba con su cuenta real, el aula seguía siendo la simulada: ahora lee su Campus de verdad, sin guardar nada. Todo con revisión y tests automáticos en cada cambio.
+Abajo, una línea: «Y el SIU real: su API no deja inscribir → HackAI usa la sesión del propio alumno, con su confirmación.»
+
+> Cada vez que hablamos con alguien, HackAI cambió. Empezamos solo con el alumno: la encuesta nos dijo que los cursos viejos se mezclan y que los avisos no llegan, y de ahí salen Mis materias y los avisos por Discord. Los docentes nos dijeron que tomar lista les lleva un cuarto de hora, y los sumamos. Y hoy la Dirección de Estudios nos contó que baja ochenta reportes y que carga cada nota tres veces, y sumamos a gestión. Y cuando probamos contra el SIU real, descubrimos que su API no deja inscribir: por eso HackAI usa la sesión del propio alumno, siempre con su confirmación.
+
+**Si preguntan por lo técnico**, lo que salió de la slide: arrancamos sobre una base que no compilaba y pasamos a un sistema propio con puertos (10/11); Hoy le mostraba demasiado al alumno y Mis materias pasó a ser el inicio (12/11); entrar a una materia bajó de 17 segundos a unos 3 (13/11); y con la cuenta real, el aula dejó de ser la simulada: ahora se lee el Campus en vivo, sin guardarlo (13/11).
 
 ## 12. Próximo paso: qué validaríamos después · 0:40
 
