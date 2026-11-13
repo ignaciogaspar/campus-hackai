@@ -22,7 +22,8 @@ import {
   submissionHref,
   submissionStatus,
   taskHref,
-  tasksHref
+  tasksHref,
+  timeFromInput
 } from '@/components/coursework/format'
 import { subjectTabHref, tabsFor } from '@/components/subjects/subject-nav'
 
@@ -105,6 +106,23 @@ test('la fecha y la hora se escriben en dos campos y se toman en Buenos Aires', 
   assert.equal(dueAtFromParts(' 2026-11-20 ', ' 18:00 '), '2026-11-20T21:00:00.000Z')
   assert.deepEqual(dateTimeParts('2026-11-14T02:59:00.000Z'), { date: '2026-11-13', time: '23:59' })
   assert.deepEqual(dateTimeParts('2027-01-02T03:05:00.000Z'), { date: '2027-01-02', time: '00:05' })
+})
+
+test('la hora se escribe en 24 horas como venga: con dos puntos, con punto, con coma o de corrido', () => {
+  assert.equal(timeFromInput('18:00'), '18:00')
+  assert.equal(timeFromInput('1800'), '18:00')
+  assert.equal(timeFromInput('18.30'), '18:30')
+  assert.equal(timeFromInput('18,30'), '18:30')
+  assert.equal(timeFromInput('930'), '09:30')
+  assert.equal(timeFromInput(' 9 '), '09:00')
+  assert.equal(timeFromInput('0:05'), '00:05')
+  assert.equal(dueAtFromParts('2026-11-20', '1800'), '2026-11-20T21:00:00.000Z')
+})
+
+test('una hora que no existe no es una hora', () => {
+  for (const value of ['', '24:00', '18:60', '18:5', 'mañana', '6 pm', '123456']) {
+    assert.equal(timeFromInput(value), null, JSON.stringify(value))
+  }
 })
 
 test('sin fecha o sin hora no hay fecha límite', () => {

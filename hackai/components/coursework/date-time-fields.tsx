@@ -1,13 +1,16 @@
 'use client'
 
 /* La fecha y la hora de una tarea o de una instancia de examen, en dos campos:
-   el día (type=date) y la hora (type=time, con una hora sugerida). Uno solo de
-   fecha y hora tenía seis segmentos con a. m. y p. m., escondía la hora al
-   125 % y quedaba vacío si se tipeaba de corrido. Debajo se confirma en
-   palabras y en 24 horas («Vence el viernes 20 de noviembre a las 18:00»).
-   Se toma en la hora de Buenos Aires (components/coursework/format.ts). */
+   el día (type=date) y la hora, de texto y en 24 horas, con una sugerida. Uno
+   solo de fecha y hora tenía seis segmentos con a. m. y p. m., escondía la
+   hora al 125 % y quedaba vacío si se tipeaba de corrido; un type=time también
+   sale en a. m. y p. m. según el idioma del navegador. La hora se puede
+   escribir «18:00», «18.00» o «1800» (timeFromInput) y al salir del campo
+   queda como «18:00». Debajo se confirma en palabras y en 24 horas («Vence el
+   viernes 20 de noviembre a las 18:00»). Se toma en la hora de Buenos Aires
+   (components/coursework/format.ts). */
 import { useEffect, useRef, useState } from 'react'
-import { dateTimeInWords, dateTimeParts } from '@/components/coursework/format'
+import { dateTimeInWords, dateTimeParts, timeFromInput } from '@/components/coursework/format'
 import { FieldError } from '@/components/spaces/action-form'
 import { cn } from '@/lib/utils'
 
@@ -85,11 +88,16 @@ export function DateTimeFields({
           <span className='font-normal text-muted-foreground'>Hora, de 00:00 a 23:59</span>
           <span className={BOX}>
             <input
-              type='time'
+              type='text'
+              inputMode='decimal'
+              autoComplete='off'
               name={timeName}
               required
+              maxLength={5}
+              placeholder='18:00'
               value={time}
               onChange={(event) => setTime(event.currentTarget.value)}
+              onBlur={() => setTime((typed) => timeFromInput(typed) ?? typed)}
               aria-describedby={helpId}
               className={INPUT}
             />

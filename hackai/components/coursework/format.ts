@@ -157,10 +157,24 @@ export function dueAtFromInput(value: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
-/** La fecha ISO de lo que se escribió en un campo de fecha (`AAAA-MM-DD`) y uno de hora (`HH:MM`), en Buenos Aires.
-    `null` si falta alguno o no forman una fecha con hora. */
-export const dueAtFromParts = (date: string, time: string): string | null =>
-  dueAtFromInput(`${date.trim()}T${time.trim()}`)
+/** La hora que se escribió, en 24 horas y como `HH:MM`: acepta «18:00», «18.00», «18,00», «1800» o «18». `null` si
+    no es una hora del día. El campo es de texto y no `type=time`, que según el idioma del navegador sale en a. m. y
+    p. m. */
+export function timeFromInput(value: string): string | null {
+  const match = /^(\d{1,2})(?:[:.,]?(\d{2}))?$/.exec(value.trim())
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2] ?? '0')
+  if (hour > 23 || minute > 59) return null
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+/** La fecha ISO de lo que se escribió en un campo de fecha (`AAAA-MM-DD`) y uno de hora (timeFromInput), en Buenos
+    Aires. `null` si falta alguno o no forman una fecha con hora. */
+export function dueAtFromParts(date: string, time: string): string | null {
+  const hour = timeFromInput(time)
+  return hour ? dueAtFromInput(`${date.trim()}T${hour}`) : null
+}
 
 /** Los valores de los campos de fecha y de hora para una fecha, en Buenos Aires: `2026-11-13` y `23:59`. */
 export function dateTimeParts(iso: string): { date: string; time: string } {
