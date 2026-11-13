@@ -76,6 +76,7 @@ export async function openQuestions(
           spaceId: channel.spaceId,
           subjectId: member.subjectId,
           subjectName,
+          sectionId: channel.scope.kind === 'comision' ? channel.scope.sectionId : null,
           sectionName: sectionName(member, channel),
           text: m.text,
           author: await authors.ofMessage(m),

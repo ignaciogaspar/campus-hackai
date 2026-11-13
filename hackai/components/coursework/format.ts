@@ -53,9 +53,27 @@ export function gradesHref(subjectId: string, view: GradesView = {}): string {
   return `${subjectPath(subjectId)}/calificaciones${query ? `?${query}` : ''}`
 }
 
-/** Cómo se evalúa la comisión: instancias de examen, pesos y promoción. */
-export const evaluationHref = (subjectId: string, comision?: string) =>
-  href(`${subjectPath(subjectId)}/calificaciones/evaluacion`, comision)
+/** El estado de una columna en su pestaña de Calificaciones: «Sin notas», «2/3 · sin publicar», «3/3 · publicada».
+    Una columna publicada con notas nuevas dice cuántas faltan publicar. */
+export function columnStatus(
+  column: { graded: number; unpublished: number; published: boolean },
+  students: number
+): string {
+  if (column.graded === 0) return 'Sin notas'
+  const count = `${column.graded}/${students}`
+  if (!column.published) return `${count} · sin publicar`
+  return column.unpublished === 0 ? `${count} · publicada` : `${count} · ${column.unpublished} sin publicar`
+}
+
+/** Cómo se evalúa la comisión: instancias de examen, pesos y promoción. Lleva la columna de Calificaciones de la que
+    se viene, para volver a ella, y con `pesos` va directo a los pesos. */
+export function evaluationHref(subjectId: string, comision?: string, from: { columna?: string; pesos?: boolean } = {}) {
+  const params = new URLSearchParams()
+  if (comision) params.set('comision', comision)
+  if (from.columna) params.set('columna', from.columna)
+  const query = params.toString()
+  return `${subjectPath(subjectId)}/calificaciones/evaluacion${query ? `?${query}` : ''}${from.pesos ? '#pesos' : ''}`
+}
 
 /** Cuántos alumnos entran en una página de las listas del docente. */
 export const PAGE_SIZE = 25
@@ -99,6 +117,26 @@ export function gradeFromInput(value: string): number | null {
   const text = value.trim().replace(',', '.')
   if (text === '') return null
   return /^\d+(\.\d+)?$/.test(text) ? Number(text) : Number.NaN
+}
+
+/** Lo escrito en la planilla, para comparar: sin espacios y con «a» igual que «A». */
+const sheetKey = (text: string) => text.trim().toUpperCase()
+
+/** Si lo escrito en un campo de la planilla se puede guardar: un número de 1 a 10 o «A» de ausente. */
+export function isSheetGrade(value: string): boolean {
+  if (sheetKey(value) === 'A') return true
+  const grade = gradeFromInput(value)
+  return grade !== null && grade >= 1 && grade <= 10
+}
+
+/** Qué pide una fila de la planilla al guardar: nada si no cambió («8,5» y «8.5» son lo mismo), quitar la nota si se
+    vació, o guardar lo escrito, que puede no servir. Un campo que ya estaba vacío nunca pide quitar. */
+export function sheetChange(row: { before: string; value: string }): 'igual' | 'quitar' | 'nota' | 'invalida' {
+  const before = sheetKey(row.before)
+  const value = sheetKey(row.value)
+  if (value === before || (value !== '' && gradeFromInput(value) === gradeFromInput(before))) return 'igual'
+  if (value === '') return 'quitar'
+  return isSheetGrade(value) ? 'nota' : 'invalida'
 }
 
 /** La nota como se escribe en un campo y se lee en pantalla: con coma decimal, sin ceros de más («8,5»). */

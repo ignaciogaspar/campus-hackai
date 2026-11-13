@@ -1,7 +1,9 @@
 /* Hoy del docente: dónde dicta, qué consultas de sus comisiones siguen sin
    respuesta, qué no leyó (los mensajes directos de sus alumnos incluidos) y
    sus próximos parciales y mesas, armado con lo que da Hoy en una sola llamada.
-   Cada cosa lleva a su canal o a su hilo. Qué consultas le tocan y qué no leyó
+   Cada cosa lleva a su canal o a su hilo, y cada comisión a su espacio, con la
+   comisión en `?comision=`: así la Comisión Verano abre Verano y no la primera
+   de la materia. Qué consultas le tocan y qué no leyó
    lo deciden Hoy y Espacios; acá solo se muestra. Si una parte no se pudo
    leer, esa parte dice por qué y el resto se ve igual. Arriba de todo va su
    clase de ahora (o la próxima), con Tomar lista y, si es virtual o híbrida,
@@ -81,7 +83,7 @@ function QuestionRow({ question: q, now }: { question: OpenQuestion; now: string
   const where = q.sectionName ? `${q.subjectName} · Comisión ${q.sectionName}` : q.subjectName
   return (
     <ListItem
-      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId })}
+      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId, comision: q.sectionId ?? undefined })}
       start={
         <Icon>
           <MessageCircleQuestion aria-hidden='true' className='size-5' strokeWidth={1.8} />
@@ -129,7 +131,11 @@ function UnreadRow({ item, now }: { item: UnreadItem; now: string }) {
   const ItemIcon = item.kind === 'directo' ? MessagesSquare : Megaphone
   return (
     <ListItem
-      href={spaceHref(item.subjectId, { canal: item.channelId, hilo: threadOf(item) })}
+      href={spaceHref(item.subjectId, {
+        canal: item.channelId,
+        hilo: threadOf(item),
+        comision: item.sectionId ?? undefined
+      })}
       start={
         <Icon>
           <ItemIcon aria-hidden='true' className='size-5' strokeWidth={1.8} />
@@ -168,7 +174,7 @@ function UnreadList({ view }: { view: TeachingView }) {
 function SectionRow({ section: s }: { section: TaughtSection }) {
   return (
     <ListItem
-      href={spaceHref(s.subjectId)}
+      href={spaceHref(s.subjectId, { comision: s.sectionId })}
       className='items-center'
       start={
         <span

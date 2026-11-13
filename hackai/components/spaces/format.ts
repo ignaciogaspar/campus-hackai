@@ -97,11 +97,11 @@ export function hasSeveralSections(channels: Channel[]): boolean {
 /** Si el canal va en la pestaña Directos y no suelto en el riel. */
 export const isDirect = (channel: Channel) => channel.kind === 'directo'
 
-/** El canal que se abre al entrar al espacio sin `?canal=`: el primero con algo sin leer, así lo nuevo queda a la
-    vista; si no hay, el primero. Los directos no se abren solos: tienen su pestaña. `null` si no hay canales. */
-export function defaultChannel(channels: Channel[]): Channel | null {
-  const shared = channels.filter((c) => !isDirect(c))
-  return shared.find((c) => c.unread > 0) ?? shared[0] ?? channels[0] ?? null
+/** El canal que se abre al entrar al espacio sin `?canal=`, si alguno tiene algo sin leer: el primero, así lo nuevo
+    queda a la vista. Los directos no se abren solos: tienen su pestaña. `null` si no hay nada sin leer, y se abre el
+    de siempre (section-focus.ts). */
+export function firstUnreadChannel(channels: Channel[]): Channel | null {
+  return channels.find((c) => !isDirect(c) && c.unread > 0) ?? null
 }
 
 /** El espacio de una materia, como lo necesitan los formularios: la ruta va por materia y el módulo, por espacio. */
@@ -128,6 +128,8 @@ export type SpaceQuery = {
   vista?: 'directos'
   /** Lo buscado en el material. */
   buscar?: string
+  /** La comisión elegida en el selector del docente que dicta más de una. */
+  comision?: string
 }
 
 /** Donde viven los espacios: `/materias/<id de la materia>`. */

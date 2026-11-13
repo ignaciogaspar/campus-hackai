@@ -250,6 +250,8 @@ export type OpenQuestion = {
   spaceId: SpaceId
   subjectId: string
   subjectName: string
+  /** La comisión del canal, o `null` si el canal es de la materia: la consulta abre el espacio en esa comisión. */
+  sectionId: string | null
   /** La comisión del canal, o `null` si el canal es de la materia. */
   sectionName: string | null
   text: string

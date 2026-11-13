@@ -334,6 +334,9 @@ export type NewGrade = {
   comment: string
 }
 
+/** La nota de qué alumno y en qué columna. */
+export type GradeTarget = Pick<NewGrade, 'sectionId' | 'columnId' | 'studentId'>
+
 /** Una nota publicada, como la ve el alumno. */
 export type PublishedGrade = {
   subjectId: string
@@ -401,7 +404,10 @@ export type PasteOutcome =
   | 'invalida'
   /** El alumno es de la comisión y la línea no trae nota: no se toca lo que ya tenía. */
   | 'sin-nota'
+  /** La línea se pudo partir en alumno y nota, pero nadie de la comisión tiene ese legajo, mail o nombre. */
   | 'no-reconocido'
+  /** La línea no se pudo partir en alumno y nota (no tiene tabulación) y entera tampoco es nadie de la comisión. */
+  | 'formato'
   /** El nombre coincide con más de un alumno de la comisión. */
   | 'ambiguo'
   /** Es de la comisión pero todavía no entró a HackAI: no se le puede cargar nota. */
@@ -424,6 +430,8 @@ export type PasteRow = {
   legajo: string | null
   /** La nota ya de 1 a 10; `null` si es un ausente o no se leyó. */
   value: number | null
+  /** En un `repetido`, la línea anterior del mismo alumno y si su nota no servía (entonces no se guarda ninguna). */
+  repeats: { line: number; invalid: boolean } | null
 }
 
 export type PasteCounts = {
@@ -508,6 +516,13 @@ export type Coursework = {
     personId: PersonId,
     input: NewGrade
   ): Promise<Result<GradeCell, AccessError | ColumnError | GradeError | 'alumno-desconocido'>>
+  /** Quita la nota (o el ausente) y el comentario de un alumno en una columna, si todavía no está publicada. Una nota
+      que ya ven los alumnos es `nota-publicada`: no se quita, porque ya la vio el alumno y puede haber pasado al SIU.
+      Si el alumno no tenía nota, no cambia nada. */
+  removeGrade(
+    personId: PersonId,
+    target: GradeTarget
+  ): Promise<Result<void, AccessError | ColumnError | 'alumno-desconocido' | 'nota-publicada'>>
   /** Publica las notas cargadas de una columna: desde ahí las ven los alumnos y les llega a la campana. Publicar de
       nuevo no repite nada. Una columna sin notas cargadas es `sin-notas`. Devuelve cuántas notas se publicaron ahora. */
   publish(

@@ -276,7 +276,31 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
-### 34. ¿Los archivos adjuntos a un aviso entran al material y a la búsqueda?
+### 34. ¿El selector de comisión filtra los canales del espacio del docente que dicta varias?
+
+- **Por qué importa:** con dos comisiones de la misma materia, el espacio mostraba los canales de las dos con sufijo («Avisos · A», «Avisos · Verano») y el selector no los gobernaba: la Comisión Verano abría la A y la docente publicaba en la comisión equivocada sin darse cuenta (#124, U-1).
+- **Hipótesis (13/11/2026):** el selector filtra el riel: se ven los canales de la comisión elegida, los de la materia (Material y los que se crean para toda la materia) y los directos, sin sufijo. Sin `?canal=` se abren los Avisos de la comisión elegida, y abrir un canal de otra comisión (desde Hoy o Novedades) pone el selector en esa. Los canales de una comisión archivada de la misma materia, que no está en el selector, siguen a la vista.
+- **Opciones:** lo de la hipótesis; mostrar los canales de todas las comisiones y que el selector solo elija cuál se abre; un espacio aparte por comisión.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 35. ¿Se puede quitar una nota que los alumnos ya ven?
+
+- **Por qué importa:** en la planilla de Calificaciones (#125, U-30), vaciar un campo quita la nota. Si la nota ya estaba publicada, el alumno ya la vio y le llegó el aviso, y si es de una evaluación del SIU puede haber pasado al SIU. El pase al SIU manda un número o un ausente: no hay forma de decirle «sin nota».
+- **Hipótesis (13/11/2026):** solo se quita una nota que todavía no se publicó. Una publicada no se quita: la planilla lo dice junto al campo y pide escribir la nota corregida. Quitar una nota de una tarea tampoco reabre la entrega del alumno.
+- **Opciones:** como está; dejar quitar las de tareas y de instancias de HackAI (no pasan al SIU) y avisar al alumno; quitarla también en el SIU, si la API lo permite.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 36. ¿Hace falta una ficha por alumno en Calificaciones?
+
+- **Por qué importa:** el recorrido de UX (#125, U-63) mostró que, con los pesos en 0, la nota de cursada de un alumno sale «—» aunque tenga notas, y para ver qué tiene en cada columna hay que recorrer la tira columna por columna.
+- **Hipótesis (13/11/2026):** es una idea, no un pedido: una ficha del alumno con su nota en cada columna, el peso de cada una y cómo se llega a su nota de cursada. Para la demo alcanza con que la nota de cursada explique qué falta.
+- **Opciones:** no hacerla; una ficha que se abre desde la fila de Nota de cursada; una vista de tabla con todas las columnas en la compu.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
+### 37. ¿Los archivos adjuntos a un aviso entran al material y a la búsqueda?
 
 - **Por qué importa:** en el recorrido de UX (#130, U-23), en Contabilidad I el aviso del 3/11 trae `temas-segundo-parcial.pdf`, pero Material dice «Todavía no hay material» y buscar «parcial» no encuentra nada. El alumno busca el archivo donde está el resto y no lo encuentra.
 - **Hipótesis (13/11/2026):** no entran: el material es lo que el docente sube o importa como material, y un adjunto queda en su aviso. Mientras, el estado vacío de Material dice que los adjuntos de los avisos quedan en Avisos.
