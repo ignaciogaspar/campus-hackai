@@ -23,6 +23,13 @@ export const newTaskHref = (subjectId: string, comision?: string) =>
 export const taskHref = (subjectId: string, taskId: string, comision?: string) =>
   href(`${subjectPath(subjectId)}/tareas/${encodeURIComponent(taskId)}`, comision)
 
+/** La entrega de un alumno, abierta por el docente. */
+export const submissionHref = (subjectId: string, taskId: string, submissionId: string, comision?: string) =>
+  href(
+    `${subjectPath(subjectId)}/tareas/${encodeURIComponent(taskId)}/entregas/${encodeURIComponent(submissionId)}`,
+    comision
+  )
+
 /** «Comisión A». */
 export const sectionLabel = (name: string) => `Comisión ${name}`
 
@@ -91,4 +98,18 @@ export function durationLabel(minutes: number): string {
 /** El estado de una entrega en una palabra y cuánto se atrasó: «Entregada», «Atrasada · 2 h 30 min». */
 export function submissionStatus(submission: { late: { minutes: number } | null }): string {
   return submission.late ? `Atrasada · ${durationLabel(submission.late.minutes)}` : 'Entregada'
+}
+
+/** El estado de un alumno frente a una tarea, en palabras: «Entregada», «Atrasada · 2 h 30 min», «No entregó». */
+export function rowStatus(row: { submission: { late: { minutes: number } | null } | null }): string {
+  return row.submission ? submissionStatus(row.submission) : 'No entregó'
+}
+
+/** El resumen de quién entregó: «2 entregaron · 1 atrasada · 3 sin entregar». Sin atrasadas, no las nombra. */
+export function countsLabel(counts: { onTime: number; late: number; missing: number }): string {
+  const delivered = counts.onTime + counts.late
+  const parts = [delivered === 1 ? '1 entregó' : `${delivered} entregaron`]
+  if (counts.late > 0) parts.push(counts.late === 1 ? '1 atrasada' : `${counts.late} atrasadas`)
+  parts.push(counts.missing === 1 ? '1 sin entregar' : `${counts.missing} sin entregar`)
+  return parts.join(' · ')
 }

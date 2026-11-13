@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  countsLabel,
   dueAtFromInput,
   dueLabel,
   durationLabel,
   inputValueOf,
   newTaskHref,
+  rowStatus,
   sectionsLabel,
+  submissionHref,
   submissionStatus,
   taskHref,
   tasksHref
@@ -75,4 +78,24 @@ test('un atraso se escribe en la unidad que se entiende: minutos, horas con minu
 test('el estado de una entrega dice si fue a tiempo o atrasada y cuánto', () => {
   assert.equal(submissionStatus({ late: null }), 'Entregada')
   assert.equal(submissionStatus({ late: { minutes: 150 } }), 'Atrasada · 2 h 30 min')
+})
+
+test('el enlace de una entrega conserva la comisión y escapa los ids', () => {
+  assert.equal(
+    submissionHref('am1', 'tarea-1', 'entrega-2', 'sec-am1-fi-a'),
+    '/materias/am1/tareas/tarea-1/entregas/entrega-2?comision=sec-am1-fi-a'
+  )
+  assert.equal(submissionHref('a/b', 't 1', 'e/2'), '/materias/a%2Fb/tareas/t%201/entregas/e%2F2')
+})
+
+test('el estado de cada alumno dice si entregó, si fue tarde y cuánto, o que no entregó', () => {
+  assert.equal(rowStatus({ submission: null }), 'No entregó')
+  assert.equal(rowStatus({ submission: { late: null } }), 'Entregada')
+  assert.equal(rowStatus({ submission: { late: { minutes: 150 } } }), 'Atrasada · 2 h 30 min')
+})
+
+test('el resumen de quién entregó cuenta las atrasadas como entregadas y solo las nombra si hay', () => {
+  assert.equal(countsLabel({ onTime: 2, late: 1, missing: 3 }), '3 entregaron · 1 atrasada · 3 sin entregar')
+  assert.equal(countsLabel({ onTime: 1, late: 0, missing: 1 }), '1 entregó · 1 sin entregar')
+  assert.equal(countsLabel({ onTime: 0, late: 2, missing: 0 }), '2 entregaron · 2 atrasadas · 0 sin entregar')
 })
