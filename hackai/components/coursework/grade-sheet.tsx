@@ -175,17 +175,19 @@ function SheetRow({
   const note = disabled ? 'todavía no entró a HackAI' : cellNote(cell, columnPublished)
   const pending = changeNote(change, cell?.published ?? false)
   return (
+    // En el celular el nombre va entero arriba, y abajo el legajo a la izquierda y los campos a la derecha; en la
+    // compu, el nombre y el legajo a la izquierda y los campos a la derecha. El nombre nunca se corta.
     <li
       className={cn(
-        'flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3',
+        'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3',
         selected && 'bg-accent/60',
         change !== 'igual' && 'bg-warning-background/60'
       )}
     >
-      <div className='flex min-w-[9rem] flex-1 flex-col gap-1'>
-        <label htmlFor={inputId} className='text-[0.9375rem] font-semibold break-words text-ink'>
-          {student.name}
-        </label>
+      <label htmlFor={inputId} className='col-span-2 text-[0.9375rem] font-semibold break-words text-ink sm:col-span-1'>
+        {student.name}
+      </label>
+      <div className='col-start-1 flex min-w-0 flex-col gap-1'>
         <p className='text-xs text-muted-foreground'>
           <span className='tabular-nums'>Legajo {student.legajo}</span>
           {note && <span> · {note}</span>}
@@ -193,7 +195,7 @@ function SheetRow({
         </p>
         {cell?.comment && <p className='line-clamp-1 text-[0.8125rem] text-muted-foreground'>{cell.comment}</p>}
       </div>
-      <div className='ml-auto flex items-center gap-1'>
+      <div className='col-start-2 row-start-2 flex items-center gap-1 sm:row-span-2 sm:row-start-1'>
         {student.personId && (
           <>
             <input type='hidden' name='alumno' value={student.personId} />

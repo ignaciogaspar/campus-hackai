@@ -46,7 +46,7 @@ const OUTCOMES: Record<PasteOutcome, { tone: StatusTone; label: string; why?: st
   formato: {
     tone: 'danger',
     label: 'Formato',
-    why: 'No pudimos separar al alumno de la nota: copiá las dos columnas desde la planilla, en celdas separadas.'
+    why: 'No se pudo separar alumno y nota: copiá las dos columnas de la planilla.'
   },
   ambiguo: { tone: 'warning', label: 'Varios alumnos', why: 'El nombre coincide con más de un alumno: usá el legajo.' },
   'sin-cuenta': { tone: 'warning', label: 'Sin cuenta', why: 'Todavía no entró a HackAI: no se le puede cargar nota.' },
@@ -58,13 +58,13 @@ const BY = { legajo: 'por legajo', mail: 'por mail', nombre: 'por nombre' } as c
 /** Primero lo que hay que revisar, después lo que se guarda. */
 const needsReview = (row: PasteRow) => row.outcome !== 'nota' && row.outcome !== 'ausente'
 
-/** Por qué la línea no se guarda. Un repetido dice en qué línea venía el alumno y, si esa nota no servía, que no se
-    guarda ninguna de las dos. */
+/** Por qué la línea no se guarda, en dos renglones como mucho (la lista corta el resto). Un repetido dice en qué
+    línea venía el alumno y, si esa nota no servía, que no se guarda ninguna de las dos. */
 function whyOf(row: PasteRow): string | undefined {
   if (row.outcome !== 'repetido' || !row.repeats) return OUTCOMES[row.outcome].why
   const { line, invalid } = row.repeats
   return invalid
-    ? `Ya venía en la línea ${line}, con una nota que no sirve: no guardamos ninguna de las dos. Corregí la línea ${line}.`
+    ? `Ya venía en la línea ${line} con nota inválida: no se guarda ninguna.`
     : `Ya venía en la línea ${line}: usamos esa.`
 }
 
