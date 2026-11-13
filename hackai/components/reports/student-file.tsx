@@ -63,7 +63,7 @@ export function FileIndex() {
           <li key={s.id}>
             <a
               href={`#${s.id}`}
-              className='inline-flex min-h-9 items-center rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-ink shadow-card hover:text-blue focus-ring'
+              className='inline-flex min-h-11 items-center rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-ink shadow-card hover:text-blue focus-ring'
             >
               {s.label}
             </a>
@@ -225,7 +225,10 @@ export function PlanBlock({ report }: { report: StudentReport }) {
       description='Por año, con lo que le falta resaltado. Las aprobadas van en gris con su nota.'
       className='group/plan'
     >
-      <label data-print='hide' className='inline-flex w-fit items-center gap-2 text-[0.8125rem] font-semibold'>
+      <label
+        data-print='hide'
+        className='inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 text-[0.8125rem] font-semibold'
+      >
         <input type='checkbox' className='size-4 accent-(--azul)' />
         Mostrar solo lo que falta
       </label>
@@ -292,6 +295,31 @@ function Slots({ subject }: { subject: MissingSchedule | undefined }) {
   )
 }
 
+function MissingList({
+  subjects,
+  bySubject
+}: {
+  subjects: StudentReport['missing']
+  bySubject: Map<string, MissingSchedule> | null
+}) {
+  return (
+    <ul className='flex flex-col divide-y divide-border'>
+      {subjects.map((s) => (
+        <li key={s.id} className='flex flex-col gap-1.5 py-2.5 first:pt-0 last:pb-0'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className='text-[0.9375rem] font-bold text-ink'>{s.name}</span>
+            <StatusPill tone={TONE[s.status]}>{PLAN_STATUS_LABEL[s.status]}</StatusPill>
+            <span className='text-[0.75rem] text-muted-foreground'>
+              {s.kind === 'optativa' ? 'Optativa' : `${s.year}.º año`} · {s.term}.º cuatrimestre
+            </span>
+          </div>
+          {bySubject && <Slots subject={bySubject.get(s.id)} />}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function MissingBlock({ report }: { report: StudentReport }) {
   const { missing, schedule, standing } = report
   if (standing.status === 'graduado')
@@ -300,15 +328,19 @@ export function MissingBlock({ report }: { report: StudentReport }) {
         <p className='text-[0.875rem]'>Nada: se recibió el {dayText(report.profile.graduatedOn)}.</p>
       </Block>
     )
-  const bySubject = new Map((schedule?.subjects ?? []).map((s) => [s.subjectId, s]))
+  const bySubject = schedule ? new Map(schedule.subjects.map((s) => [s.subjectId, s])) : null
   const offered = schedule ? schedule.subjects.filter((s) => s.slots.length > 0).length : 0
+  // Las optativas que se listan son las que puede elegir, no las que le faltan: le falta una cantidad de ellas.
+  const mandatory = missing.filter((s) => s.kind !== 'optativa')
+  const electives = missing.filter((s) => s.kind === 'optativa')
+  const electivesLeft = Math.max(0, standing.missing - mandatory.length)
   return (
     <Block
       id='falta'
       title={`Lo que le falta: ${standing.missing} ${standing.missing === 1 ? 'materia' : 'materias'}`}
       description={
         schedule
-          ? `${offered} de ${missing.length} se dictan este cuatrimestre según el Planning de Aulas, en su facultad o en otra. Las correlativas no están en el padrón: revisalas en el plan.`
+          ? `Según el Planning de Aulas, este cuatrimestre se dictan ${offered} de las de abajo, en su facultad o en otra. Las correlativas no están en el padrón: revisalas en el plan.`
           : 'El Planning de Aulas no respondió: por ahora no se ve cuándo se dicta cada una.'
       }
     >
@@ -333,20 +365,18 @@ export function MissingBlock({ report }: { report: StudentReport }) {
           Tiene todas las materias: le quedan los créditos de Vida Universitaria o el trámite del título.
         </p>
       ) : (
-        <ul className='flex flex-col divide-y divide-border'>
-          {missing.map((s) => (
-            <li key={s.id} className='flex flex-col gap-1.5 py-2.5 first:pt-0 last:pb-0'>
-              <div className='flex flex-wrap items-center gap-2'>
-                <span className='text-[0.9375rem] font-bold text-ink'>{s.name}</span>
-                <StatusPill tone={TONE[s.status]}>{PLAN_STATUS_LABEL[s.status]}</StatusPill>
-                <span className='text-[0.75rem] text-muted-foreground'>
-                  {s.kind === 'optativa' ? 'Optativa' : `${s.year}.º año`} · {s.term}.º cuatrimestre
-                </span>
-              </div>
-              {schedule && <Slots subject={bySubject.get(s.id)} />}
-            </li>
-          ))}
-        </ul>
+        <>
+          {mandatory.length > 0 && <MissingList subjects={mandatory} bySubject={bySubject} />}
+          {electives.length > 0 && electivesLeft > 0 && (
+            <>
+              <h3 className='pt-2 text-[0.875rem] font-bold'>
+                {electivesLeft === 1 ? 'Le falta 1 optativa' : `Le faltan ${electivesLeft} optativas`}, a elegir entre
+                estas
+              </h3>
+              <MissingList subjects={electives} bySubject={bySubject} />
+            </>
+          )}
+        </>
       )}
     </Block>
   )
@@ -374,7 +404,7 @@ export function UniversityLifeBlock({ report }: { report: StudentReport }) {
         <p className='text-[0.8125rem] text-muted-foreground'>Todavía no hizo ninguna actividad.</p>
       ) : (
         <details className='group/vu' open={activities.length <= 4}>
-          <summary className='flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-lg text-[0.8125rem] font-semibold text-blue focus-ring [&::-webkit-details-marker]:hidden'>
+          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg text-[0.8125rem] font-semibold text-blue focus-ring [&::-webkit-details-marker]:hidden'>
             Ver las {activities.length} actividades
             <ChevronDown
               aria-hidden='true'
@@ -469,7 +499,7 @@ export function HistoryBlock({ report }: { report: StudentReport }) {
       <Table headers={headers} rows={rows.slice(0, 12)} empty='Todavía no tiene nada en la historia.' />
       {rows.length > 12 && (
         <details>
-          <summary className='w-fit cursor-pointer rounded text-[0.8125rem] font-semibold text-blue focus-ring'>
+          <summary className='w-fit cursor-pointer rounded py-3 text-[0.8125rem] leading-5 font-semibold text-blue focus-ring'>
             Ver toda la historia ({rows.length} líneas)
           </summary>
           <Table headers={headers} rows={rows.slice(12)} empty='' />

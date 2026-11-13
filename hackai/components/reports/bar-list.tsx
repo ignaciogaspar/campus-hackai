@@ -44,7 +44,7 @@ export function BarList({ rows, label }: { rows: BarRow[]; label: string }) {
             type='button'
             aria-pressed={m === metric}
             onClick={() => setMetric(m)}
-            className={railItem({ size: 'sm', className: 'shrink-0' })}
+            className={cn(railItem({ size: 'sm' }), 'flex-none')}
           >
             {METRIC_LABEL[m]}
           </button>
@@ -58,7 +58,7 @@ export function BarList({ rows, label }: { rows: BarRow[]; label: string }) {
               <Link
                 href={row.href[metric]}
                 title={`${row.title}: ${value.toLocaleString('es-AR')} ${METRIC_LABEL[metric].toLowerCase()}`}
-                className='group grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 rounded-lg px-1 py-1.5 hover:bg-ice focus-ring sm:grid-cols-[5.5rem_minmax(0,1fr)]'
+                className='group grid grid-cols-[4.5rem_minmax(0,1fr)] min-h-11 items-center gap-3 rounded-lg px-1 hover:bg-ice focus-ring sm:grid-cols-[5.5rem_minmax(0,1fr)]'
               >
                 <span className='truncate text-[0.8125rem] font-semibold text-ink'>
                   {row.label}

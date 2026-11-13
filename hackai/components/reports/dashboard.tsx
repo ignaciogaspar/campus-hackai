@@ -256,7 +256,7 @@ function ProgramsTable({ view }: { view: DashboardView }) {
                 <th scope='row' className='px-2 py-2 text-left font-normal'>
                   <Link
                     href={statusHref(filters, 'activo', { programs: [p.id] })}
-                    className='font-semibold text-ink hover:text-blue hover:underline focus-ring'
+                    className='inline-flex min-h-11 items-center font-semibold text-ink hover:text-blue hover:underline focus-ring'
                   >
                     {p.name}
                   </Link>
@@ -267,7 +267,9 @@ function ProgramsTable({ view }: { view: DashboardView }) {
                 <td className={cell}>{count(p.graduates)}</td>
                 <td className={cell}>{count(p.dropouts)}</td>
                 <td className={cell}>
-                  {p.averageProgress === null ? '—' : `${p.averageProgress.toLocaleString('es-AR')} %`}
+                  {p.averageProgress === null
+                    ? '—'
+                    : `${p.averageProgress.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`}
                 </td>
               </tr>
             ))}

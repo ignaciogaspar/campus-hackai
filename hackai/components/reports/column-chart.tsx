@@ -22,11 +22,12 @@ export type Column = {
   href?: string
 }
 
-/** El tope del eje: el próximo número redondo (1, 2 o 5 por una potencia de 10). */
+/** El tope del eje: el próximo número redondo (1; 1,5; 2; 2,5; 3; 4; 5; 6 u 8 por una potencia de 10), así la
+    columna más alta llena casi todo el alto. */
 export function niceMax(value: number): number {
   if (value <= 0) return 1
   const power = 10 ** Math.floor(Math.log10(value))
-  const step = [1, 2, 5, 10].find((s) => s * power >= value) ?? 10
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((s) => s * power >= value) ?? 10
   return step * power
 }
 
@@ -60,12 +61,12 @@ export function ColumnChart({
           totalText
         )}
       </p>
-      <div className='relative h-44'>
+      <div className='relative mt-2 h-44'>
         {[1, 0.5, 0].map((f) => (
           <div
             key={f}
             aria-hidden='true'
-            className='absolute inset-x-0 flex items-center gap-2'
+            className='absolute inset-x-0 flex translate-y-1/2 items-center gap-2'
             style={{ bottom: `${f * 100}%` }}
           >
             <span className='w-8 flex-none text-right text-[0.6875rem] text-muted-foreground tabular-nums'>
@@ -167,7 +168,7 @@ export function DataTable({
 }) {
   return (
     <details className='group/table mt-1 text-[0.8125rem]'>
-      <summary className='w-fit cursor-pointer rounded text-[0.75rem] font-semibold text-blue focus-ring'>
+      <summary className='w-fit cursor-pointer rounded py-3 text-[0.75rem] leading-5 font-semibold text-blue focus-ring'>
         Ver los datos en tabla
       </summary>
       <table className='mt-2 w-full border-collapse'>

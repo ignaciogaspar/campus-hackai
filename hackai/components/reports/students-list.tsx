@@ -127,7 +127,7 @@ function Table({
                 <span className='flex items-center gap-1.5'>
                   <Link
                     href={href(row.id)}
-                    className='font-semibold text-ink hover:text-blue hover:underline focus-ring'
+                    className='font-semibold whitespace-nowrap text-ink hover:text-blue hover:underline focus-ring'
                   >
                     {row.name}
                   </Link>
@@ -235,7 +235,7 @@ function MobileSort({ state, path }: { state: Writable; path: string }) {
           href={hrefOf(path, { ...state, sort: s.sort, order: s.order, page: 1 })}
           scroll={false}
           aria-current={state.sort === s.sort && state.order === s.order ? 'page' : undefined}
-          className={railItem({ size: 'sm', className: 'shrink-0' })}
+          className={cn(railItem({ size: 'sm' }), 'flex-none')}
         >
           {s.label}
         </Link>

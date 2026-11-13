@@ -50,7 +50,9 @@ export function ReportsFrame({
         </div>
         <div data-print='hide' className='flex flex-wrap items-center justify-between gap-3'>
           <ReportTabs active={view} filters={options.ok ? options.value.filters : null} />
-          <PrintButton />
+          <div className='max-sm:hidden'>
+            <PrintButton />
+          </div>
         </div>
         {options.ok ? (
           <>

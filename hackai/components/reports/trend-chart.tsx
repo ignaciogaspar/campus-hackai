@@ -62,12 +62,12 @@ export function TrendChart({ years, series, label }: { years: number[]; series: 
           </span>
         ))}
       </p>
-      <div className='relative ml-9 h-48'>
+      <div className='relative mt-2 ml-9 h-48'>
         {[1, 0.5, 0].map((f) => (
           <div
             key={f}
             aria-hidden='true'
-            className='absolute inset-x-0 flex items-center'
+            className='absolute inset-x-0 flex translate-y-1/2 items-center'
             style={{ bottom: `${f * 100}%` }}
           >
             <span className='absolute -left-9 w-7 text-right text-[0.6875rem] text-muted-foreground tabular-nums'>

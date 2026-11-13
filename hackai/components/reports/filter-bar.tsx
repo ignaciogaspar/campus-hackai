@@ -27,7 +27,7 @@ type Apply = (patch: Patch) => void
 type Option = { value: string; label: string; group?: string }
 
 const TRIGGER =
-  'inline-flex min-h-10 max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[0.8125rem] text-ink transition-colors hover:border-ink/20 focus-ring data-[state=open]:border-blue/40 data-[active=true]:border-blue/30 data-[active=true]:bg-accent'
+  'inline-flex min-h-11 max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[0.8125rem] text-ink transition-colors hover:border-ink/20 focus-ring data-[state=open]:border-blue/40 data-[active=true]:border-blue/30 data-[active=true]:bg-accent'
 
 const toggle = <T,>(list: readonly T[], value: T): T[] =>
   list.includes(value) ? list.filter((v) => v !== value) : [...list, value]
@@ -62,7 +62,7 @@ function CheckList({
             .map((o) => (
               <label
                 key={o.value}
-                className='flex min-h-10 items-center gap-2.5 rounded-lg px-2 text-[0.875rem] hover:bg-ice has-focus-visible:outline-3 has-focus-visible:outline-ring'
+                className='flex min-h-11 items-center gap-2.5 rounded-lg px-2 text-[0.875rem] hover:bg-ice has-focus-visible:outline-3 has-focus-visible:outline-ring'
               >
                 <input
                   type='checkbox'
@@ -114,7 +114,7 @@ function CohortPicker({ filters, firstCohort, apply }: { filters: ReportFilters;
   const years = Array.from({ length: filters.year - firstCohort + 1 }, (_, i) => filters.year - i)
   const lastFive = years.slice(0, 5)
   const quick =
-    'min-h-9 flex-1 rounded-lg bg-ice px-2 text-[0.8125rem] font-semibold text-ink hover:bg-accent focus-ring'
+    'min-h-11 flex-1 rounded-lg bg-ice px-2 text-[0.8125rem] font-semibold text-ink hover:bg-accent focus-ring'
   return (
     <div className='flex flex-col gap-2 p-1'>
       <div className='flex gap-1.5'>
@@ -133,7 +133,7 @@ function CohortPicker({ filters, firstCohort, apply }: { filters: ReportFilters;
             type='button'
             aria-pressed={filters.cohorts.includes(year)}
             onClick={() => apply({ cohorts: toggle(filters.cohorts, year) })}
-            className='min-h-9 rounded-lg border border-border text-[0.8125rem] font-semibold tabular-nums text-ink hover:border-ink/20 focus-ring aria-pressed:border-blue aria-pressed:bg-blue aria-pressed:text-white'
+            className='min-h-11 rounded-lg border border-border text-[0.8125rem] font-semibold tabular-nums text-ink hover:border-ink/20 focus-ring aria-pressed:border-blue aria-pressed:bg-blue aria-pressed:text-white'
           >
             {year}
           </button>
@@ -154,7 +154,7 @@ function RangeField({ name, label, value, max }: { name: string; label: string; 
         min={0}
         max={max}
         defaultValue={value ?? ''}
-        className='min-h-10 w-full rounded-lg border border-border bg-card px-2.5 text-[0.9375rem] font-normal text-ink tabular-nums focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring'
+        className='min-h-11 w-full rounded-lg border border-border bg-card px-2.5 text-[0.9375rem] font-normal text-ink tabular-nums focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring'
       />
     </label>
   )
@@ -196,7 +196,7 @@ function Ranges({ filters, apply }: { filters: ReportFilters; apply: Apply }) {
       </fieldset>
       <button
         type='submit'
-        className='min-h-10 rounded-lg bg-blue px-3 text-[0.875rem] font-semibold text-white hover:bg-blue-deep focus-ring'
+        className='min-h-11 rounded-lg bg-blue px-3 text-[0.875rem] font-semibold text-white hover:bg-blue-deep focus-ring'
       >
         Aplicar
       </button>
@@ -414,7 +414,7 @@ function Chips({ options, filters, apply }: { options: ReportOptions; filters: R
             type='button'
             onClick={() => apply(chip.remove)}
             aria-label={`Sacar el filtro ${chip.label}`}
-            className='inline-flex min-h-8 items-center gap-1 rounded-full bg-accent pr-2 pl-3 text-[0.75rem] font-semibold text-blue hover:bg-blue/15 focus-ring'
+            className='relative before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[""] inline-flex min-h-8 items-center gap-1 rounded-full bg-accent pr-2 pl-3 text-[0.75rem] font-semibold text-blue hover:bg-blue/15 focus-ring'
           >
             {chip.label}
             <X aria-hidden='true' className='size-3.5' strokeWidth={2.4} />
@@ -425,7 +425,7 @@ function Chips({ options, filters, apply }: { options: ReportOptions; filters: R
         <button
           type='button'
           onClick={() => apply(clear)}
-          className='min-h-8 rounded-full px-2 text-[0.75rem] font-semibold text-muted-foreground underline-offset-2 hover:text-ink hover:underline focus-ring'
+          className='relative before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-[""] min-h-8 rounded-full px-2 text-[0.75rem] font-semibold text-muted-foreground underline-offset-2 hover:text-ink hover:underline focus-ring'
         >
           Limpiar filtros
         </button>
@@ -493,7 +493,7 @@ export function FilterBar({
                   {s.content}
                 </section>
               ))}
-              <SheetClose className='sticky bottom-0 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue text-[0.9375rem] font-semibold text-white focus-ring'>
+              <SheetClose className='sticky bottom-0 inline-flex min-h-12 shadow-[0_-12px_16px_4px_var(--card)] items-center justify-center gap-2 rounded-xl bg-blue text-[0.9375rem] font-semibold text-white focus-ring'>
                 <Check aria-hidden='true' className='size-4' />
                 Ver resultados
               </SheetClose>
