@@ -142,6 +142,18 @@ function siuContract(name: string, make: () => SiuPort, skip: string | false = f
     assert.deepEqual(await siu.courseEnrollments('99999'), { ok: false, error: 'no-encontrado' })
   })
 
+  it('lista las inscripciones aceptadas o pendientes de una comisión, o «no encontrado»', async (siu) => {
+    const found = await siu.sectionEnrollments('sec-am1-fi-a')
+    assert.ok(found.ok)
+    assert.deepEqual(
+      sorted(found.value.map((e) => e.personId)),
+      sorted(['p-taguirre', 'p-lbenitez', 'p-jescobar'].map(siuId))
+    )
+    assert.ok(found.value.every((e) => e.sectionId === 'sec-am1-fi-a'))
+    assert.deepEqual(await siu.sectionEnrollments('sec-fi1-fi-vt'), { ok: true, value: [] })
+    assert.deepEqual(await siu.sectionEnrollments('sec-inexistente'), { ok: false, error: 'no-encontrado' })
+  })
+
   it('lista las mesas con sus inscriptos y las inscripciones a examen', async (siu) => {
     const boards = await siu.examBoards({ subjectId: 'aga', schoolId: 'fi' })
     assert.ok(boards.ok)

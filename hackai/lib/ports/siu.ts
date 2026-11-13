@@ -235,6 +235,10 @@ export type SiuPort = {
     personId: string,
     options?: { historic?: boolean }
   ): Promise<Result<SiuCourseEnrollment[], SiuReadError>>
+  // --- B: seguimiento ---
+  /** Inscripciones aceptadas o pendientes a una comisión, de cualquier alumno (el SIU real: `/inscripciones?comision=`). */
+  sectionEnrollments(sectionId: string): Promise<Result<SiuCourseEnrollment[], SiuReadError>>
+  // --- fin B: seguimiento ---
   examBoards(filter: SiuExamBoardFilter): Promise<Result<(SiuExamBoard & { enrolled: number })[], ExternalFailure>>
   examEnrollments(
     personId: string,

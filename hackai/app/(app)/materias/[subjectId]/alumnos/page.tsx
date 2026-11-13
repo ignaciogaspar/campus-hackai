@@ -1,0 +1,144 @@
+/* Alumnos de la materia, para el docente: los de la comisión elegida, con su
+   legajo y su mail. La comisión va en `?comision=` (con varias comisiones de la
+   materia, un selector arriba; si falta o no es suya, la primera). Es una
+   pestaña más de la materia, junto al espacio. Sin reglas de negocio: quién ve
+   a los alumnos de una comisión lo decide Cursada.
+
+   En el celular es una columna de filas; en compu, la misma lista con más aire. */
+import { Users } from 'lucide-react'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { PageHeader } from '@/components/shell/page-header'
+import { SectionPicker } from '@/components/subjects/section-picker'
+import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
+import { chooseSection, SUBJECT_TABS, subjectTabHref, teachingSections } from '@/components/subjects/subject-nav'
+import { SubjectTabs } from '@/components/subjects/subject-tabs'
+import { Card } from '@/components/ui/card'
+import { List, ListItem } from '@/components/ui/list'
+import { StaleBanner } from '@/components/ui/stale-banner'
+import { EmptyState, ErrorNotice } from '@/components/ui/states'
+import { requireSession } from '@/lib/auth'
+import { system } from '@/lib/composition'
+import type { SectionStudent, SectionStudentsError, Studies, StudiesReadError } from '@/lib/core/studies'
+
+export const metadata: Metadata = { title: 'Alumnos · Campus HackAI' }
+
+type Params = Promise<{ subjectId: string }>
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
+
+const ERRORS: Record<StudiesReadError | SectionStudentsError, string> = {
+  'falla-externa': 'No pudimos traer los alumnos porque el SIU no responde. Probá de nuevo en un rato.',
+  'persona-desconocida': 'No encontramos tus datos en el SIU. Salí y volvé a entrar.',
+  'sin-acceso': 'Solo los docentes de la comisión ven a sus alumnos.',
+  'no-implementado': 'Esta función todavía no está disponible.'
+}
+
+const ALUMNOS_TAB = SUBJECT_TABS.find((t) => t.id === 'alumnos') ?? SUBJECT_TABS[0]
+
+function StudentRow({ student }: { student: SectionStudent }) {
+  return (
+    <ListItem
+      title={student.name}
+      description={`Legajo ${student.legajo}`}
+      meta={
+        <a
+          href={`mailto:${student.email}`}
+          className='-my-1 inline-flex min-h-8 items-center break-all text-blue underline-offset-2 hover:underline focus-ring'
+        >
+          {student.email}
+        </a>
+      }
+    />
+  )
+}
+
+function NoSection({ message }: { message: string }) {
+  return (
+    <>
+      <PageHeader title='Alumnos' backHref='/materias' hideBackOnDesktop art='general' />
+      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+        <ErrorNotice>
+          <p>{message}</p>
+          <Link href='/materias' className='inline-flex min-h-10 items-center font-bold underline'>
+            Ir a Mis materias
+          </Link>
+        </ErrorNotice>
+      </main>
+    </>
+  )
+}
+
+type Students = Awaited<ReturnType<Studies['sectionStudents']>>
+
+/** La lista de alumnos de la comisión, o por qué no está. */
+function StudentsBlock({ students, sectionName }: { students: Students; sectionName: string }) {
+  if (!students.ok) return <ErrorNotice>{ERRORS[students.error]}</ErrorNotice>
+  const list = students.value.data
+  if (list.length === 0) {
+    return (
+      <EmptyState icon={Users} title='Todavía no hay alumnos inscriptos'>
+        Cuando se inscriban a la comisión {sectionName}, los vas a ver acá.
+      </EmptyState>
+    )
+  }
+  return (
+    <section aria-label={`Alumnos de la comisión ${sectionName}`} className='flex max-w-3xl flex-col gap-2'>
+      <h2 className='px-1 text-sm font-bold text-muted-foreground'>
+        {list.length === 1 ? '1 alumno' : `${list.length} alumnos`}
+      </h2>
+      <Card>
+        <List>
+          {list.map((s) => (
+            <StudentRow key={s.legajo} student={s} />
+          ))}
+        </List>
+      </Card>
+    </section>
+  )
+}
+
+export default async function AlumnosPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
+  const session = await requireSession('profesor')
+  const [{ subjectId }, raw] = await Promise.all([params, searchParams])
+  const requested = typeof raw.comision === 'string' && raw.comision !== '' ? raw.comision : undefined
+
+  const mine = await system().studies.sectionsOf(session.personId)
+  const taught = mine.ok ? teachingSections(mine.value.data, subjectId) : []
+  const section = chooseSection(taught, requested)
+
+  if (!mine.ok || !section)
+    return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} />
+
+  const students = await system().studies.sectionStudents(session.personId, section.sectionId)
+  const staleRead = mine.value.stale ? mine.value : students.ok && students.value.stale ? students.value : null
+  const several = taught.length > 1
+
+  return (
+    <>
+      <PageHeader
+        title={section.subjectName}
+        subtitle={[section.subjectCode, section.termName].join(' · ')}
+        icon={<SubjectIcon name={section.subjectName} size='lg' tone='glass' className='max-sm:hidden' />}
+        art={subjectTheme(section.subjectName).art}
+        backHref='/materias'
+        hideBackOnDesktop
+      >
+        <span className='rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15 ring-inset'>
+          {`Docente · Comisión ${section.name}`}
+        </span>
+      </PageHeader>
+
+      <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
+        <SubjectTabs subjectId={subjectId} current='alumnos' comision={several ? section.sectionId : undefined} />
+        <SectionPicker
+          sections={taught}
+          selectedId={section.sectionId}
+          hrefFor={(sectionId) => subjectTabHref(subjectId, ALUMNOS_TAB, sectionId)}
+        />
+        {staleRead && <StaleBanner since={staleRead.readAt} now={system().now()} />}
+
+        <StudentsBlock students={students} sectionName={section.name} />
+      </main>
+    </>
+  )
+}
