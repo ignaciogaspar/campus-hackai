@@ -108,6 +108,26 @@ export default async function TramitesPage() {
       />
 
       <main className='grid w-full gap-8 px-4 pt-5 pb-16 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start lg:gap-x-10 lg:px-6 lg:pt-8'>
+        {/* Primero en el celular: es lo que más se pide. En compu va a la derecha. */}
+        <div className='lg:sticky lg:top-8 lg:order-last'>
+          <Block
+            id='constancias'
+            title='Constancias'
+            hint='Se piden en la Autogestión del SIU: te la abrimos en otra pestaña.'
+          >
+            {stale && <StaleBanner since={stale} now={system().now()} />}
+            {certificates.map((result, i) =>
+              result.ok ? (
+                <CertificateCard key={CERTIFICATES[i]} status={result.value.data} />
+              ) : (
+                <ErrorNotice key={CERTIFICATES[i]}>
+                  No pudimos saber si podés pedir la {certificateTitle(CERTIFICATES[i]).toLowerCase()}. Probá de nuevo
+                  en un rato.
+                </ErrorNotice>
+              )
+            )}
+          </Block>
+        </div>
         <div className='flex flex-col gap-8'>
           <Block
             id='reportes'
@@ -146,26 +166,6 @@ export default async function TramitesPage() {
               />
             )}
           </section>
-        </div>
-
-        <div className='lg:sticky lg:top-8'>
-          <Block
-            id='constancias'
-            title='Constancias'
-            hint='Se piden en la Autogestión del SIU: te la abrimos en otra pestaña.'
-          >
-            {stale && <StaleBanner since={stale} now={system().now()} />}
-            {certificates.map((result, i) =>
-              result.ok ? (
-                <CertificateCard key={CERTIFICATES[i]} status={result.value.data} />
-              ) : (
-                <ErrorNotice key={CERTIFICATES[i]}>
-                  No pudimos saber si podés pedir la {certificateTitle(CERTIFICATES[i]).toLowerCase()}. Probá de nuevo
-                  en un rato.
-                </ErrorNotice>
-              )
-            )}
-          </Block>
         </div>
       </main>
     </>

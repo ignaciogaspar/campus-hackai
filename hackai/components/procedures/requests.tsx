@@ -21,8 +21,8 @@ const STATUSES: Record<RequestStatus, { label: string; tone: StatusTone }> = {
   rechazada: { label: 'Rechazada', tone: 'danger' }
 }
 
+/** Lo que se le pide a la secretaría. Las constancias no: se piden en la Autogestión, en Constancias. */
 const TYPES = [
-  'Constancia de alumno regular',
   'Certificado analítico parcial',
   'Certificado de materias aprobadas',
   'Equivalencia de materias',
@@ -33,7 +33,7 @@ const TYPES = [
 const SAMPLE: PendingRequest[] = [
   { id: 'S-2026-01842', type: 'Certificado analítico parcial', date: '4 nov 2026', status: 'en-tramite' },
   { id: 'S-2026-01563', type: 'Cambio de comisión', date: '2 sep 2026', status: 'rechazada' },
-  { id: 'S-2026-01217', type: 'Constancia de alumno regular', date: '18 ago 2026', status: 'entregada' },
+  { id: 'S-2026-01217', type: 'Certificado de materias aprobadas', date: '18 ago 2026', status: 'entregada' },
   { id: 'S-2026-00305', type: 'Equivalencia de materias', date: '12 mar 2026', status: 'entregada' }
 ]
 
