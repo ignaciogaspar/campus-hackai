@@ -1246,30 +1246,34 @@ const discordFiles: Record<string, string> = Object.fromEntries(
 // set cursa, para que la vista de todas las materias no quede vacía. Edificios y aulas inventados. La semana de la
 // demo trae un cambio de aula, una clase suspendida y una clase extra.
 
-const PILAR = 'Pilar - Edificio Olivo'
-const BUENOS_AIRES = 'Buenos Aires - Cerrito'
+type Place = { campus: string; building: string; wing: string }
+
+const OLIVO_A: Place = { campus: 'Pilar', building: 'Edificio Olivo', wing: 'Módulo A' }
+const OLIVO_B: Place = { campus: 'Pilar', building: 'Edificio Olivo', wing: 'Módulo B' }
+const CEIBO: Place = { campus: 'Pilar', building: 'Edificio Ceibo', wing: '' }
+const CERRITO: Place = { campus: 'Buenos Aires', building: 'Cerrito', wing: '' }
 
 const minutesOfDay = (time: string) => {
   const [h, m] = time.split(':').map(Number)
   return h * 60 + m
 }
 
-/** «Campus Pilar, aula 12» → el edificio y «Aula 12». */
-function roomOf(location: string): { building: string; room: string } {
-  const [place, room = location] = location.split(', ')
-  return {
-    building: place.includes('Pilar') ? PILAR : BUENOS_AIRES,
-    room: room.charAt(0).toUpperCase() + room.slice(1)
-  }
+/** «Campus Pilar, aula 12» → el lugar y «Aula 12». En Pilar, las aulas van al Módulo A del Olivo y los laboratorios
+    al Ceibo. */
+function roomOf(location: string): Place & { room: string } {
+  const [place, rawRoom = location] = location.split(', ')
+  const room = rawRoom.charAt(0).toUpperCase() + rawRoom.slice(1)
+  if (!place.includes('Pilar')) return { ...CERRITO, room }
+  return { ...(room.startsWith('Laboratorio') ? CEIBO : OLIVO_A), room }
 }
 
-type PlanningSlot = [string, string | null, string, string, string, Weekday, string, string]
+type PlanningSlot = [string, string | null, string, Place, string, Weekday, string, string]
 
 const planningEntry = ([
   subject,
   section,
   school,
-  building,
+  place,
   room,
   weekday,
   start,
@@ -1278,7 +1282,7 @@ const planningEntry = ([
   subject,
   section,
   school,
-  building,
+  ...place,
   room,
   weekday,
   date: null,
@@ -1291,25 +1295,27 @@ const planningOfSections: PlanningEntryInput[] = sections
   .filter((s) => s.termId === '2c-2026' || s.termId === 'act-2c-2026')
   .flatMap((s) => {
     const subject = subjects.find((x) => x.id === s.subjectId)!
-    const { building, room } = roomOf(s.location)
+    const { room, ...place } = roomOf(s.location)
     return s.schedule.map((slot) =>
-      planningEntry([subject.name, s.name, s.schoolId.toUpperCase(), building, room, slot.day, slot.start, slot.end])
+      planningEntry([subject.name, s.name, s.schoolId.toUpperCase(), place, room, slot.day, slot.start, slot.end])
     )
   })
 
 const otherClasses: PlanningSlot[] = [
-  ['Análisis Matemático II', 'A', 'FI', PILAR, 'Aula A4', 'lunes', '09:00', '13:00'],
-  ['Física II', 'A', 'FI', PILAR, 'Aula A7', 'martes', '14:00', '17:00'],
-  ['Investigación Operativa', null, 'FI', PILAR, 'Aula A5', 'martes', '09:00', '12:00'],
-  ['Probabilidad y Estadística', 'B', 'FI', PILAR, 'Aula A3', 'miercoles', '10:00', '13:00'],
-  ['Bases de Datos', 'A', 'FI', PILAR, 'Laboratorio 2', 'miercoles', '14:00', '17:00'],
-  ['Estructuras de Datos', 'A', 'FI', PILAR, 'Laboratorio 1', 'jueves', '08:00', '11:00'],
-  ['Termodinámica', 'A', 'FI', PILAR, 'Aula A9', 'viernes', '09:00', '13:00'],
-  ['Marketing', 'A', 'FCE', BUENOS_AIRES, 'Aula 4', 'lunes', '18:00', '21:00'],
-  ['Finanzas', 'B', 'FCE', BUENOS_AIRES, 'Aula 6', 'martes', '18:30', '21:30'],
-  ['Logística', 'A', 'FCE', BUENOS_AIRES, 'Aula 5', 'miercoles', '18:00', '21:00'],
-  ['Contabilidad II', 'A', 'FCE', PILAR, 'Aula B2', 'jueves', '14:30', '17:30'],
-  ['Negocios Digitales', null, 'FCE', PILAR, 'Aula B4', 'viernes', '15:00', '18:00']
+  ['Análisis Matemático II', 'A', 'FI', OLIVO_A, 'Aula A4', 'lunes', '09:00', '13:00'],
+  ['Física II', 'A', 'FI', OLIVO_A, 'Aula A7', 'martes', '14:00', '17:00'],
+  ['Investigación Operativa', null, 'FI', OLIVO_A, 'Aula A5', 'martes', '09:00', '12:00'],
+  ['Probabilidad y Estadística', 'B', 'FI', OLIVO_A, 'Aula A3', 'miercoles', '10:00', '13:00'],
+  ['Bases de Datos', 'A', 'FI', CEIBO, 'Laboratorio 3', 'miercoles', '14:00', '17:00'],
+  ['Estructuras de Datos', 'A', 'FI', CEIBO, 'Laboratorio 1', 'jueves', '08:00', '11:00'],
+  ['Termodinámica', 'A', 'FI', OLIVO_A, 'Aula A9', 'viernes', '09:00', '13:00'],
+  ['Ingeniería de Software', 'A', 'FI', OLIVO_B, 'Aula B1', 'lunes', '14:00', '18:00'],
+  ['Sistemas Operativos', 'A', 'FI', OLIVO_B, 'Aula B3', 'miercoles', '09:00', '12:00'],
+  ['Marketing', 'A', 'FCE', CERRITO, 'Aula 4', 'lunes', '18:00', '21:00'],
+  ['Finanzas', 'B', 'FCE', CERRITO, 'Aula 6', 'martes', '18:30', '21:30'],
+  ['Logística', 'A', 'FCE', CERRITO, 'Aula 5', 'miercoles', '18:00', '21:00'],
+  ['Contabilidad II', 'A', 'FCE', OLIVO_B, 'Aula B2', 'jueves', '14:30', '17:30'],
+  ['Negocios Digitales', null, 'FCE', OLIVO_B, 'Aula B4', 'viernes', '15:00', '18:00']
 ]
 
 /** Un cambio de un día: la clase de esa materia y comisión va así ese día. */
@@ -1323,9 +1329,9 @@ const onDay = (slot: PlanningSlot, date: string, cancelled = false): PlanningEnt
 const planning: PlanningEntryInput[] = [
   ...planningOfSections,
   ...otherClasses.map(planningEntry),
-  onDay(['Análisis Matemático I', 'A', 'FI', PILAR, 'Aula A10', 'miercoles', '08:00', '10:00'], '2026-11-11'),
-  onDay(['Termodinámica', 'A', 'FI', PILAR, 'Aula A9', 'viernes', '09:00', '13:00'], '2026-11-13', true),
-  onDay(['Programación I', 'A', 'FI', PILAR, 'Laboratorio 1', 'jueves', '18:00', '20:00'], '2026-11-12')
+  onDay(['Análisis Matemático I', 'A', 'FI', OLIVO_A, 'Aula A10', 'miercoles', '08:00', '10:00'], '2026-11-11'),
+  onDay(['Termodinámica', 'A', 'FI', OLIVO_A, 'Aula A9', 'viernes', '09:00', '13:00'], '2026-11-13', true),
+  onDay(['Programación I', 'A', 'FI', CEIBO, 'Laboratorio 1', 'jueves', '18:00', '20:00'], '2026-11-12')
 ]
 
 export const syntheticData: SyntheticData = {

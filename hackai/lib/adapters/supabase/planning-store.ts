@@ -26,7 +26,9 @@ type EntryRow = {
   subject: string
   section: string | null
   school: string
+  campus: string
   building: string
+  wing: string
   room: string
   weekday: Weekday | null
   class_date: string | null
@@ -35,14 +37,17 @@ type EntryRow = {
   cancelled: boolean
 }
 
-const COLUMNS = 'id, subject, section, school, building, room, weekday, class_date, start_minute, end_minute, cancelled'
+const COLUMNS =
+  'id, subject, section, school, campus, building, wing, room, weekday, class_date, start_minute, end_minute, cancelled'
 
 const toEntry = (row: EntryRow): PlanningEntry => ({
   id: row.id,
   subject: row.subject,
   section: row.section,
   school: row.school,
+  campus: row.campus,
   building: row.building,
+  wing: row.wing,
   room: row.room,
   weekday: row.weekday,
   date: row.class_date,
@@ -56,7 +61,9 @@ const toRow = (entry: PlanningEntryInput, batch: string) => ({
   subject: entry.subject,
   section: entry.section,
   school: entry.school,
+  campus: entry.campus,
   building: entry.building,
+  wing: entry.wing,
   room: entry.room,
   weekday: entry.weekday,
   class_date: entry.date,

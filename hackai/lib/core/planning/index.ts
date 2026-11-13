@@ -27,7 +27,11 @@ export type PlanningEntryInput = {
   section: string | null
   /** La sigla de la facultad (FI, FCE…), o vacía. */
   school: string
+  /** Dónde está el aula: la sede (Pilar, Buenos Aires…), el edificio (Olivo, Cerrito…) y el módulo del edificio
+      (Módulo A…). Cada uno puede ir vacío. */
+  campus: string
   building: string
+  wing: string
   room: string
   weekday: Weekday | null
   /** `AAAA-MM-DD`. */
@@ -51,7 +55,9 @@ export type PlanningClass = {
   subject: string
   section: string | null
   school: string
+  campus: string
   building: string
+  wing: string
   room: string
   /** `cambio`: ese día va en otra aula u otro horario. `suspendida`: ese día no hay clase. `extra`: clase de ese
       día solo. */

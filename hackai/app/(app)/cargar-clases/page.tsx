@@ -5,7 +5,7 @@
 import { Trash2 } from 'lucide-react'
 import type { Metadata } from 'next'
 import { addPlanningClass, removePlanningClass } from '@/app/actions/planning'
-import { whenLabel } from '@/components/planning/format'
+import { placeOf, whenLabel } from '@/components/planning/format'
 import { PlanningUpload } from '@/components/planning/planning-upload'
 import { PageHeader } from '@/components/shell/page-header'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
@@ -68,7 +68,9 @@ function ManualEntry() {
           <Field label='Materia' name='materia' required maxLength={120} placeholder='Análisis Matemático I' />
           <Field label='Comisión' name='comision' maxLength={120} placeholder='A' />
           <Field label='Facultad' name='facultad' maxLength={120} placeholder='FI' />
-          <Field label='Edificio' name='edificio' maxLength={120} placeholder='Pilar - Edificio Olivo' />
+          <Field label='Sede' name='sede' maxLength={120} placeholder='Pilar' />
+          <Field label='Edificio' name='edificio' maxLength={120} placeholder='Edificio Olivo' />
+          <Field label='Módulo' name='modulo' maxLength={120} placeholder='Módulo A' />
           <Field label='Aula' name='aula' required maxLength={120} placeholder='Aula A9' />
           <label className={LABEL}>
             Día
@@ -103,7 +105,7 @@ function EntryRow({ entry }: { entry: PlanningEntry }) {
           <span>
             {whenLabel(entry)}, {hhmm(entry.start)} a {hhmm(entry.end)}
           </span>
-          <span>· {[entry.room, entry.building, entry.school].filter(Boolean).join(' · ')}</span>
+          <span>· {[entry.room, placeOf(entry), entry.school].filter(Boolean).join(' · ')}</span>
         </>
       }
       end={

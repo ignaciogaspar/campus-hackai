@@ -41,12 +41,18 @@ const dateText = (date: string) => `el ${DAY_NAMES[weekdayIndex(date)]} ${date.s
 const whenText = (e: PlanningEntryInput) => (e.weekday ? PLURAL[e.weekday] : dateText(e.date ?? ''))
 const timeText = (e: PlanningEntryInput) => `de ${hhmm(e.start)} a ${hhmm(e.end)}`
 const classText = (e: PlanningEntryInput) => (e.section ? `${e.subject} (Comisión ${e.section})` : e.subject)
-const roomText = (e: PlanningEntryInput) => (e.building ? `${e.room} de ${e.building}` : e.room)
+/** «Aula A9 (Pilar - Edificio Olivo - Módulo A)». */
+const roomText = (e: PlanningEntryInput) => {
+  const place = [e.campus, e.building, e.wing].filter(Boolean).join(' - ')
+  return place ? `${e.room} (${place})` : e.room
+}
 
 const same = (a: string, b: string) => plainText(a) === plainText(b)
-/** La misma aula. Si una de las dos no dice el edificio, alcanza con el nombre del aula. */
+/** Lo mismo, o una de las dos no lo dice: una planilla sin sede o sin módulo no esquiva un choque. */
+const samePart = (a: string, b: string) => !a || !b || same(a, b)
+/** La misma aula: mismo nombre en la misma sede, edificio y módulo. */
 const sameRoom = (a: PlanningEntryInput, b: PlanningEntryInput) =>
-  same(a.room, b.room) && (!a.building || !b.building || same(a.building, b.building))
+  same(a.room, b.room) && samePart(a.campus, b.campus) && samePart(a.building, b.building) && samePart(a.wing, b.wing)
 const overlaps = (a: PlanningEntryInput, b: PlanningEntryInput) => a.start < b.end && b.start < a.end
 const weekdayOf = (e: PlanningEntryInput) => (e.weekday ? WEEKDAY_INDEX[e.weekday] : weekdayIndex(e.date ?? ''))
 const sameDay = (a: PlanningEntryInput, b: PlanningEntryInput) =>
@@ -59,7 +65,9 @@ const identical = (a: PlanningEntryInput, b: PlanningEntryInput) =>
   a.start === b.start &&
   a.end === b.end &&
   same(a.room, b.room) &&
+  same(a.campus, b.campus) &&
   same(a.building, b.building) &&
+  same(a.wing, b.wing) &&
   a.cancelled === b.cancelled
 
 /** Dos filas de la misma clase que no pueden convivir: dos semanales del mismo día que se pisan, o dos filas con

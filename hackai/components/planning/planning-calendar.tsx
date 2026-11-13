@@ -1,11 +1,11 @@
 'use client'
 
-/* El Planning de Aulas, un día por vez: una matriz con las aulas como columnas
-   y las medias horas como filas, como el Planning de la facultad. Cada clase
-   ocupa su aula durante todo su horario. Arriba se elige el día (anterior,
-   hoy, siguiente, o en el mes chico) y se filtra por facultad, edificio y
-   materia, o «Solo mis materias». La columna de las horas y la fila de las
-   aulas quedan fijas al desplazarse. Qué clase hay cada día y qué cambió lo
+/* El Planning de Aulas, un día por vez y a todo el ancho: una matriz con las
+   aulas como columnas y las medias horas como filas, como el Planning de la
+   facultad. Cada clase ocupa su aula durante todo su horario. Arriba se elige
+   el día (anterior, hoy, siguiente) y se filtra por facultad, sede, edificio,
+   módulo y materia, o «Solo mis materias». La columna de las horas y la fila de
+   las aulas quedan fijas al desplazarse. Qué clase hay cada día y qué cambió lo
    decide Planning: acá solo se ubica. */
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Fragment, useState } from 'react'
@@ -17,13 +17,14 @@ import {
   NO_FILTERS,
   optionsOf,
   type PlanningFilters,
+  placeOf,
   plainName,
   type RoomColumn,
   roomColumns,
   roomKeyOf
 } from '@/components/planning/format'
-import { Block, MiniMonth } from '@/components/today/calendar'
-import { clustersOf, hhmm, lanesOf, minutesOf, shiftMonth } from '@/components/today/calendar-layout'
+import { Block } from '@/components/today/calendar'
+import { clustersOf, hhmm, lanesOf, minutesOf } from '@/components/today/calendar-layout'
 import { Select } from '@/components/ui/select'
 import type { PlanningClass } from '@/lib/core/planning'
 import { addDays, dayKey, TIME_ZONE } from '@/lib/dates'
@@ -33,7 +34,6 @@ const SELECT = 'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-9'
 /** Alto de media hora en la grilla: entra el nombre de la materia en dos líneas en una clase de una hora. */
 const ROW_REM = 2.25
 const remAt = (minutes: number) => `${(minutes / HALF_HOUR) * ROW_REM}rem`
-const ALL_BUILDINGS = ''
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 const longDate = (day: string) =>
@@ -126,14 +126,15 @@ function DayGrid({
   day,
   today,
   now,
-  showBuilding
+  showPlace
 }: {
   rooms: RoomColumn[]
   classes: PlanningClass[]
   day: string
   today: string
   now: string
-  showBuilding: boolean
+  /** Si las aulas son de varios lugares: cada columna dice de qué sede, edificio y módulo es. */
+  showPlace: boolean
 }) {
   const { from, to } = dayRange(classes)
   const slots = Array.from({ length: (to - from) / HALF_HOUR }, (_, i) => from + i * HALF_HOUR)
@@ -144,7 +145,9 @@ function DayGrid({
   const showNow = day === today && nowMinutes >= from && nowMinutes <= to
 
   return (
-    <div className='max-h-[75vh] overflow-auto'>
+    // Ocupa el alto de la pantalla y se desplaza adentro, sin barras a la vista: así la fila de las aulas y la columna
+    // de las horas quedan fijas.
+    <div className='max-h-[calc(100dvh-15rem)] min-h-[24rem] overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
       <div className='min-w-max'>
         <div
           className='sticky top-0 z-[4] grid border-b border-border bg-navy text-white'
@@ -154,8 +157,8 @@ function DayGrid({
           {rooms.map((r) => (
             <div key={r.key} className='flex flex-col items-center border-l border-white/15 px-2 py-2.5 text-center'>
               <span className='text-[0.8125rem] leading-snug font-semibold break-words'>{r.room}</span>
-              {showBuilding && r.building && (
-                <span className='text-[0.6875rem] leading-snug break-words text-white/70'>{r.building}</span>
+              {showPlace && placeOf(r) && (
+                <span className='text-[0.6875rem] leading-snug break-words text-white/70'>{placeOf(r)}</span>
               )}
             </div>
           ))}
@@ -202,7 +205,7 @@ function DayGrid({
                       width: `${100 / lanes}%`
                     }}
                   >
-                    <Block e={{ ...event, place: showBuilding ? event.place : null }} fill short={end - start < 90} />
+                    <Block e={{ ...event, place: null }} fill short={end - start < 90} />
                   </div>
                 ))}
             </div>
@@ -212,6 +215,27 @@ function DayGrid({
       </div>
     </div>
   )
+}
+
+/** Lo que se elige para ubicarse: facultad, sede, edificio y módulo. Al cambiar uno, los de abajo vuelven al que más
+    clases tiene, así nunca queda una grilla vacía por una combinación que no existe. */
+type Place = Pick<PlanningFilters, 'school' | 'campus' | 'building' | 'wing'>
+
+function firstPlace(classes: PlanningClass[], fixed: Partial<Place>): Place {
+  // Sin elegir, el que más clases tiene: al abrir se ve el edificio y el módulo con más movimiento.
+  const pick = (scope: PlanningClass[], get: (c: PlanningClass) => string, chosen: string | undefined) => {
+    if (chosen !== undefined) return chosen
+    const counts = new Map<string, number>()
+    for (const c of scope) counts.set(get(c), (counts.get(get(c)) ?? 0) + 1)
+    return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'))[0]?.[0] ?? ''
+  }
+  const school = fixed.school ?? ''
+  const ofSchool = classes.filter((c) => !school || c.school === school)
+  const campus = pick(ofSchool, (c) => c.campus, fixed.campus)
+  const ofCampus = ofSchool.filter((c) => !campus || c.campus === campus)
+  const building = pick(ofCampus, (c) => c.building, fixed.building)
+  const ofBuilding = ofCampus.filter((c) => !building || c.building === building)
+  return { school, campus, building, wing: pick(ofBuilding, (c) => c.wing, fixed.wing) }
 }
 
 export function PlanningCalendar({
@@ -230,29 +254,23 @@ export function PlanningCalendar({
 }) {
   const today = dayKey(now)
   const [day, setDay] = useState(today)
-  const [month, setMonth] = useState(today)
   const schools = optionsOf(classes, (c) => c.school)
-  const school = defaultSchool && schools.includes(defaultSchool) ? defaultSchool : ''
-  const firstBuilding = (s: string) =>
-    optionsOf(s ? classes.filter((c) => c.school === s) : classes, (c) => c.building)[0]
   const [filters, setFilters] = useState<PlanningFilters>({
     ...NO_FILTERS,
-    school,
-    building: firstBuilding(school) ?? ALL_BUILDINGS
+    ...firstPlace(classes, { school: defaultSchool && schools.includes(defaultSchool) ? defaultSchool : '' })
   })
   const mineSet = new Set(mine.map(plainName))
-
   const set = (patch: Partial<PlanningFilters>) => setFilters((f) => ({ ...f, ...patch }))
-  const goTo = (next: string) => {
-    setDay(next)
-    setMonth(next)
-  }
+  /** Cambia un lugar y vuelve a elegir los de abajo. */
+  const place = (fixed: Partial<Place>) => set({ ...firstPlace(classes, fixed), subject: '' })
 
+  const within = (f: Partial<PlanningFilters>) => classes.filter((c) => matches(c, { ...NO_FILTERS, ...f }, mineSet))
+  const ofSchool = within({ school: filters.school })
+  const ofCampus = within({ school: filters.school, campus: filters.campus })
+  const ofBuilding = within({ school: filters.school, campus: filters.campus, building: filters.building })
+  const wings = optionsOf(ofBuilding, (c) => c.wing)
   // Las aulas no dependen del día ni de la materia: las columnas quedan fijas al cambiar de día.
-  const inPlace = classes.filter((c) =>
-    matches(c, { ...NO_FILTERS, school: filters.school, building: filters.building }, mineSet)
-  )
-  const rooms = roomColumns(inPlace)
+  const rooms = roomColumns(within({ ...filters, subject: '', onlyMine: false }))
   const filtered = classes.filter((c) => matches(c, filters, mineSet))
   const ofDay = filtered.filter((c) => c.day === day)
   const subjects = optionsOf(
@@ -261,81 +279,77 @@ export function PlanningCalendar({
   )
 
   return (
-    <div className='grid gap-5 2xl:grid-cols-[minmax(0,1fr)_17.5rem] 2xl:items-start'>
-      <section aria-label='Día' className='min-w-0 overflow-hidden rounded-2xl border border-border bg-card'>
-        <DayToolbar day={day} today={today} onDay={goTo} />
-        <div className='flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5'>
-          <Filter
-            label='Facultad'
-            all='Todas las facultades'
-            value={filters.school}
-            options={schools}
-            onChange={(next) => set({ school: next, building: firstBuilding(next) ?? ALL_BUILDINGS, subject: '' })}
-          />
-          <Filter
-            label='Edificio'
-            all='Todos los edificios'
-            value={filters.building}
-            options={optionsOf(
-              classes.filter((c) => !filters.school || c.school === filters.school),
-              (c) => c.building
-            )}
-            onChange={(building) => set({ building, subject: '' })}
-          />
-          <Filter
-            label='Materia'
-            all='Todas las materias'
-            value={filters.subject}
-            options={subjects}
-            onChange={(subject) => set({ subject })}
-          />
-          {mine.length > 0 && (
-            <button
-              type='button'
-              aria-pressed={filters.onlyMine}
-              onClick={() => set({ onlyMine: !filters.onlyMine, subject: '' })}
-              className={cn(
-                'inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-semibold transition-colors focus-ring sm:h-9',
-                filters.onlyMine
-                  ? 'border-blue/40 bg-accent text-blue'
-                  : 'border-ink/15 bg-card text-ink hover:border-blue/30'
-              )}
-            >
-              Solo mis materias
-            </button>
-          )}
-        </div>
-        {ofDay.length === 0 && (
-          <p className='border-b border-border px-4 py-3 text-[0.8125rem] text-muted-foreground'>
-            No hay clases este día con estos filtros.
-          </p>
-        )}
-        {rooms.length > 0 && (
-          <DayGrid
-            rooms={rooms}
-            classes={ofDay}
-            day={day}
-            today={today}
-            now={now}
-            showBuilding={filters.building === ALL_BUILDINGS}
-          />
-        )}
-      </section>
-      <aside className='flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start 2xl:flex 2xl:flex-col'>
-        <MiniMonth
-          month={month}
-          week={[day]}
-          today={today}
-          events={filtered.map((c) => eventOf(c, today))}
-          onMonth={(step) => setMonth((m) => shiftMonth(m, step))}
-          onDay={goTo}
+    <section aria-label='Planning del día' className='min-w-0 overflow-hidden rounded-2xl border border-border bg-card'>
+      <DayToolbar day={day} today={today} onDay={setDay} />
+      <div className='flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5'>
+        <Filter
+          label='Facultad'
+          all='Todas las facultades'
+          value={filters.school}
+          options={schools}
+          onChange={(school) => place({ school })}
         />
-        <section className='rounded-2xl border border-border bg-card p-4 text-[0.8125rem] text-muted-foreground'>
-          <h2 className='pb-1 text-[0.9375rem] font-semibold text-ink'>De dónde sale</h2>
-          Lo carga secretaría, que asigna las aulas y las cambia cuando hace falta. Un cambio de último momento aparece
-          acá apenas se carga.
-        </section>
-      </aside>
-    </div>
+        <Filter
+          label='Sede'
+          all='Todas las sedes'
+          value={filters.campus}
+          options={optionsOf(ofSchool, (c) => c.campus)}
+          onChange={(campus) => place({ school: filters.school, campus })}
+        />
+        <Filter
+          label='Edificio'
+          all='Todos los edificios'
+          value={filters.building}
+          options={optionsOf(ofCampus, (c) => c.building)}
+          onChange={(building) => place({ school: filters.school, campus: filters.campus, building })}
+        />
+        {wings.length > 0 && (
+          <Filter
+            label='Módulo'
+            all='Todos los módulos'
+            value={filters.wing}
+            options={wings}
+            onChange={(wing) => set({ wing, subject: '' })}
+          />
+        )}
+        <Filter
+          label='Materia'
+          all='Todas las materias'
+          value={filters.subject}
+          options={subjects}
+          onChange={(subject) => set({ subject })}
+        />
+        {mine.length > 0 && (
+          <button
+            type='button'
+            aria-pressed={filters.onlyMine}
+            onClick={() => set({ onlyMine: !filters.onlyMine, subject: '' })}
+            className={cn(
+              'inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[0.8125rem] font-semibold transition-colors focus-ring sm:h-9',
+              filters.onlyMine
+                ? 'border-blue/40 bg-accent text-blue'
+                : 'border-ink/15 bg-card text-ink hover:border-blue/30'
+            )}
+          >
+            Solo mis materias
+          </button>
+        )}
+      </div>
+      {ofDay.length === 0 && (
+        <p className='border-b border-border px-4 py-3 text-[0.8125rem] text-muted-foreground'>
+          No hay clases este día con estos filtros.
+        </p>
+      )}
+      {rooms.length > 0 && (
+        <DayGrid
+          rooms={rooms}
+          classes={ofDay}
+          day={day}
+          today={today}
+          now={now}
+          showPlace={new Set(rooms.map(placeOf)).size > 1}
+        />
+      )}
+    </section>
   )
 }

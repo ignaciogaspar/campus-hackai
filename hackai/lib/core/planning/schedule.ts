@@ -28,7 +28,9 @@ const toClass = (e: PlanningEntry, day: string, change: PlanningClass['change'])
   subject: e.subject,
   section: e.section,
   school: e.school,
+  campus: e.campus,
   building: e.building,
+  wing: e.wing,
   room: e.room,
   change
 })

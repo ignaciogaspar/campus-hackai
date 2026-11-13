@@ -281,7 +281,7 @@ Dónde y a qué hora se dicta cada clase de todas las materias: materia, comisi�
 _Avoid_: «calendario» (ese es el de cada alumno), «horario» a secas.
 
 **Aula física (Room)**:
-El salón donde se dicta una clase («Aula A9», «Laboratorio 2»), dentro de un edificio. En la UI se dice «aula», como en el Planning de la universidad; en el código es `room`, para no confundirla con el aula virtual de Moodle.
+El salón donde se dicta una clase («Aula A9», «Laboratorio 2»). Está en una sede (Campus: Pilar, Buenos Aires, Rosario), en un edificio (Building: Olivo, Cerrito) y, si el edificio los tiene, en un módulo (Wing: Módulo A, Módulo B). La misma «Aula 1» en dos módulos son dos aulas. En la UI se dice «aula», como en el Planning de la universidad; en el código es `room`, para no confundirla con el aula virtual de Moodle.
 
 **Cambio de último momento (Planning change)**:
 Una clase del Planning con fecha que manda ese día sobre la clase semanal de la misma materia y comisión: otra aula, otro horario o suspendida. Si no hay clase semanal que pisar, es una clase extra.

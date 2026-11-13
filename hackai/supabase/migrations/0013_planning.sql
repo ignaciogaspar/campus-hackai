@@ -12,7 +12,7 @@
 -- inserta la carga nueva y después borra las otras, así si algo falla a la
 -- mitad queda el planning anterior entero.
 --
--- No guarda personas: solo materia, comisión, facultad, edificio y aula.
+-- No guarda personas: solo materia, comisión, facultad, sede, edificio, módulo y aula.
 -- Es una tabla propia de HackAI: va también en producción. Arranca vacía.
 -- Idempotente: se puede correr de nuevo sin romper nada.
 
@@ -24,7 +24,9 @@ create table if not exists planning_entries (
   subject text not null check (char_length(subject) between 1 and 120),
   section text check (char_length(section) <= 120),
   school text not null default '' check (char_length(school) <= 120),
-  building text not null default '' check (char_length(building) <= 120),
+  campus text not null default '' check (char_length(campus) <= 120),      -- sede: Pilar, Buenos Aires…
+  building text not null default '' check (char_length(building) <= 120),  -- edificio: Olivo, Cerrito…
+  wing text not null default '' check (char_length(wing) <= 120),          -- módulo del edificio: Módulo A…
   room text not null check (char_length(room) between 1 and 120),
   weekday text check (weekday in ('lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado')),
   class_date date,

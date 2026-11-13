@@ -14,7 +14,9 @@ export type PlanningColumn =
   | 'materia'
   | 'comision'
   | 'facultad'
+  | 'sede'
   | 'edificio'
+  | 'modulo'
   | 'aula'
   | 'dia'
   | 'fecha'
@@ -27,7 +29,9 @@ export const COLUMNS: { column: PlanningColumn; header: string }[] = [
   { column: 'materia', header: 'Materia' },
   { column: 'comision', header: 'Comisión' },
   { column: 'facultad', header: 'Facultad' },
+  { column: 'sede', header: 'Sede' },
   { column: 'edificio', header: 'Edificio' },
+  { column: 'modulo', header: 'Módulo' },
   { column: 'aula', header: 'Aula' },
   { column: 'dia', header: 'Día' },
   { column: 'fecha', header: 'Fecha' },
@@ -40,7 +44,9 @@ const ALIASES: Record<PlanningColumn, string[]> = {
   materia: ['materia', 'asignatura'],
   comision: ['comision', 'com'],
   facultad: ['facultad', 'unidad academica', 'fac'],
-  edificio: ['edificio', 'sede', 'sede y edificio'],
+  sede: ['sede', 'campus'],
+  edificio: ['edificio', 'sede y edificio'],
+  modulo: ['modulo', 'ala'],
   aula: ['aula', 'sala', 'espacio'],
   dia: ['dia', 'dia de la semana'],
   fecha: ['fecha'],
@@ -140,6 +146,20 @@ function whenOf(cells: Cells): { weekday: Weekday | null; date: string | null } 
   return 'Poné el día de la semana (lunes a sábado) o la fecha de la clase.'
 }
 
+/** Sede, edificio y módulo. Si la planilla trae todo junto en «Edificio», como el Planning de la facultad («Pilar -
+    Ed Olivo - Modulo A»), se separa por los guiones. */
+function placeOf(cells: Cells): { campus: string; building: string; wing: string } {
+  const campus = textOf(cells.sede)
+  const building = textOf(cells.edificio)
+  const wing = textOf(cells.modulo)
+  const parts = building.split(/\s+-\s+/)
+  if (!campus && !wing && parts.length > 1) {
+    const [first, second, ...rest] = parts
+    return { campus: clip(first), building: clip(second), wing: clip(rest.join(' - ')) }
+  }
+  return { campus: clip(campus), building: clip(building), wing: clip(wing) }
+}
+
 /** La clase de una fila, o por qué no se entendió. */
 function entryOf(cells: Cells): PlanningEntryInput | string {
   const subject = textOf(cells.materia)
@@ -159,7 +179,7 @@ function entryOf(cells: Cells): PlanningEntryInput | string {
     subject: clip(subject),
     section: clip(textOf(cells.comision).replace(/^com(isi[oó]n)?\.?\s*/i, '')) || null,
     school: clip(textOf(cells.facultad).toUpperCase()),
-    building: clip(textOf(cells.edificio)),
+    ...placeOf(cells),
     room: clip(room),
     ...when,
     start,

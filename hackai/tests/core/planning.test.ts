@@ -38,12 +38,39 @@ const SECRETARIA = 'p-secretaria-fi'
 const ALUMNO = 'p-taguirre'
 const DOCENTE = 'p-mledesma'
 
-const HEADER = ['Materia', 'Comisión', 'Facultad', 'Edificio', 'Aula', 'Día', 'Fecha', 'Inicio', 'Fin', 'Estado']
+const HEADER = [
+  'Materia',
+  'Comisión',
+  'Facultad',
+  'Sede',
+  'Edificio',
+  'Módulo',
+  'Aula',
+  'Día',
+  'Fecha',
+  'Inicio',
+  'Fin',
+  'Estado'
+]
 
-/** Una fila de la planilla en Pilar, de la FI: materia, comisión, aula, día o fecha, inicio, fin y estado. */
+/** Una fila de la planilla en el Módulo A del Olivo de Pilar, de la FI: materia, comisión, aula, día o fecha, inicio,
+    fin y estado. */
 function row(subject: string, section: string, room: string, when: string, start: string, end: string, state = '') {
   const isDate = /\d/.test(when)
-  return [subject, section, 'FI', 'Pilar', room, isDate ? '' : when, isDate ? when : '', start, end, state]
+  return [
+    subject,
+    section,
+    'FI',
+    'Pilar',
+    'Olivo',
+    'Módulo A',
+    room,
+    isDate ? '' : when,
+    isDate ? when : '',
+    start,
+    end,
+    state
+  ]
 }
 
 const weekly = (subject: string, room: string, weekday: PlanningEntryInput['weekday'], start: number, end: number) =>
@@ -51,7 +78,9 @@ const weekly = (subject: string, room: string, weekday: PlanningEntryInput['week
     subject,
     section: 'A',
     school: 'FI',
-    building: 'Pilar',
+    campus: 'Pilar',
+    building: 'Olivo',
+    wing: 'Módulo A',
     room,
     weekday,
     date: null,
@@ -77,15 +106,28 @@ const SAME_NAME = 'Revisá que la materia, la comisión y la facultad estén esc
 test('preview entiende cada fila de la planilla y dice por qué no entendió las otras', async () => {
   const preview = await previewOf(build(), [
     HEADER,
-    ['Análisis Matemático I', 'Com A', 'fi', 'Pilar - Edificio Olivo', 'Aula A9', 'Lunes', '', '9', '13:00', ''],
-    ['Física I', 'B', 'FI', '', 'Laboratorio 2', 'martes', '', '14.30', '17hs', ''],
-    ['', '', '', '', '', '', '', '', '', ''],
-    ['Química', 'A', 'FI', '', '', 'martes', '', '9:00', '12:00', ''],
-    ['Química', 'A', 'FI', '', 'Aula 3', 'domingo', '', '9:00', '12:00', ''],
-    ['Química', 'A', 'FI', '', 'Aula 3', 'martes', '', '12:00', '9:00', ''],
-    ['Química', 'A', 'FI', '', 'Aula 3', '', '31/02/2026', '9:00', '12:00', ''],
-    ['Química', 'A', 'FI', '', 'Aula 3', 'martes', '', 'mañana', '12:00', ''],
-    ['Química', 'A', 'FI', '', 'Aula 3', 'martes', '', '23:00', '24:30', '']
+    [
+      'Análisis Matemático I',
+      'Com A',
+      'fi',
+      '',
+      'Pilar - Edificio Olivo',
+      '',
+      'Aula A9',
+      'Lunes',
+      '',
+      '9',
+      '13:00',
+      ''
+    ],
+    ['Física I', 'B', 'FI', '', '', '', 'Laboratorio 2', 'martes', '', '14.30', '17hs', ''],
+    ['', '', '', '', '', '', '', '', '', '', '', ''],
+    ['Química', 'A', 'FI', '', '', '', '', 'martes', '', '9:00', '12:00', ''],
+    ['Química', 'A', 'FI', '', '', '', 'Aula 3', 'domingo', '', '9:00', '12:00', ''],
+    ['Química', 'A', 'FI', '', '', '', 'Aula 3', 'martes', '', '12:00', '9:00', ''],
+    ['Química', 'A', 'FI', '', '', '', 'Aula 3', '', '31/02/2026', '9:00', '12:00', ''],
+    ['Química', 'A', 'FI', '', '', '', 'Aula 3', 'martes', '', 'mañana', '12:00', ''],
+    ['Química', 'A', 'FI', '', '', '', 'Aula 3', 'martes', '', '23:00', '24:30', '']
   ])
 
   assert.equal(preview.header, true)
@@ -98,7 +140,9 @@ test('preview entiende cada fila de la planilla y dice por qué no entendió las
       subject: 'Análisis Matemático I',
       section: 'A',
       school: 'FI',
-      building: 'Pilar - Edificio Olivo',
+      campus: 'Pilar',
+      building: 'Edificio Olivo',
+      wing: '',
       room: 'Aula A9',
       weekday: 'lunes',
       date: null,
@@ -134,7 +178,9 @@ test('preview reconoce las columnas por su encabezado en cualquier orden, y sin 
     ['Física I', 'A9', 'miercoles', 540, 780]
   )
 
-  const bare = await previewOf(planning, [['Física I', 'A', 'FI', 'Pilar', 'A9', 'jueves', '', '8:00', '10:00']])
+  const bare = await previewOf(planning, [
+    ['Física I', 'A', 'FI', 'Pilar', 'Olivo', '', 'A9', 'jueves', '', '8:00', '10:00']
+  ])
   assert.equal(bare.header, false)
   assert.deepEqual(bare.counts, { ok: 1, duplicates: 0, errors: 0 })
 })
@@ -202,13 +248,13 @@ test('dos clases distintas no pueden estar en la misma aula a la misma hora', as
     [
       2,
       'error',
-      `aula a9 de Pilar ya está ocupada los lunes de 9:00 a 13:00 por Física I (Comisión A) (ya cargada). ${ROOM_TAKEN}`
+      `aula a9 (Pilar - Olivo - Módulo A) ya está ocupada los lunes de 9:00 a 13:00 por Física I (Comisión A) (ya cargada). ${ROOM_TAKEN}`
     ],
     [3, 'ok', null],
     [
       4,
       'error',
-      `Aula A9 de Pilar ya está ocupada los lunes de 13:00 a 15:00 por Química (Comisión A) (línea 3). ${ROOM_TAKEN}`
+      `Aula A9 (Pilar - Olivo - Módulo A) ya está ocupada los lunes de 13:00 a 15:00 por Química (Comisión A) (línea 3). ${ROOM_TAKEN}`
     ],
     [5, 'ok', null],
     [6, 'ok', null]
@@ -254,7 +300,7 @@ test('la misma comisión no puede tener dos clases que se pisan, aunque sea en o
     [
       2,
       'error',
-      'Física I (Comisión A) ya tiene clase los lunes de 9:00 a 13:00 en Aula A9 de Pilar (ya cargada). Una comisión no puede tener dos clases que se pisan: si es la misma clase, dejá una sola fila; si cambió el horario, corregí una de las dos.'
+      'Física I (Comisión A) ya tiene clase los lunes de 9:00 a 13:00 en Aula A9 (Pilar - Olivo - Módulo A) (ya cargada). Una comisión no puede tener dos clases que se pisan: si es la misma clase, dejá una sola fila; si cambió el horario, corregí una de las dos.'
     ],
     [3, 'ok', null],
     [4, 'ok', null]
@@ -284,7 +330,7 @@ test('un cambio de un día deja libre el aula de siempre y no puede ir a un aula
     [
       2,
       'error',
-      `Aula A10 de Pilar ya está ocupada el lunes 16/11/2026 de 9:00 a 13:00 por Química (Comisión A) (ya cargada). ${ROOM_TAKEN}`
+      `Aula A10 (Pilar - Olivo - Módulo A) ya está ocupada el lunes 16/11/2026 de 9:00 a 13:00 por Química (Comisión A) (ya cargada). ${ROOM_TAKEN}`
     ],
     [3, 'ok', null],
     [4, 'ok', null],
@@ -292,7 +338,7 @@ test('un cambio de un día deja libre el aula de siempre y no puede ir a un aula
     [
       6,
       'error',
-      `Aula A9 de Pilar ya está ocupada el lunes 30/11/2026 de 9:00 a 13:00 por Física I (Comisión A) (ya cargada). ${ROOM_TAKEN}`
+      `Aula A9 (Pilar - Olivo - Módulo A) ya está ocupada el lunes 30/11/2026 de 9:00 a 13:00 por Física I (Comisión A) (ya cargada). ${ROOM_TAKEN}`
     ]
   ])
 })
@@ -323,7 +369,7 @@ test('una suspensión necesita la clase semanal de ese día, y no puede convivir
     [
       8,
       'error',
-      'La clase de Física I (Comisión A) el lunes 23/11/2026 ya tiene un cambio cargado: Aula B2 de Pilar de 9:00 a 13:00 (línea 7). Dejá una sola fila para ese día.'
+      'La clase de Física I (Comisión A) el lunes 23/11/2026 ya tiene un cambio cargado: Aula B2 (Pilar - Olivo - Módulo A) de 9:00 a 13:00 (línea 7). Dejá una sola fila para ese día.'
     ]
   ])
 })
@@ -400,7 +446,9 @@ test('el planning sintético no tiene choques y trae los cambios de la semana de
     e.subject,
     e.section ?? '',
     e.school,
+    e.campus,
     e.building,
+    e.wing,
     e.room,
     e.weekday ?? '',
     e.date ?? '',
@@ -428,4 +476,24 @@ test('el planning sintético no tiene choques y trae los cambios de la semana de
     week.some((c) => c.school === 'FCE'),
     'trae materias de otra facultad'
   )
+})
+
+test('si la planilla trae todo junto en «Edificio», como el Planning de la facultad, se separa en sede, edificio y módulo', async () => {
+  const preview = await previewOf(build(), [
+    ['Materia', 'Edificio', 'Aula', 'Día', 'Inicio', 'Fin'],
+    ['Física I', 'Pilar - Ed Olivo - Modulo A', 'Aula A1', 'lunes', '9:00', '13:00']
+  ])
+  const [first] = preview.rows
+  assert.ok(first.status === 'ok')
+  assert.deepEqual([first.entry.campus, first.entry.building, first.entry.wing], ['Pilar', 'Ed Olivo', 'Modulo A'])
+})
+
+test('la misma aula en otro módulo o en otra sede no choca', async () => {
+  const planning = build([weekly('Física I', 'Aula 1', 'lunes', 540, 780)])
+  const otherWing = [...row('Química', 'A', 'Aula 1', 'lunes', '9:00', '13:00')]
+  otherWing[5] = 'Módulo B'
+  const otherCampus = [...row('Termodinámica', 'A', 'Aula 1', 'lunes', '9:00', '13:00')]
+  otherCampus[3] = 'Buenos Aires'
+  const preview = await previewOf(planning, [HEADER, otherWing, otherCampus])
+  assert.deepEqual(preview.counts, { ok: 2, duplicates: 0, errors: 0 })
 })

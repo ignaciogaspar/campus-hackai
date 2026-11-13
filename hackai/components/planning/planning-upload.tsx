@@ -10,7 +10,7 @@
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { useActionState, useEffect, useRef } from 'react'
 import { type PlanningPreviewState, previewPlanning, savePlanning } from '@/app/actions/planning'
-import { whenLabel } from '@/components/planning/format'
+import { placeOf, whenLabel } from '@/components/planning/format'
 import { ActionForm, FormFeedback, SubmitButton } from '@/components/spaces/action-form'
 import { hhmm } from '@/components/today/calendar-layout'
 import { buttonVariants } from '@/components/ui/button'
@@ -53,7 +53,7 @@ function EntryMeta({ line, e }: { line: number; e: PlanningEntryInput }) {
       <span>
         · {whenLabel(e)}, {hhmm(e.start)} a {hhmm(e.end)}
       </span>
-      <span>· {[e.room, e.building, e.school].filter(Boolean).join(' · ')}</span>
+      <span>· {[e.room, placeOf(e), e.school].filter(Boolean).join(' · ')}</span>
     </>
   )
 }
@@ -203,7 +203,7 @@ export function PlanningUpload() {
                 autoComplete='off'
                 spellCheck={false}
                 placeholder={
-                  'Materia\tComisión\tFacultad\tEdificio\tAula\tDía\tFecha\tInicio\tFin\tEstado\nAnálisis Matemático I\tA\tFI\tPilar - Edificio Olivo\tAula A9\tlunes\t\t9:00\t13:00\t'
+                  'Materia\tComisión\tFacultad\tSede\tEdificio\tMódulo\tAula\tDía\tFecha\tInicio\tFin\tEstado\nAnálisis Matemático I\tA\tFI\tPilar\tEdificio Olivo\tMódulo A\tAula A9\tlunes\t\t9:00\t13:00\t'
                 }
                 className='min-h-36 w-full resize-y bg-transparent px-3 py-2 font-mono text-[0.8125rem] font-normal outline-none'
               />
