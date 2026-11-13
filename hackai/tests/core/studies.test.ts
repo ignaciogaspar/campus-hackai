@@ -1027,18 +1027,26 @@ test('una materia sin lugar en sus comisiones igual aparece: cuántos lugares qu
 test('no ve la mesa de lo que ya aprobó ni la oferta de otra facultad', async () => {
   const { studies } = build()
 
-  // Nicolás (Ciencias Empresariales) promocionó Introducción a la Economía y cursa Análisis I y Contabilidad I.
+  // Nicolás (Ciencias Empresariales) promocionó Introducción a la Economía y cursa Análisis I y Contabilidad I: de
+  // verano le sirven Finanzas y la optativa de su plan, no Análisis I de verano.
   const nicolas = await studies.openEnrollments('p-nherrera')
-  // Federico cursa solo Contabilidad I: le sirve Análisis I de verano.
+  // Federico cursa solo Contabilidad I: le sirven Análisis I y Finanzas de verano.
   const federico = await studies.openEnrollments('p-fjuarez')
 
   assert.ok(nicolas.ok && federico.ok)
-  assert.deepEqual(openings(nicolas.value.data), [['examen', 'co1', '2026-12-05T02:59:00.000Z']])
+  assert.deepEqual(openings(nicolas.value.data), [
+    ['actividad', 'vol', '2026-11-17T02:59:00.000Z'],
+    ['examen', 'co1', '2026-12-05T02:59:00.000Z'],
+    ['cursada', 'fin', '2026-12-19T02:59:00.000Z'],
+    ['cursada', 'ndg', '2026-12-19T02:59:00.000Z']
+  ])
   assert.deepEqual(
     federico.value.data.map((i) => [i.kind, i.subjectId]),
     [
+      ['actividad', 'vol'],
       ['examen', 'co1'],
-      ['cursada', 'am1']
+      ['cursada', 'am1'],
+      ['cursada', 'fin']
     ]
   )
 })
@@ -2062,10 +2070,11 @@ test('las inscripciones abiertas a cursada son las materias de su facultad con u
     courses(martin.value.data).map((o) => o.subjectId),
     ['cda', 'pye', 'pr1']
   )
-  // Federico, de Ciencias Empresariales, no cursa Análisis Matemático I.
+  // Federico, de Ciencias Empresariales, no cursa Análisis Matemático I ni Finanzas. La optativa es solo para las
+  // propuestas activas, y la suya está pasiva.
   assert.deepEqual(
     courses(federico.value.data).map((o) => o.subjectId),
-    ['am1']
+    ['am1', 'fin']
   )
 })
 

@@ -3,7 +3,7 @@
 begin;
 
 delete from moodle_enrolments e where not exists (
-  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('302', 'c-fi1-fi-vt'), ('304', 'c-pr1-fi-v'), ('304', 'c-tor-fi-a'), ('304', 'c-lid-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v')) as keep (user_id, course_id)
+  select 1 from (values ('301', 'c-am1-fi-a'), ('302', 'c-am1-fi-b'), ('303', 'c-am1-fce-a'), ('304', 'c-pr1-fi-a'), ('305', 'c-co1-fce-a'), ('301', 'c-aga-fi-a'), ('303', 'c-iec-fce-a'), ('302', 'c-fi1-fi-v'), ('302', 'c-fi1-fi-vt'), ('304', 'c-pr1-fi-v'), ('304', 'c-tor-fi-a'), ('304', 'c-lid-fi-v'), ('303', 'c-am1-fce-v'), ('306', 'c-pye-fi-va'), ('307', 'c-pye-fi-vb'), ('307', 'c-pye-fi-vc'), ('307', 'c-cda-fi-v'), ('306', 'c-vol-fi-v'), ('305', 'c-fin-fce-vm'), ('305', 'c-fin-fce-vn'), ('303', 'c-ndg-fce-v'), ('305', 'c-vol-fce-a'), ('401', 'c-aga-fi-a'), ('406', 'c-aga-fi-a'), ('404', 'c-aga-fi-a'), ('408', 'c-iec-fce-a'), ('401', 'c-am1-fi-a'), ('401', 'c-pr1-fi-a'), ('402', 'c-am1-fi-a'), ('402', 'c-pr1-fi-a'), ('405', 'c-am1-fi-a'), ('403', 'c-am1-fi-b'), ('404', 'c-am1-fi-b'), ('406', 'c-am1-fi-b'), ('407', 'c-am1-fce-a'), ('407', 'c-co1-fce-a'), ('408', 'c-am1-fce-a'), ('408', 'c-co1-fce-a'), ('409', 'c-am1-fce-a'), ('410', 'c-co1-fce-a'), ('403', 'c-fi1-fi-v'), ('405', 'c-fi1-fi-v'), ('407', 'c-fin-fce-vm'), ('409', 'c-fin-fce-vm')) as keep (user_id, course_id)
   where keep.user_id = e.user_id and keep.course_id = e.course_id
 );
 
@@ -45,7 +45,11 @@ insert into moodle_courses (id, short_name, full_name, siu_section_ids) values
   ('c-pye-fi-vb', 'VERANO-2027-PYE-FI-Verano B', 'Probabilidad y Estadística - Comisión Verano B (FI) - Curso de Verano 2027', array['sec-pye-fi-vb']::text[]),
   ('c-pye-fi-vc', 'VERANO-2027-PYE-FI-Verano C', 'Probabilidad y Estadística - Comisión Verano C (FI) - Curso de Verano 2027', array['sec-pye-fi-vc']::text[]),
   ('c-cda-fi-v', 'VERANO-2027-CDA-FI-Verano', 'Ciencia de Datos - Comisión Verano (FI) - Curso de Verano 2027', array['sec-cda-fi-v']::text[]),
-  ('c-vol-fi-v', 'VERANO-2027-VOL-FI-Verano', 'Voluntariado Universitario - Comisión Verano (FI) - Curso de Verano 2027', array['sec-vol-fi-v']::text[])
+  ('c-vol-fi-v', 'VERANO-2027-VOL-FI-Verano', 'Voluntariado Universitario - Comisión Verano (FI) - Curso de Verano 2027', array['sec-vol-fi-v']::text[]),
+  ('c-fin-fce-vm', 'VERANO-2027-FIN-FCE-Verano mañana', 'Finanzas - Comisión Verano mañana (FCE) - Curso de Verano 2027', array['sec-fin-fce-vm']::text[]),
+  ('c-fin-fce-vn', 'VERANO-2027-FIN-FCE-Verano noche', 'Finanzas - Comisión Verano noche (FCE) - Curso de Verano 2027', array['sec-fin-fce-vn']::text[]),
+  ('c-ndg-fce-v', 'VERANO-2027-NDG-FCE-Verano', 'Negocios Digitales - Comisión Verano (FCE) - Curso de Verano 2027', array['sec-ndg-fce-v']::text[]),
+  ('c-vol-fce-a', 'ACT-2C-2026-VOL-FCE-Única', 'Voluntariado Universitario - Comisión Única (FCE) - Actividades de Vida Universitaria 2do Cuatrimestre 2026', array['sec-vol-fce-a']::text[])
 on conflict (id) do update set short_name = excluded.short_name, full_name = excluded.full_name, siu_section_ids = excluded.siu_section_ids;
 
 insert into moodle_enrolments (user_id, course_id, role) values
@@ -67,6 +71,10 @@ insert into moodle_enrolments (user_id, course_id, role) values
   ('307', 'c-pye-fi-vc', 'editingteacher'),
   ('307', 'c-cda-fi-v', 'editingteacher'),
   ('306', 'c-vol-fi-v', 'editingteacher'),
+  ('305', 'c-fin-fce-vm', 'editingteacher'),
+  ('305', 'c-fin-fce-vn', 'editingteacher'),
+  ('303', 'c-ndg-fce-v', 'editingteacher'),
+  ('305', 'c-vol-fce-a', 'editingteacher'),
   ('401', 'c-aga-fi-a', 'student'),
   ('406', 'c-aga-fi-a', 'student'),
   ('404', 'c-aga-fi-a', 'student'),
@@ -86,7 +94,9 @@ insert into moodle_enrolments (user_id, course_id, role) values
   ('409', 'c-am1-fce-a', 'student'),
   ('410', 'c-co1-fce-a', 'student'),
   ('403', 'c-fi1-fi-v', 'student'),
-  ('405', 'c-fi1-fi-v', 'student')
+  ('405', 'c-fi1-fi-v', 'student'),
+  ('407', 'c-fin-fce-vm', 'student'),
+  ('409', 'c-fin-fce-vm', 'student')
 on conflict (user_id, course_id) do update set role = excluded.role;
 
 insert into moodle_announcements (id, course_id, author_id, subject, message, created_at, attachments) values

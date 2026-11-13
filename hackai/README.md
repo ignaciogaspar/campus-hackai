@@ -94,6 +94,23 @@ El set está pensado para el ensayo del jueves 12/11 y la demo del viernes 13/11
 - Análisis Matemático I y Programación I tienen avisos, material y tareas con fecha en Moodle;
 - tiene dos notas nuevas en la campana y en Novedades: el TP integrador de Programación I (historia académica, cargado el 9/11) y el primer parcial de Análisis Matemático I (actuación provisoria, cargado el 10/11). Tocar una lleva a Notas y deja de contarlas en ese navegador (cookie `hackai_notas_vistas`); para volver a verlas, borrá la cookie o entrá desde otro navegador.
 
+Un alumno de Ciencias Empresariales, Nicolás Herrera (`p-nherrera`), también tiene a qué inscribirse: Finanzas de verano, con la comisión de la mañana sin cupo y la de la noche con lugar; Negocios Digitales, la optativa de su plan, y Voluntariado Universitario, que da créditos.
+
+**Tomar lista** se puede el día de la clase, aunque ya haya terminado: «Tu clase de ahora» de Hoy lleva a la lista mientras la clase no terminó, y después la clase de hoy sigue en la pestaña «Alumnos y clases» de la materia, con «Tomar lista». Quién tiene clase cada día en el cuatrimestre actual:
+
+| Día | Docente | Comisión | Horario |
+|---|---|---|---|
+| Lunes | Mariana Ledesma (`p-mledesma`) | Análisis Matemático I, A (FI) | 08:00 a 10:00 |
+| Lunes | Carolina Bustos (`p-cbustos`) | Análisis Matemático I, A (FCE) | 18:00 a 20:00 |
+| Martes | Gustavo Ferreyra (`p-gferreyra`) | Análisis Matemático I, B (FI) | 14:00 a 16:00 |
+| Martes | Silvina Rosales (`p-srosales`) | Contabilidad I, A (FCE) | 18:00 a 21:00 |
+| Miércoles | Mariana Ledesma (`p-mledesma`) | Análisis Matemático I, A (FI) | 08:00 a 10:00 |
+| Jueves | Gustavo Ferreyra (`p-gferreyra`) | Análisis Matemático I, B (FI) | 14:00 a 16:00 |
+| Jueves | Carolina Bustos (`p-cbustos`) | Análisis Matemático I, A (FCE) | 18:00 a 20:00 |
+| Viernes | Diego Arrieta (`p-darrieta`) | Programación I, A (FI), híbrida con Zoom | 09:00 a 12:00 |
+
+El viernes 13/11, con `HACKAI_CLOCK=sistema`, la lista se muestra con Diego Arrieta: de 9 a 12 desde Hoy, y a la tarde desde Programación I › «Alumnos y clases». Con el reloj fijo (martes 10/11 a las 12), la clase del día es la de Gustavo Ferreyra a las 14, y Hoy ya ofrece «Tomar lista».
+
 Los enlaces a Moodle y a la Autogestión del SIU («Ir al aula», el material, las constancias, «Seguir en la Autogestión») no salen de HackAI: van a `/simulado/<moodle|siu>/<ruta del sistema real>` (`app/simulado/`), una página que dice que el sistema está simulado y qué abriría el enlace en producción. No pide sesión ni lee datos.
 
 Si cambiás el set, corré `npm run siu:seed`, `npm run moodle:seed` y `npm run people:seed` y commiteá los SQL: un test avisa si alguno quedó viejo.
