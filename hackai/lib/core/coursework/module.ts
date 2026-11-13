@@ -14,6 +14,7 @@ import type {
   SubmitError,
   TaskChanges,
   TaskGrade,
+  TaskProgress,
   TaskView
 } from '@/lib/core/coursework'
 import {
@@ -27,7 +28,7 @@ import {
   teaches
 } from '@/lib/core/coursework/access'
 import { createGradebook } from '@/lib/core/coursework/gradebook'
-import { countsOf, rowsOf, studentInTaught, studentsOf } from '@/lib/core/coursework/roster'
+import { countsOf, progressOf, rowsOf, studentInTaught, studentsOf } from '@/lib/core/coursework/roster'
 import { checkedFiles, removeAll, saveAll } from '@/lib/core/coursework/submissions'
 import { byDue, checkedTaskTexts, datedOf, submissionFor, taskFor, taskGradeOf } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
@@ -158,6 +159,29 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
     return store.gradesOfSection(section.sectionId)
   }
 
+  /** Al docente, cómo va cada tarea en la comisión: los mismos alumnos y entregas que «quién entregó». Si algo no se
+      puede leer, la lista sale igual, sin los conteos. */
+  async function progressIn(
+    personId: PersonId,
+    section: MySection,
+    tasks: StoredTask[]
+  ): Promise<Map<string, TaskProgress>> {
+    const progress = new Map<string, TaskProgress>()
+    if (section.role !== 'profesor' || tasks.length === 0) return progress
+    const [roster, grades] = await Promise.all([
+      studentsOf(studies, personId, section.sectionId),
+      store.gradesOfSection(section.sectionId)
+    ])
+    if (!roster.ok || !grades.ok) return progress
+    const delivered = await Promise.all(tasks.map((t) => store.submissionsOfTask(t.id)))
+    tasks.forEach((task, i) => {
+      const found = delivered[i]
+      if (found.ok)
+        progress.set(task.id, progressOf(rowsOf(roster.value.students, found.value, task, grades.value), task))
+    })
+    return progress
+  }
+
   async function tasksOf(personId: PersonId, subjectId: string, sectionId?: string): ReturnType<Coursework['tasksOf']> {
     const read = await sectionsOf(studies, personId)
     if (!read.ok) return read
@@ -182,12 +206,13 @@ export function createCourseworkModule(deps: CourseworkDeps): Coursework {
         taskGradeOf(grades.value, t.id, personId, true)
       )
     )
+    const progress = await progressIn(personId, selected, ofSection)
     return ok({
       subject: subjectOf(selected),
       role: selected.role,
       sections: shown.map(sectionOf),
       sectionId: selected.sectionId,
-      tasks: byDue(tasks),
+      tasks: byDue(tasks.map((t) => ({ ...t, progress: progress.get(t.id) ?? null }))),
       staleSince: read.value.staleSince
     })
   }

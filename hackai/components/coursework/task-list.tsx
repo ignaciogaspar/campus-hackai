@@ -1,17 +1,28 @@
 /* Las tareas de una comisión, una fila por tarea: nombre, comienzo de la
    consigna, cuándo vence y si lleva nota. Cada fila lleva a la tarea. Es la
-   misma lista para el docente y para el alumno; el docente además ve para qué
-   comisiones es cada una, y el alumno cómo está su entrega. En el celular el
-   estado baja a la línea de abajo, para que no le quite lugar al nombre. */
+   misma lista para el docente y para el alumno. El docente además ve para qué
+   comisiones es cada una y cuántos entregaron y falta corregir, con si sigue
+   vigente en la línea de abajo; el alumno, cómo está su entrega. En el celular
+   lo de la derecha baja a la línea de abajo, para no quitarle lugar al nombre. */
 import { ClipboardList } from 'lucide-react'
-import { dueLabel, sectionsLabel, taskHref } from '@/components/coursework/format'
+import { dueLabel, progressLabel, sectionsLabel, taskHref } from '@/components/coursework/format'
 import { TaskStatus } from '@/components/coursework/task-status'
 import { Card } from '@/components/ui/card'
 import { List, ListItem } from '@/components/ui/list'
 import { OriginBadge } from '@/components/ui/origin-badge'
 import { EmptyState } from '@/components/ui/states'
-import type { Task } from '@/lib/core/coursework'
+import { StatusPill } from '@/components/ui/status-pill'
+import type { Task, TaskProgress } from '@/lib/core/coursework'
 import type { Role } from '@/lib/core/people'
+
+/** Al docente: cuántos entregaron y cuántos falta corregir, resaltado si hay algo para corregir. */
+function Progress({ progress, className }: { progress: TaskProgress; className?: string }) {
+  return (
+    <StatusPill tone={progress.ungraded > 0 ? 'warning' : 'neutral'} className={className}>
+      {progressLabel(progress)}
+    </StatusPill>
+  )
+}
 
 function TaskRow({
   task,
@@ -26,7 +37,9 @@ function TaskRow({
   fresh: boolean
   now: string
 }) {
-  const sharedWith = role === 'profesor' && task.sections.length > 1
+  const teacher = role === 'profesor'
+  const sharedWith = teacher && task.sections.length > 1
+  const { progress } = task
   return (
     <ListItem
       href={taskHref(task.subjectId, task.id, comision)}
@@ -40,7 +53,8 @@ function TaskRow({
       description={task.instructions || undefined}
       meta={
         <>
-          <TaskStatus task={task} role={role} now={now} className='sm:hidden' />
+          {teacher && progress && <Progress progress={progress} className='sm:hidden' />}
+          <TaskStatus task={task} role={role} now={now} className={teacher ? undefined : 'sm:hidden'} />
           <OriginBadge origin='hackai' />
           <time dateTime={task.dueAt}>{dueLabel(task, now)}</time>
           {!task.graded && <span>· Sin nota</span>}
@@ -48,7 +62,13 @@ function TaskRow({
           {sharedWith && <span>· {sectionsLabel(task.sections.map((s) => s.name))}</span>}
         </>
       }
-      end={<TaskStatus task={task} role={role} now={now} className='max-sm:hidden' />}
+      end={
+        teacher ? (
+          progress && <Progress progress={progress} className='max-sm:hidden' />
+        ) : (
+          <TaskStatus task={task} role={role} now={now} className='max-sm:hidden' />
+        )
+      }
     />
   )
 }

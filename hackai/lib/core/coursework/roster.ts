@@ -10,7 +10,8 @@ import type {
   SubmissionCounts,
   SubmissionRow,
   SubmissionStudent,
-  TaskGrade
+  TaskGrade,
+  TaskProgress
 } from '@/lib/core/coursework'
 import { submissionFor, taskGradeOf } from '@/lib/core/coursework/tasks'
 import type { PersonId } from '@/lib/core/people'
@@ -59,6 +60,17 @@ export function rowsOf(
     if (!personId) return rowOf(student, undefined, task)
     return rowOf(student, byPerson.get(personId), task, taskGradeOf(grades, task.id, personId, false))
   })
+}
+
+/** Cómo va la tarea en la comisión: cuántos entregaron, cuántos de ellos todavía no tienen nota (si la tarea lleva) y
+    cuántos no entregaron. */
+export function progressOf(rows: SubmissionRow[], task: StoredTask): TaskProgress {
+  const delivered = rows.filter((r) => r.submission !== null)
+  return {
+    delivered: delivered.length,
+    ungraded: task.graded ? delivered.filter((r) => r.grade === null).length : 0,
+    missing: rows.length - delivered.length
+  }
 }
 
 export function countsOf(rows: SubmissionRow[]): SubmissionCounts {

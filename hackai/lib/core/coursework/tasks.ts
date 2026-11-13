@@ -113,7 +113,8 @@ export function taskFor(
     sections,
     past: new Date(task.dueAt).getTime() < now.getTime(),
     createdAt: task.createdAt,
-    submission: submission ? submissionFor(submission, task, grade) : null
+    submission: submission ? submissionFor(submission, task, grade) : null,
+    progress: null
   }
 }
 

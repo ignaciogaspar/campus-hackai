@@ -132,6 +132,19 @@ export type Task = {
   createdAt: string
   /** La entrega de quien mira, si es alumno y ya entregó; si no, `null`. */
   submission: Submission | null
+  /** Solo al docente, en la lista de la comisión elegida: cuántos entregaron, cuántos falta corregir y cuántos no
+      entregaron. `null` en cualquier otro caso, o si no se pudieron leer los alumnos. */
+  progress: TaskProgress | null
+}
+
+/** Cómo va una tarea en una comisión, con los mismos alumnos que «quién entregó». */
+export type TaskProgress = {
+  /** Entregaron, a tiempo o atrasados. */
+  delivered: number
+  /** De esos, cuántos todavía no tienen nota. Una tarea sin nota no tiene nada que corregir: 0. */
+  ungraded: number
+  /** Cuántos no entregaron. */
+  missing: number
 }
 
 export type TaskView = Task & { subject: TaskSubject; role: Role; canManage: boolean; staleSince: string | null }
@@ -499,7 +512,8 @@ export type Coursework = {
     taskId: TaskId,
     changes: TaskChanges
   ): Promise<Result<TaskView, AccessError | 'tarea-desconocida' | 'solo-docentes' | TaskTextError | TaskDueError>>
-  /** Las tareas de una comisión de la materia: al docente, la que elige de las que dicta; al alumno, la suya. */
+  /** Las tareas de una comisión de la materia: al docente, la que elige de las que dicta, con cuántos entregaron y
+      cuántos falta corregir; al alumno, la suya. */
   tasksOf(personId: PersonId, subjectId: string, sectionId?: string): Promise<Result<TaskList, AccessError>>
   /** Una tarea, si la persona es de una de sus comisiones; si no, `tarea-desconocida`, como si no existiera. */
   task(personId: PersonId, taskId: TaskId): Promise<Result<TaskView, AccessError | 'tarea-desconocida'>>

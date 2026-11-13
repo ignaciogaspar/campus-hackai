@@ -15,6 +15,7 @@ import {
   notesLabel,
   pastedText,
   pasteGradesHref,
+  progressLabel,
   relativeDue,
   rowStatus,
   sectionsLabel,
@@ -226,4 +227,11 @@ test('el estado de una tarea: al docente, si sigue vigente; al alumno, cómo est
     label: 'Nota 8',
     tone: 'success'
   })
+})
+
+test('cómo va una tarea en la comisión se dice en una línea: entregas y las que falta corregir', () => {
+  assert.equal(progressLabel({ delivered: 2, ungraded: 2, missing: 1 }), '2 entregas · 2 sin corregir')
+  assert.equal(progressLabel({ delivered: 1, ungraded: 1, missing: 0 }), '1 entrega · 1 sin corregir')
+  assert.equal(progressLabel({ delivered: 3, ungraded: 0, missing: 0 }), '3 entregas')
+  assert.equal(progressLabel({ delivered: 0, ungraded: 0, missing: 3 }), 'Sin entregas')
 })

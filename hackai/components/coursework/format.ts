@@ -233,6 +233,15 @@ export function rowStatus(row: { submission: { late: { minutes: number } | null 
   return row.submission ? submissionStatus(row.submission) : 'No entregó'
 }
 
+/** Cómo va una tarea en la comisión, para la lista del docente: «2 entregas · 2 sin corregir», «3 entregas»,
+    «Sin entregas». */
+export function progressLabel(progress: { delivered: number; ungraded: number; missing: number }): string {
+  const { delivered, ungraded } = progress
+  if (delivered === 0) return 'Sin entregas'
+  const text = delivered === 1 ? '1 entrega' : `${delivered} entregas`
+  return ungraded > 0 ? `${text} · ${ungraded} sin corregir` : text
+}
+
 /** El resumen de quién entregó: «2 entregaron · 1 atrasada · 3 sin entregar». Sin atrasadas, no las nombra. */
 export function countsLabel(counts: { onTime: number; late: number; missing: number }): string {
   const delivered = counts.onTime + counts.late
