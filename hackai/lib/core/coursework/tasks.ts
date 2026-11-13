@@ -8,6 +8,7 @@ import type {
   Submission,
   Task,
   TaskChanges,
+  TaskDueError,
   TaskFile,
   TaskSection,
   TaskTextError
@@ -30,9 +31,20 @@ export function checkedTexts(input: TaskChanges): Result<TaskChanges, TaskTextEr
   return ok({ name, instructions, dueAt: due.toISOString() })
 }
 
-/** Si la fecha límite (ya normalizada) es de antes de `now`: una tarea no nace vencida, ni se la corre al pasado. */
-export function checkedDue(dueAt: string, now: Date): Result<string, 'fecha-pasada'> {
-  return new Date(dueAt).getTime() < now.getTime() ? fail('fecha-pasada') : ok(dueAt)
+/** Los textos de una tarea nueva o editada, ya limpios, con la fecha límite por venir: una tarea no nace vencida ni
+    se le corre la fecha al pasado. Al editar se pasa la fecha que ya tenía (`current`): si no cambia, una tarea
+    vencida se edita igual. */
+export function checkedTaskTexts(
+  input: TaskChanges,
+  now: Date,
+  current?: string
+): Result<TaskChanges, TaskTextError | TaskDueError> {
+  const texts = checkedTexts(input)
+  if (!texts.ok) return texts
+  const { dueAt } = texts.value
+  const unchanged = current !== undefined && new Date(current).toISOString() === dueAt
+  if (!unchanged && new Date(dueAt).getTime() < now.getTime()) return fail('fecha-pasada')
+  return texts
 }
 
 function fileView(file: StoredTaskFile): TaskFile {
