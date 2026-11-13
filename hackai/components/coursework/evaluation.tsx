@@ -210,11 +210,9 @@ export function ExamList({ exams, ids }: { exams: ExamInstance[]; ids: Ids }) {
     <Card className='overflow-hidden p-0'>
       <AddExam ids={ids} />
       {exams.length === 0 ? (
-        <div className='px-4 py-6'>
-          <EmptyState icon={CalendarClock} title='Todavía no hay instancias de examen'>
-            Agregá los parciales, recuperatorios o integradores de la comisión para cargarles la nota.
-          </EmptyState>
-        </div>
+        <EmptyState icon={CalendarClock} title='Todavía no hay instancias de examen' inCard>
+          Agregá los parciales, recuperatorios o integradores de la comisión para cargarles la nota.
+        </EmptyState>
       ) : (
         <ul aria-label='Instancias de examen' className='divide-y divide-border'>
           {exams.map((exam) => (

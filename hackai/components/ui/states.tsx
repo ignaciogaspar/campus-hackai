@@ -2,10 +2,27 @@ import { CircleAlert, Clock, type LucideIcon, WifiOff } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-/* Vacío: dice por qué está vacío o qué es lo próximo. */
-export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
+/* Vacío: dice por qué está vacío o qué es lo próximo. Va en tarjeta, con el mismo filo y sombra que Card, para
+   que se vea igual sobre el gris del celular y sobre el panel blanco de compu. Adentro de una Card va sin
+   superficie propia (`inCard`), así no queda doble borde. */
+export function EmptyState({
+  icon: Icon,
+  title,
+  inCard = false,
+  children
+}: {
+  icon: LucideIcon
+  title: string
+  inCard?: boolean
+  children: ReactNode
+}) {
   return (
-    <div className='flex flex-col items-center gap-2 rounded-[22px] bg-card px-4 py-6 text-center text-[0.8125rem] text-muted-foreground'>
+    <div
+      className={cn(
+        'flex flex-col items-center gap-2 rounded-[22px] px-4 py-6 text-center text-[0.8125rem] text-muted-foreground',
+        !inCard && 'bg-card shadow-card'
+      )}
+    >
       <Icon aria-hidden='true' className='size-7 text-gray-light' strokeWidth={1.8} />
       <strong className='text-[0.9375rem] text-foreground'>{title}</strong>
       <p className='max-w-[48ch] text-pretty'>{children}</p>
