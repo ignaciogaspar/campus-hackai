@@ -1,5 +1,5 @@
-/* Pase de notas al SIU: pasa las notas publicadas de una evaluación del SIU por
-   Cursada y guarda cómo quedó cada una. Se importa solo desde ./gradebook.ts y
+/* Pase de notas al SIU: pasa las notas publicadas de una evaluación del SIU, y la
+   nota de cursada, por Cursada y guarda cómo quedó cada una. Se importa solo desde ./gradebook.ts y
    ./module.ts. Seguimiento no conoce el puerto del SIU: lo único que usa es
    `studies.passGrades`. Si el SIU falla, la nota queda `pendiente` y se
    reintenta; reintentar vuelve a escribir la misma nota por alumno y evaluación,
@@ -34,7 +34,7 @@ export function createPass({ studies, store }: Pick<CourseworkDeps, 'studies' | 
       sectionId,
       grades.map((g) => ({
         studentId: g.personId,
-        target: { kind: 'evaluacion', assessmentId: g.refId },
+        target: g.kind === 'cursada' ? { kind: 'cursada' } : { kind: 'evaluacion', assessmentId: g.refId },
         value: g.value
       }))
     )

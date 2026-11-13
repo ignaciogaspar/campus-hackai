@@ -21,7 +21,7 @@
 begin;
 
 truncate table space_reads, space_messages, space_material, space_channels, spaces restart identity cascade;
-truncate table coursework_grades, coursework_submissions, coursework_tasks restart identity cascade;
+truncate table coursework_weights, coursework_grades, coursework_submissions, coursework_tasks restart identity cascade;
 
 commit;
 

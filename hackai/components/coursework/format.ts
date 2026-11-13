@@ -23,6 +23,9 @@ export const newTaskHref = (subjectId: string, comision?: string) =>
 export const taskHref = (subjectId: string, taskId: string, comision?: string) =>
   href(`${subjectPath(subjectId)}/tareas/${encodeURIComponent(taskId)}`, comision)
 
+/** El valor de `?columna=` para la nota de cursada: no es una columna, es lo que se calcula de las columnas. */
+export const COURSE_COLUMN = 'cursada'
+
 /** Qué se mira en Calificaciones: la comisión, la columna y, si se está calificando, el alumno. `listo` marca que se
     terminó de calificar la lista. */
 export type GradesView = {

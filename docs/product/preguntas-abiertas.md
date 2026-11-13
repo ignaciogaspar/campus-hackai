@@ -203,6 +203,14 @@ Decisiones pendientes para cerrar el [alcance](alcance.md). Nada de lo que figur
 - **Estado:** abierta
 - **Decisión:** pendiente
 
+### 25. ¿Cómo cuenta un recuperatorio en la nota de cursada, y qué nota mínima hace falta para regularizar?
+
+- **Por qué importa:** HackAI calcula la nota de cursada como promedio ponderado de las columnas del docente y la pasa al SIU. Cada cátedra tiene sus reglas (si el recuperatorio reemplaza al parcial, si hay promedio mínimo por parcial, cuántas tareas hay que entregar), y no las conocemos.
+- **Hipótesis (12/11/2026):** HackAI no aplica ninguna regla de cátedra. El recuperatorio es una columna más, con el peso que le ponga el docente (si reemplaza a un parcial, el docente le baja el peso al parcial o pisa la nota). Una columna sin peso, un ausente y una columna en la que el alumno no tiene nota no cuentan, y el peso se reparte entre las columnas que sí cuentan (no baja la nota como un cero). Los pesos van de 0 a 100 y no hace falta que sumen 100. El mínimo para regularizar lo resuelve el SIU simulado: `regular` desde 4 (pregunta 24); el docente que quiera otra cosa pisa la nota. El legajo de un alumno es su id en el SIU (`SiuPerson.id`).
+- **Opciones:** reglas por comisión (reemplazo de parcial por recuperatorio, mínimo por columna, mínimo para regularizar); que el docente elija la regla al armar los pesos; dejarlo manual con la nota pisada.
+- **Estado:** abierta
+- **Decisión:** pendiente
+
 ## Bloque 2: Para Nacho
 
 De la sección 11 del análisis de su repo. Desde el [ADR 0004](../adr/0004-sistema-propio-con-puertos-y-adaptadores.md) no le mandamos código, así que N1, N3, N5, N6 y N7 quedaron cerradas: preguntaban cómo mergear con su repo.

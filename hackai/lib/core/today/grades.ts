@@ -4,6 +4,8 @@
    - Para una evaluación del SIU que se calificó en HackAI y se publicó, se ve lo
      de HackAI (nota y comentario entero); para una tarea con nota publicada,
      una fila más. Lo del SIU que no pasó por HackAI queda como estaba.
+   - La nota de cursada publicada en HackAI es la nota de cursada de la materia
+     (`courseGrade`), no una evaluación más.
    - Se empareja por comisión y por el id de la evaluación del SIU.
    - Una nota nueva del SIU que también se publicó en HackAI se cuenta una sola
      vez: la de HackAI. */
@@ -27,15 +29,18 @@ function assessmentOf(g: PublishedGrade, now: string, listed?: SubjectAssessment
 }
 
 function withPublishedIn(subject: SubjectStanding, published: PublishedGrade[], now: string): SubjectStanding {
-  const mine = published.filter((g) => g.sectionId === subject.sectionId)
-  if (mine.length === 0) return subject
-  const replaced = subject.assessments.map((a) => {
+  const inSection = published.filter((g) => g.sectionId === subject.sectionId)
+  if (inSection.length === 0) return subject
+  const course = inSection.find((g) => g.kind === 'cursada')
+  const mine = inSection.filter((g) => g.kind !== 'cursada')
+  const withCourse = course?.value != null ? { ...subject, courseGrade: course.value } : subject
+  const replaced = withCourse.assessments.map((a) => {
     const found = mine.find((g) => g.kind === 'evaluacion' && g.refId === a.id)
     return found ? assessmentOf(found, now, a) : a
   })
   const listed = (g: PublishedGrade) => replaced.some((a) => a.id === g.refId)
   const extra = mine.filter((g) => !listed(g)).map((g) => assessmentOf(g, now))
-  return { ...subject, assessments: [...replaced, ...extra].sort((a, b) => a.date.localeCompare(b.date)) }
+  return { ...withCourse, assessments: [...replaced, ...extra].sort((a, b) => a.date.localeCompare(b.date)) }
 }
 
 /** La carrera con lo publicado en HackAI puesto en las materias que cursa. Sin nada publicado, la misma carrera. */

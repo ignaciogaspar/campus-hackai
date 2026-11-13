@@ -6,6 +6,8 @@
 import type {
   AccessError,
   ColumnError,
+  ColumnKey,
+  CourseGradeCell,
   Coursework,
   CourseworkDeps,
   GradebookStudent,
@@ -18,6 +20,15 @@ import type {
 } from '@/lib/core/coursework'
 import { learns, sectionOf, sectionsOf, shownSections, subjectOf } from '@/lib/core/coursework/access'
 import {
+  COURSE_GRADE_NAME,
+  courseCellOf,
+  courseSummary,
+  isWeight,
+  needsPublishing,
+  weightOf,
+  weightsById
+} from '@/lib/core/coursework/course-grade'
+import {
   byPublication,
   type ColumnDef,
   cellOf,
@@ -27,6 +38,8 @@ import {
   columnWith,
   inColumn,
   isGraded,
+  MAX_GRADE,
+  MIN_GRADE,
   newOnes,
   parseColumnId
 } from '@/lib/core/coursework/grades'
@@ -58,6 +71,30 @@ function chooseTeaching(
 }
 
 type Teaching = { section: MySection; staleSince: string | null }
+
+/** La nota de cursada de un alumno con cuenta de HackAI: la guardada (si la pisó o la publicó) y lo que vale ahora. */
+type CourseRow = { studentId: PersonId; stored: StoredGrade | undefined; cell: CourseGradeCell }
+
+/** Los pesos que pide el docente, ya limpios y con su columna, o por qué no sirven. Un peso de cero es lo mismo que no
+    tener peso. */
+function checkedWeights(
+  sectionId: string,
+  defs: ColumnDef[],
+  weights: { columnId: string; weight: number | null }[]
+): Result<{ key: ColumnKey; weight: number | null }[], 'columna-desconocida' | 'peso-invalido'> {
+  const checked: { key: ColumnKey; weight: number | null }[] = []
+  for (const { columnId: id, weight } of weights) {
+    const wanted = parseColumnId(id)
+    const def = wanted && defs.find((d) => d.kind === wanted.kind && d.refId === wanted.refId)
+    if (!def) return fail('columna-desconocida')
+    if (weight !== null && !isWeight(weight)) return fail('peso-invalido')
+    checked.push({
+      key: { sectionId, kind: def.kind, refId: def.refId },
+      weight: weight ? Math.round(weight * 100) / 100 : null
+    })
+  }
+  return ok(checked)
+}
 
 export function createGradebook(deps: CourseworkDeps) {
   const { studies, store, clock } = deps
@@ -116,22 +153,35 @@ export function createGradebook(deps: CourseworkDeps) {
     if (!chosen.ok) return chosen
     const { shown, selected } = chosen.value
 
-    const [columns, students, grades] = await Promise.all([
+    const [columns, students, grades, stored] = await Promise.all([
       columnsOf(personId, selected),
       studies.sectionStudents(personId, selected.sectionId),
-      store.gradesOfSection(selected.sectionId)
+      store.gradesOfSection(selected.sectionId),
+      store.weightsOfSection(selected.sectionId)
     ])
     if (!columns.ok) return columns
     if (!students.ok) return fail(readFailure(students.error))
     if (!grades.ok) return grades
+    if (!stored.ok) return stored
 
     const studentsStale = students.value.stale ? students.value.readAt : null
+    const weights = weightsById(stored.value)
+    const validIds = new Set(columns.value.defs.map((d) => columnId(d.kind, d.refId)))
+    const rows = students.value.data.map((s): GradebookStudent => {
+      const mine = s.personId ? grades.value.filter((g) => g.personId === s.personId) : []
+      return { ...s, cells: cellsOf(s.personId, grades.value), course: courseCellOf(mine, weights, validIds) }
+    })
     return ok({
       subject: subjectOf(selected),
       sections: shown.map(sectionOf),
       sectionId: selected.sectionId,
-      columns: columns.value.defs.map((d) => columnWith(d, grades.value)),
-      students: students.value.data.map((s): GradebookStudent => ({ ...s, cells: cellsOf(s.personId, grades.value) })),
+      columns: columns.value.defs.map((d) => columnWith(d, grades.value, weightOf(weights, d.kind, d.refId))),
+      students: rows,
+      course: courseSummary(
+        rows.map((r) => r.course),
+        weights,
+        validIds
+      ),
       pendingPass: grades.value.filter(isPending).length,
       staleSince: oldest([read.value.staleSince, columns.value.staleSince, studentsStale])
     })
@@ -139,7 +189,7 @@ export function createGradebook(deps: CourseworkDeps) {
 
   /** Las notas de un alumno por id de columna. */
   function cellsOf(personId: PersonId | null, grades: StoredGrade[]): GradebookStudent['cells'] {
-    const mine = personId ? grades.filter((g) => g.personId === personId && isGraded(g)) : []
+    const mine = personId ? grades.filter((g) => g.personId === personId && g.kind !== 'cursada' && isGraded(g)) : []
     return Object.fromEntries(mine.map((g) => [columnId(g.kind, g.refId), cellOf(g)]))
   }
 
@@ -189,10 +239,11 @@ export function createGradebook(deps: CourseworkDeps) {
     published: boolean,
     sectionId: string,
     studentId: PersonId,
-    checked: Pick<StoredGrade, 'value' | 'absent' | 'comment'>
+    checked: Pick<StoredGrade, 'value' | 'absent' | 'comment'>,
+    edited = false
   ): Promise<Result<StoredGrade, 'falla-externa'>> {
     const now = clock.now().toISOString()
-    const passes = published && column.kind === 'evaluacion'
+    const passes = published && column.kind !== 'tarea'
     const saved = await store.saveGrade({
       sectionId,
       kind: column.kind,
@@ -202,7 +253,8 @@ export function createGradebook(deps: CourseworkDeps) {
       ...checked,
       gradedAt: now,
       publishedAt: published ? now : null,
-      pass: passes ? { status: 'pendiente', by: personId } : null
+      pass: passes ? { status: 'pendiente', by: personId } : null,
+      edited
     })
     if (!saved.ok) return saved
     const closed = await closeSubmission(column, studentId, now)
@@ -307,6 +359,117 @@ export function createGradebook(deps: CourseworkDeps) {
     return ok({ published: published.value.length })
   }
 
+  const courseColumn = (sectionId: string): ColumnDef => ({
+    kind: 'cursada',
+    refId: sectionId,
+    name: COURSE_GRADE_NAME,
+    date: '',
+    assessmentKind: null
+  })
+
+  /** Lo necesario para la nota de cursada de una comisión que dicta el docente: sus columnas, alumnos, notas y pesos. */
+  async function courseOf(personId: PersonId, sectionId: string) {
+    const teaching = await teachingSection(personId, sectionId)
+    if (!teaching.ok) return teaching
+    const [columns, students, grades, stored] = await Promise.all([
+      columnsOf(personId, teaching.value.section),
+      studies.sectionStudents(personId, sectionId),
+      store.gradesOfSection(sectionId),
+      store.weightsOfSection(sectionId)
+    ])
+    if (!columns.ok) return columns
+    if (!students.ok) return fail(readFailure(students.error))
+    if (!grades.ok) return grades
+    if (!stored.ok) return stored
+    const validIds = new Set(columns.value.defs.map((d) => columnId(d.kind, d.refId)))
+    const weights = weightsById(stored.value)
+    /** La nota de cursada de cada alumno con cuenta de HackAI. */
+    const cells = students.value.data.flatMap((s) =>
+      s.personId
+        ? [
+            {
+              studentId: s.personId,
+              stored: grades.value.find((g) => g.kind === 'cursada' && g.personId === s.personId),
+              cell: courseCellOf(
+                grades.value.filter((g) => g.personId === s.personId),
+                weights,
+                validIds
+              )
+            }
+          ]
+        : []
+    )
+    return ok({ defs: columns.value.defs, cells })
+  }
+
+  const setWeights: Coursework['setWeights'] = async (personId, sectionId, weights) => {
+    const teaching = await teachingSection(personId, sectionId)
+    if (!teaching.ok) return teaching
+    const columns = await columnsOf(personId, teaching.value.section)
+    if (!columns.ok) return columns
+    const checked = checkedWeights(sectionId, columns.value.defs, weights)
+    if (!checked.ok) return checked
+    for (const { key, weight } of checked.value) {
+      const saved = await store.saveWeight(key, weight)
+      if (!saved.ok) return saved
+    }
+    return ok(undefined)
+  }
+
+  /** Pisa la nota de cursada del alumno con una nota de 1 a 10. */
+  async function setCourseGrade(
+    personId: PersonId,
+    sectionId: string,
+    mine: CourseRow,
+    value: number
+  ): Promise<Result<unknown, 'nota-invalida' | 'falla-externa'>> {
+    if (!Number.isFinite(value) || value < MIN_GRADE || value > MAX_GRADE) return fail('nota-invalida')
+    const rounded = Math.round(value * 100) / 100
+    const published = mine.stored?.publishedAt != null
+    const checked = { value: rounded, absent: false, comment: '' }
+    return save(personId, courseColumn(sectionId), published, sectionId, mine.studentId, checked, true)
+  }
+
+  /** Vuelve la nota de cursada al cálculo. Si ya estaba publicada, la publica de nuevo con el valor calculado. */
+  async function resetCourseGrade(
+    personId: PersonId,
+    sectionId: string,
+    mine: CourseRow
+  ): Promise<Result<unknown, 'sin-nota-calculada' | 'falla-externa'>> {
+    if (!mine.stored?.edited) return ok(undefined)
+    const column = courseColumn(sectionId)
+    const blank = { value: null, absent: false, comment: '' }
+    if (mine.stored.publishedAt === null) return save(personId, column, false, sectionId, mine.studentId, blank)
+    if (mine.cell.calculated === null) return fail('sin-nota-calculada')
+    return save(personId, column, true, sectionId, mine.studentId, { ...blank, value: mine.cell.calculated })
+  }
+
+  const overrideCourseGrade: Coursework['overrideCourseGrade'] = async (personId, sectionId, studentId, value) => {
+    const course = await courseOf(personId, sectionId)
+    if (!course.ok) return course
+    const mine = course.value.cells.find((c) => c.studentId === studentId)
+    if (!mine) return fail('alumno-desconocido')
+    const saved =
+      value === null
+        ? await resetCourseGrade(personId, sectionId, mine)
+        : await setCourseGrade(personId, sectionId, mine, value)
+    return saved.ok ? ok(undefined) : saved
+  }
+
+  const publishCourseGrade: Coursework['publishCourseGrade'] = async (personId, sectionId) => {
+    const course = await courseOf(personId, sectionId)
+    if (!course.ok) return course
+    const graded = course.value.cells.filter((c) => c.cell.value !== null)
+    if (graded.length === 0) return fail('sin-notas')
+    const due = graded.filter((c) => needsPublishing(c.cell))
+    for (const { studentId, cell } of due) {
+      const checked = { value: cell.value, absent: false, comment: '' }
+      const saved = await save(personId, courseColumn(sectionId), true, sectionId, studentId, checked, cell.edited)
+      if (!saved.ok) return saved
+    }
+    return ok({ published: due.length })
+  }
+
   const retryPass: Coursework['retryPass'] = async () => {
     const pending = await store.pendingPasses()
     if (!pending.ok) return pending
@@ -335,7 +498,7 @@ export function createGradebook(deps: CourseworkDeps) {
       if (found.value)
         described.set(columnId('tarea', found.value.id), { name: found.value.name, date: found.value.dueAt })
     }
-    for (const g of grades.filter((g) => g.kind === 'evaluacion'))
+    for (const g of grades.filter((g) => g.kind !== 'tarea'))
       described.set(columnId(g.kind, g.refId), { name: g.columnName, date: null })
     return ok(described)
   }
@@ -377,5 +540,18 @@ export function createGradebook(deps: CourseworkDeps) {
     return ok(newOnes(published.value, clock.now().toISOString(), seenAt))
   }
 
-  return { gradebook, grade, previewPaste, applyPaste, publish, publishedFor, newGrades, retryPass, retryPassOf }
+  return {
+    gradebook,
+    grade,
+    previewPaste,
+    applyPaste,
+    publish,
+    setWeights,
+    overrideCourseGrade,
+    publishCourseGrade,
+    publishedFor,
+    newGrades,
+    retryPass,
+    retryPassOf
+  }
 }

@@ -1,8 +1,8 @@
 /* Seguimiento (coursework): las tareas de una materia y sus entregas. Interfaz y
    reglas en hackai/docs/ARQUITECTURA.md. Hoy el docente crea y edita tareas, ve
    quién entregó, califica y publica las notas; el alumno las ve y las entrega y
-   ve sus notas publicadas. Los pesos y la nota de cursada se suman en los
-   tickets siguientes.
+   ve sus notas publicadas, y el docente pone un peso a cada columna y publica
+   la nota de cursada.
 
    - Una tarea es de una o más comisiones vigentes de una materia, y la crea un
      docente que las dicta todas. La gestionan los docentes de esas comisiones.
@@ -54,6 +54,16 @@
      que se cambia en una columna publicada vuelve a pasar. Reintenta `retryPass`
      (la corrida periódica), en el orden en que se publicaron, y el docente desde
      Calificaciones.
+
+   - Pesos y nota de cursada: cada columna de la comisión puede tener un peso (de 0
+     a 100; sin peso no cuenta). La nota de cursada de cada alumno es el promedio
+     ponderado de sus columnas con nota y peso; no se guarda, se calcula al leer.
+     Las columnas sin nota del alumno, y los ausentes, no cuentan: el peso se
+     reparte entre las que sí tienen. El docente la puede pisar (`editada`) y volver
+     al cálculo. Publicarla (`publishCourseGrade`) guarda lo que ve el alumno y la
+     pasa al SIU con el mismo pase de las evaluaciones; si después cambia el
+     cálculo, el docente la vuelve a publicar. Pisar una nota ya publicada la
+     publica en el momento, como cambiar una nota de una columna publicada.
 
    Usa Cursada, el puerto de Archivos y el reloj. Cursada no lo llama. */
 import { createCourseworkModule } from '@/lib/core/coursework/module'
@@ -146,7 +156,9 @@ export type DatedTask = {
   past: boolean
 }
 
-export type ColumnKind = 'tarea' | 'evaluacion'
+/** Qué se califica: una tarea, una evaluación del SIU o la nota de cursada (una por alumno y comisión). La de
+    cursada no es una columna de Calificaciones: se calcula de las columnas. */
+export type ColumnKind = 'tarea' | 'evaluacion' | 'cursada'
 
 /** Cuántas notas de una columna pasaron al SIU, esperan pasar o el SIU no permite pasar. */
 export type PassCounts = { passed: number; pending: number; refused: number }
@@ -169,6 +181,8 @@ export type GradeColumn = {
   unpublished: number
   /** Cómo va el pase al SIU de sus notas publicadas; `null` en una tarea, que no existe en el SIU. */
   pass: PassCounts | null
+  /** El peso en la nota de cursada, de 0 a 100; `null` si todavía no tiene (y no cuenta). */
+  weight: number | null
 }
 
 /** Cómo va el pase de una nota al SIU: todavía no pasó, ya pasó o el SIU no lo permite. */
@@ -192,6 +206,31 @@ export type GradeCell = {
   pass: PassStatus | null
 }
 
+/** La nota de cursada de un alumno. */
+export type CourseGradeCell = {
+  /** El promedio ponderado de sus columnas con nota y peso; `null` si ninguna cuenta. */
+  calculated: number | null
+  /** La que vale: la que pisó el docente o, si no, la calculada. */
+  value: number | null
+  /** Si la pisó el docente. */
+  edited: boolean
+  /** La que ve el alumno; `null` si todavía no se publicó. */
+  published: number | null
+  /** Cómo va su pase al SIU; `null` si no se publicó. */
+  pass: PassStatus | null
+}
+
+/** La nota de cursada de la comisión: cuántos tienen, cuántos falta publicar y cómo va el pase al SIU. */
+export type CourseGradeSummary = {
+  /** La suma de los pesos de las columnas. */
+  weightTotal: number
+  /** Cuántos alumnos tienen nota de cursada (calculada o pisada). */
+  graded: number
+  /** De esos, a cuántos todavía no se les publicó la nota que vale ahora. */
+  unpublished: number
+  pass: PassCounts
+}
+
 export type GradebookStudent = {
   /** `null` si todavía no tiene cuenta en HackAI: no se le puede cargar nota. */
   personId: PersonId | null
@@ -201,6 +240,7 @@ export type GradebookStudent = {
   email: string
   /** Su nota en cada columna, por id de columna; sin entrada si no tiene. */
   cells: Record<string, GradeCell>
+  course: CourseGradeCell
 }
 
 export type Gradebook = {
@@ -211,6 +251,7 @@ export type Gradebook = {
   /** Por fecha. */
   columns: GradeColumn[]
   students: GradebookStudent[]
+  course: CourseGradeSummary
   /** Cuántas notas de la comisión esperan pasar al SIU. */
   pendingPass: number
   staleSince: string | null
@@ -335,6 +376,7 @@ export type PastePreview = { scale: GradeScale; rows: PasteRow[]; counts: PasteC
 export type PasteError = 'texto-vacio' | 'texto-demasiado-largo'
 
 export type GradeError = 'nota-invalida' | 'comentario-invalido'
+export type CourseGradeError = 'peso-invalido' | 'sin-nota-calculada'
 export type ColumnError = 'solo-docentes' | 'columna-desconocida'
 export type TaskTextError = 'nombre-invalido' | 'consigna-invalida' | 'fecha-invalida'
 export type TaskFileError = 'demasiado-grande' | 'archivo-vacio'
@@ -432,6 +474,30 @@ export type Coursework = {
     text: string,
     scale: GradeScale
   ): Promise<Result<{ saved: number }, AccessError | ColumnError | PasteError | 'sin-notas'>>
+  /** Pone el peso de cada columna que se pasa (de 0 a 100, o `null` para quitarlo); las que no se pasan quedan como
+      estaban. No cambia nada si alguna columna no es de la comisión o algún peso no sirve. */
+  setWeights(
+    personId: PersonId,
+    sectionId: string,
+    weights: { columnId: string; weight: number | null }[]
+  ): Promise<Result<void, AccessError | 'solo-docentes' | 'columna-desconocida' | 'peso-invalido'>>
+  /** Pisa la nota de cursada de un alumno (de 1 a 10) y queda marcada como editada, o con `null` vuelve al cálculo.
+      Si ya estaba publicada, el cambio se publica y pasa al SIU en el momento. */
+  overrideCourseGrade(
+    personId: PersonId,
+    sectionId: string,
+    studentId: PersonId,
+    value: number | null
+  ): Promise<
+    Result<void, AccessError | 'solo-docentes' | 'alumno-desconocido' | 'nota-invalida' | 'sin-nota-calculada'>
+  >
+  /** Publica la nota de cursada de los alumnos que tienen una y todavía no se les publicó la que vale ahora: la ven
+      en Notas y les llega a la campana, y pasa al SIU. Sin ninguna nota de cursada es `sin-notas`. Devuelve a cuántos
+      alumnos se les publicó. */
+  publishCourseGrade(
+    personId: PersonId,
+    sectionId: string
+  ): Promise<Result<{ published: number }, AccessError | 'solo-docentes' | 'sin-notas'>>
   /** Las notas publicadas del alumno, la más nueva primero. Nunca trae una de una columna sin publicar. */
   publishedFor(personId: PersonId): Promise<Result<PublishedGrade[], AccessError>>
   /** Las publicadas con número en los últimos 7 días y después de `seenAt` (cuando el alumno vio sus notas por última
@@ -488,7 +554,12 @@ export type StoredGrade = {
   publishedAt: string | null
   /** El pase al SIU: `null` si no se pasa (una tarea, o todavía un borrador). */
   pass: GradePass | null
+  /** Solo en la nota de cursada: si la pisó el docente en vez de salir del cálculo. */
+  edited: boolean
 }
+
+/** El peso de una columna en la nota de cursada de su comisión. */
+export type StoredWeight = ColumnKey & { weight: number }
 
 export type ColumnKey = Pick<StoredGrade, 'sectionId' | 'kind' | 'refId'>
 
@@ -511,6 +582,10 @@ export type CourseworkStore = {
   submissionByFile(fileId: string): Promise<Result<StoredSubmission | null, CourseworkStoreError>>
   /** Guarda la nota de la persona en la columna: la crea o, si ya había una, la reemplaza entera. */
   saveGrade(grade: Omit<StoredGrade, 'id'>): Promise<Result<StoredGrade, CourseworkStoreError>>
+  /** Pone el peso de la columna (de 0 a 100), o lo quita con `null`. */
+  saveWeight(column: ColumnKey, weight: number | null): Promise<Result<void, CourseworkStoreError>>
+  /** Los pesos que tienen las columnas de la comisión. */
+  weightsOfSection(sectionId: string): Promise<Result<StoredWeight[], CourseworkStoreError>>
   /** Todas las notas de la comisión, en el orden en que se cargaron por primera vez. */
   gradesOfSection(sectionId: string): Promise<Result<StoredGrade[], CourseworkStoreError>>
   /** Publica en `at` las notas de la columna que tienen nota o ausente y todavía no estaban publicadas, con ese pase
