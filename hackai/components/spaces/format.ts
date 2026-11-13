@@ -114,6 +114,8 @@ export type SpaceQuery = {
   vista?: 'directos'
   /** Lo buscado en el material. */
   buscar?: string
+  /** De dónde se llegó, para «Volver»: `novedades`, `hoy`, `materias` (lib/home.ts). */
+  desde?: string
 }
 
 /** Donde viven los espacios: `/materias/<id de la materia>`. */

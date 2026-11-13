@@ -21,6 +21,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
+import { backFor } from '@/lib/home'
 
 type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -67,7 +68,7 @@ export default async function TasksPage({ params, searchParams }: { params: Para
         subject={list.subject}
         role={list.role}
         sections={selected && !(teacher && several) ? [selected] : []}
-        backHref='/materias'
+        back={backFor(session.role, raw.desde)}
         toolbarBell
       />
       <main className={SUBJECT_MAIN}>

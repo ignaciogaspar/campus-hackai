@@ -67,7 +67,7 @@ function QuestionRow({ question: q, now }: { question: OpenQuestion; now: string
   const where = q.sectionName ? `${q.subjectName} · Comisión ${q.sectionName}` : q.subjectName
   return (
     <ListItem
-      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId })}
+      href={spaceHref(q.subjectId, { canal: q.channelId, hilo: q.messageId, desde: 'hoy' })}
       start={
         <Icon>
           <MessageCircleQuestion aria-hidden='true' className='size-5' strokeWidth={1.8} />
@@ -112,7 +112,7 @@ function UnreadRow({ item, now }: { item: UnreadItem; now: string }) {
   const ItemIcon = item.kind === 'directo' ? MessagesSquare : Megaphone
   return (
     <ListItem
-      href={spaceHref(item.subjectId, { canal: item.channelId })}
+      href={spaceHref(item.subjectId, { canal: item.channelId, desde: 'hoy' })}
       start={
         <Icon>
           <ItemIcon aria-hidden='true' className='size-5' strokeWidth={1.8} />
@@ -151,7 +151,7 @@ function UnreadList({ view }: { view: TeachingView }) {
 function SectionRow({ section: s }: { section: TaughtSection }) {
   return (
     <ListItem
-      href={spaceHref(s.subjectId)}
+      href={spaceHref(s.subjectId, { desde: 'hoy' })}
       className='items-center'
       start={
         <span

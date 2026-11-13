@@ -5,7 +5,8 @@
    una consulta en `?hilo=`, el filtro de Consultas en `?filtro=`, lo buscado
    en el material en `?buscar=` y el
    formulario de canal nuevo en `?nuevo=canal`: todo se navega con enlaces, sin
-   JavaScript. Escribirle a un docente por primera vez es un formulario.
+   JavaScript. De dónde se llegó va en `?desde=` (Novedades, Hoy, Mis materias):
+   ahí lleva «Volver» y, si falta, al inicio del rol (lib/home.ts). Escribirle a un docente por primera vez es un formulario.
 
    En el celular es una columna y el campo para escribir queda pegado abajo.
    En compu, tres columnas: canales, conversación y un panel de contexto.
@@ -62,6 +63,7 @@ import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { AccessError, Channel, ChannelView, Spaces, SpaceView } from '@/lib/core/spaces'
+import { type Back, backFor } from '@/lib/home'
 import type { Fail } from '@/lib/result'
 import { cn } from '@/lib/utils'
 
@@ -126,7 +128,8 @@ function readQuery(raw: Record<string, string | string[] | undefined>): SpaceQue
     filtro: singleParam(raw.filtro),
     nuevo: singleParam(raw.nuevo) === 'canal' ? 'canal' : undefined,
     vista: singleParam(raw.vista) === 'directos' ? 'directos' : undefined,
-    buscar: singleParam(raw.buscar)?.trim() || undefined
+    buscar: singleParam(raw.buscar)?.trim() || undefined,
+    desde: singleParam(raw.desde)
   }
 }
 
@@ -154,10 +157,10 @@ function RetryLink({ href }: { href: string }) {
   )
 }
 
-function SpaceError({ error, retryHref }: { error: AccessError; retryHref: string }) {
+function SpaceError({ error, retryHref, back }: { error: AccessError; retryHref: string; back: Back }) {
   return (
     <>
-      <PageHeader title='Espacio de la materia' backHref='/materias' hideBackOnDesktop art='general' />
+      <PageHeader title='Espacio de la materia' back={back} hideBackOnDesktop art='general' />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-6 lg:pt-8'>
         <ErrorNotice>
           <p>{OPEN_ERRORS[error]}</p>
@@ -431,8 +434,10 @@ export default async function SpacePage({ params, searchParams }: { params: Para
   const notice = singleParam(raw.discord)
   const comision = singleParam(raw.comision)
 
+  const back = backFor(session.role, query.desde)
+
   const opened = await openSpace(session.personId, subjectId)
-  if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} />
+  if (!opened.ok) return <SpaceError error={opened.error} retryHref={spaceHref(subjectId, query)} back={back} />
   const view = opened.value
   const pane = await paneFor(session.personId, view, query)
   const discord = await discordFor(session.personId, subjectId, view, pane, isDiscordNotice(notice) ? notice : null)
@@ -453,7 +458,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           .join(' · ')}
         icon={<SubjectIcon name={view.space.name} size='lg' tone='glass' className='max-sm:hidden' />}
         art={subjectTheme(view.space.name).art}
-        backHref='/materias'
+        back={back}
         hideBackOnDesktop
         desktopBell={false}
       >

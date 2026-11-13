@@ -87,7 +87,7 @@ function SubjectCard({
         <div className='min-w-0 flex-1'>
           <h3 className='line-clamp-2 text-[0.9375rem] leading-snug font-bold text-ink lg:text-base'>
             <Link
-              href={spaceHref(subjectId)}
+              href={spaceHref(subjectId, { desde: 'materias' })}
               className='stretched text-ink outline-none transition-colors group-hover:text-blue after:absolute after:inset-0 after:rounded-2xl after:content-[""]'
             >
               <LinkPending overlay>{name}</LinkPending>

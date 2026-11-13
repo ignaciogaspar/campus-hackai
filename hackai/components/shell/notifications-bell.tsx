@@ -1,23 +1,23 @@
 import { Bell } from 'lucide-react'
-import Link from 'next/link'
 import { newsTotal } from '@/components/news/format'
+import { NewsLink } from '@/components/shell/news-link'
 import { UnreadCount } from '@/components/ui/unread-count'
 import { getSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { newGradesFor } from '@/lib/new-grades'
 import { cn } from '@/lib/utils'
 
-/* Campana del encabezado: lleva a Novedades, con lo que hay sin leer de todas
-   las materias. Con algo sin leer se pinta blanca, para que se vea sobre el
-   navy; en compu dice «Novedades» y el número va adentro. Con `tone='light'`
+/* Campana del encabezado: lleva a Novedades (y «Volver» trae de vuelta a la
+   pantalla de la que salió), con lo que hay sin leer de todas las materias.
+   Con algo sin leer se pinta blanca, para que se vea sobre el navy; en compu
+   dice «Novedades» y el número va adentro. Con `tone='light'`
    va sobre el fondo claro, como en la barra de la materia del docente. */
 export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; tone?: 'navy' | 'light' }) {
   const pending = unread > 0
   const light = tone === 'light'
   return (
-    <Link
-      href='/novedades'
-      aria-label={pending ? `Novedades, ${unread} sin leer` : 'Novedades'}
+    <NewsLink
+      label={pending ? `Novedades, ${unread} sin leer` : 'Novedades'}
       className={cn(
         'relative inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2.5 text-sm font-bold ring-1 ring-inset transition-colors focus-ring lg:px-4',
         light
@@ -38,7 +38,7 @@ export function NotificationsBell({ unread, tone = 'navy' }: { unread: number; t
           light ? 'ring-card' : 'ring-navy'
         )}
       />
-    </Link>
+    </NewsLink>
   )
 }
 

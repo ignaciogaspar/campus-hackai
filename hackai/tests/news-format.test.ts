@@ -1,7 +1,7 @@
 /* Cómo se muestran las novedades sin leer que da Espacios: por materia y canal, con a dónde lleva cada una. */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { newsBySubject, newsTotal, unreadBySubject, unreadTotal } from '@/components/news/format'
+import { newsBySubject, newsHref, newsTotal, unreadBySubject, unreadTotal } from '@/components/news/format'
 import type { UnreadItem } from '@/lib/core/spaces'
 
 const ledesma = { personId: 'p-mledesma', name: 'Mariana Ledesma', role: 'profesor' as const }
@@ -68,7 +68,7 @@ test('un mensaje directo dice de quién es, y un canal que creó el docente va c
   )
 })
 
-test('cada novedad lleva a su canal, o al hilo si todo lo sin leer es de uno', () => {
+test('cada novedad lleva a su canal, o al hilo si todo lo sin leer es de uno, y Volver trae a Novedades', () => {
   const [group] = newsBySubject([
     item({ channelId: 'ch-consultas', kind: 'consultas', thread: 'm-7' }),
     item({ channelId: 'ch-avisos', kind: 'avisos' })
@@ -76,8 +76,15 @@ test('cada novedad lleva a su canal, o al hilo si todo lo sin leer es de uno', (
 
   assert.deepEqual(
     group.rows.map((r) => r.href),
-    ['/materias/am1?canal=ch-consultas&hilo=m-7', '/materias/am1?canal=ch-avisos']
+    ['/materias/am1?canal=ch-consultas&hilo=m-7&desde=novedades', '/materias/am1?canal=ch-avisos&desde=novedades']
   )
+})
+
+test('la campana lleva a Novedades con la pantalla de la que sale, para volver ahí', () => {
+  assert.equal(newsHref('/calendario'), '/novedades?desde=calendario')
+  assert.equal(newsHref('/materias/am1'), '/novedades?desde=materias%2Fam1')
+  assert.equal(newsHref('/novedades'), '/novedades')
+  assert.equal(newsHref('/'), '/novedades')
 })
 
 test('la campana suma todo lo sin leer, y Mis materias lo de cada materia', () => {

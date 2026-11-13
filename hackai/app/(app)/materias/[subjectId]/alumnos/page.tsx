@@ -31,6 +31,7 @@ import {
   type Studies,
   type StudiesReadError
 } from '@/lib/core/studies'
+import { type Back, backFor } from '@/lib/home'
 import { saveZoomLinkAction } from './zoom-actions'
 
 export const metadata: Metadata = { title: 'Alumnos · Campus HackAI' }
@@ -59,10 +60,10 @@ function StudentRow({ student }: { student: SectionStudent }) {
   )
 }
 
-function NoSection({ message }: { message: string }) {
+function NoSection({ message, back }: { message: string; back: Back }) {
   return (
     <>
-      <PageHeader title='Alumnos' backHref='/materias' hideBackOnDesktop art='general' />
+      <PageHeader title='Alumnos' back={back} hideBackOnDesktop art='general' />
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         <ErrorNotice>
           <p>{message}</p>
@@ -191,8 +192,9 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
   const taught = mine.ok ? teachingSections(mine.value.data, subjectId) : []
   const section = chooseSection(taught, requested)
 
+  const back = backFor(session.role, raw.desde)
   if (!mine.ok || !section)
-    return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} />
+    return <NoSection message={mine.ok ? 'No dictás esta materia en este período.' : ERRORS[mine.error]} back={back} />
 
   const [students, classes, history, subjects] = await Promise.all([
     system().studies.sectionStudents(session.personId, section.sectionId),
@@ -211,7 +213,7 @@ export default async function AlumnosPage({ params, searchParams }: { params: Pa
         subtitle={[section.subjectCode, section.termName].join(' · ')}
         icon={<SubjectIcon name={section.subjectName} size='lg' tone='glass' className='max-sm:hidden' />}
         art={subjectTheme(section.subjectName).art}
-        backHref='/materias'
+        back={back}
         hideBackOnDesktop
         desktopBell={false}
       >

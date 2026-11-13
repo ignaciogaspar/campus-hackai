@@ -5,7 +5,8 @@
    otros canales), con cuántos hay de cada uno, en `?tipo=`. Al alumno, antes
    que todo y sin filtrar, las notas nuevas (components/news/grade-news.tsx).
    Sirve al alumno y al docente. En compu, una columna de lectura centrada. Se
-   llega desde la campana o desde la barra lateral.
+   llega desde la campana o desde la barra lateral. «Volver» lleva a la
+   pantalla de la que se llegó (`?desde=`, lib/home.ts) o al inicio del rol.
 
    Sin reglas de negocio: qué no leíste, de quién es un directo y si todo es de
    un mismo hilo lo dice Espacios; qué nota es nueva, Cursada. */
@@ -19,6 +20,7 @@ import { ErrorNotice } from '@/components/ui/states'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { Spaces } from '@/lib/core/spaces'
+import { backFor } from '@/lib/home'
 import { newGradesFor } from '@/lib/new-grades'
 import type { ErrorOf } from '@/lib/result'
 
@@ -32,9 +34,17 @@ const ERRORS: Record<UnreadError, string> = {
   'falla-externa': 'No pudimos traer tus novedades porque el SIU no responde. Probá de nuevo en un rato.'
 }
 
-export default async function NovedadesPage() {
+export default async function NovedadesPage({
+  searchParams
+}: {
+  searchParams: Promise<{ desde?: string | string[] }>
+}) {
   const session = await requireSession()
-  const [read, grades] = await Promise.all([system().spaces.unreadFor(session.personId), newGradesFor(session)])
+  const [read, grades, { desde }] = await Promise.all([
+    system().spaces.unreadFor(session.personId),
+    newGradesFor(session),
+    searchParams
+  ])
   const total = newsTotal(read.ok ? read.value : [], grades.length)
 
   return (
@@ -43,7 +53,7 @@ export default async function NovedadesPage() {
         title='Novedades'
         subtitle={total > 0 ? `${total} sin leer de todas tus materias` : 'De todas tus materias'}
         art='novedades'
-        backHref='/materias'
+        back={backFor(session.role, desde)}
         hideBackOnDesktop
         unread={read.ok ? total : undefined}
         desktopBell={session.role === 'profesor'}
