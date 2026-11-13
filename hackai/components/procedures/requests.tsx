@@ -7,7 +7,7 @@ import { CircleCheck, FilePlus2 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { StatusPill, type StatusTone } from '@/components/ui/status-pill'
 
 type RequestStatus = 'entregada' | 'en-tramite' | 'recibida' | 'rechazada'
@@ -73,11 +73,6 @@ function NewRequest({ onCreate }: { onCreate: (request: PendingRequest) => void 
                 <b>Recibimos tu solicitud.</b> {created.type}, n.º {created.id}. Te avisamos cuando cambie de estado.
               </span>
             </p>
-            <SheetClose asChild>
-              <Button variant='outline' size='lg' className='min-h-11 self-start'>
-                Listo
-              </Button>
-            </SheetClose>
           </div>
         ) : (
           <form onSubmit={submit} className='flex flex-col gap-4'>
