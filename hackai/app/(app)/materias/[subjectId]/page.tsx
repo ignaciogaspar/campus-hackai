@@ -15,7 +15,9 @@
    barra lateral baja sus no leídos (UnreadRefresh, en el layout).
 
    Para el docente, arriba de todo, la barra de pestañas de la materia (Espacio,
-   Alumnos) que conserva `?comision=`.
+   Alumnos) y, si dicta más de una comisión, el selector. La comisión elegida
+   va en `?comision=` y la llevan las otras pestañas; el espacio muestra los
+   canales de todas sus comisiones igual que antes.
 
    Sin reglas de negocio: qué canales ve cada uno, qué puede hacer y qué no
    leyó lo decide Espacios. Abrir el canal lo marca leído.
@@ -53,7 +55,9 @@ import {
 import { MaterialPanel } from '@/components/spaces/material-panel'
 import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
+import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
+import { chooseSection, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
@@ -403,6 +407,25 @@ function CenterPane(props: Parameters<typeof CenterContent>[0]) {
   )
 }
 
+/** Pestañas de la materia y selector de comisión del docente. Solo vale una comisión vigente suya. */
+function TeacherNav({ subjectId, view, requested }: { subjectId: string; view: SpaceView; requested?: string }) {
+  const taught = view.viewer.sections.filter((s) => s.current)
+  const section = chooseSection(taught, requested)
+  const comision = taught.length > 1 ? section?.sectionId : undefined
+  return (
+    <>
+      <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} />
+      {section && (
+        <SectionPicker
+          sections={taught}
+          selectedId={section.sectionId}
+          hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+        />
+      )}
+    </>
+  )
+}
+
 export default async function SpacePage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const session = await requireSession()
   const { subjectId } = await params
@@ -450,7 +473,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
           </StaleNotice>
         )}
 
-        {view.viewer.role === 'profesor' && <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} />}
+        {view.viewer.role === 'profesor' && <TeacherNav subjectId={subjectId} view={view} requested={comision} />}
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>
           <ChannelTabs

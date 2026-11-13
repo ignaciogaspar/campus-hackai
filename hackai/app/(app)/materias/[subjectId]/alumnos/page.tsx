@@ -43,7 +43,7 @@ function StudentRow({ student }: { student: SectionStudent }) {
       meta={
         <a
           href={`mailto:${student.email}`}
-          className='-my-1 inline-flex min-h-8 items-center break-all text-blue underline-offset-2 hover:underline focus-ring'
+          className='inline-flex min-h-11 items-center break-all text-blue underline-offset-2 hover:underline focus-ring'
         >
           {student.email}
         </a>
@@ -59,7 +59,7 @@ function NoSection({ message }: { message: string }) {
       <main className='flex w-full flex-col gap-4 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'>
         <ErrorNotice>
           <p>{message}</p>
-          <Link href='/materias' className='inline-flex min-h-10 items-center font-bold underline'>
+          <Link href='/materias' className='inline-flex min-h-11 items-center font-bold underline'>
             Ir a Mis materias
           </Link>
         </ErrorNotice>

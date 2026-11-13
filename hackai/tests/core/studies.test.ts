@@ -2563,6 +2563,32 @@ test('sectionStudents: no cuenta a quien dio de baja la cursada', async () => {
   )
 })
 
+test('sectionStudents: un inscripto sin cuenta en HackAI sale con personId null, y quien no es alumno no sale', async () => {
+  const data = structuredClone(syntheticData)
+  const tomas = data.siu.persons.find((p) => p.id === '30101')!
+  data.siu.persons.push({
+    ...tomas,
+    id: '39999',
+    surname: 'Zapata',
+    names: 'Ana',
+    email: 'ana.zapata@alumnos.example.edu.ar'
+  })
+  const enrollment = data.siu.courseEnrollments.find((e) => e.personId === '30101' && e.sectionId === 'sec-am1-fi-a')!
+  data.siu.courseEnrollments.push(
+    { ...enrollment, id: 'ic-sin-cuenta', transactionNumber: 'T-999998', personId: '39999' },
+    { ...enrollment, id: 'ic-docente', transactionNumber: 'T-999999', personId: '20101' }
+  )
+  const { studies } = build(data)
+  const result = await studies.sectionStudents('p-mledesma', 'sec-am1-fi-a')
+  assert.ok(result.ok)
+  assert.deepEqual(
+    result.value.data.map((s) => s.personId),
+    ['p-taguirre', 'p-lbenitez', 'p-jescobar', null]
+  )
+  assert.equal(result.value.data[3].legajo, '39999')
+  assert.ok(!result.value.data.some((s) => s.legajo === '20101'))
+})
+
 test('sectionStudents: con el SIU caído devuelve lo último leído, desactualizado; sin lectura previa, falla', async () => {
   const { studies, siuState } = build()
   siuState.down = true

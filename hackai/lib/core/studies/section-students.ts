@@ -46,12 +46,29 @@ export function createSectionStudents({ people, siu }: { people: People; siu: Si
     const enrollments = await siu.sectionEnrollments(sectionId)
     if (!enrollments.ok) return enrollments.error === 'falla-externa' ? fail('falla-externa') : fail('sin-acceso')
     const ids = [...new Set(enrollments.value.map((e) => e.personId))]
-    const students = all(await Promise.all(ids.map(studentOf)))
+    const students = await inBatches(ids, studentOf)
     if (!students.ok) return students
     return ok(
       students.value.filter((s): s is SectionStudent => s !== null).sort((a, b) => a.name.localeCompare(b.name, 'es'))
     )
   }
+}
+
+/** Cuántos alumnos se leen a la vez: cada uno son dos lecturas, y una comisión grande no tiene que salir en 200 juntas. */
+const BATCH_SIZE = 20
+
+/** Lee de a lotes y corta en el primer lote que falla: una lista a medias no le sirve al docente. */
+async function inBatches<T, R, E extends string>(
+  items: T[],
+  read: (item: T) => Promise<Result<R, E>>
+): Promise<Result<R[], E>> {
+  const out: R[] = []
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = all(await Promise.all(items.slice(i, i + BATCH_SIZE).map(read)))
+    if (!batch.ok) return batch
+    out.push(...batch.value)
+  }
+  return ok(out)
 }
 
 function toStudent(person: SiuPerson, owner: PersonId | null): SectionStudent | null {
