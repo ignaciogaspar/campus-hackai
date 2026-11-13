@@ -277,7 +277,13 @@ export function PlanningCalendar({
     initialFilters(classes, defaultSchool && schools.includes(defaultSchool) ? defaultSchool : '', focus)
   )
   const mineSet = new Set(mine.map(plainName))
-  const set = (patch: Partial<PlanningFilters>) => setFilters((f) => ({ ...f, ...patch }))
+  // Abierto desde el aviso de un cambio: van solo las aulas de esa materia, así su clase queda a la vista. Al tocar
+  // cualquier filtro vuelve a lo de siempre: todas las aulas del lugar, para comparar las libres.
+  const [focused, setFocused] = useState(focus !== undefined)
+  const set = (patch: Partial<PlanningFilters>) => {
+    setFocused(false)
+    setFilters((f) => ({ ...f, ...patch }))
+  }
   /** Cambia un lugar y vuelve a elegir los de abajo. */
   const place = (fixed: Partial<Place>) => set({ ...firstPlace(classes, fixed), subject: '' })
 
@@ -286,9 +292,9 @@ export function PlanningCalendar({
   const ofCampus = within({ school: filters.school, campus: filters.campus })
   const ofBuilding = within({ school: filters.school, campus: filters.campus, building: filters.building })
   const wings = optionsOf(ofBuilding, (c) => c.wing)
-  // Las aulas no dependen del día: las columnas quedan fijas al cambiar de día. Con una materia elegida van solo las
-  // aulas que usa esa materia, así su clase queda a la vista sin desplazarse.
-  const rooms = roomColumns(within({ ...filters, onlyMine: false }))
+  // Las aulas no dependen del día ni de la materia elegida: las columnas quedan fijas al cambiar de día o de materia,
+  // salvo al abrir desde un aviso.
+  const rooms = roomColumns(within({ ...filters, subject: focused ? filters.subject : '', onlyMine: false }))
   const filtered = classes.filter((c) => matches(c, filters, mineSet))
   const ofDay = filtered.filter((c) => c.day === day)
   const subjects = optionsOf(

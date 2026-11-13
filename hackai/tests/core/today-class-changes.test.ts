@@ -100,3 +100,12 @@ test('classChanges sin Planning, o con el SIU caído, vuelve vacío; a una perso
   siuState.down = false
   assert.deepEqual(await today.classChanges('p-fantasma'), { ok: false, error: 'persona-desconocida' })
 })
+
+test('classChanges avisa al docente los cambios de las comisiones que dicta, y no los de otras', async () => {
+  const { today } = build()
+  const teacher = await today.classChanges('p-mledesma')
+  assert.ok(teacher.ok)
+  assert.deepEqual(summary(teacher.value), [['2026-11-11', 'Análisis Matemático I', 'A', 'Aula A10', 'cambio']])
+  const other = await today.classChanges('p-cbustos')
+  assert.deepEqual(other, { ok: true, value: [] }, 'dicta en la FCE: el cambio de AM1 A de la FI no es suyo')
+})
