@@ -57,13 +57,13 @@ import type { MaterialSearchResult } from '@/components/spaces/material-search'
 import { NewChannelForm } from '@/components/spaces/new-channel-form'
 import { SubjectIcon, subjectTheme } from '@/components/subjects/subject-icon'
 import { chooseSection, SUBJECT_TABS, subjectTabHref } from '@/components/subjects/subject-nav'
-import { SubjectTabs } from '@/components/subjects/subject-tabs'
-import { SubjectToolbar } from '@/components/subjects/subject-toolbar'
+import { SUBJECT_WIDTH, SubjectToolbar } from '@/components/subjects/subject-toolbar'
 import { ErrorNotice, StaleNotice } from '@/components/ui/states'
 import { getSession, requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import type { AccessError, Channel, ChannelView, Spaces, SpaceView } from '@/lib/core/spaces'
 import type { Fail } from '@/lib/result'
+import { cn } from '@/lib/utils'
 
 type Params = Promise<{ subjectId: string }>
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -462,7 +462,7 @@ export default async function SpacePage({ params, searchParams }: { params: Para
 
       <main
         data-just-read={hadUnread ? '' : undefined}
-        className='flex w-full flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8'
+        className={cn(SUBJECT_WIDTH, 'flex flex-col gap-4 px-4 pt-5 pb-24 lg:px-8 lg:pt-8 lg:pb-8')}
       >
         {view.staleSince && (
           <StaleNotice>
@@ -474,7 +474,14 @@ export default async function SpacePage({ params, searchParams }: { params: Para
         {view.viewer.role === 'profesor' ? (
           <TeacherNav subjectId={subjectId} view={view} requested={comision} />
         ) : (
-          <SubjectTabs subjectId={subjectId} current='espacio' comision={comision} role={view.viewer.role} />
+          <SubjectToolbar
+            subjectId={subjectId}
+            current='espacio'
+            viewer={view.viewer.role}
+            sections={[]}
+            selectedId={comision ?? ''}
+            hrefFor={(sectionId) => subjectTabHref(subjectId, SUBJECT_TABS[0], sectionId)}
+          />
         )}
 
         <div className='grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-7 2xl:grid-cols-[16rem_minmax(0,1fr)_21rem]'>

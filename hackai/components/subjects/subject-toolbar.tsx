@@ -9,9 +9,12 @@ import { SectionPicker } from '@/components/subjects/section-picker'
 import { SubjectTabs } from '@/components/subjects/subject-tabs'
 import type { Role } from '@/lib/core/people'
 
-/** El cuerpo de las pantallas de la materia del docente: centrado y con el mismo ancho en todas las pestañas, para
-    que la barra no salte al cambiar de una a otra. */
-export const SUBJECT_MAIN = 'mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8'
+/** El ancho de todas las pantallas de la materia, Espacio incluido: centrado y el mismo en todas las pestañas, para
+    que nada salte al cambiar de una a otra. */
+export const SUBJECT_WIDTH = 'mx-auto w-full max-w-7xl'
+
+/** El cuerpo de las pantallas de la materia que no son el Espacio. */
+export const SUBJECT_MAIN = `${SUBJECT_WIDTH} flex flex-col gap-5 px-4 pt-5 pb-16 lg:px-8 lg:pt-8`
 
 export function SubjectToolbar({
   subjectId,
@@ -31,9 +34,14 @@ export function SubjectToolbar({
 }) {
   const teacher = viewer === 'profesor'
   const several = teacher && sections.length > 1
+  // En la compu, tres columnas: el selector a la izquierda, las pestañas en el centro y la campana a la derecha. En el
+  // celular, las pestañas primero y el selector debajo.
   return (
-    <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6'>
-      <div className='min-w-0 lg:w-[30rem] lg:flex-none'>
+    <div className='flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6'>
+      <div className='min-w-0 lg:justify-self-start'>
+        {several && <SectionPicker sections={sections} selectedId={selectedId} hrefFor={hrefFor} />}
+      </div>
+      <div className='min-w-0 max-lg:order-first lg:w-[30rem]'>
         <SubjectTabs
           subjectId={subjectId}
           current={current}
@@ -41,18 +49,13 @@ export function SubjectToolbar({
           role={viewer}
         />
       </div>
-      {(several || teacher) && (
-        <div className='flex min-w-0 items-center gap-4'>
-          {several && <SectionPicker sections={sections} selectedId={selectedId} hrefFor={hrefFor} />}
-          {teacher && (
-            <div className='hidden flex-none lg:block'>
-              <Suspense fallback={<NotificationsBell unread={0} tone='light' />}>
-                <SessionBell tone='light' />
-              </Suspense>
-            </div>
-          )}
-        </div>
-      )}
+      <div className='hidden lg:block lg:justify-self-end'>
+        {teacher && (
+          <Suspense fallback={<NotificationsBell unread={0} tone='light' />}>
+            <SessionBell tone='light' />
+          </Suspense>
+        )}
+      </div>
     </div>
   )
 }
