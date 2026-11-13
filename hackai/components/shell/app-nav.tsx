@@ -3,6 +3,7 @@
 import {
   Bell,
   CalendarDays,
+  CalendarX,
   ClipboardList,
   Ellipsis,
   FileText,
@@ -48,6 +49,7 @@ const STUDENT: Section[] = [
   { href: '/calendario', label: 'Calendario', icon: CalendarDays, bottom: true },
   { href: '/inscripciones', label: 'Inscripciones', icon: ClipboardList, bottom: true },
   { href: '/notas', label: 'Notas', icon: NotebookPen, bottom: true },
+  { href: '/inasistencias', label: 'Inasistencias', icon: CalendarX, bottom: false },
   { href: '/novedades', label: 'Novedades', icon: Bell, bottom: false, desktopOnly: true }
 ]
 

@@ -1,4 +1,4 @@
-/* El texto de las inasistencias de una materia, para su tarjeta. Solo arma
+/* El texto de las inasistencias de una materia, para su fila. Solo arma
    el texto: cuántas quedan y cuándo avisar lo decide Cursada. */
 import type { MyAbsences } from '@/lib/core/studies'
 

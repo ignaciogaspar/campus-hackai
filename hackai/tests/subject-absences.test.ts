@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { absencesLine } from '@/components/subjects/absences'
+import { absencesLine } from '@/components/absences/line'
 
 test('las faltas dicen cuántas lleva, del máximo si lo hay, las justificadas y cuántas le quedan', () => {
   assert.equal(

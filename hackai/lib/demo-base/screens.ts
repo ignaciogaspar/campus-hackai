@@ -46,6 +46,7 @@ export const DEMO_SCREENS: DemoScreens[] = [
       '/inscripciones?materia=fi1',
       '/inscripciones?tab=examenes&materia=am1',
       '/notas',
+      '/inasistencias',
       '/estado',
       '/tramites'
     ]
