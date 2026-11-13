@@ -8,6 +8,7 @@ Repo del equipo para HackAI 2026 (Universidad Austral): rediseñar SIU Guaraní 
 - `docs/product/hackathon.md`: reglas y criterios de evaluación. `problema.md`: problemas y línea base de clicks. `alcance.md`: qué construimos; donde difiera de otro doc, manda el alcance. `preguntas-abiertas.md`: lo no decidido; una pregunta «abierta» no es una decisión.
 - `docs/adr/`: decisiones difíciles de revertir. Leer las que toquen el área antes de proponer cambios.
 - `docs/research/`: notas con fuentes, incluido el relevamiento de SIU y Campus.
+- `docs/entrevistas/`: entrevistas con transcripciones: docentes y Admisiones (`docentes-y-admisiones.md`) y gestión académica en la Dirección de Estudios (`Gestión Académica Y Docente`). También el export del Google Doc del equipo (`hackai.md`). Es material de origen: lo decidido está en `docs/product/`.
 - `docs/campus-upstream.md`: de dónde salió `campus/`, cómo se actualiza y sus problemas conocidos.
 - `docs/agents/workflows.md`: índice de los workflows guardados y cuándo usar cada uno.
 - `docs/agents/review.md`: cómo se revisa un PR. Leerla antes de revisar uno, y corregirla cuando una review marca de más o se le escapa algo.
