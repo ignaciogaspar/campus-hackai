@@ -494,7 +494,10 @@ function Filters({
             { value: '', label: 'Todas las materias' },
             ...subjects.map((s) => ({ value: s.code, label: s.name }))
           ]}
-          className={cn('h-9 rounded-full pl-4 text-[0.8125rem] font-medium', subject && 'border-blue/40 text-blue')}
+          className={cn(
+            'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-9',
+            subject && 'border-blue/40 text-blue'
+          )}
         />
       </div>
     </div>

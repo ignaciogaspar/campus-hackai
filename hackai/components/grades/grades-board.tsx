@@ -34,7 +34,7 @@ const STATE_LABELS: Record<GradeFilters['estado'], string> = {
 }
 
 /* Los filtros, como píldoras del alto del riel de estado. */
-const FILTER = 'rounded-full pl-4 text-[0.8125rem] font-medium sm:w-48'
+const FILTER = 'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-10 sm:w-48'
 
 /* Un filtro: la opción «todos» lleva el nombre del filtro, así los tres entran en una fila sin etiquetas
    encima. El nombre completo queda para el lector de pantalla. */

@@ -10,36 +10,15 @@
    El tamaño, el radio y el texto del botón los pone quien lo usa en `className`. */
 import { Check, ChevronDown } from 'lucide-react'
 import { Select as Radix } from 'radix-ui'
+import { blocksOf, fromRadix, optionValue, type SelectOption, toRadix } from '@/components/ui/select-options'
 import { cn } from '@/lib/utils'
 
-export type SelectOption = {
-  value: string
-  label: string
-  disabled?: boolean
-  /** Las opciones seguidas con el mismo grupo van juntas, debajo de su nombre. */
-  group?: string
-}
-
-/* Radix no acepta una opción con valor vacío: la de «todas» viaja con este valor y afuera vuelve a ser ''. */
-const EMPTY = '__todas__'
-const inner = (value: string | undefined) => (value === '' ? EMPTY : value)
-const outer = (value: string) => (value === EMPTY ? '' : value)
-
-/** Las opciones en bloques: las que no tienen grupo van sueltas; las de un grupo, juntas. */
-function blocksOf(options: SelectOption[]): { group?: string; items: SelectOption[] }[] {
-  const blocks: { group?: string; items: SelectOption[] }[] = []
-  for (const option of options) {
-    const last = blocks.at(-1)
-    if (last && last.group === option.group) last.items.push(option)
-    else blocks.push({ group: option.group, items: [option] })
-  }
-  return blocks
-}
+export type { SelectOption }
 
 function Item({ option }: { option: SelectOption }) {
   return (
     <Radix.Item
-      value={option.value === '' ? EMPTY : option.value}
+      value={optionValue(option.value)}
       disabled={option.disabled}
       className='relative flex min-h-11 cursor-pointer items-center py-2.5 pr-11 pl-5 text-[0.9375rem] text-ink outline-none transition-colors duration-100 select-none data-[disabled]:cursor-default data-[disabled]:text-gray-light data-[highlighted]:bg-ice data-[state=checked]:bg-accent data-[state=checked]:font-semibold data-[state=checked]:text-blue'
     >
@@ -81,14 +60,12 @@ export function Select({
   'aria-label'?: string
   'aria-describedby'?: string
 }) {
-  const hasEmpty = options.some((o) => o.value === '')
-  // Sin una opción vacía, un valor vacío es «nada elegido»: se ve el placeholder.
-  const start = defaultValue === '' && !hasEmpty ? undefined : inner(defaultValue)
   return (
     <Radix.Root
-      value={value === undefined ? undefined : inner(value)}
-      defaultValue={start}
-      onValueChange={(next) => onValueChange?.(outer(next))}
+      value={toRadix(value, options)}
+      // Sin una opción vacía, un valor vacío es «nada elegido»: se ve el placeholder, como con `value`.
+      defaultValue={toRadix(defaultValue, options) || undefined}
+      onValueChange={(next) => onValueChange?.(fromRadix(next))}
       name={name}
       required={required}
       disabled={disabled}
