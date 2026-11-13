@@ -215,6 +215,7 @@ export default async function InscripcionesPage({
   return (
     <>
       <PageHeader
+        desktopBell={false}
         title='Inscripciones'
         subtitle='Elegí la materia y la comisión: quedás inscripto en el SIU y en el aula del Campus Virtual a la vez.'
         art='inscripciones'

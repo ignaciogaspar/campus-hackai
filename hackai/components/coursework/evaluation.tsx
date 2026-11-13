@@ -1,13 +1,16 @@
 /* Cómo se evalúa la comisión, para el docente: las instancias de examen (las
    del SIU, a las que les puede corregir el nombre, el tipo y la fecha, y las que
    suma en HackAI), y si la materia se promociona. Cada instancia se edita en el
-   lugar, desplegándola: sin ventanas encima. */
-import { CalendarClock, ChevronDown, Plus, Trash2 } from 'lucide-react'
+   lugar, desplegándola: sin ventanas encima. Agregar va arriba de la lista y
+   borrar, en el panel de cada una, con confirmación. */
+import { CalendarClock, ChevronDown, Lock, Plus, Trash2 } from 'lucide-react'
 import { deleteExam, saveExam, savePromotion } from '@/app/actions/coursework'
 import { BOX, GHOST, HELP, INPUT, LABEL, PRIMARY } from '@/components/coursework/fields'
 import { dueTime, gradeInputValue, inputValueOf } from '@/components/coursework/format'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { Card } from '@/components/ui/card'
+import { OriginBadge } from '@/components/ui/origin-badge'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/states'
 import type { ExamInstance, ExamKind, Promotion } from '@/lib/core/coursework'
 import { cn } from '@/lib/utils'
@@ -26,10 +29,6 @@ const KIND_LABEL: Record<ExamInstance['kind'], string> = {
 }
 
 type Ids = { subjectId: string; sectionId: string }
-
-/** De dónde viene la instancia, en texto: del SIU (y si se le corrigió algo) o propia. */
-const sourceNote = (exam: ExamInstance) =>
-  exam.source === 'hackai' ? 'propia, queda en HackAI' : exam.edited ? 'del SIU, corregida en HackAI' : 'del SIU'
 
 /** Nombre, tipo y fecha: los mismos campos para sumar una instancia o corregir una. */
 function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string }) {
@@ -51,15 +50,12 @@ function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string 
       </label>
       <label className={LABEL}>
         Tipo
-        <span className={BOX}>
-          <select name='kind' defaultValue={kind} className={cn(INPUT, 'cursor-pointer')}>
-            {KINDS.map((k) => (
-              <option key={k.value} value={k.value}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-        </span>
+        <Select
+          name='kind'
+          defaultValue={kind}
+          options={KINDS}
+          className='h-11 rounded-[10px] pl-3 text-[0.9375rem] font-normal'
+        />
       </label>
       <label className={LABEL}>
         Fecha y hora
@@ -81,20 +77,63 @@ function ExamFields({ exam, idPrefix }: { exam?: ExamInstance; idPrefix: string 
   )
 }
 
+/* Borrar una instancia, a la vista en su panel. Solo se borran las propias sin notas: las del SIU vienen de su
+   cronograma y una con notas perdería lo cargado. Cuando no se puede, dice por qué. Borrar pide confirmar. */
+function DeleteExam({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
+  if (!exam.canDelete) {
+    return (
+      <p className={cn('flex items-start gap-2 text-[0.8125rem]', HELP)}>
+        <Lock aria-hidden='true' className='mt-0.5 size-3.5 flex-none' strokeWidth={2} />
+        {exam.source === 'siu'
+          ? 'Viene del cronograma del SIU: se puede corregir, pero no borrar'
+          : `Para borrarla, primero sacá ${exam.graded === 1 ? 'su nota' : `sus ${exam.graded} notas`} en Calificaciones`}
+      </p>
+    )
+  }
+  return (
+    <details className='group/borrar'>
+      <summary
+        className={cn(
+          GHOST,
+          'inline-flex w-fit cursor-pointer list-none items-center gap-2 text-destructive hover:text-destructive focus-ring [&::-webkit-details-marker]:hidden'
+        )}
+      >
+        <Trash2 aria-hidden='true' className='size-4' strokeWidth={2} />
+        Borrar instancia
+      </summary>
+      <ActionForm
+        action={deleteExam}
+        className='mt-2 flex flex-col gap-3 rounded-xl border border-destructive/25 bg-card p-3'
+      >
+        <input type='hidden' name='subjectId' value={ids.subjectId} />
+        <input type='hidden' name='sectionId' value={ids.sectionId} />
+        <input type='hidden' name='columnId' value={exam.columnId} />
+        <p className='text-[0.875rem] text-ink'>¿Borrás «{exam.name}»? Se va también su columna de Calificaciones.</p>
+        <div>
+          <SubmitButton className={cn(PRIMARY, 'bg-destructive hover:bg-destructive/90')}>Sí, borrarla</SubmitButton>
+        </div>
+      </ActionForm>
+    </details>
+  )
+}
+
 function ExamRow({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
   const prefix = `examen-${exam.columnId.replace(/[^a-z0-9]/gi, '-')}`
   return (
     <li>
       <details className='group'>
-        <summary className='flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition-colors hover:bg-ink/[0.03] focus-ring-inset [&::-webkit-details-marker]:hidden'>
+        <summary className='flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition-colors hover:bg-ink/[0.03] focus-ring-inset [&::-webkit-details-marker]:hidden'>
           <span className='flex min-w-0 flex-1 flex-col gap-1'>
-            <span className='truncate text-[0.9375rem] font-semibold text-ink'>{exam.name}</span>
+            <span className='flex min-w-0 items-center gap-2'>
+              <span className='truncate text-[0.9375rem] font-semibold text-ink'>{exam.name}</span>
+              <OriginBadge origin={exam.source} className='flex-none' />
+            </span>
             <span className='text-xs text-muted-foreground'>
               {KIND_LABEL[exam.kind]} · <time dateTime={exam.date}>{dueTime(exam.date)}</time>
               {exam.graded > 0 && (
                 <span className='tabular-nums'> · {exam.graded === 1 ? '1 nota' : `${exam.graded} notas`}</span>
               )}
-              <span> · {sourceNote(exam)}</span>
+              {exam.edited && <span> · corregida en HackAI</span>}
             </span>
           </span>
           <ChevronDown
@@ -103,7 +142,7 @@ function ExamRow({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
             strokeWidth={2}
           />
         </summary>
-        <div className='flex flex-col gap-3 border-t border-border bg-ice/40 px-4 py-4'>
+        <div className='flex flex-col gap-4 border-t border-border bg-ice/40 px-4 py-4'>
           <ActionForm action={saveExam} className='flex flex-col gap-3'>
             <input type='hidden' name='subjectId' value={ids.subjectId} />
             <input type='hidden' name='sectionId' value={ids.sectionId} />
@@ -114,70 +153,74 @@ function ExamRow({ exam, ids }: { exam: ExamInstance; ids: Ids }) {
                 El cambio queda en HackAI: el SIU sigue con su cronograma, y las notas se le pasan igual
               </p>
             )}
-            <div className='flex flex-wrap gap-2'>
+            <div>
               <SubmitButton className={PRIMARY}>Guardar cambios</SubmitButton>
             </div>
           </ActionForm>
-          {exam.canDelete && (
-            <ActionForm action={deleteExam} className='flex flex-col gap-2'>
-              <input type='hidden' name='subjectId' value={ids.subjectId} />
-              <input type='hidden' name='sectionId' value={ids.sectionId} />
-              <input type='hidden' name='columnId' value={exam.columnId} />
-              <div>
-                <SubmitButton className={cn(GHOST, 'text-destructive hover:text-destructive')}>
-                  <Trash2 aria-hidden='true' className='size-4' strokeWidth={2} />
-                  Borrar instancia
-                </SubmitButton>
-              </div>
-            </ActionForm>
-          )}
+          <div className='border-t border-border pt-3'>
+            <DeleteExam exam={exam} ids={ids} />
+          </div>
         </div>
       </details>
     </li>
   )
 }
 
-/** Las instancias de examen de la comisión, por fecha. */
-export function ExamList({ exams, ids }: { exams: ExamInstance[]; ids: Ids }) {
-  if (exams.length === 0) {
-    return (
-      <EmptyState icon={CalendarClock} title='Todavía no hay instancias de examen'>
-        Sumá los parciales, recuperatorios o integradores de la comisión para cargarles la nota.
-      </EmptyState>
-    )
-  }
+/* Agregar una instancia propia: la primera fila de la lista, siempre a la vista. Queda en HackAI, con su columna
+   en Calificaciones. */
+function AddExam({ ids }: { ids: Ids }) {
   return (
-    <Card>
-      <ul aria-label='Instancias de examen' className='divide-y divide-border'>
-        {exams.map((exam) => (
-          <ExamRow key={exam.columnId} exam={exam} ids={ids} />
-        ))}
-      </ul>
-    </Card>
+    <details className='group/nueva border-b border-border'>
+      <summary className='flex cursor-pointer list-none items-center gap-2.5 px-4 py-3.5 text-[0.9375rem] font-bold text-blue transition-colors hover:bg-accent/50 focus-ring-inset [&::-webkit-details-marker]:hidden'>
+        <span className='grid size-7 place-items-center rounded-lg bg-accent'>
+          <Plus
+            aria-hidden='true'
+            className='size-4 transition-transform duration-200 group-open/nueva:rotate-45 motion-reduce:transition-none'
+            strokeWidth={2.2}
+          />
+        </span>
+        Agregar instancia
+        <span className='ml-auto text-[0.8125rem] font-medium text-muted-foreground'>
+          Parcial, recuperatorio o integrador
+        </span>
+      </summary>
+      <ActionForm
+        action={saveExam}
+        resetOnSuccess
+        className='flex flex-col gap-3 border-t border-border bg-ice/40 px-4 py-4'
+      >
+        <input type='hidden' name='subjectId' value={ids.subjectId} />
+        <input type='hidden' name='sectionId' value={ids.sectionId} />
+        <ExamFields idPrefix='examen-nuevo' />
+        <p className={cn('text-[0.8125rem]', HELP)}>
+          Una instancia que agregás acá no existe en el SIU: sus notas quedan en HackAI
+        </p>
+        <div>
+          <SubmitButton className={PRIMARY}>Agregar instancia</SubmitButton>
+        </div>
+      </ActionForm>
+    </details>
   )
 }
 
-/** Sumar una instancia propia: queda en HackAI, con su columna en Calificaciones. */
-export function NewExamForm({ ids }: { ids: Ids }) {
+/** Las instancias de examen de la comisión, por fecha, con «Agregar instancia» arriba de todo. */
+export function ExamList({ exams, ids }: { exams: ExamInstance[]; ids: Ids }) {
   return (
-    <Card className='p-0'>
-      <details className='group'>
-        <summary className='flex cursor-pointer list-none items-center gap-2 rounded-[22px] px-4 py-3 text-[0.9375rem] font-bold text-blue transition-colors hover:bg-ink/[0.03] focus-ring-inset [&::-webkit-details-marker]:hidden'>
-          <Plus aria-hidden='true' className='size-5' strokeWidth={2} />
-          Sumar una instancia de examen
-        </summary>
-        <ActionForm action={saveExam} resetOnSuccess className='flex flex-col gap-3 border-t border-border px-4 py-4'>
-          <input type='hidden' name='subjectId' value={ids.subjectId} />
-          <input type='hidden' name='sectionId' value={ids.sectionId} />
-          <ExamFields idPrefix='examen-nuevo' />
-          <p className={cn('text-[0.8125rem]', HELP)}>
-            Una instancia que sumás acá no existe en el SIU: sus notas quedan en HackAI
-          </p>
-          <div className='flex flex-wrap gap-2'>
-            <SubmitButton className={PRIMARY}>Sumar instancia</SubmitButton>
-          </div>
-        </ActionForm>
-      </details>
+    <Card className='overflow-hidden p-0'>
+      <AddExam ids={ids} />
+      {exams.length === 0 ? (
+        <div className='px-4 py-6'>
+          <EmptyState icon={CalendarClock} title='Todavía no hay instancias de examen'>
+            Agregá los parciales, recuperatorios o integradores de la comisión para cargarles la nota.
+          </EmptyState>
+        </div>
+      ) : (
+        <ul aria-label='Instancias de examen' className='divide-y divide-border'>
+          {exams.map((exam) => (
+            <ExamRow key={exam.columnId} exam={exam} ids={ids} />
+          ))}
+        </ul>
+      )}
     </Card>
   )
 }
@@ -186,13 +229,6 @@ export function NewExamForm({ ids }: { ids: Ids }) {
 export function PromotionForm({ promotion, ids }: { promotion: Promotion; ids: Ids }) {
   return (
     <Card className='flex flex-col gap-3 p-4'>
-      <div className='flex flex-col gap-1'>
-        <h2 className='text-base font-extrabold'>Promoción</h2>
-        <p className={cn('text-[0.8125rem]', HELP)}>
-          Si la materia se promociona, quien llega a la nota mínima de cursada la aprueba sin final y pasa al SIU como
-          promocionado.
-        </p>
-      </div>
       <ActionForm action={savePromotion} className='flex flex-col gap-3'>
         <input type='hidden' name='subjectId' value={ids.subjectId} />
         <input type='hidden' name='sectionId' value={ids.sectionId} />

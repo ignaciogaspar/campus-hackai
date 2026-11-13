@@ -83,6 +83,10 @@
   --input: var(--borde);
   --ring: var(--blue-light);
   --radius: 0.875rem;
+  /* La barra de vidrio de abajo del celular (components/shell/tab-bar.tsx): a qué
+     distancia del borde flota y cuánto lugar ocupa con esa distancia. */
+  --tabbar-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  --tabbar-space: calc(4rem + var(--tabbar-bottom));
 }
 
 @layer base {
@@ -217,6 +221,18 @@
     cursor: pointer;
   }
 }
+/* La barra de abajo del celular (components/shell/tab-bar.tsx): al llegar a una
+   sección, su ícono crece apenas y vuelve. Sin rotar ni sacudirse. */
+@keyframes tab-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.12);
+  }
+}
+
 /* La campana se mueve una vez cuando hay novedades sin leer (components/shell/notifications-bell.tsx). */
 @keyframes wiggle {
   0%,

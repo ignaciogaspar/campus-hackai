@@ -14,8 +14,9 @@ import { AppNav } from '@/components/shell/app-nav'
 import { SidebarContext } from '@/components/shell/sidebar-context'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
 
-/* Plegada, el ancho deja el ícono justo en el medio: 1 rem de la barra, 1 rem de la fila y el ícono de 1,125 rem. */
-const WIDTH = { abierta: '17rem', plegada: '5.125rem' }
+/* Plegada, el ancho deja el ícono justo en el medio: 0,75 rem de la barra, 0,75 rem de la fila y el ícono de
+   1,125 rem, a cada lado. Abierta, entra «Trámites y reportes» en una línea. */
+const WIDTH = { abierta: '13rem', plegada: '4.125rem' }
 
 /** Si la tecla se apretó escribiendo: ahí ⌘B no pliega la barra. */
 function typing(target: EventTarget | null): boolean {
@@ -58,7 +59,8 @@ export function SidebarFrame({
       <div style={width}>
         {/* El marco de vidrio, detrás de la barra y del panel. */}
         <div aria-hidden='true' className='hidden lg:fixed lg:inset-0 lg:block lg:bg-sidebar-glass' />
-        <div className='pb-24 lg:pb-0'>
+        {/* En el celular deja lugar para la barra de vidrio de abajo (tab-bar.tsx). */}
+        <div className='pb-[calc(var(--tabbar-space)+1rem)] lg:pb-0'>
           <div className='lg:fixed lg:top-2 lg:right-2 lg:bottom-2 lg:left-(--sidebar-w) lg:overflow-y-auto lg:overscroll-contain lg:rounded-[1.25rem] lg:bg-card lg:shadow-panel lg:[scrollbar-width:none] lg:transition-[left] lg:duration-300 lg:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'>
             {children}
           </div>

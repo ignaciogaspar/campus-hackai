@@ -67,6 +67,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
   return (
     <>
       <PageHeader
+        desktopBell={session.role === 'profesor'}
         title='Calendario'
         subtitle='Tus clases, parciales, finales y entregas en un solo lugar.'
         art='hoy'
@@ -127,21 +128,24 @@ async function CalendarContent({
         initialDay={initialDay}
         filters
         below={
-          <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
-            <p className='min-w-0 flex-1 basis-64 text-[0.8125rem] text-muted-foreground'>
-              Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.
-            </p>
+          <p className='text-[0.8125rem] text-muted-foreground'>
+            Las entregas vienen de Moodle y de HackAI: solo aparecen las que el docente cargó con fecha.
+          </p>
+        }
+        aside={
+          <div className='flex flex-col gap-3'>
+            {/* Entre el mes y las próximas fechas, a la vista sin bajar hasta el final de la semana. */}
             <a
               href='/calendario/exportar'
               download
-              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 flex-none')}
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'min-h-11 w-full')}
             >
               <CalendarPlus aria-hidden='true' data-icon='inline-start' />
               Agregar a mi calendario
             </a>
+            <NextDates items={result.value.upcoming} />
           </div>
         }
-        aside={<NextDates items={result.value.upcoming} />}
       />
     </>
   )

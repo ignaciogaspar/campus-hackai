@@ -1,9 +1,9 @@
-/* Las pantallas de adentro: piden sesión y llevan la navegación, con las
-   materias actuales y lo que no leíste en el espacio de cada una. También arma
+/* Las pantallas de adentro: piden sesión y llevan la navegación, con lo que no
+   leíste para Novedades. También arma
    lo que comparten todos los encabezados: quién entró, para el perfil. La
-   campana la pide cada pantalla. Si Personas, Cursada o Espacios fallan, la
-   navegación se dibuja igual, sin la facultad, sin la lista de materias o con
-   los no leídos en 0; cada pantalla muestra su propio error.
+   campana la pide cada pantalla. Si Personas o Espacios fallan, la navegación
+   se dibuja igual, sin la facultad o con los no leídos en 0; cada pantalla
+   muestra su propio error.
    Next.js no vuelve a ejecutar este layout al navegar entre pantallas hermanas:
    cada página de (app) tiene que pedir la sesión con requireSession() por su cuenta.
    Sí lo vuelve a ejecutar `router.refresh()`, que es como UnreadRefresh baja
@@ -11,14 +11,13 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { type ReactNode, Suspense } from 'react'
-import { newsTotal, unreadBySubject } from '@/components/news/format'
+import { newsTotal } from '@/components/news/format'
 import { activeProgram } from '@/components/session/person-text'
-import { type NavSubject, SidebarNews, SidebarSubjects } from '@/components/shell/app-nav'
+import { SidebarNews } from '@/components/shell/app-nav'
 import { AppShell } from '@/components/shell/app-shell'
 import { NavigationProgress } from '@/components/shell/navigation-progress'
 import { SIDEBAR_COOKIE } from '@/components/shell/sidebar-cookie'
 import { SiuLive } from '@/components/siu/siu-live'
-import { spaceHref } from '@/components/spaces/format'
 import { UnreadRefresh } from '@/components/spaces/unread-refresh'
 import { requireSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
@@ -42,11 +41,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppShell
       school={found?.school.name}
       role={session.role}
-      subjectLinks={
-        <Suspense fallback={<div aria-hidden='true' className='hidden lg:block lg:h-20' />}>
-          <NavSubjects personId={session.personId} />
-        </Suspense>
-      }
       newsLink={
         <Suspense fallback={<SidebarNews />}>
           <NavNews session={session} />
@@ -65,25 +59,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </Suspense>
     </AppShell>
   )
-}
-
-async function NavSubjects({ personId }: { personId: string }) {
-  const [subjects, unread] = await Promise.all([
-    system().studies.subjectsOf(personId),
-    system().spaces.unreadFor(personId)
-  ])
-  // Espacios da los no leídos por canal: la barra muestra la suma de cada materia.
-  const bySubject = unreadBySubject(unread.ok ? unread.value : [])
-
-  const nav = new Map<string, NavSubject>()
-  if (subjects.ok) {
-    for (const s of subjects.value.data.current) {
-      const count = bySubject.get(s.subjectId) ?? 0
-      nav.set(s.subjectId, { href: spaceHref(s.subjectId), code: s.code, name: s.name, unread: count })
-    }
-  }
-
-  return <SidebarSubjects subjects={[...nav.values()]} />
 }
 
 async function NavNews({ session }: { session: Session }) {

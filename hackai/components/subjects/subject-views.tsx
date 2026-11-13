@@ -42,10 +42,14 @@ function ViewTabs({ current, counts, student }: { current: View; counts: Record<
             window.history.pushState(null, '', href(view))
           }}
           aria-current={view === current ? 'page' : undefined}
-          className={cn(railItem({ size: 'sm' }), 'group/tab max-sm:gap-1 max-sm:px-2 max-sm:text-[0.75rem]')}
+          className={cn(
+            railItem({ size: 'sm' }),
+            'group/tab max-sm:flex-auto max-sm:gap-1.5 max-sm:px-3 max-sm:text-[0.75rem]'
+          )}
         >
           {label}
-          <span className='grid h-5 min-w-5 place-items-center rounded-full bg-ink/8 px-1.5 text-[0.6875rem] text-ink/70 tabular-nums group-aria-[current=page]/tab:bg-blue group-aria-[current=page]/tab:text-white'>
+          {/* En el celular el número va como texto, sin globo: así «Final pendiente» entra con aire a los costados. */}
+          <span className='grid h-5 min-w-5 place-items-center rounded-full bg-ink/8 px-1.5 text-[0.6875rem] text-ink/70 tabular-nums group-aria-[current=page]/tab:bg-blue group-aria-[current=page]/tab:text-white max-sm:h-auto max-sm:min-w-0 max-sm:bg-transparent max-sm:px-0 max-sm:text-[0.75rem] max-sm:text-muted-foreground max-sm:group-aria-[current=page]/tab:bg-transparent max-sm:group-aria-[current=page]/tab:text-blue'>
             {counts[view]}
           </span>
         </Link>

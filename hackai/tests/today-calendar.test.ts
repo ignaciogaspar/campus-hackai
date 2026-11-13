@@ -9,9 +9,11 @@ import {
   classesIn,
   clustersOf,
   eventsOf,
+  lanesOf,
   minutesOf,
   mondayOf,
   monthOf,
+  rangeOf,
   shiftMonth,
   weekOf,
   withClasses
@@ -173,6 +175,44 @@ test('lo que se pisa en un día va junto en un grupo que cubre todas sus horas',
     [
       [8 * 60, 10 * 60, ['clase', 'consulta']],
       [14 * 60, 15 * 60, ['tarde']]
+    ]
+  )
+})
+
+test('la grilla va de dos en dos horas: arranca en hora par y cubre lo que empieza antes o termina después', () => {
+  assert.deepEqual(rangeOf([]), { from: 8 * 60, to: 20 * 60 })
+  // Una clase hasta las 22 estira la grilla hasta las 22; sin nada a esa hora, termina a las 20.
+  const night = { day: '2026-11-17', start: 20 * 60, end: 22 * 60, events: [] }
+  assert.deepEqual(rangeOf([night]), { from: 8 * 60, to: 22 * 60 })
+  const early = { day: '2026-11-17', start: 7 * 60 + 30, end: 9 * 60, events: [] }
+  const late = { day: '2026-11-17', start: 20 * 60, end: 21 * 60 + 15, events: [] }
+  assert.deepEqual(rangeOf([early, late]), { from: 6 * 60, to: 22 * 60 })
+})
+
+test('lo que se pisa va lado a lado, cada uno en el primer carril libre', () => {
+  const day = '2026-11-17'
+  const at = (id: string, minutes: number, end: number): CalendarEvent => ({
+    id,
+    day,
+    minutes,
+    end,
+    time: null,
+    code: null,
+    title: id,
+    subject: '',
+    place: null,
+    tone: 'clase' as const,
+    origin: 'siu' as const,
+    past: false,
+    next: false
+  })
+  const [cluster] = clustersOf([at('a', 15 * 60, 17 * 60), at('b', 16 * 60, 18 * 60), at('c', 17 * 60, 19 * 60)])
+  assert.deepEqual(
+    lanesOf(cluster).map((p) => [p.event.id, p.lane, p.lanes]),
+    [
+      ['a', 0, 2],
+      ['b', 1, 2],
+      ['c', 0, 2]
     ]
   )
 })

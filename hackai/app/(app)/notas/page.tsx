@@ -1,8 +1,8 @@
 /* Notas, por materia: las que el alumno cursó o está cursando, cada una con su
    estado (promocionada, aprobada, en curso, regular) y, al tocarla, sus
-   parciales, la nota de cursada y la del final. Se filtran por año lectivo,
-   tipo de materia, año de la carrera y estado, y se agrupan por año lectivo o
-   por año de la carrera. El promedio va en el encabezado. Reemplaza a
+   parciales, la nota de cursada y la del final. Se filtran por estado y tipo
+   de materia, y se agrupan por año lectivo o por año de la carrera, con cada
+   año plegable. El promedio va en el encabezado. Reemplaza a
    Académico: las constancias pasaron a Trámites y reportes, y el avance, al
    Plan de estudios. Sin reglas de negocio: el estado y las notas del SIU los
    decide Cursada, y Hoy las junta con lo que los docentes publicaron en HackAI
@@ -39,7 +39,7 @@ export default async function NotasPage({
 
   return (
     <>
-      <PageHeader title='Notas' subtitle={career?.program?.name} art='academico'>
+      <PageHeader title='Notas' subtitle={career?.program?.name} art='academico' desktopBell={false}>
         {career && career.average !== null && (
           <Link
             href='/estado'
@@ -70,7 +70,6 @@ export default async function NotasPage({
             ) : (
               <GradesBoard
                 subjects={taken}
-                careerYears={career?.program?.years ?? Math.max(1, ...taken.map((s) => s.year ?? 1))}
                 initialFilters={filtersFrom(params)}
                 initialGrouping={groupingFrom(params)}
                 initialOpen={typeof params.materia === 'string' ? params.materia : undefined}

@@ -21,11 +21,6 @@ export const metadata: Metadata = { title: 'Muestra del sistema visual · Campus
 
 const SCHOOL = 'Facultad de Ingeniería'
 
-const SUBJECTS = [
-  { href: '/muestra/am1', code: 'AM1', name: 'Análisis Matemático I', unread: 3 },
-  { href: '/muestra/pr1', code: 'PR1', name: 'Programación I', unread: 1 }
-]
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className='flex flex-col gap-3'>
@@ -45,7 +40,7 @@ function RowIcon({ children }: { children: ReactNode }) {
 
 export default function MuestraPage() {
   return (
-    <AppShell school={SCHOOL} subjects={SUBJECTS} shell={{ person: null }}>
+    <AppShell school={SCHOOL} shell={{ person: null }}>
       <PageHeader title='Muestra del sistema visual' subtitle='Datos de ejemplo' school={SCHOOL} art='hoy' />
       <main className='flex w-full flex-col gap-8 px-4 pt-5 pb-8 lg:px-6'>
         <Section title='Botones'>

@@ -39,15 +39,21 @@ const REPORTS: { kind: DocumentKind; icon: LucideIcon; description: string }[] =
   }
 ]
 
+function Heading({ id, title, hint }: { id: string; title: string; hint: string }) {
+  return (
+    <div className='flex min-w-0 flex-col gap-0.5 px-1'>
+      <h2 id={id} className='text-lg font-extrabold text-ink'>
+        {title}
+      </h2>
+      <p className='text-[0.8125rem] text-pretty text-muted-foreground'>{hint}</p>
+    </div>
+  )
+}
+
 function Block({ id, title, hint, children }: { id: string; title: string; hint: string; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className='flex flex-col gap-3'>
-      <div className='flex flex-col gap-0.5 px-1'>
-        <h2 id={id} className='text-lg font-extrabold text-ink'>
-          {title}
-        </h2>
-        <p className='text-[0.8125rem] text-pretty text-muted-foreground'>{hint}</p>
-      </div>
+      <Heading id={id} title={title} hint={hint} />
       {children}
     </section>
   )
@@ -95,6 +101,7 @@ export default async function TramitesPage() {
   return (
     <>
       <PageHeader
+        desktopBell={false}
         title='Trámites y reportes'
         subtitle='Constancias, certificados y solicitudes, sin buscar en el SIU.'
         art='academico'
@@ -113,17 +120,32 @@ export default async function TramitesPage() {
           >
             <Reports official={realRequests !== null} />
           </Block>
-          <Block
-            id='solicitudes'
-            title='Solicitudes'
-            hint={
-              realRequests
-                ? 'Lo que pediste en el SIU y en qué está, como lo muestra la Autogestión.'
-                : 'Lo que le pediste a la secretaría de tu facultad y en qué está. Es una simulación.'
-            }
-          >
-            {realRequests ? <SiuRequests requests={realRequests} selfServiceUrl={requestUrl} /> : <Requests />}
-          </Block>
+          {/* El título va en la misma fila que «Nueva solicitud», alineados. */}
+          <section aria-labelledby='solicitudes'>
+            {realRequests ? (
+              <SiuRequests
+                requests={realRequests}
+                selfServiceUrl={requestUrl}
+                heading={
+                  <Heading
+                    id='solicitudes'
+                    title='Solicitudes'
+                    hint='Lo que pediste en el SIU y en qué está, como lo muestra la Autogestión.'
+                  />
+                }
+              />
+            ) : (
+              <Requests
+                heading={
+                  <Heading
+                    id='solicitudes'
+                    title='Solicitudes'
+                    hint='Lo que le pediste a la secretaría de tu facultad y en qué está.'
+                  />
+                }
+              />
+            )}
+          </section>
         </div>
 
         <div className='lg:sticky lg:top-8'>

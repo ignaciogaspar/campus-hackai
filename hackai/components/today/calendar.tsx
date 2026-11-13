@@ -19,21 +19,19 @@ import {
   type Cluster,
   classesIn,
   clustersOf,
+  lanesOf,
   minutesOf,
   mondayOf,
   monthOf,
+  rangeOf,
+  SLOT_MINUTES,
   shiftMonth,
   weekOf,
   withClasses
 } from '@/components/today/calendar-layout'
+import { Select } from '@/components/ui/select'
 import { addDays, dayKey, TIME_ZONE } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-
-/** Alto mínimo de una hora en la grilla: si en esa hora hay más cosas, la fila crece. */
-const HOUR = '3.75rem'
-/** La grilla muestra al menos de 8 a 19, y se estira si hay algo antes o después. */
-const FIRST_HOUR = 8
-const LAST_HOUR = 19
 
 const TONES: Record<CalendarTone, { label: string; block: string; dot: string }> = {
   parcial: { label: 'Parcial', block: 'bg-kind-parcial-background border-kind-parcial', dot: 'bg-kind-parcial' },
@@ -84,19 +82,20 @@ const describe = (e: CalendarEvent) =>
 
 /* Un evento: pastel, con el borde de arriba del color de lo que es. Se ve
    entero: el nombre baja de línea en vez de cortarse, y nada se pisa. */
-function Block({ e }: { e: CalendarEvent }) {
+function Block({ e, fill = false, short = false }: { e: CalendarEvent; fill?: boolean; short?: boolean }) {
   return (
     <span
       title={describe(e)}
       className={cn(
         'flex min-w-0 flex-1 flex-col gap-1 rounded-md border-t-[3px] px-2 py-1.5 text-ink',
+        fill && 'overflow-hidden',
         TONES[e.tone].block,
         e.past && 'opacity-50',
         e.next && 'shadow-[0_4px_12px_-4px_rgb(16_20_44/0.2)]'
       )}
     >
       <b className='text-[0.75rem] leading-snug font-semibold break-words hyphens-auto'>{e.title}</b>
-      {(!e.code || e.tone === 'clase') && (
+      {!short && (!e.code || e.tone === 'clase') && (
         <span className='text-[0.6875rem] leading-snug break-words text-ink/70'>{e.subject}</span>
       )}
       <span className='flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.6875rem] text-ink/60 tabular-nums'>
@@ -106,7 +105,7 @@ function Block({ e }: { e: CalendarEvent }) {
         {e.time}
         {e.next && <span className='font-semibold text-ink/80'>Próximo</span>}
       </span>
-      {e.place && (
+      {e.place && !short && (
         <span className='flex items-start gap-1 text-[0.6875rem] leading-snug text-ink/60'>
           <MapPin aria-hidden='true' className='mt-px size-3 flex-none' strokeWidth={2} />
           <span className='break-words'>{e.place}</span>
@@ -117,35 +116,36 @@ function Block({ e }: { e: CalendarEvent }) {
   )
 }
 
+/** Lo que mide una franja de dos horas en la grilla. Con 8 rem, una hora son 4 rem: entra el nombre y la hora. */
+const SLOT_REM = 8
+const remAt = (minutes: number) => `${(minutes / SLOT_MINUTES) * SLOT_REM}rem`
+
 /* El enlace de Zoom de una clase virtual o híbrida, en un bloque propio debajo del evento: va afuera del bloque
-   para que no haya un enlace dentro de otro y para que el toque tenga el tamaño de un botón. */
-function EventZoom({ e }: { e: CalendarEvent }) {
+   para que no haya un enlace dentro de otro y para que el toque tenga el tamaño de un botón. En la grilla de la
+   semana (`compact`) el bloque mide lo que dura la clase, así que el enlace va más bajo para que entre. */
+function EventZoom({ e, compact = false }: { e: CalendarEvent; compact?: boolean }) {
   if (!e.zoomUrl || e.past) return null
   return (
     <ZoomLink
       url={e.zoomUrl}
       subjectName={e.title}
-      className='inline-flex min-h-11 items-center gap-1.5 self-start rounded-md px-1 text-[0.75rem] font-semibold text-blue hover:underline focus-ring'
+      className={cn(
+        'inline-flex items-center gap-1.5 self-start rounded-md px-1 text-[0.75rem] font-semibold text-blue hover:underline focus-ring',
+        compact ? 'min-h-7 flex-none' : 'min-h-11'
+      )}
     />
   )
-}
-
-/** Las horas de la grilla: al menos de 8 a 19, estiradas si algo empieza antes o termina después. */
-function hoursFor(clusters: Cluster[]): number[] {
-  const first = Math.min(FIRST_HOUR, ...clusters.map((c) => Math.floor(c.start / 60)))
-  const last = Math.max(LAST_HOUR, ...clusters.map((c) => Math.ceil(c.end / 60)))
-  return Array.from({ length: last - first }, (_, i) => first + i)
 }
 
 const GRID = 'grid grid-cols-[3.75rem_repeat(7,minmax(6.25rem,1fr))]'
 
 /* La hora actual: una línea azul de lado a lado, con la hora en la columna de las horas. */
-function NowLine({ minutes }: { minutes: number }) {
+function NowLine({ minutes, from }: { minutes: number; from: number }) {
   return (
     <div
       aria-hidden='true'
       className='pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 items-center'
-      style={{ top: `${((minutes % 60) / 60) * 100}%` }}
+      style={{ top: remAt(minutes - from) }}
     >
       <span className='w-[3.75rem] pr-2.5 text-right text-[0.6875rem] font-semibold text-blue tabular-nums'>
         {Math.floor(minutes / 60)}:{String(minutes % 60).padStart(2, '0')}
@@ -155,19 +155,77 @@ function NowLine({ minutes }: { minutes: number }) {
   )
 }
 
-/* La semana. Cada hora es una fila que crece si lo que hay no entra. Una
-   clase ocupa sus horas; lo que se pisa en un día (un parcial durante otra
-   clase, dos cosas a la misma hora) va junto en esas horas, uno debajo del
-   otro: así cada evento se ve completo y ninguno tapa a otro. */
+/* Un día de la semana: las franjas de dos horas, una línea punteada en la hora
+   impar y cada evento a la altura de su hora, en proporción. Lo que se pisa va
+   lado a lado. Si algo es corto, el bloque muestra lo que entra y el resto queda
+   en su título. */
+function DayColumn({
+  day,
+  clusters,
+  from,
+  starts,
+  today
+}: {
+  day: string
+  clusters: Cluster[]
+  from: number
+  /** El minuto en que empieza cada franja. */
+  starts: number[]
+  today: boolean
+}) {
+  return (
+    <div className={cn('relative border-l border-border', today && 'bg-accent/45')}>
+      {starts.map((start) => (
+        <Fragment key={start}>
+          {start > from && (
+            <span
+              aria-hidden='true'
+              className='absolute inset-x-0 border-t border-border'
+              style={{ top: remAt(start - from) }}
+            />
+          )}
+          <span
+            aria-hidden='true'
+            className='absolute inset-x-0 border-t border-dashed border-border/70'
+            style={{ top: remAt(start - from + 60) }}
+          />
+        </Fragment>
+      ))}
+      {clusters
+        .filter((c) => c.day === day)
+        .flatMap(lanesOf)
+        .map(({ event, start, end, lane, lanes }) => (
+          <div
+            key={event.id}
+            className='absolute z-[1] flex flex-col p-0.5'
+            style={{
+              top: remAt(start - from),
+              height: remAt(end - start),
+              left: `${(lane / lanes) * 100}%`,
+              width: `${100 / lanes}%`
+            }}
+          >
+            {/* En la grilla el bloque mide lo que dura: si es menos de hora y media, va el nombre y la hora. */}
+            <Block e={event} fill short={end - start < 90} />
+            <EventZoom e={event} compact />
+          </div>
+        ))}
+    </div>
+  )
+}
+
+/* La semana, en franjas de dos horas que miden siempre lo mismo. Cada evento
+   cae a la altura de su hora: una clase de 15 a 17 arranca a mitad de la franja
+   de 14 a 16 y termina a mitad de la de 16 a 18. */
 function Week({ days, events, today, now }: { days: string[]; events: CalendarEvent[]; today: string; now: string }) {
   const inWeek = events.filter((e) => days.includes(e.day))
   const allDay = inWeek.filter((e) => e.minutes === null)
   const clusters = clustersOf(inWeek)
-  const hours = hoursFor(clusters)
+  const { from, to } = rangeOf(clusters)
+  const starts = Array.from({ length: (to - from) / SLOT_MINUTES }, (_, i) => from + i * SLOT_MINUTES)
   const nowMinutes = minutesOf(now)
-  const nowRow = hours.indexOf(Math.floor(nowMinutes / 60))
+  const showNow = days.includes(today) && nowMinutes >= from && nowMinutes <= to
   const todayCol = (d: string) => d === today && 'bg-accent/45'
-  const rowOf = (minutes: number) => Math.floor(minutes / 60) - hours[0] + 1
 
   return (
     <div className='min-w-[48rem]'>
@@ -204,47 +262,22 @@ function Week({ days, events, today, now }: { days: string[]; events: CalendarEv
         </div>
       )}
 
-      <div className={GRID} style={{ gridTemplateRows: `repeat(${hours.length}, minmax(${HOUR}, auto))` }}>
-        {hours.map((h, row) => (
-          <Fragment key={h}>
+      <div className={cn(GRID, 'relative')} style={{ height: remAt(to - from) }}>
+        <div aria-hidden='true' className='relative'>
+          {starts.map((start) => (
             <span
-              className='pt-1.5 pr-2.5 text-right text-[0.6875rem] text-muted-foreground tabular-nums'
-              style={{ gridRow: row + 1, gridColumn: 1 }}
+              key={start}
+              className='absolute right-0 pt-1.5 pr-2.5 text-[0.6875rem] text-muted-foreground tabular-nums'
+              style={{ top: remAt(start - from) }}
             >
-              {h}:00
+              {start / 60}:00
             </span>
-            {days.map((d, col) => (
-              <div
-                key={d}
-                aria-hidden='true'
-                className={cn('border-l border-border', row > 0 && 'border-t', todayCol(d))}
-                style={{ gridRow: row + 1, gridColumn: col + 2 }}
-              />
-            ))}
-          </Fragment>
+          ))}
+        </div>
+        {days.map((d) => (
+          <DayColumn key={d} day={d} clusters={clusters} from={from} starts={starts} today={d === today} />
         ))}
-        {clusters.map((c) => (
-          <div
-            key={`${c.day}-${c.start}`}
-            className='relative z-[1] flex min-w-0 flex-col gap-1 p-1'
-            style={{
-              gridRow: `${rowOf(c.start)} / ${rowOf(c.end - 1) + 1}`,
-              gridColumn: days.indexOf(c.day) + 2
-            }}
-          >
-            {c.events.map((e) => (
-              <div key={e.id} className='flex min-w-0 flex-col'>
-                <Block e={e} />
-                <EventZoom e={e} />
-              </div>
-            ))}
-          </div>
-        ))}
-        {days.includes(today) && nowRow >= 0 && (
-          <div className='pointer-events-none relative z-[2]' style={{ gridRow: nowRow + 1, gridColumn: '1 / -1' }}>
-            <NowLine minutes={nowMinutes} />
-          </div>
-        )}
+        {showNow && <NowLine minutes={nowMinutes} from={from} />}
       </div>
     </div>
   )
@@ -452,21 +485,21 @@ function Filters({
           </button>
         )
       })}
-      <label className='ml-auto flex items-center gap-2 text-[0.8125rem] text-muted-foreground'>
-        Materia
-        <select
+      <div className='min-w-0 max-sm:w-full sm:ml-auto sm:w-60'>
+        <Select
+          aria-label='Materia'
           value={subject}
-          onChange={(e) => onSubject(e.target.value)}
-          className='h-8 max-w-[14rem] cursor-pointer rounded-lg border border-border bg-card px-2 text-[0.8125rem] font-medium text-ink focus-ring'
-        >
-          <option value=''>Todas</option>
-          {subjects.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+          onValueChange={onSubject}
+          options={[
+            { value: '', label: 'Todas las materias' },
+            ...subjects.map((s) => ({ value: s.code, label: s.name }))
+          ]}
+          className={cn(
+            'h-11 rounded-full pl-4 text-[0.8125rem] font-medium sm:h-9',
+            subject && 'border-blue/40 text-blue'
+          )}
+        />
+      </div>
     </div>
   )
 }

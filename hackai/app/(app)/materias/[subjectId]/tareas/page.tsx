@@ -68,7 +68,7 @@ export default async function TasksPage({ params, searchParams }: { params: Para
         role={list.role}
         sections={selected && !(teacher && several) ? [selected] : []}
         backHref='/materias'
-        toolbarBell={teacher}
+        toolbarBell
       />
       <main className={SUBJECT_MAIN}>
         <SubjectToolbar

@@ -180,7 +180,7 @@ export default async function TaskPage({ params, searchParams }: { params: Param
         role={task.role}
         sections={task.canManage && task.sections.length > 1 ? [] : shown}
         backHref={back}
-        toolbarBell={task.role === 'profesor'}
+        toolbarBell
       />
       <main className={SUBJECT_MAIN}>
         <SubjectToolbar

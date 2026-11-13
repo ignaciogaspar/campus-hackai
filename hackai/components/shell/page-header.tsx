@@ -32,8 +32,9 @@ type Props = {
   /** Pantallas sin sesión, como el ingreso: no hay barra lateral ni novedades,
       así que la marca se ve también en compu y no va la campana. */
   signedOut?: boolean
-  /** `false` en las pantallas que en compu llevan la campana en su propia barra (la de la materia del docente): en
-      el encabezado queda solo para el celular. */
+  /** `false` en las pantallas que en compu no llevan la campana en el encabezado: las de la materia, que la tienen
+      junto a las pestañas, y las del alumno, que llega a Novedades desde la barra lateral. En el celular queda
+      siempre en el encabezado. */
   desktopBell?: boolean
   /** Arriba a la derecha, antes de la campana: acciones propias de la pantalla. */
   actions?: ReactNode

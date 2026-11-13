@@ -9,6 +9,7 @@ import {
   filtersFrom,
   filtersQuery,
   groupingFrom,
+  groupsOf,
   NO_ACADEMIC_YEAR
 } from '@/components/grades/filters'
 import type { SubjectStanding } from '@/lib/core/studies'
@@ -104,4 +105,16 @@ test('de entrada se agrupa por año lectivo, el más reciente primero, y las que
       [NO_ACADEMIC_YEAR, ['cda']]
     ]
   )
+})
+
+test('en cada grupo van primero las en curso, después las que deben el final y al final las aprobadas', () => {
+  const year = [
+    subject('apr', { status: 'aprobada', academicYear: 2026 }),
+    subject('pro', { status: 'promocionada', academicYear: 2026 }),
+    subject('cur', { status: 'en-curso', academicYear: 2026 }),
+    subject('reg', { status: 'regular', academicYear: 2026 }),
+    subject('cur2', { status: 'en-curso', academicYear: 2026 })
+  ]
+  assert.deepEqual(ids(groupsOf(year, 'lectivo')[0].items), ['cur', 'cur2', 'reg', 'apr', 'pro'])
+  assert.deepEqual(ids(groupsOf(year, 'carrera')[0].items), ['cur', 'cur2', 'reg', 'apr', 'pro'])
 })

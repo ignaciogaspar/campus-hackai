@@ -9,6 +9,7 @@ import { ChevronDown, Link2 } from 'lucide-react'
 import { linkChannel } from '@/app/actions/spaces'
 import { ActionForm, SubmitButton } from '@/components/spaces/action-form'
 import { buttonVariants } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import type { Channel, ServerChannel } from '@/lib/core/spaces'
 import { cn } from '@/lib/utils'
 
@@ -46,26 +47,26 @@ function ChooseChannel({
       <Hidden subjectId={subjectId} channelId={channel.id} />
       <label className='flex flex-col gap-1 font-semibold'>
         Elegí un canal de tu servidor
-        <select name='discordChannelId' required defaultValue={current ?? ''} className={field}>
-          <option value='' disabled>
-            Elegí un canal
-          </option>
-          {categories.map((category) => (
-            <optgroup key={category} label={category || 'Sin categoría'}>
-              {choices
-                .filter((c) => (c.category ?? '') === category)
-                .map((c) => {
-                  const taken = c.linkedTo !== null && c.linkedTo !== channel.id
-                  return (
-                    <option key={c.id} value={c.id} disabled={taken}>
-                      #{c.name}
-                      {taken ? ' (ya vinculado con otro canal)' : ''}
-                    </option>
-                  )
-                })}
-            </optgroup>
-          ))}
-        </select>
+        <Select
+          name='discordChannelId'
+          required
+          defaultValue={current ?? undefined}
+          placeholder='Elegí un canal'
+          options={categories.flatMap((category) =>
+            choices
+              .filter((c) => (c.category ?? '') === category)
+              .map((c) => {
+                const taken = c.linkedTo !== null && c.linkedTo !== channel.id
+                return {
+                  value: c.id,
+                  label: `#${c.name}${taken ? ' (ya vinculado con otro canal)' : ''}`,
+                  disabled: taken,
+                  group: category || 'Sin categoría'
+                }
+              })
+          )}
+          className='min-h-11 rounded-[10px] pl-3 text-[0.9375rem] font-normal'
+        />
       </label>
       <SubmitButton className={button}>{current ? 'Cambiar el canal' : 'Vincular'}</SubmitButton>
     </ActionForm>

@@ -249,3 +249,36 @@ export function clustersOf(events: CalendarEvent[]): Cluster[] {
   }
   return clusters
 }
+
+/** Cuánto mide cada franja de la grilla de la semana: dos horas. */
+export const SLOT_MINUTES = 120
+
+/** Desde y hasta qué minuto va la grilla: al menos de 8 a 20 y, si algo empieza
+    antes o termina después, se estira hasta la franja de dos horas que lo cubre.
+    Las franjas arrancan en hora par (8, 10, 12…). */
+export function rangeOf(clusters: Cluster[], first = 8 * 60, last = 20 * 60): { from: number; to: number } {
+  const start = Math.min(first, ...clusters.map((c) => c.start))
+  const end = Math.max(last, ...clusters.map((c) => c.end))
+  return {
+    from: Math.floor(start / SLOT_MINUTES) * SLOT_MINUTES,
+    to: Math.ceil(end / SLOT_MINUTES) * SLOT_MINUTES
+  }
+}
+
+/** Un evento de un grupo con su carril: lo que se pisa va lado a lado, cada uno en su carril. */
+export type Placed = { event: CalendarEvent; start: number; end: number; lane: number; lanes: number }
+
+/** Reparte los eventos de un grupo en carriles: cada uno va en el primero que
+    ya quedó libre a su hora. Todos los del grupo comparten la cantidad de carriles. */
+export function lanesOf(cluster: Cluster): Placed[] {
+  const ends: number[] = []
+  const placed = cluster.events.map((event) => {
+    const start = event.minutes ?? 0
+    const end = durationEnd(event)
+    let lane = ends.findIndex((free) => free <= start)
+    if (lane === -1) lane = ends.length
+    ends[lane] = end
+    return { event, start, end, lane }
+  })
+  return placed.map((p) => ({ ...p, lanes: ends.length }))
+}
