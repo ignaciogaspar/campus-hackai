@@ -877,6 +877,37 @@ test('con la sesión vencida, lo de la persona real es una falla externa y avisa
   assert.ok((await siu.history(TOMAS_SIU)).ok)
 })
 
+test('dice que la sesión venció solo si el SIU muestra la pantalla de acceso, y deja de decirlo al leer de nuevo', async () => {
+  const { siu } = build({ ttlMs: 0 })
+  assert.ok((await siu.history('real-alumno')).ok)
+  assert.equal(siu.expired(), false)
+  const original = ROUTES.inscripciones.body
+  ROUTES.inscripciones.body = LOGIN
+  try {
+    await siu.history('real-alumno')
+    assert.equal(siu.expired(), true, 'aunque siga mostrando lo último leído')
+  } finally {
+    ROUTES.inscripciones.body = original
+  }
+  assert.ok((await siu.history('real-alumno')).ok)
+  assert.equal(siu.expired(), false)
+})
+
+test('un corte del SIU no es una sesión vencida', async () => {
+  const clock = createFixedClock(syntheticData.now)
+  const siu = createRealSiu({
+    baseUrl: BASE,
+    session: 'cookie-de-prueba',
+    personId: 'real-alumno',
+    fallback: createMemorySiu(syntheticData, clock),
+    clock,
+    fetch: (async () => new Response('', { status: 503 })) as typeof fetch,
+    warn: () => {}
+  })
+  assert.equal((await siu.history('real-alumno')).ok, false)
+  assert.equal(siu.expired(), false)
+})
+
 test('la persona real aparece primera en el ingreso y se vincula por su id del SIU', async () => {
   const identity = withRealSubject(createMemoryIdentity(syntheticData), REAL_PERSON)
   const subjects = await identity.demoSubjects()

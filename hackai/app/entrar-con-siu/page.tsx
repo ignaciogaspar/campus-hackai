@@ -1,20 +1,27 @@
 /* Entrar con la cuenta real del SIU (ADR 0009). Solo desde la compu: en el celular avisa y manda a las personas
-   de la demo. Sin `HACKAI_SIU_REAL_PUBLICO`, o con una sesión ya abierta, vuelve al ingreso o al inicio. */
+   de la demo. Sin `HACKAI_SIU_REAL_PUBLICO`, o con una sesión ya abierta, vuelve al ingreso o al inicio. Con
+   `?vencida=1` llega quien estaba adentro y se le venció la sesión del SIU (lib/auth.ts). Que venció lo dice su
+   cookie, no el parámetro: solo entonces, con la extensión, vuelve a entrar solo, porque ya dio su consentimiento.
+   Con `?next=` vuelve a la pantalla donde estaba. */
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { SiuConnectForm } from '@/components/session/siu-connect-form'
 import { PageHeader } from '@/components/shell/page-header'
-import { getSession, homeFor } from '@/lib/auth'
+import { homeFor, readSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
+import { safeReturnTo } from '@/lib/return-to'
 
 export const metadata: Metadata = { title: 'Entrar con tu cuenta del SIU · Campus HackAI' }
 
-export default async function EntrarConSiuPage() {
-  const session = await getSession()
-  if (session) redirect(homeFor(session.role))
+type Params = { next?: string | string[] }
+
+export default async function EntrarConSiuPage({ searchParams }: { searchParams: Promise<Params> }) {
+  const [session, { next }] = await Promise.all([readSession(), searchParams])
+  const returnTo = safeReturnTo(next)
+  if (session && session !== 'vencida') redirect(returnTo ?? homeFor(session.role))
   const live = system().siuLive
   if (!live?.canConnect) redirect('/')
   const mobile = isMobileUserAgent((await headers()).get('user-agent'))
@@ -33,7 +40,7 @@ export default async function EntrarConSiuPage() {
             Las cuentas reales del SIU se usan desde una compu. En el celular, probá HackAI con una persona de la demo.
           </p>
         ) : (
-          <SiuConnectForm writes={live.writes} />
+          <SiuConnectForm writes={live.writes} returnTo={returnTo} expired={session === 'vencida'} />
         )}
         <Link href='/' className='self-start text-[0.875rem] font-semibold text-blue hover:underline focus-ring'>
           {mobile ? 'Elegir una persona de la demo' : 'Volver al ingreso de demo'}

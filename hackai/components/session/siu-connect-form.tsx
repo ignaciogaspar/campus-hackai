@@ -2,9 +2,10 @@
 /* Formulario para entrar con la cuenta real del SIU. Con la extensión de HackAI (ADR 0011), «Iniciar con mi
    cuenta» abre el login de la Austral si hace falta, espera a que la persona entre y conecta el SIU y el Campus
    con sus sesiones, sin copiar nada. Sin extensión, el paso a paso para copiar la sesión. Siempre, qué hace
-   HackAI con ella y el consentimiento. */
+   HackAI con ella y el consentimiento. Si se le venció la sesión del SIU estando adentro (`expired`), lo avisa y,
+   con la extensión, vuelve a entrar solo: ya había dado su consentimiento. */
 import { ShieldCheck } from 'lucide-react'
-import { startTransition, useActionState, useState } from 'react'
+import { startTransition, useActionState, useEffect, useRef, useState } from 'react'
 import { connectSiuAction } from '@/app/actions/siu-connect'
 import {
   ExtensionHint,
@@ -29,11 +30,21 @@ const NO_SIU: ConnectState = {
     'No llegaste a iniciar sesión en el SIU. Volvé a tocar «Iniciar con mi cuenta» y entrá en la pestaña que se abre.'
 }
 
-export function SiuConnectForm({ writes }: { writes: boolean }) {
+type Props = {
+  writes: boolean
+  /** A dónde volver al entrar, si no es el inicio. */
+  returnTo?: string | null
+  /** Si estaba adentro y se le venció la sesión del SIU. */
+  expired?: boolean
+}
+
+export function SiuConnectForm({ writes, returnTo, expired = false }: Props) {
   const extension = useHasExtension()
   const withExtension = extension === true
   const [state, submit] = useActionState(connectSiuAction, INITIAL_CONNECT_STATE)
   const [local, setLocal] = useState<ConnectState>(INITIAL_CONNECT_STATE)
+  const [reentering, setReentering] = useState(false)
+  const autoStarted = useRef(false)
   const error = local.kind === 'error' ? local : state
 
   // Si no pegó nada a mano, la extensión inicia sesión y trae las cookies recién ahora, con el consentimiento dado.
@@ -48,8 +59,32 @@ export function SiuConnectForm({ writes }: { writes: boolean }) {
     startTransition(() => submit(form))
   }
 
+  // Con la sesión vencida y la extensión, vuelve a entrar sin que toque nada. Si la sesión de Microsoft sigue abierta,
+  // la pestaña del login se abre y se cierra sola.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: corre una sola vez, cuando se sabe si está la extensión.
+  useEffect(() => {
+    if (!expired || !withExtension || autoStarted.current) return
+    autoStarted.current = true
+    const form = new FormData()
+    form.set('consent', 'si')
+    if (returnTo) form.set('next', returnTo)
+    setReentering(true)
+    void enter(form)
+  }, [expired, withExtension])
+
   return (
     <form action={enter} className='flex flex-col gap-5'>
+      {returnTo && <input type='hidden' name='next' value={returnTo} />}
+      {expired && (
+        <p
+          role='status'
+          className='rounded-2xl border border-border bg-card px-4 py-3.5 text-[0.9375rem] text-pretty text-ink'
+        >
+          {reentering && error.kind !== 'error'
+            ? 'Se venció tu sesión del SIU. Estamos volviendo a entrar con tu cuenta…'
+            : 'Se venció tu sesión del SIU. Volvé a entrar y seguís donde estabas.'}
+        </p>
+      )}
       <ManualSteps folded={withExtension}>
         <ol className='flex list-decimal flex-col gap-2 rounded-2xl border border-border bg-card px-9 py-4 text-[0.875rem] text-ink'>
           {STEPS.map((step) => (

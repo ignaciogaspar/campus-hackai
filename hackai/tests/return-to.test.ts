@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { returnNotice } from '@/components/session/return-notice'
-import { requestedPath, safeReturnTo, signInFor, signInUrl } from '@/lib/return-to'
+import { requestedPath, safeReturnTo, signInFor, signInUrl, siuReentryFor } from '@/lib/return-to'
 
 const FILE = '/archivos/0b3c8f0e-5d7a-4c1e-9f3a-2a7d1c9e4b6f/Gu%C3%ADa%201.pdf'
 
@@ -64,4 +64,10 @@ test('el ingreso avisa a qué pantalla se va a seguir', () => {
   assert.equal(returnNotice('/estado'), 'Entrá para seguir a Plan de estudios.')
   assert.equal(returnNotice(FILE), 'Entrá para abrir el archivo.')
   assert.equal(returnNotice('/discord/conectar?espacio=e-1'), 'Entrá para seguir donde ibas.')
+})
+
+test('con la sesión del SIU vencida, vuelve a entrar con el SIU y después a la pantalla donde estaba', () => {
+  assert.equal(siuReentryFor('/notas?materia=bd2'), '/entrar-con-siu?next=%2Fnotas%3Fmateria%3Dbd2&vencida=1')
+  assert.equal(siuReentryFor('/'), '/entrar-con-siu?vencida=1')
+  assert.equal(siuReentryFor('//otro.sitio'), '/entrar-con-siu?vencida=1', 'nunca a otro sitio')
 })

@@ -186,6 +186,8 @@ export type System = {
     /** Si la persona es de una cuenta real. No consulta nada. */
     isReal(personId: PersonId): boolean
     version(personId: PersonId): Promise<Result<string, ExternalFailure> | null>
+    /** Si el SIU ya no reconoce la sesión de la persona real (venció). No consulta nada: lo dice la última lectura. */
+    expired(personId: PersonId): boolean
     /** Si quien entra puede usar su cuenta real (prendido salvo `HACKAI_SIU_REAL_PUBLICO=no`). */
     canConnect: boolean
     /** Si con la cuenta real se inscribe y se piden constancias de verdad (`HACKAI_SIU_ESCRITURAS`). */
@@ -317,6 +319,11 @@ function siuLiveOf(
       const key = personId.match(/^p-siu-([a-f0-9]{12})$/)?.[1]
       const account = key && registry ? registry.accountOf(siuIdOf(key)) : null
       return account ? account.version() : null
+    },
+    expired(personId) {
+      if (single && personId === REAL_PERSON.personId) return single.expired()
+      const key = personId.match(/^p-siu-([a-f0-9]{12})$/)?.[1]
+      return Boolean(key && registry?.accountOf(siuIdOf(key))?.expired())
     },
     canConnect: registry !== null,
     writes,
