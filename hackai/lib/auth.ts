@@ -36,7 +36,9 @@ export const readSession = cache(async (): Promise<Session | 'vencida' | null> =
   if (!siu) return 'vencida'
   live.connect(siu.key, siu.session)
   // El SIU no renueva la sesión por su cuenta (lib/adapters/siu-real): si ya no la reconoce, hay que volver a entrar.
-  if (live.expired(session.personId)) return 'vencida'
+  // Se pregunta antes de dibujar, así la pantalla no queda con errores de lectura. La lectura queda guardada unos
+  // segundos y la reusa la pantalla, así que no suma pedidos al SIU.
+  if (await live.expired(session.personId)) return 'vencida'
   // Si conectó su Campus, el token viaja en otra cookie (ADR 0010): con él se arma su aula en este proceso.
   const campus = campusSessionOf(siu.key, jar.get(CAMPUS_SESSION_COOKIE)?.value)
   if (campus) system().campusLive?.connect(campus.key, campus.token)
@@ -47,6 +49,15 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const session = await readSession()
   return session === 'vencida' ? null : session
 })
+
+/** La sesión para una ruta de la API que usa la pantalla abierta, o la respuesta `401` que manda a volver a entrar:
+    `sesion-vencida` si venció la sesión del SIU de una cuenta real (components/siu/siu-live.tsx), `sin-sesion` si
+    no hay sesión. */
+export async function apiSession(): Promise<Session | Response> {
+  const session = await readSession()
+  if (session && session !== 'vencida') return session
+  return Response.json({ error: session === 'vencida' ? 'sesion-vencida' : 'sin-sesion' }, { status: 401 })
+}
 
 /** Redirige al ingreso si no hay sesión, con la ruta pedida en `?next=` para volver ahí después de entrar
     (middleware.ts), y a la home del rol si el rol no coincide. Si venció la sesión del SIU de una cuenta real, a

@@ -1,15 +1,16 @@
 /* Las notas de parciales y de actuación provisoria de la persona que entró con
    la cuenta real del SIU, para avisarle en el momento cuando aparece una nueva
    (components/siu/siu-live.tsx). Responde `{ grades }` con materia, evaluación
-   y nota; con otra persona, o sin `HACKAI_SIU_REAL=si`, `{ grades: [] }`. */
-import { getSession } from '@/lib/auth'
+   y nota; con otra persona, o sin `HACKAI_SIU_REAL=si`, `{ grades: [] }`. Sin
+   sesión o con la del SIU vencida, `401` como app/api/siu/version. */
+import { apiSession } from '@/lib/auth'
 import { system } from '@/lib/composition'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const session = await getSession()
-  if (!session) return Response.json({ error: 'sin-sesion' }, { status: 401 })
+  const session = await apiSession()
+  if (session instanceof Response) return session
 
   if (!system().siuLive?.isReal(session.personId)) return Response.json({ grades: [] })
   const record = await system().studies.record(session.personId)

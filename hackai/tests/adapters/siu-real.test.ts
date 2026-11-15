@@ -10,7 +10,7 @@ import { createFixedClock } from '@/lib/adapters/memoria/clock'
 import { createMemoryIdentity } from '@/lib/adapters/memoria/identity'
 import { createMemoryPeopleStore } from '@/lib/adapters/memoria/people-store'
 import { createMemorySiu } from '@/lib/adapters/memoria/siu'
-import { createRealSiu, SESSION_COOKIE } from '@/lib/adapters/siu-real'
+import { createRealSiu, isLoginRedirect, SESSION_COOKIE } from '@/lib/adapters/siu-real'
 import { dropFormIn, enrollFormIn } from '@/lib/adapters/siu-real/actions'
 import { pagelets } from '@/lib/adapters/siu-real/html'
 import {
@@ -891,6 +891,32 @@ test('dice que la sesión venció solo si el SIU muestra la pantalla de acceso, 
   }
   assert.ok((await siu.history('real-alumno')).ok)
   assert.equal(siu.expired(), false)
+})
+
+test('una redirección del SIU a su pantalla de acceso también es una sesión vencida', async () => {
+  const clock = createFixedClock(syntheticData.now)
+  const siu = createRealSiu({
+    baseUrl: BASE,
+    session: 'cookie-de-prueba',
+    personId: 'real-alumno',
+    fallback: createMemorySiu(syntheticData, clock),
+    clock,
+    fetch: (async () =>
+      new Response(null, { status: 302, headers: { location: `${BASE}/acceso?auth=saml` } })) as typeof fetch,
+    warn: () => {}
+  })
+  assert.equal((await siu.history('real-alumno')).ok, false)
+  assert.equal(siu.expired(), true)
+})
+
+test('solo la ruta de acceso del SIU cuenta como redirección al login', () => {
+  assert.equal(isLoginRedirect('https://siu.austral.edu.ar/portal/acceso?auth=saml'), true)
+  assert.equal(isLoginRedirect('/portal/acceso'), true)
+  assert.equal(isLoginRedirect('https://siu.austral.edu.ar/portal/acceso/'), true)
+  assert.equal(isLoginRedirect('https://siu.austral.edu.ar/portal/acceso_rapido'), false)
+  assert.equal(isLoginRedirect('https://siu.austral.edu.ar/portal/acceso/otra'), false)
+  assert.equal(isLoginRedirect('https://campusvirtual.austral.edu.ar/course/view.php?id=12'), false)
+  assert.equal(isLoginRedirect(null), false)
 })
 
 test('un corte del SIU no es una sesión vencida', async () => {

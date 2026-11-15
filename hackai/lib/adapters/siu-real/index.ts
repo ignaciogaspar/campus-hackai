@@ -101,6 +101,18 @@ async function inBatches<T, R>(items: T[], limit: number, work: (item: T) => Pro
   return results
 }
 
+/** Si una redirección del SIU va a su pantalla de acceso: `<portal>/acceso`, con o sin `?auth=saml`. Solo esa ruta
+    exacta, para que otra redirección que tenga «acceso» en el camino no corte la sesión. */
+export function isLoginRedirect(location: string | null): boolean {
+  if (!location) return false
+  try {
+    const url = new URL(location, 'https://siu.invalid/portal/')
+    return /\/acceso\/?$/.test(url.pathname) || url.searchParams.get('auth') === 'saml'
+  } catch {
+    return false
+  }
+}
+
 export type RealSiuOptions = {
   /** `https://siu.austral.edu.ar/portal`, sin barra final. */
   baseUrl: string
@@ -153,7 +165,7 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
       cache: 'no-store'
     })
     // Sin sesión, el SIU redirige a la pantalla de acceso o la devuelve directo, con el botón de SAML.
-    if (/\/acceso\b|auth=saml/.test(response.headers.get('location') ?? '')) isExpired = true
+    if (isLoginRedirect(response.headers.get('location'))) isExpired = true
     if (response.status !== 200) return null
     const html = new TextDecoder('iso-8859-1').decode(await response.arrayBuffer())
     if (!html.includes("op_actual: 'acceso'") && !html.includes('auth=saml')) return html

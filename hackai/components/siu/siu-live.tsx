@@ -14,7 +14,7 @@ import { BellRing, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { signInFor, siuReentryFor } from '@/lib/return-to'
+import { reentryAfter } from '@/lib/return-to'
 
 /** El adaptador del SIU real vuelve a leer el SIU cada 20 segundos (HACKAI_SIU_REAL_SEGUNDOS): preguntando cada
     10, lo nuevo se ve en medio minuto como mucho. */
@@ -41,7 +41,7 @@ async function getJson<T>(url: string): Promise<T | null> {
     el SIU (con la extensión, reingresa solo); si no, al ingreso. */
 function leaveExpired(body: { error?: string } | null) {
   const here = `${window.location.pathname}${window.location.search}`
-  window.location.assign(body?.error === 'sesion-vencida' ? siuReentryFor(here) : signInFor(here))
+  window.location.assign(reentryAfter(body?.error, here))
 }
 
 function readKnown(): Set<string> | null {

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { returnNotice } from '@/components/session/return-notice'
-import { requestedPath, safeReturnTo, signInFor, signInUrl, siuReentryFor } from '@/lib/return-to'
+import { reentryAfter, requestedPath, safeReturnTo, signInFor, signInUrl, siuReentryFor } from '@/lib/return-to'
 
 const FILE = '/archivos/0b3c8f0e-5d7a-4c1e-9f3a-2a7d1c9e4b6f/Gu%C3%ADa%201.pdf'
 
@@ -70,4 +70,10 @@ test('con la sesión del SIU vencida, vuelve a entrar con el SIU y después a la
   assert.equal(siuReentryFor('/notas?materia=bd2'), '/entrar-con-siu?next=%2Fnotas%3Fmateria%3Dbd2&vencida=1')
   assert.equal(siuReentryFor('/'), '/entrar-con-siu?vencida=1')
   assert.equal(siuReentryFor('//otro.sitio'), '/entrar-con-siu?vencida=1', 'nunca a otro sitio')
+})
+
+test('la pantalla abierta, ante un 401, va a entrar con el SIU si venció esa sesión y al ingreso si no', () => {
+  assert.equal(reentryAfter('sesion-vencida', '/hoy'), '/entrar-con-siu?next=%2Fhoy&vencida=1')
+  assert.equal(reentryAfter('sin-sesion', '/hoy'), '/?next=%2Fhoy')
+  assert.equal(reentryAfter(undefined, '/hoy'), '/?next=%2Fhoy')
 })

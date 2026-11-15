@@ -54,3 +54,9 @@ export function safeReturnTo(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > MAX_LENGTH) return null
   return APP_PATH.test(value) ? value : null
 }
+
+/** A dónde va la pantalla abierta cuando la API le responde `401` mientras estaba en `here`: con la sesión del SIU
+    vencida, a volver a entrar con el SIU; si no, al ingreso. */
+export function reentryAfter(error: unknown, here: string): string {
+  return error === 'sesion-vencida' ? siuReentryFor(here) : signInFor(here)
+}
