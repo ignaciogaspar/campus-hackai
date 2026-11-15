@@ -15,6 +15,7 @@ const CAMPUS = {
   // Microsoft que dejó el SIU, pasa solo, sin elegir el tipo de cuenta ni volver a poner la clave.
   login: 'https://campusvirtual.austral.edu.ar/auth/oidc/'
 }
+// Plazo total para entrar en todos los sitios: la página de HackAI deja de esperar a los 5,5 minutos.
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000
 
 // La cookie que el navegador mandaría al sitio; si no la encuentra así, cualquiera de ese nombre en el dominio.
@@ -57,7 +58,7 @@ const CHECKS = { siu: siuSignedIn, campus: campusSignedIn }
 const SITES = { siu: SIU, campus: CAMPUS }
 
 /** Espera a que la pestaña termine de cargar una página del sitio y el sitio diga que hay sesión. */
-function waitForSignIn(tabId, site, check) {
+function waitForSignIn(tabId, site, check, deadline) {
   return new Promise((resolve) => {
     const finish = (ok) => {
       clearTimeout(timer)
@@ -73,7 +74,7 @@ function waitForSignIn(tabId, site, check) {
     const onRemoved = (id) => {
       if (id === tabId) finish(false)
     }
-    const timer = setTimeout(() => finish(false), LOGIN_TIMEOUT_MS)
+    const timer = setTimeout(() => finish(false), Math.max(0, deadline - Date.now()))
     chrome.tabs.onUpdated.addListener(onUpdated)
     chrome.tabs.onRemoved.addListener(onRemoved)
   })
@@ -82,12 +83,13 @@ function waitForSignIn(tabId, site, check) {
 /** Deja iniciada la sesión de cada sitio, abriendo el login solo en los que falta, y devuelve las cookies. */
 async function signIn(wanted, returnTab) {
   let loginTab = null
+  const deadline = Date.now() + LOGIN_TIMEOUT_MS
   for (const name of wanted) {
     if (await CHECKS[name]()) continue
     const site = SITES[name]
     if (loginTab) await chrome.tabs.update(loginTab.id, { url: site.login, active: true })
     else loginTab = await chrome.tabs.create({ url: site.login, active: true })
-    const ok = await waitForSignIn(loginTab.id, site, CHECKS[name])
+    const ok = await waitForSignIn(loginTab.id, site, CHECKS[name], deadline)
     if (!ok) break
   }
   if (loginTab) {
