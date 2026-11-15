@@ -7,13 +7,9 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { ConnectState } from '@/components/session/siu-connect-state'
-import { getSession, homeFor, setServerCookie } from '@/lib/auth'
-import {
-  CAMPUS_SESSION_COOKIE,
-  CAMPUS_SESSION_MAX_AGE,
-  moodleSessionFromInput,
-  sealCampusSession
-} from '@/lib/campus-session'
+import { getSession, homeFor } from '@/lib/auth'
+import { connectCampus } from '@/lib/campus-connect'
+import { moodleSessionFromInput } from '@/lib/campus-session'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
 import { safeReturnTo } from '@/lib/return-to'
@@ -33,16 +29,15 @@ export async function connectCampusAction(_previous: ConnectState, form: FormDat
   if (!moodleSession)
     return { kind: 'error', message: 'Eso no parece una sesión del Campus. Copiá solo el valor de la cookie.' }
 
-  const token = await live.signIn(key, moodleSession)
-  if (!token.ok)
+  const outcome = await connectCampus(key, moodleSession)
+  if (outcome !== 'conectado')
     return {
       kind: 'error',
       message:
-        token.error === 'sesion-invalida'
+        outcome === 'sesion-invalida'
           ? 'El Campus no reconoció esa sesión: puede haber vencido. Volvé a entrar al Campus y copiá la cookie de nuevo.'
           : 'El Campus no respondió o no dejó leer tus cursos. Probá de nuevo en un rato.'
     }
 
-  await setServerCookie(CAMPUS_SESSION_COOKIE, sealCampusSession({ key, token: token.value }), CAMPUS_SESSION_MAX_AGE)
   redirect(safeReturnTo(form.get('next')) ?? homeFor(session.role))
 }

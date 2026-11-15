@@ -2,12 +2,26 @@
 /* Formulario para conectar el Campus Virtual con la cuenta real (ADR 0010): el
    paso a paso para copiar la sesión del Campus, qué hace HackAI con ella y el
    consentimiento. Es el segundo paso de entrar con la cuenta real, y se puede
-   dejar para después. */
+   dejar para después. Con la extensión de HackAI (ADR 0011) la sesión no se
+   copia: al tocar «Conectar», la extensión abre el login del Campus si hace
+   falta, espera a que la persona entre y trae la sesión. */
 import { ShieldCheck } from 'lucide-react'
-import { useActionState } from 'react'
+import { startTransition, useActionState, useState } from 'react'
 import { connectCampusAction } from '@/app/actions/campus-connect'
-import { INITIAL_CONNECT_STATE } from '@/components/session/siu-connect-state'
-import { Button } from '@/components/ui/button'
+import {
+  ExtensionHint,
+  ManualSteps,
+  SignInNotice,
+  SubmitButton,
+  useHasExtension
+} from '@/components/session/extension-sessions'
+import { signInWithExtension } from '@/components/session/session-extension'
+import { type ConnectState, INITIAL_CONNECT_STATE } from '@/components/session/siu-connect-state'
+
+const NO_CAMPUS: ConnectState = {
+  kind: 'error',
+  message: 'No llegaste a iniciar sesión en el Campus. Volvé a tocar «Conectar» y entrá en la pestaña que se abre.'
+}
 
 const STEPS = [
   'Entrá al Campus Virtual (campusvirtual.austral.edu.ar) con tu cuenta de Microsoft de la Austral, como siempre.',
@@ -17,30 +31,48 @@ const STEPS = [
 ]
 
 export function CampusConnectForm({ next }: { next: string | null }) {
-  const [state, submit, pending] = useActionState(connectCampusAction, INITIAL_CONNECT_STATE)
+  const extension = useHasExtension()
+  const withExtension = extension === true
+  const [state, submit] = useActionState(connectCampusAction, INITIAL_CONNECT_STATE)
+  const [local, setLocal] = useState<ConnectState>(INITIAL_CONNECT_STATE)
+  const error = local.kind === 'error' ? local : state
+
+  // Si no pegó nada a mano, la sesión la trae la extensión recién ahora, con el consentimiento ya dado.
+  async function connect(form: FormData) {
+    setLocal(INITIAL_CONNECT_STATE)
+    if (withExtension && !String(form.get('session') ?? '').trim()) {
+      const sessions = await signInWithExtension(['campus'])
+      if (!sessions?.campus) return setLocal(NO_CAMPUS)
+      form.set('session', sessions.campus)
+    }
+    startTransition(() => submit(form))
+  }
 
   return (
-    <form action={submit} className='flex flex-col gap-5'>
+    <form action={connect} className='flex flex-col gap-5'>
       {next && <input type='hidden' name='next' value={next} />}
-      <ol className='flex list-decimal flex-col gap-2 rounded-2xl border border-border bg-card px-9 py-4 text-[0.875rem] text-ink'>
-        {STEPS.map((step) => (
-          <li key={step} className='text-pretty'>
-            {step}
-          </li>
-        ))}
-      </ol>
+      <ManualSteps folded={withExtension}>
+        <ol className='flex list-decimal flex-col gap-2 rounded-2xl border border-border bg-card px-9 py-4 text-[0.875rem] text-ink'>
+          {STEPS.map((step) => (
+            <li key={step} className='text-pretty'>
+              {step}
+            </li>
+          ))}
+        </ol>
 
-      <label className='flex flex-col gap-1.5 text-[0.8125rem] font-semibold text-ink'>
-        Tu sesión del Campus
-        <input
-          name='session'
-          required
-          autoComplete='off'
-          spellCheck={false}
-          placeholder='Pegá el valor de MoodleSession'
-          className='h-11 rounded-xl border border-border bg-card px-3 font-mono text-[0.875rem] font-normal focus-ring'
-        />
-      </label>
+        <label className='flex flex-col gap-1.5 text-[0.8125rem] font-semibold text-ink'>
+          Tu sesión del Campus
+          <input
+            name='session'
+            required={!withExtension}
+            autoComplete='off'
+            spellCheck={false}
+            placeholder='Pegá el valor de MoodleSession'
+            className='h-11 rounded-xl border border-border bg-card px-3 font-mono text-[0.875rem] font-normal focus-ring'
+          />
+        </label>
+      </ManualSteps>
+      {extension === false && <ExtensionHint />}
 
       <div className='flex flex-col gap-2 rounded-2xl bg-accent px-4 py-3 text-[0.8125rem] text-pretty text-ink'>
         <p className='flex items-center gap-2 font-semibold'>
@@ -69,15 +101,18 @@ export function CampusConnectForm({ next }: { next: string | null }) {
         <span>Entiendo y quiero ver mi Campus Virtual en HackAI.</span>
       </label>
 
-      {state.kind === 'error' && (
+      {error.kind === 'error' && (
         <p role='alert' className='rounded-xl bg-danger-background px-3 py-2.5 text-[0.875rem] text-ink'>
-          {state.message}
+          {error.message}
         </p>
       )}
 
-      <Button type='submit' size='lg' disabled={pending} className='min-h-11 self-start font-semibold'>
-        {pending ? 'Conectando tu Campus…' : 'Conectar mi Campus'}
-      </Button>
+      <SignInNotice show={withExtension} />
+      <SubmitButton
+        idle={withExtension ? 'Conectar con mi cuenta' : 'Conectar mi Campus'}
+        busy={withExtension ? 'Esperando que inicies sesión…' : 'Conectando tu Campus…'}
+        disabled={extension === null}
+      />
     </form>
   )
 }

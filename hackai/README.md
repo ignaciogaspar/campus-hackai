@@ -384,6 +384,13 @@ Se usa desde la compu: en el celular (por el User-Agent, `lib/device.ts`) el ing
 3. En las herramientas del navegador, Application > Cookies > `https://siu.austral.edu.ar`, copiá el valor de `siu_sess__portal_ua_UA` y pegalo.
 4. Aceptá cómo se usa la sesión. HackAI te reconoce y entrás a tu inicio.
 
+**Con la extensión, sin copiar cookies** (ADR 0011). `extension/` es una extensión de Chrome que lee tus sesiones del SIU y del Campus y se las pasa a HackAI:
+
+1. En `chrome://extensions`, prendé «Modo de desarrollador», tocá «Cargar descomprimida» y elegí `hackai/extension/`.
+2. En `/entrar-con-siu`, aceptá y tocá «Iniciar con mi cuenta». Si no tenías sesión, la extensión abre el login de la Austral: entrá con tu cuenta de Microsoft. Cuando entrás al SIU y al Campus, la pestaña se cierra, volvés a HackAI y quedan conectados los dos.
+
+Corre solo en `localhost:3000`, `127.0.0.1:3000` y `https://campus-hackai.vercel.app`; otro origen se suma en `matches` de `extension/manifest.json`. Pegar la sesión a mano sigue plegado, en «Pegar la sesión a mano».
+
 Cómo se cuida la sesión: viaja cifrada (AES-256-GCM con una clave derivada de `SESSION_SECRET`) en una cookie de tu navegador (`hackai_siu`), y en cada pedido se arma tu cuenta en el servidor con ella; no va a la base ni a logs. A cada persona la reconoce un HMAC de su documento, que no se guarda. «Cerrar sesión» borra las dos cookies. Cada cuenta tiene sus propios ids (`real-<clave>-…`), así dos alumnos no se cruzan (`lib/adapters/siu-real/registry.ts`).
 
 **Una sola cuenta desde el `.env.local`** (opcional, para correr local sin pasar por el ingreso): `HACKAI_SIU_REAL=si` y `SIU_SESION=<el valor>`; esa persona aparece primera en el ingreso de demo.

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "HackAI: entrar con el SIU y el Campus",
+  "version": "0.1.0",
+  "description": "Le pasa a HackAI tu sesión del SIU y del Campus Virtual de la Austral, para entrar sin copiar cookies.",
+  "permissions": ["cookies"],
+  "host_permissions": ["https://siu.austral.edu.ar/*", "https://campusvirtual.austral.edu.ar/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:3000/*", "http://127.0.0.1:3000/*", "https://campus-hackai.vercel.app/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

@@ -2,11 +2,14 @@
 /* Entrar con la cuenta real del SIU: quien entra pega su sesión del SIU, HackAI
    la valida contra el SIU, reconoce a la persona y abre su sesión. La sesión
    del SIU queda cifrada en una cookie de su navegador (lib/siu-session.ts),
-   nunca en la base ni en logs. ADR 0009. */
+   nunca en la base ni en logs. ADR 0009. Si la extensión trajo también la sesión del Campus (ADR 0011), lo
+   conecta en el mismo paso; si no, o si el Campus no la reconoce, ofrece conectarlo después. */
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { ConnectState } from '@/components/session/siu-connect-state'
 import { homeFor, setServerCookie, startSession } from '@/lib/auth'
+import { connectCampus } from '@/lib/campus-connect'
+import { moodleSessionFromInput } from '@/lib/campus-session'
 import { system } from '@/lib/composition'
 import { isMobileUserAgent } from '@/lib/device'
 import { hasSessionSecret } from '@/lib/session-token'
@@ -36,6 +39,9 @@ export async function connectSiuAction(_previous: ConnectState, form: FormData):
 
   await setServerCookie(SIU_SESSION_COOKIE, sealSiuSession({ key: who.key, session }), SIU_SESSION_MAX_AGE)
   await startSession({ personId: who.personId, role: 'alumno' })
+  if (!system().campusLive) redirect(homeFor('alumno'))
+  const moodleSession = moodleSessionFromInput(form.get('campusSession'))
+  if (moodleSession && (await connectCampus(who.key, moodleSession)) === 'conectado') redirect(homeFor('alumno'))
   // El segundo paso, que se puede saltear: conectar el Campus Virtual (ADR 0010).
-  redirect(system().campusLive ? '/conectar-campus' : homeFor('alumno'))
+  redirect('/conectar-campus')
 }
