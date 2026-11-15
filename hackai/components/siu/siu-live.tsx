@@ -8,11 +8,13 @@
    (app/api/siu/notas). Una nota que no conocía se avisa con una notificación del
    sistema, si el alumno la permitió; para pedir el permiso hace falta un clic,
    así que ofrece un botón. Si un chequeo falla, no hace nada y reintenta en el
-   próximo. */
+   próximo. Si la sesión venció (la de HackAI o la del SIU), no se queda
+   trabada: manda a volver a entrar, y después vuelve a esta pantalla. */
 import { BellRing, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { reentryAfter } from '@/lib/return-to'
 
 /** El adaptador del SIU real vuelve a leer el SIU cada 20 segundos (HACKAI_SIU_REAL_SEGUNDOS): preguntando cada
     10, lo nuevo se ve en medio minuto como mucho. */
@@ -27,11 +29,19 @@ type Grade = { key: string; subject: string; assessment: string; grade: number |
 async function getJson<T>(url: string): Promise<T | null> {
   try {
     const response = await fetch(url, { cache: 'no-store' })
+    if (response.status === 401) leaveExpired(await response.json().catch(() => null))
     return response.ok ? ((await response.json()) as T) : null
   } catch {
     // Sin red o con el servidor caído: se reintenta en el próximo chequeo.
     return null
   }
+}
+
+/** Sin sesión, a entrar de nuevo con la pantalla de ahora como vuelta: con la sesión del SIU vencida, a entrar con
+    el SIU (con la extensión, reingresa solo); si no, al ingreso. */
+function leaveExpired(body: { error?: string } | null) {
+  const here = `${window.location.pathname}${window.location.search}`
+  window.location.assign(reentryAfter(body?.error, here))
 }
 
 function readKnown(): Set<string> | null {

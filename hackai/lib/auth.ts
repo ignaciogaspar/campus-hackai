@@ -9,7 +9,7 @@ import { CAMPUS_SESSION_COOKIE, campusSessionOf } from '@/lib/campus-session'
 import { system } from '@/lib/composition'
 import type { Role } from '@/lib/core/people'
 import { homeFor } from '@/lib/home'
-import { REQUESTED_PATH_HEADER, signInFor } from '@/lib/return-to'
+import { REQUESTED_PATH_HEADER, signInFor, siuReentryFor } from '@/lib/return-to'
 import {
   createSessionToken,
   SESSION_COOKIE,
@@ -21,7 +21,9 @@ import { SIU_SESSION_COOKIE, siuSessionOf } from '@/lib/siu-session'
 
 export { homeFor }
 
-export const getSession = cache(async (): Promise<Session | null> => {
+/** La sesión de quien pide, `vencida` si es de una cuenta real cuya sesión del SIU venció (falta su cookie o el SIU
+    ya no la reconoce), o `null` si no hay sesión. */
+export const readSession = cache(async (): Promise<Session | 'vencida' | null> => {
   const jar = await cookies()
   const session = verifySessionToken(jar.get(SESSION_COOKIE)?.value)
   if (!session) return null
@@ -30,19 +32,42 @@ export const getSession = cache(async (): Promise<Session | null> => {
   const siu = siuSessionOf(session.personId, jar.get(SIU_SESSION_COOKIE)?.value)
   if (siu === 'demo') return session
   const live = system().siuLive
-  if (!siu || !live?.canConnect) return null
+  if (!live?.canConnect) return null
+  if (!siu) return 'vencida'
   live.connect(siu.key, siu.session)
+  // El SIU no renueva la sesión por su cuenta (lib/adapters/siu-real): si ya no la reconoce, hay que volver a entrar.
+  // Se pregunta antes de dibujar, así la pantalla no queda con errores de lectura. La lectura queda guardada unos
+  // segundos y la reusa la pantalla, así que no suma pedidos al SIU.
+  if (await live.expired(session.personId)) return 'vencida'
   // Si conectó su Campus, el token viaja en otra cookie (ADR 0010): con él se arma su aula en este proceso.
   const campus = campusSessionOf(siu.key, jar.get(CAMPUS_SESSION_COOKIE)?.value)
   if (campus) system().campusLive?.connect(campus.key, campus.token)
   return session
 })
 
+export const getSession = cache(async (): Promise<Session | null> => {
+  const session = await readSession()
+  return session === 'vencida' ? null : session
+})
+
+/** La sesión para una ruta de la API que usa la pantalla abierta, o la respuesta `401` que manda a volver a entrar:
+    `sesion-vencida` si venció la sesión del SIU de una cuenta real (components/siu/siu-live.tsx), `sin-sesion` si
+    no hay sesión. */
+export async function apiSession(): Promise<Session | Response> {
+  const session = await readSession()
+  if (session && session !== 'vencida') return session
+  return Response.json({ error: session === 'vencida' ? 'sesion-vencida' : 'sin-sesion' }, { status: 401 })
+}
+
 /** Redirige al ingreso si no hay sesión, con la ruta pedida en `?next=` para volver ahí después de entrar
-    (middleware.ts), y a la home del rol si el rol no coincide. */
+    (middleware.ts), y a la home del rol si el rol no coincide. Si venció la sesión del SIU de una cuenta real, a
+    volver a entrar con el SIU, que con la extensión reingresa solo. */
 export async function requireSession(role?: Role): Promise<Session> {
-  const session = await getSession()
-  if (!session) redirect(signInFor((await headers()).get(REQUESTED_PATH_HEADER)))
+  const session = await readSession()
+  if (!session || session === 'vencida') {
+    const path = (await headers()).get(REQUESTED_PATH_HEADER)
+    redirect(session === 'vencida' ? siuReentryFor(path) : signInFor(path))
+  }
   if (role && session.role !== role) redirect(homeFor(session.role))
   return session
 }

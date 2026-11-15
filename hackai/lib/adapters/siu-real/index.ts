@@ -15,7 +15,8 @@
      corre el proceso.
    - El login del SIU es con Microsoft (SAML): el servidor no puede renovar la
      sesión. Si vence, toda lectura de la persona real es `falla-externa` hasta
-     que se pegue una cookie nueva. */
+     que se pegue una cookie nueva, y `expired()` lo dice, así la sesión de
+     HackAI se corta y la persona vuelve a entrar (lib/auth.ts). */
 import { createHash } from 'node:crypto'
 import {
   dropFrom,
@@ -100,6 +101,18 @@ async function inBatches<T, R>(items: T[], limit: number, work: (item: T) => Pro
   return results
 }
 
+/** Si una redirección del SIU va a su pantalla de acceso: `<portal>/acceso`, con o sin `?auth=saml`. Solo esa ruta
+    exacta, para que otra redirección que tenga «acceso» en el camino no corte la sesión. */
+export function isLoginRedirect(location: string | null): boolean {
+  if (!location) return false
+  try {
+    const url = new URL(location, 'https://siu.invalid/portal/')
+    return /\/acceso\/?$/.test(url.pathname) || url.searchParams.get('auth') === 'saml'
+  } catch {
+    return false
+  }
+}
+
 export type RealSiuOptions = {
   /** `https://siu.austral.edu.ar/portal`, sin barra final. */
   baseUrl: string
@@ -130,6 +143,9 @@ export type RealSiu = SiuPort & {
   version(): Promise<Result<string, ExternalFailure>>
   /** Lo último leído, sin ir al SIU, o `null` si todavía no se leyó nada. */
   peek(): Snapshot | null
+  /** Si el SIU dijo, en la última lectura, que la sesión ya no vale (mostró la pantalla de acceso). Un corte de la
+      red o un error del SIU no cuentan. */
+  expired(): boolean
 }
 
 export function createRealSiu(options: RealSiuOptions): RealSiu {
@@ -140,16 +156,21 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
   const doFetch = options.fetch ?? fetch
   const warn = options.warn ?? ((message: string) => console.warn(message))
 
+  let isExpired = false
+
   async function page(path: string): Promise<string | null> {
     const response = await doFetch(`${baseUrl}/${path}`, {
       headers: { cookie: `${SESSION_COOKIE}=${session}` },
       redirect: 'manual',
       cache: 'no-store'
     })
+    // Sin sesión, el SIU redirige a la pantalla de acceso o la devuelve directo, con el botón de SAML.
+    if (isLoginRedirect(response.headers.get('location'))) isExpired = true
     if (response.status !== 200) return null
     const html = new TextDecoder('iso-8859-1').decode(await response.arrayBuffer())
-    // Sin sesión, el SIU devuelve la pantalla de acceso con el botón de SAML.
-    return html.includes("op_actual: 'acceso'") || html.includes('auth=saml') ? null : html
+    if (!html.includes("op_actual: 'acceso'") && !html.includes('auth=saml')) return html
+    isExpired = true
+    return null
   }
 
   /** Un pedido AJAX del 3W a una URL que da la propia página: un POST que devuelve JSON (el HTML en `cont`).
@@ -503,6 +524,7 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
     if (cached && at - cached.at < ttlMs) return cached.value
     const value = load().then((result): Result<Snapshot, ExternalFailure> => {
       if (result.ok) {
+        isExpired = false
         stampNewGrades(result.value, new Date(at).toISOString())
         last = result.value
         lastAt = at
@@ -762,6 +784,7 @@ export function createRealSiu(options: RealSiuOptions): RealSiu {
     },
 
     peek: () => last,
+    expired: () => isExpired,
 
     async version() {
       const found = await snapshot()
